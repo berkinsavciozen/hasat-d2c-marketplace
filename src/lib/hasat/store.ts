@@ -1,0 +1,128 @@
+import { create } from "zustand";
+import { persist } from "zustand/middleware";
+import type { HarvestEntry, Listing, Parcel, PricePoint, Role, User } from "./types";
+
+interface Store {
+  user: User | null;
+  parcels: Parcel[];
+  entries: HarvestEntry[];
+  listings: Listing[];
+  prices: PricePoint[];
+  setRole: (role: Role | null) => void;
+  addParcel: (p: Omit<Parcel, "id">) => Parcel;
+  addEntry: (e: Omit<HarvestEntry, "id">) => HarvestEntry;
+  deleteEntry: (id: string) => void;
+  reset: () => void;
+}
+
+const seedParcels: Parcel[] = [
+  {
+    id: "p1",
+    name: "Parsel A — Safran",
+    area: 3,
+    crops: ["Safran"],
+    location: { lat: 41.25, lng: 32.69, label: "Karabük, Safranbolu" },
+  },
+  {
+    id: "p2",
+    name: "Parsel B — Lavanta",
+    area: 2,
+    crops: ["Lavanta"],
+    location: { lat: 41.24, lng: 32.7, label: "Karabük, Safranbolu" },
+  },
+];
+
+const seedEntries: HarvestEntry[] = [
+  {
+    id: "h1",
+    parcelId: "p1",
+    date: "2027-11-12",
+    crop: "Safran",
+    quantity: 380,
+    unit: "g",
+    quality: "A",
+    photos: [],
+    notes: "İlk yıl hasadı, hava güzeldi.",
+    costs: { labor: 18000, fertilizer: 4000, packaging: 2500, transport: 1500, other: 1000 },
+    pricePerUnit: 320,
+  },
+  {
+    id: "h2",
+    parcelId: "p1",
+    date: "2028-11-08",
+    crop: "Safran",
+    quantity: 540,
+    unit: "g",
+    quality: "A",
+    photos: [],
+    notes: "Verim arttı, sulama düzenliydi.",
+    costs: { labor: 22000, fertilizer: 5000, packaging: 3000, transport: 1800, other: 1200 },
+    pricePerUnit: 345,
+  },
+  {
+    id: "h3",
+    parcelId: "p2",
+    date: "2028-07-15",
+    crop: "Lavanta",
+    quantity: 120,
+    unit: "kg",
+    quality: "B",
+    photos: [],
+    notes: "",
+    costs: { labor: 9000, fertilizer: 2500, packaging: 1500, transport: 1200, other: 800 },
+    pricePerUnit: 180,
+  },
+];
+
+const seedListings: Listing[] = [
+  { id: "l1", crop: "Safran", quantity: 200, unit: "g", pricePerUnit: 360, minOrder: 10, quality: "A", status: "active" },
+  { id: "l2", crop: "Lavanta", quantity: 80, unit: "kg", pricePerUnit: 200, minOrder: 5, quality: "B", status: "active" },
+];
+
+const seedPrices: PricePoint[] = [
+  { crop: "Safran", hal: 280, d2c: 358, export: 12.4, date: "2028-11-15", delta7d: 8.4 },
+  { crop: "Lavanta", hal: 140, d2c: 195, export: 6.2, date: "2028-11-15", delta7d: 3.1 },
+  { crop: "Tıbbi Bitkiler", hal: 80, d2c: 110, export: 3.4, date: "2028-11-15", delta7d: -1.2 },
+  { crop: "Fındık", hal: 220, d2c: 275, export: 8.1, date: "2028-11-15", delta7d: 2.0 },
+  { crop: "Zeytinyağı", hal: 320, d2c: 410, export: 12.0, date: "2028-11-15", delta7d: -0.5 },
+];
+
+const newId = () => Math.random().toString(36).slice(2, 10);
+
+export const useHasat = create<Store>()(
+  persist(
+    (set) => ({
+      user: null,
+      parcels: seedParcels,
+      entries: seedEntries,
+      listings: seedListings,
+      prices: seedPrices,
+      setRole: (role) =>
+        set(() => ({
+          user: role
+            ? {
+                id: "u1",
+                role,
+                name: role === "farmer" ? "Mehmet Yılmaz" : "Ayşe Demir",
+                phone: "+90 555 000 0000",
+                city: role === "farmer" ? "Karabük" : "İstanbul",
+                premium: false,
+              }
+            : null,
+        })),
+      addParcel: (p) => {
+        const np: Parcel = { ...p, id: newId() };
+        set((s) => ({ parcels: [...s.parcels, np] }));
+        return np;
+      },
+      addEntry: (e) => {
+        const ne: HarvestEntry = { ...e, id: newId() };
+        set((s) => ({ entries: [ne, ...s.entries] }));
+        return ne;
+      },
+      deleteEntry: (id) => set((s) => ({ entries: s.entries.filter((e) => e.id !== id) })),
+      reset: () => set({ user: null }),
+    }),
+    { name: "hasat-store" },
+  ),
+);
