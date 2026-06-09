@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useHasat } from "@/lib/hasat/store";
-import { FarmerHeader } from "./_farmer";
+import { FarmerHeader } from "./farmer";
 import { FarmPill } from "@/components/hasat/FarmPill";
 import { SeasonBanner } from "@/components/hasat/SeasonBanner";
 import { Sparkline } from "@/components/hasat/Sparkline";
@@ -8,7 +8,7 @@ import { AIInsightBanner } from "@/components/hasat/AIInsightBanner";
 import { formatTRY } from "@/lib/hasat/format";
 import { BookOpen, LineChart, Store, Users2, AlertTriangle, CloudSun } from "lucide-react";
 
-export const Route = createFileRoute("/_farmer/home")({
+export const Route = createFileRoute("/farmer/home")({
   head: () => ({ meta: [{ title: "Ana Sayfa — Hasat" }] }),
   component: Home,
 });

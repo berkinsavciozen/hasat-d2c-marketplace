@@ -5,7 +5,7 @@ import { SeasonBanner } from "@/components/hasat/SeasonBanner";
 import { FarmPill } from "@/components/hasat/FarmPill";
 import { RoleSwitcher } from "@/components/hasat/RoleSwitcher";
 
-export const Route = createFileRoute("/_farmer")({
+export const Route = createFileRoute("/farmer")({
   beforeLoad: () => {
     if (typeof window === "undefined") return;
     const raw = localStorage.getItem("hasat-store");
@@ -30,8 +30,9 @@ const tabs = [
 
 const sidebarExtras = [
   { to: "/farmer/community", label: "Topluluk", icon: Users },
-  { to: "/farmer/offers", label: "Teklifler", icon: Handshake, badge: 3 },
+  { to: "/farmer/orders", label: "Teklifler", icon: Handshake, badge: 3 },
 ] as const;
+
 
 function FarmerShell() {
   const user = useHasat((s) => s.user);

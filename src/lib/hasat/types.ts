@@ -58,3 +58,20 @@ export interface PricePoint {
   date: string;
   delta7d: number;
 }
+
+export type BuyerType = "restoran" | "otel" | "market" | "ihracatci";
+export type OfferStatus = "pending" | "accepted" | "counter" | "active" | "completed" | "rejected";
+
+export interface Offer {
+  id: string;
+  buyerName: string;
+  buyerType: BuyerType;
+  crop: string;
+  unit: "g" | "kg" | "L";
+  quantity: number;
+  pricePerUnit: number;
+  createdAt: string;
+  status: OfferStatus;
+  note?: string;
+}
+

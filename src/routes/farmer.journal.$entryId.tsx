@@ -10,7 +10,7 @@ import {
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 
-export const Route = createFileRoute("/_farmer/journal/$entryId")({
+export const Route = createFileRoute("/farmer/journal/$entryId")({
   head: () => ({ meta: [{ title: "Hasat Detayı — Hasat" }] }),
   component: EntryDetail,
 });
