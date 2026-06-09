@@ -56,14 +56,15 @@ function Prices() {
 
         {/* Featured price card */}
         <div className="mt-4 rounded-2xl p-3" style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)" }}>
-          <PriceRow label="İstanbul Hal (toptan)" value={`${formatTRY(selected.hal)}/${selected.unit ?? unitFor(selected.crop)}`} delta={-(((selected.hal - selected.hal * 0.95) / selected.hal) * 100)} />
+          <PriceRow label="İstanbul Hal (toptan)" value={`${formatTRY(selected.hal)}/${unitFor(selected.crop)}`} delta={-(((selected.hal - selected.hal * 0.95) / selected.hal) * 100)} />
           <div className="my-2 rounded-xl p-3" style={{ background: "color-mix(in oklab, var(--saffron) 22%, transparent)", border: "1px solid color-mix(in oklab, var(--saffron) 60%, transparent)" }}>
             <div className="mb-1 flex items-center gap-2">
-              <TrustBadge type="hasat" label="Hasat Alıcıları" />
+              <TrustBadge type="hasat" />
             </div>
             <PriceRow label="Hasat D2C Ortalaması" value={`${formatTRY(selected.d2c)}/${unitFor(selected.crop)}`} delta={selected.delta7d} accent />
           </div>
           <PriceRow label="AB İhracat Spot" value={`€${selected.export.toFixed(1)}/${unitFor(selected.crop)}`} delta={selected.delta7d * 0.6} />
+
         </div>
 
         {/* 7-day chart */}
@@ -76,7 +77,7 @@ function Prices() {
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={series} margin={{ top: 8, right: 8, bottom: 0, left: 0 }}>
                 <YAxis hide domain={["dataMin - 5", "dataMax + 5"]} />
-                <Tooltip contentStyle={{ background: "var(--dark)", border: "1px solid var(--saffron)", borderRadius: 8, fontSize: 12 }} labelStyle={{ color: "var(--hwhite)" }} formatter={(v: number) => formatTRY(v)} />
+                <Tooltip contentStyle={{ background: "var(--dark)", border: "1px solid var(--saffron)", borderRadius: 8, fontSize: 12 }} labelStyle={{ color: "var(--hwhite)" }} formatter={(v) => formatTRY(Number(v))} />
                 <Line type="monotone" dataKey="value" stroke="var(--saffron)" strokeWidth={2.5} dot={{ r: 3, fill: "var(--saffron)" }} />
               </LineChart>
             </ResponsiveContainer>
