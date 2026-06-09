@@ -5,7 +5,7 @@ import { useHasat } from "@/lib/hasat/store";
 import { Stepper } from "@/components/hasat/Stepper";
 import { formatTRY } from "@/lib/hasat/format";
 
-export const Route = createFileRoute("/_farmer/journal/new")({
+export const Route = createFileRoute("/farmer/journal/new")({
   head: () => ({ meta: [{ title: "Yeni Hasat — Hasat" }] }),
   component: NewEntry,
 });

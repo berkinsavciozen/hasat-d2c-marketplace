@@ -2,7 +2,7 @@ import { createFileRoute, Link, Outlet, redirect, useRouterState } from "@tansta
 import { Search, Package, BarChart3, MessageCircle, User } from "lucide-react";
 import { RoleSwitcher } from "@/components/hasat/RoleSwitcher";
 
-export const Route = createFileRoute("/_buyer")({
+export const Route = createFileRoute("/buyer")({
   beforeLoad: () => {
     if (typeof window === "undefined") return;
     const raw = localStorage.getItem("hasat-store");

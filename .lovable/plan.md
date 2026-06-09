@@ -1,104 +1,120 @@
-# Hasat — Foundation + Farmer Vertical Slice
 
-Build the core architecture and the first working vertical slice (Farmer Home + Journal). All other screens will follow in iteration prompts.
+## 1. Fix the routing 404
 
-## Scope (this plan)
+**Root cause:** Route files use the `_farmer` / `_buyer` prefix, which TanStack Router treats as **pathless** layouts. So `_farmer.home.tsx` resolves to URL `/home`, not `/farmer/home`. Every `<Link to="/farmer/home">` etc. throws a `notFound`, which is why the root `NotFoundComponent` ("404 Page not found") flashes after picking a role. Confirmed in `routeTree.gen.ts` (`fullPaths` only contains `/home`, `/journal`, …).
 
-1. **Design system** — Hasat color tokens, typography, Turkish locale formatting
-2. **Role routing** — entry/role-picker, FarmerApp + BuyerApp shells with responsive nav
-3. **Shared component library** — Btn, Badge, TrustBadge, Card, PriceTicker, OrderTimeline, BottomSheet, Stepper
-4. **Mock data + state** — Zustand store with User, Farm, Parcel, HarvestEntry, Listing, PricePoint
-5. **Farmer vertical slice** — A0 entry, A2 Home dashboard, A3 Journal, A3-NEW harvest entry, A3-DETAIL
-6. Buyer side gets shell + placeholder Discovery screen only (iterated later)
+**Fix:** drop the underscore on the layout segment so the URL actually includes `/farmer` and `/buyer`. Architecture, components, and all `to:` strings stay identical.
 
-Out of scope for this plan: A1 OTP auth, onboarding flows (A1-ONB, B1-ONB), Price Intelligence (A4), Storefront (A5), Offers (A6), Community (A7), Analytics (A8/B7), Premium (A9/B9), Settings (A10), all Buyer screens beyond shell, Subscription (B8).
+Rename (using `mv`):
+- `src/routes/_farmer.tsx` → `src/routes/farmer.tsx`
+- `src/routes/_farmer.home.tsx` → `src/routes/farmer.home.tsx`
+- `src/routes/_farmer.journal.tsx` → `src/routes/farmer.journal.tsx`
+- `src/routes/_farmer.journal.new.tsx` → `src/routes/farmer.journal.new.tsx`
+- `src/routes/_farmer.journal.$entryId.tsx` → `src/routes/farmer.journal.$entryId.tsx`
+- `src/routes/_farmer.prices.tsx` → `src/routes/farmer.prices.tsx`
+- `src/routes/_farmer.storefront.tsx` → `src/routes/farmer.storefront.tsx`
+- `src/routes/_farmer.offers.tsx` → `src/routes/farmer.offers.tsx`
+- `src/routes/_farmer.analytics.tsx` → `src/routes/farmer.analytics.tsx`
+- `src/routes/_farmer.community.tsx` → `src/routes/farmer.community.tsx`
+- Buyer mirror: `_buyer.*` → `buyer.*` (tsx, discover, orders, messages, reports, account)
 
-## Routes (TanStack Start, file-based)
+Inside each renamed file:
+- Update `createFileRoute("/_farmer/...")` → `createFileRoute("/farmer/...")` (and `/_buyer/...` → `/buyer/...`).
+- Update `import { FarmerHeader } from "./_farmer"` → `from "./farmer"` (same for buyer).
+- `beforeLoad` role guard stays as-is.
 
-```
-src/routes/
-  __root.tsx              — providers, head
-  index.tsx               — A0 role picker (redirects if role set)
-  _farmer.tsx             — farmer layout (sidebar desktop / bottom tabs mobile)
-  _farmer.home.tsx        — A2 Home dashboard
-  _farmer.journal.tsx     — A3 Journal list
-  _farmer.journal.new.tsx — A3-NEW harvest entry form
-  _farmer.journal.$entryId.tsx — A3-DETAIL
-  _farmer.prices.tsx      — A4 stub
-  _farmer.storefront.tsx  — A5 stub
-  _farmer.analytics.tsx   — A8 stub
-  _farmer.community.tsx   — A7 stub
-  _buyer.tsx              — buyer layout
-  _buyer.discover.tsx     — B1 placeholder
-  _buyer.orders.tsx       — stub
-  _buyer.reports.tsx      — stub
-  _buyer.messages.tsx     — stub
-  _buyer.account.tsx      — stub
-```
+No changes to existing Link `to:` values, RoleSwitcher targets, or `index.tsx` redirects — they already use `/farmer/home` and `/buyer/discover`.
 
-Role guard reads from Zustand; if `user.role` unset → redirect to `/`. Dev role-switcher pinned bottom-left in dev mode.
+## 2. A4 — Price Intelligence (`farmer.prices.tsx`)
 
-## Design tokens (src/styles.css)
+Replace the current stub. Layout inside the existing `FarmerHeader` dark shell:
 
-```css
-@theme {
-  --color-saffron: #C8833B;
-  --color-sage:    #6B8F5E;
-  --color-cream:   #F7F2E8;
-  --color-dark:    #1A1A14;
-  --color-muted-hasat: #8A8678;
-  --color-gold:    #D4A843;
-  --color-lav:     #8B9BF0;
-  --color-bg-hasat:#F0EBE0;
-  --color-red-hasat:#C0392B;
-  --color-white-hasat:#FDFAF5;
-  --font-serif: Georgia, serif;
-  --font-mono:  "Courier New", monospace;
+- **Header**: title "Fiyat İstihbaratı", subtitle date.
+- **Crop pill tabs** (horizontal scroll, snap): Safran / Lavanta / Tıbbi Bitkiler / Fındık / Zeytinyağı. Active = saffron bg, inactive = white/10. Local `useState<string>` for `selectedCrop`.
+- **Featured price card** (dark bg, rounded-2xl, inside header area): 3 rows for the selected crop —
+  1. "İstanbul Hal (toptan)" — `hal` (₺/unit, mono), ▲/▼ delta vs hal*0.95 baseline (sage/red).
+  2. "Hasat D2C Ortalaması" — `d2c`, saffron background highlight + `TrustBadge` "Hasat Alıcıları". Delta = `delta7d`.
+  3. "AB İhracat Spot" — `export` in € (mono, e.g. `€12.4/kg`), small ▲/▼.
+- **Recharts LineChart** (140px, saffron stroke) showing fabricated 7-day series derived from `d2c` (e.g. `[d2c*0.94, *0.96, *0.97, *0.99, *1.0, *1.01, *1.0]`). Pure visual, no store change.
+- **Other crops PriceTicker rows**: map remaining `prices`, each row = crop emoji + name, `d2c` mono, delta colored, mini `Sparkline` (gold). Clicking a row sets `selectedCrop`.
+- **AIInsightBanner** at bottom (e.g. "Safran fiyatı 7 günde %8.4 yükseldi — vitrindeki listenizi güncelleyin.").
+- **"+ Fiyat Alarmı Kur"** sticky button (saffron) opens a shadcn `Sheet` (side="bottom") containing:
+  - crop `Select` (from prices list)
+  - target price `Stepper` (₺)
+  - above/below toggle (two pill buttons: "Üstüne çıkınca" / "Altına düşünce")
+  - channel multi-select chips: WhatsApp / Push / SMS
+  - "Kaydet" button → `toast` (sonner) "Alarm kuruldu" + close. Local state only, no store mutation.
+
+No new shared components required; reuse `TrustBadge`, `AIInsightBanner`, `Sparkline`, `Stepper`.
+
+## 3. A5 — Storefront (`farmer.storefront.tsx`)
+
+Replace stub. `FarmerHeader` title "Vitrin", subtitle "Aktif listelemeleriniz".
+
+- shadcn `Tabs`: "Ürünlerim" / "Geçmiş".
+- **Ürünlerim**: filter `listings` where `status==="active"`. Each card = crop emoji (Safran 🌸, Lavanta 💜, Tıbbi 🌿, Fındık 🌰, Zeytinyağı 🫒, fallback 🌾) + name, quantity + unit, `formatTRY(pricePerUnit)`/unit, `TrustBadge` for quality (A/B/C), status chip "Aktif" (sage). Actions: "Düzenle" (opens BottomSheet pre-filled) and "Kaldır" (sets `status="expired"` in store via new `updateListing` action).
+- Empty state: 🏪 + "Henüz ürün listelemediniz" + saffron "Ürün Listele" CTA opens the same sheet.
+- **FAB** "+ Yeni Ürün" (fixed bottom-right above tab bar, saffron, rounded-full).
+- **Listing form Sheet** (side="bottom"): crop `Select`, `Stepper` qty with g/kg/L unit toggle, `₺` input for price/unit, `Stepper` min order, quality grid (A/B/C as 3 buttons, saffron when selected), description `Textarea`, "Yayınla ✓" button → `addListing` or `updateListing`, close + toast.
+- **Geçmiş**: listings where `status !== "active"` rendered greyed (opacity-60) with status badge "Satıldı" (gold) / "Süresi Doldu" (muted). No actions.
+
+**Store additions** (extend `useHasat`, non-breaking):
+- `addListing(l: Omit<Listing, "id">) => Listing`
+- `updateListing(id: string, patch: Partial<Listing>) => void`
+- Seed two extra `status:"sold"` and `status:"expired"` rows for Geçmiş demo.
+
+Schema of `Listing` type is unchanged.
+
+## 4. A6 — Offers & Orders (`farmer.orders.tsx`, new route)
+
+New file `src/routes/farmer.orders.tsx`, registered automatically by router plugin. Sidebar/bottom-nav unchanged (Teklifler badge already points to `/farmer/offers` which exists as a stub — leave existing offers route; the new `/farmer/orders` route is what badge will eventually use, but per spec the user asked to split into `_farmer.orders.tsx` — we create `farmer.orders.tsx`).
+
+- `FarmerHeader` "Siparişler".
+- shadcn `Tabs`: "Gelen Teklifler" / "Aktif Siparişler" / "Tamamlanan".
+- Offer card: buyer name (e.g. "Mikla Restaurant") + chip ("Restoran" / "Otel" / "Market" / "İhracatçı"), product line ("Safran · 50 g"), offered `₺/unit`, total `formatTRY(qty*price)`, time ago ("2 saat önce"), `OrderChip` status pill (sage="Kabul edildi", saffron="Beklemede", gold="Karşı teklif", muted="Tamamlandı").
+- Buttons (only on "pending"): "Kabul Et" (sage bg) → `updateOffer(id,{status:"accepted"})`; "Müzakere Et" (outline saffron) → `navigate({ to: "/farmer/orders/$offerId/counter", params: { offerId: id } })`.
+
+**New types & store**:
+```ts
+export interface Offer {
+  id: string;
+  buyerName: string;
+  buyerType: "restoran"|"otel"|"market"|"ihracatci";
+  crop: string; unit: "g"|"kg"|"L";
+  quantity: number; pricePerUnit: number;
+  createdAt: string; // ISO
+  status: "pending"|"accepted"|"counter"|"active"|"completed"|"rejected";
 }
 ```
+Add to `Store`: `offers: Offer[]`, `updateOffer(id, patch)`, `addOffer(o)`, seeded with 4–5 offers across the three tab buckets. Tabs map: Gelen=pending+counter, Aktif=accepted+active, Tamamlanan=completed.
 
-Map onto shadcn tokens (`--primary` = saffron, `--background` = bg-hasat, `--card` = cream, `--destructive` = red, `--foreground` = dark). Override in `:root` so shadcn components inherit the palette automatically.
+Tiny new `OrderChip` component under `src/components/hasat/OrderChip.tsx` (single file, status→color map).
 
-## Shared components (`src/components/hasat/`)
+## 5. A6-COUNTER (`farmer.orders.$offerId.counter.tsx`)
 
-- `TrustBadge` — props: `type: 'organik'|'iso'|'cografi'|'hasat'|'premium'|'yeni'`. Color + icon map per spec.
-- `PriceTicker` — icon, name, price (mono), delta % (sage/red arrow).
-- `OrderTimeline` — vertical stepper with done/active/pending states.
-- `HarvestEntryCard`, `ProducerCard` — list cards.
-- `Stepper` — `–`/`+` with integrated unit toggle.
-- `BottomSheet` — wraps shadcn `Sheet` side="bottom" with handle bar, max 85vh.
-- `AIInsightBanner` — 🤖 + text + optional CTA.
-- `SeasonBanner`, `FarmPill`.
-- `Sparkline`, `BarChart`, `LineChart` — thin wrappers on Recharts.
-- `formatTRY(n)` util — `₺1.150.000` via `Intl.NumberFormat('tr-TR')`.
+Dynamic route. Loader reads from store (`useHasat.getState().offers.find(...)`) — if missing `throw notFound()`. Provide `notFoundComponent` + `errorComponent` per template rules.
 
-## State (Zustand, `src/lib/store.ts`)
+UI:
+- `FarmerHeader` "Karşı Teklif".
+- Muted summary card: original buyer / product / qty / price / total (read-only, opacity-70).
+- Form:
+  - `Stepper` proposed qty (pre-filled, unit shown).
+  - ₺ input proposed price (pre-filled).
+  - 3 radio pills delivery: "Kapıda Teslim" / "Kargo" / "Alıcı Alır".
+  - `<input type="date">` delivery date.
+  - `Textarea` optional note.
+  - Live total = `formatTRY(qty * price)`.
+- "Karşı Teklif Gönder" saffron button → `updateOffer(id, { status:"counter", quantity, pricePerUnit })` + `toast` + `navigate({ to:"/farmer/orders" })`.
 
-Single store with `user`, `farms`, `parcels`, `harvestEntries`, `listings`, `offers`, `pricePoints` seeded with realistic Turkish mock data (saffron farmer in Karabük, sample entries for 2027/2028/2029, mock price history). Actions: `setRole`, `addParcel`, `addHarvestEntry`, `deleteHarvestEntry`. Persisted to localStorage.
+## Out of scope (unchanged)
 
-## Vertical slice details
-
-**A0 Entry** — full-screen dark, 🌸 Hasat logo + هارست subtitle, two CTA cards ("Çiftçiyim" / "Alıcıyım") routing to `/farmer/home` or `/buyer/discover`.
-
-**Farmer layout** — desktop: 230px dark sidebar (brand, farm pill, season banner, nav, profile footer). Mobile: bottom tab bar (5 items) + top header. CSS grid switches at 768px.
-
-**A2 Home** — dark header (greeting, farm pill, bell, season banner) + scrollable body: quick-action chips, revenue card (dark, gold mono ₺340.000, sparkline), active listings card, activity feed, weather widget (mocked), AI yield anomaly card, AI insight banner.
-
-**A3 Journal** — year tabs (2027/2028/2029), summary stats, parcel cards, FAB "+ Yeni Kayıt", empty state, "+ Yeni Parsel" bottom sheet with GPS simulation (1.5s spinner → "Karabük, Safranbolu ✓").
-
-**A3-NEW** — full form: parsel + date grid, auto-detected crop banner, qty stepper with g/kg toggle, A/B/C quality grid, GPS badge, 3 photo slots, notes, expandable input costs accordion with running total, "Kaydet ✓" → full-screen sage success → auto nav back after 2s.
-
-**A3-DETAIL** — KPI 2×2 grid, yield bar chart, P&L card, AI insight, storefront shortcut, ⋯ menu with destructive delete confirm.
+- A1 auth/OTP, A1-ONB, A7 community, A8 analytics, A9 premium, A10 settings.
+- All Buyer screens beyond existing shells.
+- `_farmer.offers.tsx` stub: kept as-is (badge still routes there); spec puts offers inside the new `/farmer/orders` route. I will not delete the stub to avoid breaking the sidebar badge link, but will repoint the sidebar "Teklifler" item to `/farmer/orders` so users land on the real screen.
 
 ## Technical notes
 
-- TanStack Start file-based routing, TanStack Query for any future async, Zustand for client state.
-- shadcn components: Sheet, Tabs, Select, Slider, Switch, Badge, Dialog, Accordion, Button — restyled via tokens, not custom rewrites.
-- Recharts for charts (line, bar, sparkline). Donut deferred to B7.
-- Turkish strings inline (no i18n framework needed for prototype).
-- Mobile breakpoint: `md:` (768px) for sidebar swap.
-- All routes get `head()` with Turkish titles.
-
-## After this slice
-
-Follow-up prompts will add: auth/onboarding, prices, storefront, offers/counter-offers, community, analytics, premium/billing, settings, and the full Buyer side (discovery cards, producer profile, make offer, payment, order tracker, subscriptions, reports).
+- All renames are pure file moves + the `createFileRoute("/_farmer/x")` → `createFileRoute("/farmer/x")` string update + the `./_farmer` import path fix. The TanStack Router Vite plugin regenerates `routeTree.gen.ts` automatically.
+- No design tokens, no shared component signatures, no existing Zustand fields changed — only additive (`addListing`, `updateListing`, `offers`, `updateOffer`, `addOffer`).
+- Recharts already installed; reuse for prices chart.
+- BottomSheet = shadcn `Sheet` with `side="bottom"`, rounded-t-2xl.

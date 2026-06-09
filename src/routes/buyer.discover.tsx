@@ -3,7 +3,7 @@ import { Search } from "lucide-react";
 import { TrustBadge } from "@/components/hasat/TrustBadge";
 import { formatTRY } from "@/lib/hasat/format";
 
-export const Route = createFileRoute("/_buyer/discover")({
+export const Route = createFileRoute("/buyer/discover")({
   head: () => ({ meta: [{ title: "Keşfet — Hasat" }] }),
   component: Discover,
 });

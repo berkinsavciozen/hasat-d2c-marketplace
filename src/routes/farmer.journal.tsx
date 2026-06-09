@@ -7,7 +7,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/co
 import { Stepper } from "@/components/hasat/Stepper";
 import { formatTRY } from "@/lib/hasat/format";
 
-export const Route = createFileRoute("/_farmer/journal")({
+export const Route = createFileRoute("/farmer/journal")({
   head: () => ({ meta: [{ title: "Günlük — Hasat" }] }),
   component: Journal,
 });
