@@ -1,6 +1,205 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { useState } from "react";
 import { FarmerHeader } from "./farmer";
-export const Route = createFileRoute("/farmer/prices")({ component: () => <Stub title="Fiyatlar" /> });
-function Stub({ title }: { title: string }) {
-  return (<><FarmerHeader title={title} subtitle="Yakında — sonraki iterasyonda inşa edilecek" /><div className="p-8 text-center text-hmuted">🚧 Bu ekran sonraki adımda hazırlanacak.</div></>);
+import { useHasat } from "@/lib/hasat/store";
+import { AIInsightBanner } from "@/components/hasat/AIInsightBanner";
+import { TrustBadge } from "@/components/hasat/TrustBadge";
+import { Sparkline } from "@/components/hasat/Sparkline";
+import { Stepper } from "@/components/hasat/Stepper";
+import { formatTRY, formatDelta } from "@/lib/hasat/format";
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Bell, TrendingUp, TrendingDown } from "lucide-react";
+import { LineChart, Line, ResponsiveContainer, YAxis, Tooltip } from "recharts";
+import { toast } from "sonner";
+
+export const Route = createFileRoute("/farmer/prices")({
+  head: () => ({ meta: [{ title: "Fiyatlar — Hasat" }] }),
+  component: Prices,
+});
+
+const CROP_EMOJI: Record<string, string> = {
+  Safran: "🌸", Lavanta: "💜", "Tıbbi Bitkiler": "🌿", Fındık: "🌰", Zeytinyağı: "🫒",
+};
+
+function Prices() {
+  const prices = useHasat((s) => s.prices);
+  const [selectedCrop, setSelectedCrop] = useState<string>("Safran");
+  const [sheetOpen, setSheetOpen] = useState(false);
+
+  const selected = prices.find((p) => p.crop === selectedCrop) ?? prices[0];
+  const others = prices.filter((p) => p.crop !== selected.crop);
+
+  // 7-day synthetic series for D2C
+  const series = [0.94, 0.96, 0.97, 0.99, 1.0, 1.01, 1.0].map((m, i) => ({ day: i + 1, value: Math.round(selected.d2c * m) }));
+
+  return (
+    <>
+      <FarmerHeader title="Fiyat İstihbaratı" subtitle={`Güncel: ${selected.date}`}>
+        {/* Crop pill tabs */}
+        <div className="mt-4 -mx-4 md:-mx-8 px-4 md:px-8 overflow-x-auto">
+          <div className="flex gap-2 pb-1 snap-x">
+            {prices.map((p) => {
+              const active = p.crop === selected.crop;
+              return (
+                <button
+                  key={p.crop}
+                  onClick={() => setSelectedCrop(p.crop)}
+                  className={`shrink-0 snap-start rounded-full px-3 py-1.5 text-xs font-medium ${active ? "bg-saffron text-white" : "bg-white/10 text-hwhite/80"}`}
+                >
+                  {CROP_EMOJI[p.crop] ?? "🌾"} {p.crop}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Featured price card */}
+        <div className="mt-4 rounded-2xl p-3" style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)" }}>
+          <PriceRow label="İstanbul Hal (toptan)" value={`${formatTRY(selected.hal)}/${selected.unit ?? unitFor(selected.crop)}`} delta={-(((selected.hal - selected.hal * 0.95) / selected.hal) * 100)} />
+          <div className="my-2 rounded-xl p-3" style={{ background: "color-mix(in oklab, var(--saffron) 22%, transparent)", border: "1px solid color-mix(in oklab, var(--saffron) 60%, transparent)" }}>
+            <div className="mb-1 flex items-center gap-2">
+              <TrustBadge type="hasat" label="Hasat Alıcıları" />
+            </div>
+            <PriceRow label="Hasat D2C Ortalaması" value={`${formatTRY(selected.d2c)}/${unitFor(selected.crop)}`} delta={selected.delta7d} accent />
+          </div>
+          <PriceRow label="AB İhracat Spot" value={`€${selected.export.toFixed(1)}/${unitFor(selected.crop)}`} delta={selected.delta7d * 0.6} />
+        </div>
+
+        {/* 7-day chart */}
+        <div className="mt-4 rounded-2xl p-3" style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)" }}>
+          <div className="mb-1 flex items-center justify-between text-xs text-hwhite/60">
+            <span>Son 7 gün — D2C</span>
+            <span className="font-mono">{formatTRY(series[0].value)} → {formatTRY(series[series.length - 1].value)}</span>
+          </div>
+          <div className="h-[140px]">
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={series} margin={{ top: 8, right: 8, bottom: 0, left: 0 }}>
+                <YAxis hide domain={["dataMin - 5", "dataMax + 5"]} />
+                <Tooltip contentStyle={{ background: "var(--dark)", border: "1px solid var(--saffron)", borderRadius: 8, fontSize: 12 }} labelStyle={{ color: "var(--hwhite)" }} formatter={(v: number) => formatTRY(v)} />
+                <Line type="monotone" dataKey="value" stroke="var(--saffron)" strokeWidth={2.5} dot={{ r: 3, fill: "var(--saffron)" }} />
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+      </FarmerHeader>
+
+      <div className="px-4 md:px-8 py-5 space-y-3">
+        <div className="text-xs font-medium uppercase tracking-wider text-hmuted">Diğer Ürünler</div>
+        {others.map((p) => (
+          <button
+            key={p.crop}
+            onClick={() => setSelectedCrop(p.crop)}
+            className="flex w-full items-center gap-3 rounded-xl border bg-card p-3 text-left hover:border-saffron/40"
+          >
+            <span className="text-xl">{CROP_EMOJI[p.crop] ?? "🌾"}</span>
+            <div className="flex-1">
+              <div className="text-sm font-medium">{p.crop}</div>
+              <div className="font-mono text-xs text-hmuted">{formatTRY(p.d2c)}/{unitFor(p.crop)}</div>
+            </div>
+            <Sparkline data={[p.d2c * 0.95, p.d2c * 0.97, p.d2c * 0.99, p.d2c, p.d2c * 1.01, p.d2c * 1.0, p.d2c * (1 + p.delta7d / 100)]} color="var(--gold)" width={70} height={28} />
+            <div className={`text-xs font-medium ${p.delta7d >= 0 ? "text-sage" : "text-hred"}`}>{formatDelta(p.delta7d)}</div>
+          </button>
+        ))}
+
+        <AIInsightBanner>
+          {selected.crop} fiyatı 7 günde {formatDelta(selected.delta7d)} değişti — vitrindeki listenizi güncellemek ister misiniz?
+        </AIInsightBanner>
+
+        <button
+          onClick={() => setSheetOpen(true)}
+          className="sticky bottom-24 md:bottom-4 mt-6 flex w-full items-center justify-center gap-2 rounded-full bg-saffron py-3 text-sm font-medium text-white shadow-lg"
+        >
+          <Bell className="h-4 w-4" /> + Fiyat Alarmı Kur
+        </button>
+      </div>
+
+      <PriceAlarmSheet open={sheetOpen} onOpenChange={setSheetOpen} crops={prices.map((p) => p.crop)} defaultCrop={selected.crop} defaultPrice={selected.d2c} />
+    </>
+  );
+}
+
+function unitFor(crop: string) {
+  if (crop === "Safran") return "g";
+  if (crop === "Zeytinyağı") return "L";
+  return "kg";
+}
+
+function PriceRow({ label, value, delta, accent }: { label: string; value: string; delta: number; accent?: boolean }) {
+  const up = delta >= 0;
+  return (
+    <div className="flex items-center justify-between py-1.5">
+      <div className={`text-sm ${accent ? "text-hwhite" : "text-hwhite/80"}`}>{label}</div>
+      <div className="flex items-center gap-2">
+        <span className={`font-mono ${accent ? "text-base font-semibold text-hwhite" : "text-sm text-hwhite"}`}>{value}</span>
+        <span className={`flex items-center text-[11px] font-medium ${up ? "text-sage" : "text-hred"}`}>
+          {up ? <TrendingUp className="mr-0.5 h-3 w-3" /> : <TrendingDown className="mr-0.5 h-3 w-3" />}
+          {formatDelta(delta)}
+        </span>
+      </div>
+    </div>
+  );
+}
+
+function PriceAlarmSheet({ open, onOpenChange, crops, defaultCrop, defaultPrice }: { open: boolean; onOpenChange: (b: boolean) => void; crops: string[]; defaultCrop: string; defaultPrice: number; }) {
+  const [crop, setCrop] = useState(defaultCrop);
+  const [price, setPrice] = useState(defaultPrice);
+  const [direction, setDirection] = useState<"above" | "below">("above");
+  const [channels, setChannels] = useState<string[]>(["WhatsApp"]);
+
+  const toggleChan = (c: string) => setChannels((cur) => cur.includes(c) ? cur.filter((x) => x !== c) : [...cur, c]);
+
+  return (
+    <Sheet open={open} onOpenChange={onOpenChange}>
+      <SheetContent side="bottom" className="rounded-t-2xl">
+        <SheetHeader>
+          <SheetTitle className="font-serif text-xl">🔔 Fiyat Alarmı Kur</SheetTitle>
+        </SheetHeader>
+        <div className="mt-4 space-y-4">
+          <div>
+            <div className="mb-1.5 text-xs font-medium text-hmuted">Ürün</div>
+            <Select value={crop} onValueChange={setCrop}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>{crops.map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent>
+            </Select>
+          </div>
+          <div>
+            <div className="mb-1.5 text-xs font-medium text-hmuted">Hedef fiyat</div>
+            <Stepper value={price} onChange={setPrice} step={5} unit="₺" />
+          </div>
+          <div>
+            <div className="mb-1.5 text-xs font-medium text-hmuted">Koşul</div>
+            <div className="grid grid-cols-2 gap-2">
+              {(["above", "below"] as const).map((d) => (
+                <button key={d} type="button" onClick={() => setDirection(d)}
+                  className={`rounded-xl border py-2.5 text-sm font-medium ${direction === d ? "bg-saffron text-white border-saffron" : "border-input text-hmuted"}`}>
+                  {d === "above" ? "📈 Üstüne çıkınca" : "📉 Altına düşünce"}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div>
+            <div className="mb-1.5 text-xs font-medium text-hmuted">Bildirim kanalı</div>
+            <div className="flex flex-wrap gap-2">
+              {["WhatsApp", "Push", "SMS"].map((c) => {
+                const on = channels.includes(c);
+                return (
+                  <button key={c} type="button" onClick={() => toggleChan(c)}
+                    className={`rounded-full border px-3 py-1.5 text-xs font-medium ${on ? "bg-saffron text-white border-saffron" : "border-input text-hmuted"}`}>
+                    {c}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+          <button
+            onClick={() => { toast.success(`Alarm kuruldu: ${crop} ${direction === "above" ? "≥" : "≤"} ${formatTRY(price)}`); onOpenChange(false); }}
+            className="w-full rounded-xl bg-saffron py-3 text-sm font-medium text-white"
+          >
+            Kaydet
+          </button>
+        </div>
+      </SheetContent>
+    </Sheet>
+  );
 }
