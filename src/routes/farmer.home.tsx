@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useHasat } from "@/lib/hasat/store";
-import { FarmerHeader } from "./_farmer";
+import { FarmerHeader } from "./farmer";
 import { FarmPill } from "@/components/hasat/FarmPill";
 import { SeasonBanner } from "@/components/hasat/SeasonBanner";
 import { Sparkline } from "@/components/hasat/Sparkline";

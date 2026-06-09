@@ -1,3 +1,3 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { FarmerHeader } from "./_farmer";
+import { FarmerHeader } from "./farmer";
 export const Route = createFileRoute("/farmer/offers")({ component: () => (<><FarmerHeader title="Teklifler" subtitle="Yakında" /><div className="p-8 text-center text-hmuted">🚧 Bu ekran sonraki adımda hazırlanacak.</div></>) });

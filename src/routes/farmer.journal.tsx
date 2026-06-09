@@ -2,7 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState } from "react";
 import { Plus } from "lucide-react";
 import { useHasat } from "@/lib/hasat/store";
-import { FarmerHeader } from "./_farmer";
+import { FarmerHeader } from "./farmer";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { Stepper } from "@/components/hasat/Stepper";
 import { formatTRY } from "@/lib/hasat/format";
