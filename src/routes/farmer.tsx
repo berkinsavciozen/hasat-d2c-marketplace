@@ -30,8 +30,9 @@ const tabs = [
 
 const sidebarExtras = [
   { to: "/farmer/community", label: "Topluluk", icon: Users },
-  { to: "/farmer/offers", label: "Teklifler", icon: Handshake, badge: 3 },
+  { to: "/farmer/orders", label: "Teklifler", icon: Handshake, badge: 3 },
 ] as const;
+
 
 function FarmerShell() {
   const user = useHasat((s) => s.user);
