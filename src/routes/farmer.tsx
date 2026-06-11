@@ -78,13 +78,13 @@ function FarmerShell() {
 
         <div className="mt-auto">
           <Link
-            to="/farmer/home"
+            to="/farmer/premium"
             className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm"
             style={{ background: "color-mix(in oklab, var(--gold) 18%, transparent)", color: "var(--gold)" }}
           >
             <Crown className="h-4 w-4" /> Premium'a Geç
           </Link>
-          <div className="mt-3 flex items-center gap-2 rounded-lg bg-white/5 p-2">
+          <Link to="/farmer/settings" className="mt-3 flex items-center gap-2 rounded-lg bg-white/5 p-2 hover:bg-white/10">
             <div className="grid h-8 w-8 place-items-center rounded-full bg-saffron text-xs font-bold">
               {user?.name?.[0] ?? "M"}
             </div>
@@ -93,7 +93,7 @@ function FarmerShell() {
               <div className="opacity-50">{user?.city}</div>
             </div>
             <Settings className="h-4 w-4 opacity-50" />
-          </div>
+          </Link>
         </div>
       </aside>
 
