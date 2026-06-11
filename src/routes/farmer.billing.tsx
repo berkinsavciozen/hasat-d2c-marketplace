@@ -20,7 +20,7 @@ const PLANS: Record<"premium" | "elite", { name: string; price: string }> = {
 };
 
 function Billing() {
-  const { plan } = Route.useSearch();
+  const { plan } = Route.useSearch() as { plan: "premium" | "elite" };
   const navigate = useNavigate();
   const setPremium = useHasat((s) => s.setPremium);
   const [card, setCard] = useState({ num: "", exp: "", cvv: "", name: "" });
