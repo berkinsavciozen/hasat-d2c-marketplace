@@ -1,120 +1,91 @@
+# Iteration 3 — Farmer Auth, Onboarding & Account Screens
 
-## 1. Fix the routing 404
+Build out the remaining farmer-side surfaces. All existing routes, components, tokens, and Zustand store stay intact — this iteration is purely additive (new routes, new store slices, two stubs replaced).
 
-**Root cause:** Route files use the `_farmer` / `_buyer` prefix, which TanStack Router treats as **pathless** layouts. So `_farmer.home.tsx` resolves to URL `/home`, not `/farmer/home`. Every `<Link to="/farmer/home">` etc. throws a `notFound`, which is why the root `NotFoundComponent` ("404 Page not found") flashes after picking a role. Confirmed in `routeTree.gen.ts` (`fullPaths` only contains `/home`, `/journal`, …).
+## 1. Store additions (`src/lib/hasat/store.ts`)
 
-**Fix:** drop the underscore on the layout segment so the URL actually includes `/farmer` and `/buyer`. Architecture, components, and all `to:` strings stay identical.
+Additive only — no schema rewrites:
+- `setPremium(value: boolean)` — flips `user.premium`.
+- `updateUser(patch: Partial<User>)` — for onboarding profile + settings edits.
+- `deleteParcel(id)` and `updateParcel(id, patch)` — used by Settings.
+- New slice `notifPrefs: Record<EventKey, { whatsapp: boolean; push: boolean; sms: boolean }>` with `setNotifPref(event, channel, value)`. Seeded with sensible defaults (WhatsApp on for all, push on for offers + price, SMS off).
+- New optional `user` fields: `crops?: string[]`, `landSize?: number`, `certs?: string[]`. Added to `User` type as optional so existing seeds keep working.
 
-Rename (using `mv`):
-- `src/routes/_farmer.tsx` → `src/routes/farmer.tsx`
-- `src/routes/_farmer.home.tsx` → `src/routes/farmer.home.tsx`
-- `src/routes/_farmer.journal.tsx` → `src/routes/farmer.journal.tsx`
-- `src/routes/_farmer.journal.new.tsx` → `src/routes/farmer.journal.new.tsx`
-- `src/routes/_farmer.journal.$entryId.tsx` → `src/routes/farmer.journal.$entryId.tsx`
-- `src/routes/_farmer.prices.tsx` → `src/routes/farmer.prices.tsx`
-- `src/routes/_farmer.storefront.tsx` → `src/routes/farmer.storefront.tsx`
-- `src/routes/_farmer.offers.tsx` → `src/routes/farmer.offers.tsx`
-- `src/routes/_farmer.analytics.tsx` → `src/routes/farmer.analytics.tsx`
-- `src/routes/_farmer.community.tsx` → `src/routes/farmer.community.tsx`
-- Buyer mirror: `_buyer.*` → `buyer.*` (tsx, discover, orders, messages, reports, account)
+## 2. New routes
 
-Inside each renamed file:
-- Update `createFileRoute("/_farmer/...")` → `createFileRoute("/farmer/...")` (and `/_buyer/...` → `/buyer/...`).
-- Update `import { FarmerHeader } from "./_farmer"` → `from "./farmer"` (same for buyer).
-- `beforeLoad` role guard stays as-is.
+All farmer routes follow existing `farmer.*` filename + `/farmer/...` route-id convention. Auth + onboarding are top-level (outside the farmer layout) so the sidebar/header don't render.
 
-No changes to existing Link `to:` values, RoleSwitcher targets, or `index.tsx` redirects — they already use `/farmer/home` and `/buyer/discover`.
+### A1 — `src/routes/login.tsx` (`/login`)
+- Full-screen `--dark` background, centered card.
+- Logo block: 🌸 + "Hasat" (Georgia 38px, saffron) + "هارست" (Courier 11px muted).
+- Phone field: 🇹🇷 +90 pill + 10-digit input (digits-only, formatted `5XX XXX XX XX`).
+- Channel toggle: two pill buttons (WhatsApp default, SMS). Helper line "Çiftçilerin %95'i WhatsApp kullanıyor".
+- "Kod Gönder →" primary button, disabled until 10 digits. On click sets local `step="otp"`.
+- OTP step: 6 individual digit `<input>` boxes (Courier New 22px, auto-advance, backspace-to-previous, paste support). "Tekrar gönder (30s)" hint with simple countdown.
+- "Giriş Yap ✓" enabled when 6 digits filled → `setRole("farmer")` + `navigate("/farmer/home")`.
+- Footer link "Hesabın yok mu? Kayıt ol →" → `/onboarding/farmer`.
+- Update `src/routes/index.tsx`: "Çiftçiyim" CTA navigates to `/login` (instead of immediately setting role). Buyer flow unchanged.
 
-## 2. A4 — Price Intelligence (`farmer.prices.tsx`)
+### A1-ONB — `src/routes/onboarding.farmer.tsx` (`/onboarding/farmer`)
+Three steps held in local component state (`step: 1|2|3`). Shared `ProgressDots` component (3 dots, saffron active).
+- **Step 1 (Welcome)**: Logo + 3 value-prop cards (📓 Dijital Defter / 📈 Fiyat Zekası / 🏪 Vitrin). "Başla →" advances; "Zaten hesabım var → Giriş Yap" goes to `/login`.
+- **Step 2 (Profile)**: ProgressDots 2/3. Name input, city Select (Karabük/Safranbolu, Isparta, Tokat, Kastamonu, Diğer), crop multi-select chips (Safran/Lavanta/Tıbbi/Fındık/Zeytin/Diğer — toggled chip array), land size shadcn `Slider` 0.5–100 dönüm with current value displayed in saffron. "Devam →".
+- **Step 3 (Certs)**: ProgressDots 3/3. Headline "Belgelenmiş üreticiler 3x daha fazla teklif alıyor". 4 tap-to-toggle cert cards (Organik / ISO 3632 / GlobalGAP / Coğrafi İşaret) with icon + label + description. Dashed upload zone (📄 icon, "JPG, PDF — maks 10MB") — placeholder, no real upload. "Profilimi oluştur ✓" calls `setRole("farmer")` + `updateUser({ name, city, crops, landSize, certs })` + navigates `/farmer/home`. "Şimdilik atla" ghost link does the same minus profile fields.
 
-Replace the current stub. Layout inside the existing `FarmerHeader` dark shell:
+### A8 — `src/routes/farmer.analytics.tsx` (replace stub)
+- `FarmerHeader title="Analitik"`.
+- Time range pills: Bu Ay / Q3 2028 / 2028 Tümü — controls a local `range` state that selects between three mock datasets.
+- KPI row (`grid-cols-2 md:grid-cols-4`): Toplam Gelir (gold, formatTRY), Ort. Verim/Dönüm, Aktif Parsel (from store), En İyi Alıcı.
+- Revenue: Recharts `AreaChart`, saffron linear gradient, 8 monthly points.
+- Quality breakdown: Recharts grouped `BarChart` A/B/C per parcel.
+- Top buyers: ranked table (rank chip, name, total spend formatTRY, orders count, ★ rating).
+- Seasonal trend: Recharts `BarChart` grouped by year (2027/2028/2029).
 
-- **Header**: title "Fiyat İstihbaratı", subtitle date.
-- **Crop pill tabs** (horizontal scroll, snap): Safran / Lavanta / Tıbbi Bitkiler / Fındık / Zeytinyağı. Active = saffron bg, inactive = white/10. Local `useState<string>` for `selectedCrop`.
-- **Featured price card** (dark bg, rounded-2xl, inside header area): 3 rows for the selected crop —
-  1. "İstanbul Hal (toptan)" — `hal` (₺/unit, mono), ▲/▼ delta vs hal*0.95 baseline (sage/red).
-  2. "Hasat D2C Ortalaması" — `d2c`, saffron background highlight + `TrustBadge` "Hasat Alıcıları". Delta = `delta7d`.
-  3. "AB İhracat Spot" — `export` in € (mono, e.g. `€12.4/kg`), small ▲/▼.
-- **Recharts LineChart** (140px, saffron stroke) showing fabricated 7-day series derived from `d2c` (e.g. `[d2c*0.94, *0.96, *0.97, *0.99, *1.0, *1.01, *1.0]`). Pure visual, no store change.
-- **Other crops PriceTicker rows**: map remaining `prices`, each row = crop emoji + name, `d2c` mono, delta colored, mini `Sparkline` (gold). Clicking a row sets `selectedCrop`.
-- **AIInsightBanner** at bottom (e.g. "Safran fiyatı 7 günde %8.4 yükseldi — vitrindeki listenizi güncelleyin.").
-- **"+ Fiyat Alarmı Kur"** sticky button (saffron) opens a shadcn `Sheet` (side="bottom") containing:
-  - crop `Select` (from prices list)
-  - target price `Stepper` (₺)
-  - above/below toggle (two pill buttons: "Üstüne çıkınca" / "Altına düşünce")
-  - channel multi-select chips: WhatsApp / Push / SMS
-  - "Kaydet" button → `toast` (sonner) "Alarm kuruldu" + close. Local state only, no store mutation.
+### A7 — `src/routes/farmer.community.tsx` (replace stub)
+- `FarmerHeader title="Topluluk"`.
+- Search `Input` + horizontal category chips (Safran / Pazar / Hava / Hastalık / Diğer). Local state filters list.
+- Post cards: avatar circle (saffron bg, name initial), name, city, "2 saat önce", body (2-3 lines), 🤍/❤️ like toggle with count, 💬 comment count. 4–5 seeded mock posts in component state.
+- FAB "+ Gönderi" opens shadcn `Sheet` with `Textarea` + "Paylaş" — prepends new post to local list.
+- Empty state when search yields nothing.
+- Mock data lives in the component (not in Zustand) — community is not a domain entity yet.
 
-No new shared components required; reuse `TrustBadge`, `AIInsightBanner`, `Sparkline`, `Stepper`.
+### A9 — `src/routes/farmer.premium.tsx` (replace stub)
+- `FarmerHeader title="Premium"`.
+- Three tier cards (mobile: horizontal scroll snap; `md:grid-cols-3`):
+  - Ücretsiz — dark outline, "Mevcut Plan" chip if `!user.premium`.
+  - Premium ₺299/ay — saffron border + bg tint, "En Popüler" badge.
+  - Elite ₺799/ay — gold border.
+- Feature comparison rows (6): Listeleme limiti, Fiyat alarmı, Analitik, Hasat aboneliği, Öncelikli eşleşme, Hesap yöneticisi — each tier shows ✓/✗ or value.
+- "Premium'a Geç" CTA on Premium card → `navigate("/farmer/billing?plan=premium")`. Elite CTA same with `plan=elite`.
 
-## 3. A5 — Storefront (`farmer.storefront.tsx`)
+### A9-BILLING — `src/routes/farmer.billing.tsx`
+- `FarmerHeader title="Ödeme"`.
+- Plan summary card (reads `?plan=` query param, defaults to premium). Shows plan name + price.
+- shadcn `Tabs`: "Banka Havalesi" (instructions block with IBAN placeholder) / "Kredi Kartı" (default).
+- Credit card form: card number input formatted in 4-digit groups, MM/YY expiry, CVV, cardholder name. Pure presentation — no real processing.
+- Saffron banner "30 gün ücretsiz dene".
+- "Aboneliği Başlat ✓" → opens shadcn `Dialog` with ⭐ + "Premium aktif!" + close button that calls `setPremium(true)` and `navigate("/farmer/home")`.
 
-Replace stub. `FarmerHeader` title "Vitrin", subtitle "Aktif listelemeleriniz".
+### Settings — `src/routes/farmer.settings.tsx` (replace stub)
+- `FarmerHeader title="Ayarlar"`.
+- Profile section: avatar circle (initial placeholder, "Değiştir" button), name `Input`, city `Input`/Select — "Kaydet" calls `updateUser`.
+- "Parsellerim" list from Zustand `parcels`, each row with name + area + edit (sheet with name/area inputs → `updateParcel`) + trash (`deleteParcel`).
+- Certifications: read-only badges from `user.certs` (if present) + "Yenile" placeholder.
+- Link rows: "Bildirim Tercihleri →" → `/farmer/settings/notifs`.
+- Danger zone: destructive "Çıkış Yap" → `setRole(null)` + `navigate("/")`.
 
-- shadcn `Tabs`: "Ürünlerim" / "Geçmiş".
-- **Ürünlerim**: filter `listings` where `status==="active"`. Each card = crop emoji (Safran 🌸, Lavanta 💜, Tıbbi 🌿, Fındık 🌰, Zeytinyağı 🫒, fallback 🌾) + name, quantity + unit, `formatTRY(pricePerUnit)`/unit, `TrustBadge` for quality (A/B/C), status chip "Aktif" (sage). Actions: "Düzenle" (opens BottomSheet pre-filled) and "Kaldır" (sets `status="expired"` in store via new `updateListing` action).
-- Empty state: 🏪 + "Henüz ürün listelemediniz" + saffron "Ürün Listele" CTA opens the same sheet.
-- **FAB** "+ Yeni Ürün" (fixed bottom-right above tab bar, saffron, rounded-full).
-- **Listing form Sheet** (side="bottom"): crop `Select`, `Stepper` qty with g/kg/L unit toggle, `₺` input for price/unit, `Stepper` min order, quality grid (A/B/C as 3 buttons, saffron when selected), description `Textarea`, "Yayınla ✓" button → `addListing` or `updateListing`, close + toast.
-- **Geçmiş**: listings where `status !== "active"` rendered greyed (opacity-60) with status badge "Satıldı" (gold) / "Süresi Doldu" (muted). No actions.
+### `src/routes/farmer.settings.notifs.tsx`
+- Back link to `/farmer/settings`, header "Bildirim Tercihleri".
+- 4×3 table: rows Yeni Teklif / Fiyat Alarmı / Hasat Zamanı / Topluluk; cols WhatsApp / Push / SMS. Each cell is a shadcn `Switch` wired to `notifPrefs[event][channel]` + `setNotifPref`.
 
-**Store additions** (extend `useHasat`, non-breaking):
-- `addListing(l: Omit<Listing, "id">) => Listing`
-- `updateListing(id: string, patch: Partial<Listing>) => void`
-- Seed two extra `status:"sold"` and `status:"expired"` rows for Geçmiş demo.
+## 3. Sidebar wiring (`src/routes/farmer.tsx`)
+- Repoint "Premium'a Geç" item to `/farmer/premium`.
+- Add a profile/settings footer row (avatar + name) at the bottom of the sidebar → `/farmer/settings`. Keep existing nav order otherwise.
 
-Schema of `Listing` type is unchanged.
+## 4. New shared component
+- `src/components/hasat/ProgressDots.tsx` — `current`/`total` props, saffron active dot, muted inactive. Used by onboarding.
 
-## 4. A6 — Offers & Orders (`farmer.orders.tsx`, new route)
-
-New file `src/routes/farmer.orders.tsx`, registered automatically by router plugin. Sidebar/bottom-nav unchanged (Teklifler badge already points to `/farmer/offers` which exists as a stub — leave existing offers route; the new `/farmer/orders` route is what badge will eventually use, but per spec the user asked to split into `_farmer.orders.tsx` — we create `farmer.orders.tsx`).
-
-- `FarmerHeader` "Siparişler".
-- shadcn `Tabs`: "Gelen Teklifler" / "Aktif Siparişler" / "Tamamlanan".
-- Offer card: buyer name (e.g. "Mikla Restaurant") + chip ("Restoran" / "Otel" / "Market" / "İhracatçı"), product line ("Safran · 50 g"), offered `₺/unit`, total `formatTRY(qty*price)`, time ago ("2 saat önce"), `OrderChip` status pill (sage="Kabul edildi", saffron="Beklemede", gold="Karşı teklif", muted="Tamamlandı").
-- Buttons (only on "pending"): "Kabul Et" (sage bg) → `updateOffer(id,{status:"accepted"})`; "Müzakere Et" (outline saffron) → `navigate({ to: "/farmer/orders/$offerId/counter", params: { offerId: id } })`.
-
-**New types & store**:
-```ts
-export interface Offer {
-  id: string;
-  buyerName: string;
-  buyerType: "restoran"|"otel"|"market"|"ihracatci";
-  crop: string; unit: "g"|"kg"|"L";
-  quantity: number; pricePerUnit: number;
-  createdAt: string; // ISO
-  status: "pending"|"accepted"|"counter"|"active"|"completed"|"rejected";
-}
-```
-Add to `Store`: `offers: Offer[]`, `updateOffer(id, patch)`, `addOffer(o)`, seeded with 4–5 offers across the three tab buckets. Tabs map: Gelen=pending+counter, Aktif=accepted+active, Tamamlanan=completed.
-
-Tiny new `OrderChip` component under `src/components/hasat/OrderChip.tsx` (single file, status→color map).
-
-## 5. A6-COUNTER (`farmer.orders.$offerId.counter.tsx`)
-
-Dynamic route. Loader reads from store (`useHasat.getState().offers.find(...)`) — if missing `throw notFound()`. Provide `notFoundComponent` + `errorComponent` per template rules.
-
-UI:
-- `FarmerHeader` "Karşı Teklif".
-- Muted summary card: original buyer / product / qty / price / total (read-only, opacity-70).
-- Form:
-  - `Stepper` proposed qty (pre-filled, unit shown).
-  - ₺ input proposed price (pre-filled).
-  - 3 radio pills delivery: "Kapıda Teslim" / "Kargo" / "Alıcı Alır".
-  - `<input type="date">` delivery date.
-  - `Textarea` optional note.
-  - Live total = `formatTRY(qty * price)`.
-- "Karşı Teklif Gönder" saffron button → `updateOffer(id, { status:"counter", quantity, pricePerUnit })` + `toast` + `navigate({ to:"/farmer/orders" })`.
-
-## Out of scope (unchanged)
-
-- A1 auth/OTP, A1-ONB, A7 community, A8 analytics, A9 premium, A10 settings.
-- All Buyer screens beyond existing shells.
-- `_farmer.offers.tsx` stub: kept as-is (badge still routes there); spec puts offers inside the new `/farmer/orders` route. I will not delete the stub to avoid breaking the sidebar badge link, but will repoint the sidebar "Teklifler" item to `/farmer/orders` so users land on the real screen.
-
-## Technical notes
-
-- All renames are pure file moves + the `createFileRoute("/_farmer/x")` → `createFileRoute("/farmer/x")` string update + the `./_farmer` import path fix. The TanStack Router Vite plugin regenerates `routeTree.gen.ts` automatically.
-- No design tokens, no shared component signatures, no existing Zustand fields changed — only additive (`addListing`, `updateListing`, `offers`, `updateOffer`, `addOffer`).
-- Recharts already installed; reuse for prices chart.
-- BottomSheet = shadcn `Sheet` with `side="bottom"`, rounded-t-2xl.
+## Out of scope
+- No real OTP/SMS backend, no real upload, no real payment processor — all simulated in component state.
+- Buyer-side screens, A10 beyond Settings, real persistence to Supabase.
+- No changes to design tokens, existing component signatures, or any existing route file other than `index.tsx` (CTA redirect), `farmer.tsx` (sidebar links), `store.ts` (additive), `farmer.analytics.tsx` + `farmer.community.tsx` (stub replacements).
