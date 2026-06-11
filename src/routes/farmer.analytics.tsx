@@ -86,7 +86,7 @@ function Analytics() {
               <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
               <XAxis dataKey="m" tick={{ fontSize: 11 }} />
               <YAxis tick={{ fontSize: 11 }} />
-              <Tooltip formatter={(v: number) => formatTRY(v)} />
+              <Tooltip formatter={(v) => formatTRY(Number(v))} />
               <Area type="monotone" dataKey="v" stroke="var(--saffron)" strokeWidth={2} fill="url(#g)" />
             </AreaChart>
           </ResponsiveContainer>
@@ -129,7 +129,7 @@ function Analytics() {
               <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
               <XAxis dataKey="season" tick={{ fontSize: 11 }} />
               <YAxis tick={{ fontSize: 11 }} />
-              <Tooltip formatter={(v: number) => formatTRY(v)} />
+              <Tooltip formatter={(v) => formatTRY(Number(v))} />
               <Legend wrapperStyle={{ fontSize: 11 }} />
               <Bar dataKey="2027" fill="var(--hmuted)" />
               <Bar dataKey="2028" fill="var(--sage)" />

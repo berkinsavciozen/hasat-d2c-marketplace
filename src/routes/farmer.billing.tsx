@@ -14,7 +14,7 @@ export const Route = createFileRoute("/farmer/billing")({
   component: Billing,
 });
 
-const PLANS = {
+const PLANS: Record<"premium" | "elite", { name: string; price: string }> = {
   premium: { name: "Premium", price: "₺299/ay" },
   elite: { name: "Elite", price: "₺799/ay" },
 };
