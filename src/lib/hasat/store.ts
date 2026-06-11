@@ -2,6 +2,10 @@ import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import type { HarvestEntry, Listing, Offer, Parcel, PricePoint, Role, User } from "./types";
 
+export type NotifEvent = "offer" | "price" | "harvest" | "community";
+export type NotifChannel = "whatsapp" | "push" | "sms";
+export type NotifPrefs = Record<NotifEvent, Record<NotifChannel, boolean>>;
+
 interface Store {
   user: User | null;
   parcels: Parcel[];
@@ -9,14 +13,20 @@ interface Store {
   listings: Listing[];
   prices: PricePoint[];
   offers: Offer[];
+  notifPrefs: NotifPrefs;
   setRole: (role: Role | null) => void;
+  setPremium: (v: boolean) => void;
+  updateUser: (patch: Partial<User>) => void;
   addParcel: (p: Omit<Parcel, "id">) => Parcel;
+  updateParcel: (id: string, patch: Partial<Parcel>) => void;
+  deleteParcel: (id: string) => void;
   addEntry: (e: Omit<HarvestEntry, "id">) => HarvestEntry;
   deleteEntry: (id: string) => void;
   addListing: (l: Omit<Listing, "id">) => Listing;
   updateListing: (id: string, patch: Partial<Listing>) => void;
   addOffer: (o: Omit<Offer, "id">) => Offer;
   updateOffer: (id: string, patch: Partial<Offer>) => void;
+  setNotifPref: (event: NotifEvent, channel: NotifChannel, value: boolean) => void;
   reset: () => void;
 }
 
@@ -55,6 +65,13 @@ const seedOffers: Offer[] = [
   { id: "o6", buyerName: "Lokanta Maya", buyerType: "restoran", crop: "Lavanta", unit: "kg", quantity: 15, pricePerUnit: 195, createdAt: "2028-11-05T16:00:00Z", status: "completed" },
 ];
 
+const seedNotifPrefs: NotifPrefs = {
+  offer: { whatsapp: true, push: true, sms: false },
+  price: { whatsapp: true, push: true, sms: false },
+  harvest: { whatsapp: true, push: false, sms: false },
+  community: { whatsapp: false, push: true, sms: false },
+};
+
 const newId = () => Math.random().toString(36).slice(2, 10);
 
 export const useHasat = create<Store>()(
@@ -66,19 +83,26 @@ export const useHasat = create<Store>()(
       listings: seedListings,
       prices: seedPrices,
       offers: seedOffers,
+      notifPrefs: seedNotifPrefs,
       setRole: (role) =>
         set(() => ({
           user: role
             ? { id: "u1", role, name: role === "farmer" ? "Mehmet Yılmaz" : "Ayşe Demir", phone: "+90 555 000 0000", city: role === "farmer" ? "Karabük" : "İstanbul", premium: false }
             : null,
         })),
+      setPremium: (v) => set((s) => ({ user: s.user ? { ...s.user, premium: v } : s.user })),
+      updateUser: (patch) => set((s) => ({ user: s.user ? { ...s.user, ...patch } : s.user })),
       addParcel: (p) => { const np: Parcel = { ...p, id: newId() }; set((s) => ({ parcels: [...s.parcels, np] })); return np; },
+      updateParcel: (id, patch) => set((s) => ({ parcels: s.parcels.map((p) => (p.id === id ? { ...p, ...patch } : p)) })),
+      deleteParcel: (id) => set((s) => ({ parcels: s.parcels.filter((p) => p.id !== id) })),
       addEntry: (e) => { const ne: HarvestEntry = { ...e, id: newId() }; set((s) => ({ entries: [ne, ...s.entries] })); return ne; },
       deleteEntry: (id) => set((s) => ({ entries: s.entries.filter((e) => e.id !== id) })),
       addListing: (l) => { const nl: Listing = { ...l, id: newId() }; set((s) => ({ listings: [nl, ...s.listings] })); return nl; },
       updateListing: (id, patch) => set((s) => ({ listings: s.listings.map((l) => (l.id === id ? { ...l, ...patch } : l)) })),
       addOffer: (o) => { const no: Offer = { ...o, id: newId() }; set((s) => ({ offers: [no, ...s.offers] })); return no; },
       updateOffer: (id, patch) => set((s) => ({ offers: s.offers.map((o) => (o.id === id ? { ...o, ...patch } : o)) })),
+      setNotifPref: (event, channel, value) =>
+        set((s) => ({ notifPrefs: { ...s.notifPrefs, [event]: { ...s.notifPrefs[event], [channel]: value } } })),
       reset: () => set({ user: null }),
     }),
     { name: "hasat-store" },
