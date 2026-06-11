@@ -18,8 +18,12 @@ function Entry() {
   }, [user, navigate]);
 
   const pick = (role: "farmer" | "buyer") => {
+    if (role === "farmer") {
+      navigate({ to: "/login" });
+      return;
+    }
     setRole(role);
-    navigate({ to: role === "farmer" ? "/farmer/home" : "/buyer/discover" });
+    navigate({ to: "/buyer/discover" });
   };
 
   return (

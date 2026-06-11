@@ -9,6 +9,9 @@ export interface User {
   phone: string;
   city: string;
   premium: boolean;
+  crops?: string[];
+  landSize?: number;
+  certs?: string[];
 }
 
 export interface Parcel {
@@ -74,4 +77,3 @@ export interface Offer {
   status: OfferStatus;
   note?: string;
 }
-
