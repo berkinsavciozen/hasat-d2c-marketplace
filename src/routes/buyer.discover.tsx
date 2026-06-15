@@ -1,4 +1,4 @@
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { Search, X, Star } from "lucide-react";
 import { useState } from "react";
 import { TrustBadge } from "@/components/hasat/TrustBadge";
