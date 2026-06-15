@@ -12,12 +12,13 @@ export interface User {
   crops?: string[];
   landSize?: number;
   certs?: string[];
+  company?: { name: string; type: BuyerType | "diger"; address?: string; volume?: string };
 }
 
 export interface Parcel {
   id: string;
   name: string;
-  area: number; // dönüm
+  area: number;
   crops: string[];
   location: { lat: number; lng: number; label: string };
 }
@@ -32,13 +33,7 @@ export interface HarvestEntry {
   quality: "A" | "B" | "C";
   photos: string[];
   notes: string;
-  costs: {
-    labor: number;
-    fertilizer: number;
-    packaging: number;
-    transport: number;
-    other: number;
-  };
+  costs: { labor: number; fertilizer: number; packaging: number; transport: number; other: number };
   pricePerUnit?: number;
 }
 
@@ -51,6 +46,7 @@ export interface Listing {
   minOrder: number;
   quality: "A" | "B" | "C";
   status: "active" | "sold" | "expired";
+  producerId?: string;
 }
 
 export interface PricePoint {
@@ -76,4 +72,75 @@ export interface Offer {
   createdAt: string;
   status: OfferStatus;
   note?: string;
+}
+
+export interface Producer {
+  id: string;
+  name: string;
+  city: string;
+  rating: number;
+  ordersCount: number;
+  experience: string;
+  totalLand: string;
+  avgQuality: string;
+  responseTime: string;
+  badges: CertificationType[];
+  crops: string[];
+  listings: Listing[];
+  yieldHistory: { year: string; value: number }[];
+  reviews: { id: string; quote: string; buyer: string; date: string; rating: number }[];
+  nextHarvest: { date: string; estimatedQty: string; pricePerUnit: number; unit: string };
+}
+
+export type OrderStatus = "sent" | "accepted" | "preparing" | "shipped" | "delivered";
+
+export interface OrderTimelineStep {
+  key: OrderStatus;
+  label: string;
+  doneAt?: string;
+}
+
+export interface Order {
+  id: string;
+  code: string;
+  producerId: string;
+  producerName: string;
+  crop: string;
+  quantity: number;
+  unit: "g" | "kg" | "L";
+  pricePerUnit: number;
+  total: number;
+  delivery: string;
+  deliveryDate: string;
+  status: OrderStatus;
+  createdAt: string;
+  timeline: OrderTimelineStep[];
+}
+
+export interface PendingOffer {
+  listingId: string;
+  producerId: string;
+  producerName: string;
+  crop: string;
+  quantity: number;
+  unit: "g" | "kg" | "L";
+  pricePerUnit: number;
+  delivery: string;
+  deliveryDate: string;
+  notes?: string;
+  total: number;
+}
+
+export interface Subscription {
+  id: string;
+  producerId: string;
+  producerName: string;
+  crop: string;
+  volume: number;
+  unit: string;
+  priceLocked: boolean;
+  pricePerUnit: number;
+  nextHarvest: string;
+  total: number;
+  createdAt: string;
 }
