@@ -66,12 +66,7 @@ function ProducerProfile() {
                 <XAxis dataKey="year" tick={{ fontSize: 12 }} />
                 <YAxis tick={{ fontSize: 12 }} />
                 <Tooltip />
-                <Bar dataKey="value" radius={6}>
-                  {producer.yieldHistory.map((y, i) => {
-                    const c = i === 0 ? "var(--hmuted)" : i === 1 ? "var(--gold)" : "var(--saffron)";
-                    return <Bar key={y.year} dataKey="value" fill={c} />;
-                  })}
-                </Bar>
+                <Bar dataKey="value" radius={[6, 6, 0, 0]} fill="var(--saffron)" />
               </BarChart>
             </ResponsiveContainer>
           </div>
