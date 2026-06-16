@@ -159,16 +159,15 @@ function PriceRow({ label, value, delta, accent }: { label: string; value: strin
 }
 
 function PriceAlarmSheet({ open, onOpenChange, crops, defaultCrop, defaultPrice }: { open: boolean; onOpenChange: (b: boolean) => void; crops: string[]; defaultCrop: string; defaultPrice: number; }) {
+  const addPriceAlert = useHasat((s) => s.addPriceAlert);
   const [crop, setCrop] = useState(defaultCrop);
   const [price, setPrice] = useState(defaultPrice);
   const [direction, setDirection] = useState<"above" | "below">("above");
-  const [channels, setChannels] = useState<string[]>(["WhatsApp"]);
-
-  const toggleChan = (c: string) => setChannels((cur) => cur.includes(c) ? cur.filter((x) => x !== c) : [...cur, c]);
+  const [channels, setChannels] = useState({ whatsapp: true, push: true, sms: false });
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="bottom" className="rounded-t-2xl">
+      <SheetContent side="bottom" className="rounded-t-2xl pb-safe">
         <SheetHeader>
           <SheetTitle className="font-serif text-xl">🔔 Fiyat Alarmı Kur</SheetTitle>
         </SheetHeader>
@@ -190,7 +189,7 @@ function PriceAlarmSheet({ open, onOpenChange, crops, defaultCrop, defaultPrice 
               {(["above", "below"] as const).map((d) => (
                 <button key={d} type="button" onClick={() => setDirection(d)}
                   className={`rounded-xl border py-2.5 text-sm font-medium ${direction === d ? "bg-saffron text-white border-saffron" : "border-input text-hmuted"}`}>
-                  {d === "above" ? "📈 Üstüne çıkınca" : "📉 Altına düşünce"}
+                  {d === "above" ? "📈 Üzerinde" : "📉 Altında"}
                 </button>
               ))}
             </div>
@@ -198,19 +197,27 @@ function PriceAlarmSheet({ open, onOpenChange, crops, defaultCrop, defaultPrice 
           <div>
             <div className="mb-1.5 text-xs font-medium text-hmuted">Bildirim kanalı</div>
             <div className="flex flex-wrap gap-2">
-              {["WhatsApp", "Push", "SMS"].map((c) => {
-                const on = channels.includes(c);
+              {([
+                { key: "whatsapp", label: "🟢 WhatsApp" },
+                { key: "push", label: "🔔 Push" },
+                { key: "sms", label: "💬 SMS" },
+              ] as const).map(({ key, label }) => {
+                const on = channels[key];
                 return (
-                  <button key={c} type="button" onClick={() => toggleChan(c)}
+                  <button key={key} type="button" onClick={() => setChannels((c) => ({ ...c, [key]: !c[key] }))}
                     className={`rounded-full border px-3 py-1.5 text-xs font-medium ${on ? "bg-saffron text-white border-saffron" : "border-input text-hmuted"}`}>
-                    {c}
+                    {label}
                   </button>
                 );
               })}
             </div>
           </div>
           <button
-            onClick={() => { toast.success(`Alarm kuruldu: ${crop} ${direction === "above" ? "≥" : "≤"} ${formatTRY(price)}`); onOpenChange(false); }}
+            onClick={() => {
+              addPriceAlert({ crop, target: price, condition: direction, channels });
+              toast.success(`Alarm kuruldu: ${crop} ${direction === "above" ? "≥" : "≤"} ${formatTRY(price)}`);
+              onOpenChange(false);
+            }}
             className="w-full rounded-xl bg-saffron py-3 text-sm font-medium text-white"
           >
             Kaydet
