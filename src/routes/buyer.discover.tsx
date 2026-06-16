@@ -100,8 +100,8 @@ function Discover() {
                         {p.badges.includes("organik") && <span className="rounded-full bg-sage text-white text-[10px] font-bold px-2 py-0.5">ORGANİK</span>}
                       </div>
                       <div className="absolute bottom-2 left-3 right-3 text-white">
-                        <div className="font-serif text-base leading-tight">{p.name}</div>
-                        <div className="text-[11px] opacity-80">📍 {p.city}</div>
+                        <div className="font-serif text-base leading-tight line-clamp-2">{p.name}</div>
+                        <div className="text-[11px] opacity-80 truncate">📍 {p.city}</div>
                       </div>
                     </div>
                     <div className="p-4">
