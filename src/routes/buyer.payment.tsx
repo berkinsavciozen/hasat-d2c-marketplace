@@ -15,6 +15,8 @@ function Payment() {
   const navigate = useNavigate();
   const pending = useHasat((s) => s.pendingOffer);
   const addOrder = useHasat((s) => s.addOrder);
+  const addOffer = useHasat((s) => s.addOffer);
+  const user = useHasat((s) => s.user);
   const setPendingOffer = useHasat((s) => s.setPendingOffer);
 
   const [success, setSuccess] = useState<{ code: string; id: string } | null>(null);
