@@ -1,7 +1,7 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import type {
-  HarvestEntry, Listing, Offer, Order, OrderStatus, Parcel, PendingOffer, PricePoint,
+  HarvestEntry, Listing, Offer, Order, OrderStatus, Parcel, PendingOffer, PriceAlert, PricePoint,
   Producer, Role, Subscription, User,
 } from "./types";
 
