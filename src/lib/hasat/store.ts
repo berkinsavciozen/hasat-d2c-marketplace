@@ -185,6 +185,7 @@ export const useHasat = create<Store>()(
       subscriptions: [],
       pendingOffer: null,
       notifPrefs: seedNotifPrefs,
+      priceAlerts: [],
       setRole: (role) =>
         set(() => ({
           user: role
@@ -200,6 +201,7 @@ export const useHasat = create<Store>()(
       deleteEntry: (id) => set((s) => ({ entries: s.entries.filter((e) => e.id !== id) })),
       addListing: (l) => { const nl: Listing = { ...l, id: newId() }; set((s) => ({ listings: [nl, ...s.listings] })); return nl; },
       updateListing: (id, patch) => set((s) => ({ listings: s.listings.map((l) => (l.id === id ? { ...l, ...patch } : l)) })),
+      removeListing: (id) => set((s) => ({ listings: s.listings.filter((l) => l.id !== id) })),
       addOffer: (o) => { const no: Offer = { ...o, id: newId() }; set((s) => ({ offers: [no, ...s.offers] })); return no; },
       updateOffer: (id, patch) => set((s) => ({ offers: s.offers.map((o) => (o.id === id ? { ...o, ...patch } : o)) })),
       setPendingOffer: (p) => set({ pendingOffer: p }),
@@ -207,6 +209,8 @@ export const useHasat = create<Store>()(
       addSubscription: (s) => { const ns: Subscription = { ...s, id: newId() }; set((st) => ({ subscriptions: [ns, ...st.subscriptions] })); return ns; },
       setNotifPref: (event, channel, value) =>
         set((s) => ({ notifPrefs: { ...s.notifPrefs, [event]: { ...s.notifPrefs[event], [channel]: value } } })),
+      addPriceAlert: (a) => { const np: PriceAlert = { ...a, id: newId(), createdAt: new Date().toISOString() }; set((s) => ({ priceAlerts: [np, ...s.priceAlerts] })); return np; },
+      removePriceAlert: (id) => set((s) => ({ priceAlerts: s.priceAlerts.filter((a) => a.id !== id) })),
       reset: () => set({ user: null }),
     }),
     { name: "hasat-store" },
