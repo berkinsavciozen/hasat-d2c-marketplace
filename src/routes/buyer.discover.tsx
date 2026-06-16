@@ -74,7 +74,15 @@ function Discover() {
         <div>
           <h2 className="font-serif text-lg mb-3">Öne Çıkan Üreticiler</h2>
           {filtered.length === 0 ? (
-            <div className="rounded-2xl border border-dashed p-8 text-center text-hmuted">Sonuç bulunamadı.</div>
+            query ? (
+              <div className="rounded-2xl border border-dashed p-10 text-center">
+                <div className="text-6xl mb-3">🌾</div>
+                <div className="font-serif text-lg">Sonuç bulunamadı</div>
+                <div className="text-sm text-hmuted mt-1">Farklı bir ürün veya üretici adı deneyin.</div>
+              </div>
+            ) : (
+              <div className="rounded-2xl border border-dashed p-8 text-center text-hmuted">Henüz üretici yok.</div>
+            )
           ) : (
             <div className="grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
               {filtered.map((p) => {
