@@ -109,9 +109,23 @@ function Prices() {
           {selected.crop} fiyatı 7 günde {formatDelta(selected.delta7d)} değişti — vitrindeki listenizi güncellemek ister misiniz?
         </AIInsightBanner>
 
+        {priceAlerts.length > 0 && (
+          <div className="mt-4">
+            <div className="text-[11px] font-medium uppercase tracking-wider text-hmuted mb-1.5">Aktif alarmlar</div>
+            <div className="flex flex-wrap gap-1.5">
+              {priceAlerts.map((a) => (
+                <span key={a.id} className="inline-flex items-center gap-1 rounded-full bg-saffron/10 border border-saffron/30 px-2.5 py-1 text-[11px] text-saffron">
+                  {a.crop} {a.condition === "above" ? "≥" : "≤"} {formatTRY(a.target)}
+                  <button onClick={() => removePriceAlert(a.id)} className="ml-1 text-saffron/70 hover:text-saffron" aria-label="Alarmı kaldır">×</button>
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
+
         <button
           onClick={() => setSheetOpen(true)}
-          className="sticky bottom-24 md:bottom-4 mt-6 flex w-full items-center justify-center gap-2 rounded-full bg-saffron py-3 text-sm font-medium text-white shadow-lg"
+          className="sticky bottom-24 md:bottom-4 mt-6 flex w-full items-center justify-center gap-2 rounded-full bg-saffron py-3 text-sm font-medium text-white shadow-lg pb-safe"
         >
           <Bell className="h-4 w-4" /> + Fiyat Alarmı Kur
         </button>
