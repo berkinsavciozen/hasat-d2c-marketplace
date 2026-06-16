@@ -1,6 +1,5 @@
 import { createFileRoute, Link, Outlet, redirect, useRouterState } from "@tanstack/react-router";
 import { Search, Package, BarChart3, MessageCircle, User } from "lucide-react";
-import { RoleSwitcher } from "@/components/hasat/RoleSwitcher";
 
 export const Route = createFileRoute("/buyer")({
   beforeLoad: () => {
