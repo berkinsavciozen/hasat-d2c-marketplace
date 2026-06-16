@@ -73,7 +73,7 @@ const seedPrices: PricePoint[] = [
 const seedOffers: Offer[] = [
   { id: "o1", buyerName: "Mikla Restaurant", buyerType: "restoran", crop: "Safran", unit: "g", quantity: 50, pricePerUnit: 355, createdAt: "2028-11-14T10:30:00Z", status: "pending" },
   { id: "o2", buyerName: "Macro Center", buyerType: "market", crop: "Lavanta", unit: "kg", quantity: 25, pricePerUnit: 190, createdAt: "2028-11-14T08:15:00Z", status: "pending" },
-  { id: "o3", buyerName: "Çırağan Palace", buyerType: "otel", crop: "Safran", unit: "g", quantity: 100, pricePerUnit: 340, createdAt: "2028-11-13T14:00:00Z", status: "counter" },
+  { id: "o3", buyerName: "Çırağan Palace", buyerType: "otel", crop: "Safran", unit: "g", quantity: 80, pricePerUnit: 355, createdAt: "2028-11-13T14:00:00Z", status: "counter", delivery: "Kargo", deliveryDate: "2028-11-27", note: "Daha küçük partilerde teslimat tercih ederim.", original: { quantity: 100, pricePerUnit: 340, delivery: "Üreticiden Teslim", deliveryDate: "2028-11-25", note: "Çırağan menüsü için." } },
   { id: "o4", buyerName: "Anatolian Exports Ltd.", buyerType: "ihracatci", crop: "Lavanta", unit: "kg", quantity: 60, pricePerUnit: 210, createdAt: "2028-11-12T09:00:00Z", status: "accepted" },
   { id: "o5", buyerName: "Neolokal", buyerType: "restoran", crop: "Safran", unit: "g", quantity: 30, pricePerUnit: 360, createdAt: "2028-11-10T11:00:00Z", status: "active" },
   { id: "o6", buyerName: "Lokanta Maya", buyerType: "restoran", crop: "Lavanta", unit: "kg", quantity: 15, pricePerUnit: 195, createdAt: "2028-11-05T16:00:00Z", status: "completed" },
