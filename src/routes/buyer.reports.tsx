@@ -72,16 +72,14 @@ function Reports() {
         <div className="grid gap-5 md:grid-cols-2">
           <div className="rounded-2xl bg-card border p-4">
             <h3 className="font-serif text-lg mb-3">Harcama Dağılımı</h3>
-            <div className="h-56">
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie data={PIE} dataKey="value" innerRadius={48} outerRadius={84} paddingAngle={2}>
-                    {PIE.map((s) => <Cell key={s.name} fill={s.color} />)}
-                  </Pie>
-                  <Tooltip />
-                </PieChart>
-              </ResponsiveContainer>
-            </div>
+            <ResponsiveContainer width="100%" height={220}>
+              <PieChart>
+                <Pie data={PIE} dataKey="value" innerRadius={48} outerRadius={84} paddingAngle={2}>
+                  {PIE.map((s) => <Cell key={s.name} fill={s.color} />)}
+                </Pie>
+                <Tooltip />
+              </PieChart>
+            </ResponsiveContainer>
             <div className="flex flex-wrap justify-center gap-3 text-xs mt-2">
               {PIE.map((s) => (
                 <span key={s.name} className="inline-flex items-center gap-1.5">
