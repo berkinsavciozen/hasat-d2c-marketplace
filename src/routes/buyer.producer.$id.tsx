@@ -60,8 +60,8 @@ function ProducerProfile() {
 
         <div>
           <h2 className="font-serif text-lg mb-3">Verim Geçmişi</h2>
-          <div className="rounded-2xl bg-card border p-4 h-56">
-            <ResponsiveContainer width="100%" height="100%">
+          <div className="rounded-2xl bg-card border p-4">
+            <ResponsiveContainer width="100%" height={220}>
               <BarChart data={producer.yieldHistory}>
                 <XAxis dataKey="year" tick={{ fontSize: 12 }} />
                 <YAxis tick={{ fontSize: 12 }} />
