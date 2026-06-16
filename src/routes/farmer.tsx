@@ -3,7 +3,6 @@ import { Bell, BarChart3, BookOpen, Home, LineChart, Store, Users, Settings, Cro
 import { useHasat } from "@/lib/hasat/store";
 import { SeasonBanner } from "@/components/hasat/SeasonBanner";
 import { FarmPill } from "@/components/hasat/FarmPill";
-import { RoleSwitcher } from "@/components/hasat/RoleSwitcher";
 
 export const Route = createFileRoute("/farmer")({
   beforeLoad: () => {
@@ -98,12 +97,12 @@ function FarmerShell() {
       </aside>
 
       {/* Main */}
-      <main className="pb-20 md:pb-0 min-h-screen">
+      <main className="pb-24 md:pb-0 min-h-screen">
         <Outlet />
       </main>
 
       {/* Bottom tabs (mobile) */}
-      <nav className="md:hidden fixed bottom-0 inset-x-0 z-40 grid grid-cols-5 border-t" style={{ background: "var(--dark)" }}>
+      <nav className="md:hidden fixed bottom-0 inset-x-0 z-40 grid grid-cols-5 border-t pb-safe" style={{ background: "var(--dark)" }}>
         {tabs.map(({ to, label, icon: Icon }) => {
           const active = pathname.startsWith(to);
           return (
@@ -115,8 +114,6 @@ function FarmerShell() {
           );
         })}
       </nav>
-
-      <RoleSwitcher />
     </div>
   );
 }

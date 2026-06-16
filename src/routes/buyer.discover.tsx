@@ -74,7 +74,15 @@ function Discover() {
         <div>
           <h2 className="font-serif text-lg mb-3">Öne Çıkan Üreticiler</h2>
           {filtered.length === 0 ? (
-            <div className="rounded-2xl border border-dashed p-8 text-center text-hmuted">Sonuç bulunamadı.</div>
+            query ? (
+              <div className="rounded-2xl border border-dashed p-10 text-center">
+                <div className="text-6xl mb-3">🌾</div>
+                <div className="font-serif text-lg">Sonuç bulunamadı</div>
+                <div className="text-sm text-hmuted mt-1">Farklı bir ürün veya üretici adı deneyin.</div>
+              </div>
+            ) : (
+              <div className="rounded-2xl border border-dashed p-8 text-center text-hmuted">Henüz üretici yok.</div>
+            )
           ) : (
             <div className="grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
               {filtered.map((p) => {
@@ -92,8 +100,8 @@ function Discover() {
                         {p.badges.includes("organik") && <span className="rounded-full bg-sage text-white text-[10px] font-bold px-2 py-0.5">ORGANİK</span>}
                       </div>
                       <div className="absolute bottom-2 left-3 right-3 text-white">
-                        <div className="font-serif text-base leading-tight">{p.name}</div>
-                        <div className="text-[11px] opacity-80">📍 {p.city}</div>
+                        <div className="font-serif text-base leading-tight line-clamp-2">{p.name}</div>
+                        <div className="text-[11px] opacity-80 truncate">📍 {p.city}</div>
                       </div>
                     </div>
                     <div className="p-4">
@@ -107,11 +115,11 @@ function Discover() {
                         {p.badges.slice(0, 2).map((b) => <TrustBadge key={b} type={b} />)}
                       </div>
                       <div className="text-xs text-hmuted">{p.listings.filter((l) => l.status === "active").length} aktif ürün</div>
-                      <div className="mt-3 flex items-center justify-between">
-                        <div style={{ fontFamily: "Courier New, monospace", color: "var(--saffron)" }} className="text-sm">
+                      <div className="mt-3 flex items-center justify-between gap-2">
+                        <div style={{ fontFamily: "Courier New, monospace", color: "var(--saffron)" }} className="text-sm truncate min-w-0">
                           Başlangıç {formatTRY(minPrice)}<span className="text-xs text-hmuted">/{minUnit}</span>
                         </div>
-                        <span className="rounded-full bg-saffron px-3 py-1.5 text-xs text-white">Profili Gör →</span>
+                        <span className="shrink-0 rounded-full bg-saffron px-3 py-1.5 text-xs text-white">Profili Gör →</span>
                       </div>
                     </div>
                   </button>

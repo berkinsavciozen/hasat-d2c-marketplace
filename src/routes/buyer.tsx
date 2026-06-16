@@ -1,6 +1,5 @@
 import { createFileRoute, Link, Outlet, redirect, useRouterState } from "@tanstack/react-router";
 import { Search, Package, BarChart3, MessageCircle, User } from "lucide-react";
-import { RoleSwitcher } from "@/components/hasat/RoleSwitcher";
 
 export const Route = createFileRoute("/buyer")({
   beforeLoad: () => {
@@ -47,8 +46,8 @@ function BuyerShell() {
           );
         })}
       </aside>
-      <main className="pb-20 md:pb-0 min-h-screen"><Outlet /></main>
-      <nav className="md:hidden fixed bottom-0 inset-x-0 z-40 grid grid-cols-5 border-t" style={{ background: "var(--dark)" }}>
+      <main className="pb-24 md:pb-0 min-h-screen"><Outlet /></main>
+      <nav className="md:hidden fixed bottom-0 inset-x-0 z-40 grid grid-cols-5 border-t pb-safe" style={{ background: "var(--dark)" }}>
         {tabs.map(({ to, label, icon: Icon }) => {
           const active = pathname.startsWith(to);
           return (
@@ -59,7 +58,6 @@ function BuyerShell() {
           );
         })}
       </nav>
-      <RoleSwitcher />
     </div>
   );
 }

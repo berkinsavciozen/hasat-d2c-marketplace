@@ -1,7 +1,7 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import type {
-  HarvestEntry, Listing, Offer, Order, OrderStatus, Parcel, PendingOffer, PricePoint,
+  HarvestEntry, Listing, Offer, Order, OrderStatus, Parcel, PendingOffer, PriceAlert, PricePoint,
   Producer, Role, Subscription, User,
 } from "./types";
 
@@ -21,6 +21,7 @@ interface Store {
   subscriptions: Subscription[];
   pendingOffer: PendingOffer | null;
   notifPrefs: NotifPrefs;
+  priceAlerts: PriceAlert[];
   setRole: (role: Role | null) => void;
   setPremium: (v: boolean) => void;
   updateUser: (patch: Partial<User>) => void;
@@ -31,12 +32,15 @@ interface Store {
   deleteEntry: (id: string) => void;
   addListing: (l: Omit<Listing, "id">) => Listing;
   updateListing: (id: string, patch: Partial<Listing>) => void;
+  removeListing: (id: string) => void;
   addOffer: (o: Omit<Offer, "id">) => Offer;
   updateOffer: (id: string, patch: Partial<Offer>) => void;
   setPendingOffer: (p: PendingOffer | null) => void;
   addOrder: (o: Omit<Order, "id">) => Order;
   addSubscription: (s: Omit<Subscription, "id">) => Subscription;
   setNotifPref: (e: NotifEvent, c: NotifChannel, v: boolean) => void;
+  addPriceAlert: (a: Omit<PriceAlert, "id" | "createdAt">) => PriceAlert;
+  removePriceAlert: (id: string) => void;
   reset: () => void;
 }
 
@@ -69,7 +73,7 @@ const seedPrices: PricePoint[] = [
 const seedOffers: Offer[] = [
   { id: "o1", buyerName: "Mikla Restaurant", buyerType: "restoran", crop: "Safran", unit: "g", quantity: 50, pricePerUnit: 355, createdAt: "2028-11-14T10:30:00Z", status: "pending" },
   { id: "o2", buyerName: "Macro Center", buyerType: "market", crop: "Lavanta", unit: "kg", quantity: 25, pricePerUnit: 190, createdAt: "2028-11-14T08:15:00Z", status: "pending" },
-  { id: "o3", buyerName: "Çırağan Palace", buyerType: "otel", crop: "Safran", unit: "g", quantity: 100, pricePerUnit: 340, createdAt: "2028-11-13T14:00:00Z", status: "counter" },
+  { id: "o3", buyerName: "Çırağan Palace", buyerType: "otel", crop: "Safran", unit: "g", quantity: 80, pricePerUnit: 355, createdAt: "2028-11-13T14:00:00Z", status: "counter", delivery: "Kargo", deliveryDate: "2028-11-27", note: "Daha küçük partilerde teslimat tercih ederim.", original: { quantity: 100, pricePerUnit: 340, delivery: "Üreticiden Teslim", deliveryDate: "2028-11-25", note: "Çırağan menüsü için." } },
   { id: "o4", buyerName: "Anatolian Exports Ltd.", buyerType: "ihracatci", crop: "Lavanta", unit: "kg", quantity: 60, pricePerUnit: 210, createdAt: "2028-11-12T09:00:00Z", status: "accepted" },
   { id: "o5", buyerName: "Neolokal", buyerType: "restoran", crop: "Safran", unit: "g", quantity: 30, pricePerUnit: 360, createdAt: "2028-11-10T11:00:00Z", status: "active" },
   { id: "o6", buyerName: "Lokanta Maya", buyerType: "restoran", crop: "Lavanta", unit: "kg", quantity: 15, pricePerUnit: 195, createdAt: "2028-11-05T16:00:00Z", status: "completed" },
@@ -181,6 +185,7 @@ export const useHasat = create<Store>()(
       subscriptions: [],
       pendingOffer: null,
       notifPrefs: seedNotifPrefs,
+      priceAlerts: [],
       setRole: (role) =>
         set(() => ({
           user: role
@@ -196,6 +201,7 @@ export const useHasat = create<Store>()(
       deleteEntry: (id) => set((s) => ({ entries: s.entries.filter((e) => e.id !== id) })),
       addListing: (l) => { const nl: Listing = { ...l, id: newId() }; set((s) => ({ listings: [nl, ...s.listings] })); return nl; },
       updateListing: (id, patch) => set((s) => ({ listings: s.listings.map((l) => (l.id === id ? { ...l, ...patch } : l)) })),
+      removeListing: (id) => set((s) => ({ listings: s.listings.filter((l) => l.id !== id) })),
       addOffer: (o) => { const no: Offer = { ...o, id: newId() }; set((s) => ({ offers: [no, ...s.offers] })); return no; },
       updateOffer: (id, patch) => set((s) => ({ offers: s.offers.map((o) => (o.id === id ? { ...o, ...patch } : o)) })),
       setPendingOffer: (p) => set({ pendingOffer: p }),
@@ -203,6 +209,8 @@ export const useHasat = create<Store>()(
       addSubscription: (s) => { const ns: Subscription = { ...s, id: newId() }; set((st) => ({ subscriptions: [ns, ...st.subscriptions] })); return ns; },
       setNotifPref: (event, channel, value) =>
         set((s) => ({ notifPrefs: { ...s.notifPrefs, [event]: { ...s.notifPrefs[event], [channel]: value } } })),
+      addPriceAlert: (a) => { const np: PriceAlert = { ...a, id: newId(), createdAt: new Date().toISOString() }; set((s) => ({ priceAlerts: [np, ...s.priceAlerts] })); return np; },
+      removePriceAlert: (id) => set((s) => ({ priceAlerts: s.priceAlerts.filter((a) => a.id !== id) })),
       reset: () => set({ user: null }),
     }),
     { name: "hasat-store" },

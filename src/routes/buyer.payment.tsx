@@ -15,6 +15,8 @@ function Payment() {
   const navigate = useNavigate();
   const pending = useHasat((s) => s.pendingOffer);
   const addOrder = useHasat((s) => s.addOrder);
+  const addOffer = useHasat((s) => s.addOffer);
+  const user = useHasat((s) => s.user);
   const setPendingOffer = useHasat((s) => s.setPendingOffer);
 
   const [success, setSuccess] = useState<{ code: string; id: string } | null>(null);
@@ -49,6 +51,15 @@ function Payment() {
       code, producerId: pending.producerId, producerName: pending.producerName, crop: pending.crop,
       quantity: pending.quantity, unit: pending.unit, pricePerUnit: pending.pricePerUnit, total: grand,
       delivery: pending.delivery, deliveryDate: pending.deliveryDate, status, createdAt: now.toISOString(), timeline,
+    });
+    // Surface as incoming offer on the farmer's A6 Orders screen.
+    addOffer({
+      buyerName: user?.company?.name ?? user?.name ?? "Alıcı",
+      buyerType: (user?.company?.type as never) ?? "restoran",
+      crop: pending.crop, unit: pending.unit, quantity: pending.quantity, pricePerUnit: pending.pricePerUnit,
+      createdAt: now.toISOString(), status: "pending",
+      delivery: pending.delivery, deliveryDate: pending.deliveryDate, note: pending.notes,
+      producerId: pending.producerId,
     });
     setPendingOffer(null);
     setSuccess({ code, id: order.id });

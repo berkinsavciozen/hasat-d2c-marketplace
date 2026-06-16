@@ -10,6 +10,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sh
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Plus, Pencil, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import type { Listing } from "@/lib/hasat/types";
@@ -24,8 +25,9 @@ const CROPS = ["Safran", "Lavanta", "Tıbbi Bitkiler", "Fındık", "Zeytinyağı
 
 function Storefront() {
   const listings = useHasat((s) => s.listings);
-  const updateListing = useHasat((s) => s.updateListing);
+  const removeListing = useHasat((s) => s.removeListing);
   const [sheet, setSheet] = useState<{ open: boolean; editing?: Listing | null }>({ open: false });
+  const [confirmDelete, setConfirmDelete] = useState<Listing | null>(null);
 
   const active = listings.filter((l) => l.status === "active");
   const history = listings.filter((l) => l.status !== "active");
@@ -33,7 +35,7 @@ function Storefront() {
   return (
     <>
       <FarmerHeader title="Vitrin" subtitle="Aktif listelemeleriniz" />
-      <div className="px-4 md:px-8 py-5">
+      <div className="px-4 md:px-8 py-5 pb-32 md:pb-5">
         <Tabs defaultValue="active">
           <TabsList className="grid w-full grid-cols-2">
             <TabsTrigger value="active">Ürünlerim</TabsTrigger>
@@ -52,7 +54,7 @@ function Storefront() {
               active.map((l) => (
                 <ListingCard key={l.id} listing={l}
                   onEdit={() => setSheet({ open: true, editing: l })}
-                  onRemove={() => { updateListing(l.id, { status: "expired" }); toast.success("Ürün kaldırıldı"); }}
+                  onRemove={() => setConfirmDelete(l)}
                 />
               ))
             )}
@@ -71,13 +73,39 @@ function Storefront() {
       {active.length > 0 && (
         <button
           onClick={() => setSheet({ open: true })}
-          className="fixed bottom-20 right-4 md:bottom-6 z-30 flex items-center gap-1.5 rounded-full bg-saffron px-4 py-3 text-sm font-medium text-white shadow-xl"
+          className="fixed bottom-20 right-4 md:bottom-6 z-30 flex items-center gap-1.5 rounded-full bg-saffron px-4 py-3 text-sm font-medium text-white shadow-xl mb-safe"
         >
           <Plus className="h-4 w-4" /> Yeni Ürün
         </button>
       )}
 
       <ListingSheet open={sheet.open} editing={sheet.editing ?? null} onClose={() => setSheet({ open: false })} />
+
+      <AlertDialog open={!!confirmDelete} onOpenChange={(o) => !o && setConfirmDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Bu ilanı kaldırmak istediğinizden emin misiniz?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {confirmDelete?.crop} ilanınız vitrinden kaldırılacak. Bu işlem geri alınamaz.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>İptal</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                if (confirmDelete) {
+                  removeListing(confirmDelete.id);
+                  toast.success("İlan kaldırıldı");
+                }
+                setConfirmDelete(null);
+              }}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Kaldır
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 }
