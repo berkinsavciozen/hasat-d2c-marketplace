@@ -61,6 +61,14 @@ export interface PricePoint {
 export type BuyerType = "restoran" | "otel" | "market" | "ihracatci";
 export type OfferStatus = "pending" | "accepted" | "counter" | "active" | "completed" | "rejected";
 
+export interface OfferSnapshot {
+  quantity: number;
+  pricePerUnit: number;
+  delivery?: string;
+  deliveryDate?: string;
+  note?: string;
+}
+
 export interface Offer {
   id: string;
   buyerName: string;
@@ -72,6 +80,20 @@ export interface Offer {
   createdAt: string;
   status: OfferStatus;
   note?: string;
+  delivery?: string;
+  deliveryDate?: string;
+  /** Original buyer offer values, retained when farmer responds with a counter. */
+  original?: OfferSnapshot;
+  producerId?: string;
+}
+
+export interface PriceAlert {
+  id: string;
+  crop: string;
+  target: number;
+  condition: "above" | "below";
+  channels: { whatsapp: boolean; push: boolean; sms: boolean };
+  createdAt: string;
 }
 
 export interface Producer {
