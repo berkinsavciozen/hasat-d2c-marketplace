@@ -21,6 +21,7 @@ interface Store {
   subscriptions: Subscription[];
   pendingOffer: PendingOffer | null;
   notifPrefs: NotifPrefs;
+  priceAlerts: PriceAlert[];
   setRole: (role: Role | null) => void;
   setPremium: (v: boolean) => void;
   updateUser: (patch: Partial<User>) => void;
@@ -31,12 +32,15 @@ interface Store {
   deleteEntry: (id: string) => void;
   addListing: (l: Omit<Listing, "id">) => Listing;
   updateListing: (id: string, patch: Partial<Listing>) => void;
+  removeListing: (id: string) => void;
   addOffer: (o: Omit<Offer, "id">) => Offer;
   updateOffer: (id: string, patch: Partial<Offer>) => void;
   setPendingOffer: (p: PendingOffer | null) => void;
   addOrder: (o: Omit<Order, "id">) => Order;
   addSubscription: (s: Omit<Subscription, "id">) => Subscription;
   setNotifPref: (e: NotifEvent, c: NotifChannel, v: boolean) => void;
+  addPriceAlert: (a: Omit<PriceAlert, "id" | "createdAt">) => PriceAlert;
+  removePriceAlert: (id: string) => void;
   reset: () => void;
 }
 
