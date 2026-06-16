@@ -3,7 +3,6 @@ import { Bell, BarChart3, BookOpen, Home, LineChart, Store, Users, Settings, Cro
 import { useHasat } from "@/lib/hasat/store";
 import { SeasonBanner } from "@/components/hasat/SeasonBanner";
 import { FarmPill } from "@/components/hasat/FarmPill";
-import { RoleSwitcher } from "@/components/hasat/RoleSwitcher";
 
 export const Route = createFileRoute("/farmer")({
   beforeLoad: () => {
