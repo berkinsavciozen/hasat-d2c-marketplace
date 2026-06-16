@@ -115,11 +115,11 @@ function Discover() {
                         {p.badges.slice(0, 2).map((b) => <TrustBadge key={b} type={b} />)}
                       </div>
                       <div className="text-xs text-hmuted">{p.listings.filter((l) => l.status === "active").length} aktif ürün</div>
-                      <div className="mt-3 flex items-center justify-between">
-                        <div style={{ fontFamily: "Courier New, monospace", color: "var(--saffron)" }} className="text-sm">
+                      <div className="mt-3 flex items-center justify-between gap-2">
+                        <div style={{ fontFamily: "Courier New, monospace", color: "var(--saffron)" }} className="text-sm truncate min-w-0">
                           Başlangıç {formatTRY(minPrice)}<span className="text-xs text-hmuted">/{minUnit}</span>
                         </div>
-                        <span className="rounded-full bg-saffron px-3 py-1.5 text-xs text-white">Profili Gör →</span>
+                        <span className="shrink-0 rounded-full bg-saffron px-3 py-1.5 text-xs text-white">Profili Gör →</span>
                       </div>
                     </div>
                   </button>
