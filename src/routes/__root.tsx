@@ -118,6 +118,7 @@ function RootShell({ children }: { children: ReactNode }) {
 }
 
 import { Toaster } from "@/components/ui/sonner";
+import { RoleSwitcher } from "@/components/hasat/RoleSwitcher";
 
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
@@ -125,7 +126,8 @@ function RootComponent() {
   return (
     <QueryClientProvider client={queryClient}>
       <Outlet />
-      <Toaster position="top-center" richColors />
+      <Toaster position="top-center" richColors className="z-[9999]" />
+      <RoleSwitcher />
     </QueryClientProvider>
   );
 }
