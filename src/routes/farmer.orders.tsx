@@ -27,13 +27,35 @@ function timeAgo(iso: string) {
 function Orders() {
   const offers = useHasat((s) => s.offers);
   const updateOffer = useHasat((s) => s.updateOffer);
+  const addOrder = useHasat((s) => s.addOrder);
+  const producers = useHasat((s) => s.producers);
   const navigate = useNavigate();
 
   const incoming = offers.filter((o) => o.status === "pending" || o.status === "counter");
   const activeList = offers.filter((o) => o.status === "accepted" || o.status === "active");
   const done = offers.filter((o) => o.status === "completed" || o.status === "rejected");
 
-  const accept = (o: Offer) => { updateOffer(o.id, { status: "accepted" }); toast.success(`${o.buyerName} teklifi kabul edildi`); };
+  const accept = (o: Offer) => {
+    updateOffer(o.id, { status: "accepted" });
+    const code = `HT-2028-${String(Math.floor(Math.random() * 9000) + 1000)}`;
+    const all: { key: import("@/lib/hasat/types").OrderStatus; label: string }[] = [
+      { key: "sent", label: "Teklif Gönderildi" },
+      { key: "accepted", label: "Kabul Edildi" },
+      { key: "preparing", label: "Hazırlanıyor" },
+      { key: "shipped", label: "Kargoya Verildi" },
+      { key: "delivered", label: "Teslim Edildi" },
+    ];
+    const now = new Date();
+    const timeline = all.map((s, i) => ({ ...s, doneAt: i <= 2 ? new Date(now.getTime() - (2 - i) * 3600 * 1000).toISOString() : undefined }));
+    const producer = producers[0];
+    addOrder({
+      code, producerId: producer?.id ?? "pr1", producerName: o.buyerName, crop: o.crop,
+      quantity: o.quantity, unit: o.unit, pricePerUnit: o.pricePerUnit, total: o.quantity * o.pricePerUnit,
+      delivery: o.delivery ?? "Kargo", deliveryDate: o.deliveryDate ?? "", status: "preparing",
+      createdAt: now.toISOString(), timeline,
+    });
+    toast.success(`${o.buyerName} teklifi kabul edildi · Sipariş oluşturuldu`);
+  };
   const counter = (o: Offer) => navigate({ to: "/farmer/orders/$offerId/counter", params: { offerId: o.id } });
 
   return (
