@@ -109,19 +109,17 @@ function Reports() {
 
         <div className="rounded-2xl bg-card border p-4">
           <h3 className="font-serif text-lg mb-3">Fiyat Karşılaştırması</h3>
-          <div className="h-64">
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={PRICE_COMP}>
-                <CartesianGrid strokeDasharray="3 3" opacity={0.3} />
-                <XAxis dataKey="m" tick={{ fontSize: 12 }} />
-                <YAxis tick={{ fontSize: 12 }} />
-                <Tooltip />
-                <Legend />
-                <Line type="monotone" dataKey="hasat" stroke="var(--saffron)" strokeWidth={2.5} name="Hasat fiyatı" />
-                <Line type="monotone" dataKey="hal" stroke="var(--hmuted)" strokeWidth={2} strokeDasharray="6 6" name="Hal piyasası" />
-              </LineChart>
-            </ResponsiveContainer>
-          </div>
+          <ResponsiveContainer width="100%" height={280}>
+            <LineChart data={PRICE_COMP}>
+              <CartesianGrid strokeDasharray="3 3" opacity={0.3} />
+              <XAxis dataKey="m" tick={{ fontSize: 12 }} />
+              <YAxis tick={{ fontSize: 12 }} />
+              <Tooltip />
+              <Legend />
+              <Line type="monotone" dataKey="hasat" stroke="var(--saffron)" strokeWidth={2.5} name="Hasat fiyatı" />
+              <Line type="monotone" dataKey="hal" stroke="var(--hmuted)" strokeWidth={2} strokeDasharray="6 6" name="Hal piyasası" />
+            </LineChart>
+          </ResponsiveContainer>
         </div>
 
         <div className="rounded-2xl p-5" style={{ background: "color-mix(in oklab, var(--sage) 22%, transparent)", color: "var(--sage)" }}>
