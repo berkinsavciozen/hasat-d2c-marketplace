@@ -1,9 +1,11 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
+import { toast } from "sonner";
 import { useHasat } from "@/lib/hasat/store";
 import { ProgressDots } from "@/components/hasat/ProgressDots";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
+import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/onboarding/buyer")({
   head: () => ({ meta: [{ title: "Kayıt — Hasat Alıcı" }] }),
@@ -34,19 +36,53 @@ function BuyerOnboarding() {
   const [volume, setVolume] = useState("");
   const [address, setAddress] = useState("");
   const [trial, setTrial] = useState(true);
+  const [saving, setSaving] = useState(false);
 
   const toggle = (arr: string[], setter: (v: string[]) => void, v: string) =>
     setter(arr.includes(v) ? arr.filter((x) => x !== v) : [...arr, v]);
 
-  const finish = () => {
-    setRole("buyer");
-    updateUser({
-      name: company || "Alıcı",
-      crops: interests,
-      company: { name: company, type: (type || "diger") as never, address, volume },
-    });
-    if (trial) setPremium(true);
-    navigate({ to: "/buyer/discover" });
+  const finish = async () => {
+    if (saving) return;
+    setSaving(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        toast.error("Oturum bulunamadı, lütfen tekrar giriş yapın.");
+        navigate({ to: "/login", search: { role: "buyer" } });
+        return;
+      }
+      const { error: pErr } = await supabase.from("profiles").upsert({
+        id: user.id,
+        role: "buyer",
+        name: company,
+        phone: user.phone ? "+" + user.phone : null,
+      });
+      if (pErr) throw pErr;
+
+      const buyerType = (type || "diger") as (typeof TYPES)[number]["id"];
+      const dbType = buyerType === "diger" ? "restoran" : buyerType;
+      const { error: bErr } = await supabase.from("buyer_profiles").insert({
+        user_id: user.id,
+        company_name: company,
+        company_type: dbType,
+        monthly_volume: volume,
+      });
+      if (bErr) throw bErr;
+
+      setRole("buyer");
+      updateUser({
+        id: user.id,
+        name: company || "Alıcı",
+        crops: interests,
+        company: { name: company, type: buyerType as never, address, volume },
+      });
+      if (trial) setPremium(true);
+      navigate({ to: "/buyer/discover" });
+    } catch (e) {
+      toast.error((e as Error).message);
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
@@ -129,9 +165,9 @@ function BuyerOnboarding() {
               </div>
               <Switch checked={trial} onCheckedChange={setTrial} />
             </div>
-            <button onClick={finish}
-              className="mt-8 w-full rounded-xl py-3 text-sm font-medium"
-              style={{ background: "var(--gold)", color: "var(--dark)" }}>Keşfetmeye Başla →</button>
+            <button onClick={finish} disabled={saving}
+              className="mt-8 w-full rounded-xl py-3 text-sm font-medium disabled:opacity-40"
+              style={{ background: "var(--gold)", color: "var(--dark)" }}>{saving ? "Kaydediliyor..." : "Keşfetmeye Başla →"}</button>
           </div>
         )}
       </div>
