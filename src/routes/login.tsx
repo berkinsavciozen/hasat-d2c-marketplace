@@ -1,6 +1,9 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
 import { useHasat } from "@/lib/hasat/store";
+import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/login")({
   head: () => ({ meta: [{ title: "Giriş — Hasat" }] }),
@@ -10,6 +13,7 @@ export const Route = createFileRoute("/login")({
 
 function LoginPage() {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const { role } = Route.useSearch();
   const setRole = useHasat((s) => s.setRole);
   const updateUser = useHasat((s) => s.updateUser);
@@ -18,6 +22,8 @@ function LoginPage() {
   const [channel, setChannel] = useState<"wa" | "sms">("wa");
   const [otp, setOtp] = useState<string[]>(["", "", "", "", "", ""]);
   const [countdown, setCountdown] = useState(30);
+  const [sending, setSending] = useState(false);
+  const [verifying, setVerifying] = useState(false);
   const inputsRef = useRef<(HTMLInputElement | null)[]>([]);
 
   useEffect(() => {
@@ -49,10 +55,78 @@ function LoginPage() {
     inputsRef.current[Math.min(txt.length, 5)]?.focus();
   };
 
-  const submit = () => {
-    setRole(role);
-    updateUser({ phone: "+90 " + formattedPhone });
-    navigate({ to: role === "buyer" ? "/buyer/discover" : "/farmer/home" });
+  const sendOtp = async () => {
+    if (phoneDigits.length !== 10 || sending) return;
+    setSending(true);
+    try {
+      const { error } = await supabase.auth.signInWithOtp({
+        phone: "+90" + phoneDigits,
+        options: {
+          channel: channel === "wa" ? "whatsapp" : "sms",
+          data: { role },
+        },
+      });
+      if (error) throw error;
+      setStep("otp");
+      setOtp(["", "", "", "", "", ""]);
+    } catch (e) {
+      toast.error((e as Error).message);
+    } finally {
+      setSending(false);
+    }
+  };
+
+  const resend = async () => {
+    if (countdown > 0) return;
+    setCountdown(30);
+    await sendOtp();
+  };
+
+  const verify = async () => {
+    if (otp.some((d) => !d) || verifying) return;
+    setVerifying(true);
+    try {
+      const { data, error } = await supabase.auth.verifyOtp({
+        phone: "+90" + phoneDigits,
+        token: otp.join(""),
+        type: "sms",
+      });
+      if (error || !data.user) throw error ?? new Error("Doğrulama başarısız");
+
+      const profile = await queryClient.fetchQuery({
+        queryKey: ["profile", data.user.id],
+        queryFn: async () => {
+          const { data: p, error: pErr } = await supabase
+            .from("profiles")
+            .select("*")
+            .eq("id", data.user!.id)
+            .single();
+          if (pErr) throw pErr;
+          return p;
+        },
+      });
+
+      const profileRole = (profile.role === "buyer" ? "buyer" : "farmer") as "farmer" | "buyer";
+      setRole(profileRole);
+
+      if (!profile.name || profile.name.trim() === "") {
+        updateUser({ id: data.user.id, phone: data.user.phone ? "+" + data.user.phone : "+90 " + formattedPhone });
+        navigate({ to: profileRole === "buyer" ? "/onboarding/buyer" : "/onboarding/farmer" });
+      } else {
+        updateUser({
+          id: data.user.id,
+          name: profile.name,
+          phone: profile.phone ?? "+90 " + formattedPhone,
+          city: profile.city ?? "",
+          premium: !!profile.premium,
+        });
+        navigate({ to: profileRole === "buyer" ? "/buyer/discover" : "/farmer/home" });
+      }
+    } catch (e) {
+      toast.error((e as Error).message);
+    } finally {
+      setVerifying(false);
+    }
   };
 
   const onbHref = role === "buyer" ? "/onboarding/buyer" : "/onboarding/farmer";
@@ -86,9 +160,9 @@ function LoginPage() {
               </div>
               <p className="text-[11px] text-hwhite/50 mt-2">Çiftçilerin %95'i WhatsApp kullanıyor</p>
             </div>
-            <button disabled={phoneDigits.length !== 10} onClick={() => setStep("otp")}
+            <button disabled={phoneDigits.length !== 10 || sending} onClick={sendOtp}
               className="mt-6 w-full rounded-xl py-3 text-sm font-medium disabled:opacity-40"
-              style={{ background: titleColor, color: "var(--hwhite)" }}>Kod Gönder →</button>
+              style={{ background: titleColor, color: "var(--hwhite)" }}>{sending ? "Gönderiliyor..." : "Kod Gönder →"}</button>
           </>
         ) : (
           <>
@@ -106,11 +180,11 @@ function LoginPage() {
               ))}
             </div>
             <div className="mt-3 text-center text-[11px] text-hwhite/50">
-              {countdown > 0 ? `Tekrar gönder (${countdown}s)` : (<button onClick={() => setCountdown(30)} className="underline">Tekrar gönder</button>)}
+              {countdown > 0 ? `Tekrar gönder (${countdown}s)` : (<button onClick={resend} className="underline">Tekrar gönder</button>)}
             </div>
-            <button disabled={otp.some((d) => !d)} onClick={submit}
+            <button disabled={otp.some((d) => !d) || verifying} onClick={verify}
               className="mt-6 w-full rounded-xl py-3 text-sm font-medium disabled:opacity-40"
-              style={{ background: titleColor, color: "var(--hwhite)" }}>Giriş Yap ✓</button>
+              style={{ background: titleColor, color: "var(--hwhite)" }}>{verifying ? "Doğrulanıyor..." : "Giriş Yap ✓"}</button>
             <button onClick={() => setStep("phone")} className="mt-3 w-full text-xs text-hwhite/50">← Numarayı değiştir</button>
           </>
         )}
