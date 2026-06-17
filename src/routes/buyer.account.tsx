@@ -1,6 +1,8 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { BuyerHeader } from "@/components/hasat/BuyerHeader";
 import { useHasat } from "@/lib/hasat/store";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 
 export const Route = createFileRoute("/buyer/account")({
   head: () => ({ meta: [{ title: "Hesap — Hasat" }] }),
@@ -16,7 +18,11 @@ function Account() {
   const user = useHasat((s) => s.user);
   const reset = useHasat((s) => s.reset);
 
-  const logout = () => { reset(); navigate({ to: "/" }); };
+  const logout = async () => {
+    try { await supabase.auth.signOut(); }
+    catch (e) { toast.error((e as Error).message); }
+    finally { reset(); navigate({ to: "/" }); }
+  };
 
   return (
     <>

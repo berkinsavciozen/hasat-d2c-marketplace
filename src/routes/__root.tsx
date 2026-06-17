@@ -119,12 +119,55 @@ function RootShell({ children }: { children: ReactNode }) {
 
 import { Toaster } from "@/components/ui/sonner";
 import { RoleSwitcher } from "@/components/hasat/RoleSwitcher";
+import { supabase } from "@/integrations/supabase/client";
+import { useHasat } from "@/lib/hasat/store";
+
+function AuthBootstrap() {
+  const router = useRouter();
+  const setRole = useHasat((s) => s.setRole);
+  const updateUser = useHasat((s) => s.updateUser);
+  const reset = useHasat((s) => s.reset);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (cancelled || !session?.user) return;
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("*")
+        .eq("id", session.user.id)
+        .maybeSingle();
+      if (cancelled || !profile || !profile.name) return;
+      setRole((profile.role === "buyer" ? "buyer" : "farmer") as "farmer" | "buyer");
+      updateUser({
+        id: session.user.id,
+        name: profile.name,
+        phone: profile.phone ?? "",
+        city: profile.city ?? "",
+        premium: !!profile.premium,
+      });
+    })();
+
+    const { data: sub } = supabase.auth.onAuthStateChange((event) => {
+      if (event === "SIGNED_OUT") {
+        reset();
+        router.navigate({ to: "/" });
+      }
+    });
+    return () => { cancelled = true; sub.subscription.unsubscribe(); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  return null;
+}
 
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
 
   return (
     <QueryClientProvider client={queryClient}>
+      <AuthBootstrap />
       <Outlet />
       <Toaster position="top-center" richColors className="z-[9999]" />
       <RoleSwitcher />

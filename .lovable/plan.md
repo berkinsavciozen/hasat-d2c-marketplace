@@ -1,42 +1,74 @@
-# Iteration 5 — Counter-Offer, Wiring & Polish
+## Phase 1 — Real Supabase Phone OTP Auth (revised)
 
-Purely additive. Existing routes, tokens, and store schema preserved; store gains `counterOffer`, `priceAlerts`, plus tweaks to `setPendingOffer`/offer flow.
+Replace the mock OTP/onboarding flow with real Supabase Auth. UI, routes, and Zustand store shape unchanged; only the data layer changes. Browser `supabase` client at `@/integrations/supabase/client` is reused; no server functions, no migrations.
 
-## 1. Store extensions (`src/lib/hasat/store.ts` + `types.ts`)
-- Add `PriceAlert { id, crop, target, condition: 'above'|'below', channels: {whatsapp,push,sms} }`.
-- Add `CounterOffer` fields on `Offer` (counterQty, counterPrice, counterDelivery, counterDate, counterNote) — already partly there via `quantity/pricePerUnit/note` updates; extend rather than break.
-- New slices: `priceAlerts: PriceAlert[]`, `addPriceAlert`, `removePriceAlert`.
-- `pendingOffer` keeps original snapshot so buyer negotiation screen can diff against counter.
+### 1. Store change
+`src/lib/hasat/types.ts` — add optional `id?: string` to `User` so we can stash `auth.users.id` via the existing `updateUser` patch.
 
-## 2. New route — `src/routes/buyer.negotiation.$offerId.tsx`
-- Back arrow + "Müzakere" heading via `BuyerHeader`.
-- Two cards side-by-side (`grid-cols-1 md:grid-cols-2`): "Teklifiniz" (original) vs "Çiftçinin Teklifi" (counter). Highlight diffs in saffron.
-- Total row per side (`qty × price` via `formatTRY`).
-- Three buttons: Reddet (outline destructive), Kabul Et (saffron), Karşı Teklif Yap (secondary).
-  - Kabul Et → `updateOffer(id,{status:'accepted'})` + create `Order` + nav `/buyer/orders`.
-  - Reddet → `updateOffer(id,{status:'rejected'})` + `router.history.back()`.
-  - Karşı Teklif Yap → opens `Sheet` (reuses form pattern from `farmer.orders.$offerId.counter.tsx`) pre-filled with farmer's counter values; submit → `updateOffer` with new buyer counter and toast.
+### 2. Login screen (`src/routes/login.tsx`)
+- **Send OTP**:
+  ```ts
+  await supabase.auth.signInWithOtp({
+    phone: '+90' + phoneDigits,
+    options: {
+      channel: channel === 'wa' ? 'whatsapp' : 'sms',
+      data: { role }, // 'farmer' | 'buyer' from existing Route.useSearch()
+    },
+  });
+  ```
+  Error → `toast.error(error.message)`. Success → advance to OTP step + start 30s countdown.
+- **Verify OTP**:
+  ```ts
+  const { data, error } = await supabase.auth.verifyOtp({
+    phone: '+90' + phoneDigits,
+    token: otp.join(''),
+    type: 'sms',
+  });
+  ```
+  Error → toast and stay. Success → fetch profile via `useQueryClient().fetchQuery` keyed `['profile', data.user.id]`:
+  `supabase.from('profiles').select('*').eq('id', data.user.id).single()`.
+  A DB trigger auto-creates the `profiles` row on `auth.users` insert (seeding `role` from `user_metadata.role` set above), so the row always exists. Branch on **`profile.name`**:
+  - `profile.name` null/empty → new user → `setRole(profile.role)`, `updateUser({ id: data.user.id })`, navigate to `/onboarding/${profile.role}`.
+  - `profile.name` non-empty → returning user → `setRole(profile.role)`, `updateUser({ id, name, phone, premium })`, navigate to `/farmer/home` or `/buyer/discover` based on `profile.role`.
+- Resend reuses `signInWithOtp` with same options.
 
-## 3. Wiring fixes
-- **A4 Price Alert sheet** (`farmer.prices.tsx`): "Fiyat Alarmı Kur" opens `Sheet` with crop `Select` (pre-filled), ₺ Input, condition `ToggleGroup` (Üzerinde/Altında), 3 channel `Checkbox`. Save → `addPriceAlert` + toast. Existing alerts render as dismissible chips above the button (`Badge` with × → `removePriceAlert`).
-- **A5 Storefront delete** (`farmer.storefront.tsx`): trash icon → `AlertDialog` confirm → remove listing + toast "İlan kaldırıldı". (Add `removeListing` to store if missing.)
-- **A6 Kabul Et → order** (`farmer.orders.tsx`): on accept, generate `HT-YYYY-XXXX` ref, build 5-step timeline via existing `tlSteps('preparing')`, `addOrder`, then `navigate({to:'/farmer/orders'})` (or detail route if exists — use list since farmer order detail isn't built).
-- **Buyer→farmer offer sync**: confirm `buyer.payment.tsx` writes via `addOffer` (not only `addOrder`) so it surfaces in farmer A6. If currently only adds Order, also push an Offer with `status:'pending'` and producer/buyer linkage so farmer sees it incoming.
+### 3. Farmer onboarding (`src/routes/onboarding.farmer.tsx`)
+On final-step CTA:
+1. `const { data: { user } } = await supabase.auth.getUser()`; if no user → toast + navigate `/login?role=farmer`.
+2. `await supabase.from('profiles').upsert({ id: user.id, role: 'farmer', name, city, phone: user.phone, premium: false })`.
+3. Selected certifications → `Promise.all` of `supabase.from('certifications').insert({ farmer_id: user.id, type: certType })`.
+4. Any error → `toast.error`, stay.
+5. Success → `setRole('farmer')`, `updateUser({ id: user.id, name, premium: false, ...existing patch })`, navigate `/farmer/home`.
 
-## 4. RoleSwitcher floating button
-- Update `RoleSwitcher.tsx`: always rendered if `import.meta.env.DEV`. Collapsed FAB bottom-right (`fixed bottom-4 right-4 z-50 opacity-80`); tap expands to current pill UI. Mount once in `__root.tsx` (verify it's there for all routes, not only home).
+### 4. Buyer onboarding (`src/routes/onboarding.buyer.tsx`)
+On final-step CTA:
+1. `getUser()` guard → fallback `/login?role=buyer`.
+2. `await supabase.from('profiles').upsert({ id: user.id, role: 'buyer', name: companyName, phone: user.phone })`.
+3. `await supabase.from('buyer_profiles').insert({ user_id: user.id, company_name: companyName, company_type: companyType, monthly_volume: volumeSelection })`.
+4. Errors → toast, stay. Success → `setRole('buyer')`, `updateUser({ id: user.id, ...existing })`, navigate `/buyer/discover`. Trial `Switch` keeps existing local `setPremium(true)`.
 
-## 5. Visual polish (cross-file)
-- Add `line-clamp-2` to producer/listing card titles (discover, storefront, producer profile, offers); `truncate` on price spans.
-- Replace all `<ResponsiveContainer height="100%">` with explicit `height={220}` or `height={280}` (analytics, reports, producer profile).
-- `__root.tsx`: ensure `<Toaster className="z-[9999]" />`.
-- Add `.pb-safe { padding-bottom: env(safe-area-inset-bottom); }` utility in `styles.css`; apply to fixed bottom nav/CTAs (buyer.tsx bottom nav, farmer fixed CTAs, payment, counter, negotiation).
-- **B1 empty state** (`buyer.discover.tsx`): when filtered list empty + search non-empty → centered 🌾 (text-6xl), heading "Sonuç bulunamadı", subtext.
-- Container widths: audit screen wrappers to use `max-w-md mx-auto md:max-w-2xl lg:max-w-none` pattern. Apply to buyer/farmer route shells where currently fixed.
+### 5. Session bootstrap (`src/routes/__root.tsx`)
+Mount `<AuthBootstrap />` inside `RootComponent` before `<Outlet />`. In a `useEffect`:
+- `supabase.auth.getSession()` → if `session.user`, fetch `profiles` row; populate Zustand `setRole` + `updateUser` when `profile.name` is set (otherwise leave role null — user is mid-onboarding).
+- Subscribe `supabase.auth.onAuthStateChange((event) => { if (event === 'SIGNED_OUT') { reset(); router.navigate({ to: '/' }); } })`. Cleanup unsubscribes.
+- No protected-route gating in Phase 1.
 
-## Out of scope
-No new design tokens, no backend, no real payments/SMS, no farmer order detail route (uses list). No changes to component public APIs.
+### 6. Logout
+`src/routes/farmer.settings.tsx` and `src/routes/buyer.account.tsx` — replace `reset()` + navigate handler with:
+```ts
+try { await supabase.auth.signOut(); }
+catch (e) { toast.error((e as Error).message); }
+finally { navigate({ to: '/' }); } // onAuthStateChange also resets store
+```
 
-## Files touched (estimate)
-**New:** `src/routes/buyer.negotiation.$offerId.tsx`
-**Edit:** `store.ts`, `types.ts`, `RoleSwitcher.tsx`, `__root.tsx`, `styles.css`, `farmer.prices.tsx`, `farmer.storefront.tsx`, `farmer.orders.tsx`, `buyer.discover.tsx`, `buyer.payment.tsx`, `buyer.tsx`, `farmer.analytics.tsx`, `buyer.reports.tsx`, `buyer.producer.$id.tsx`, `routeTree.gen.ts`.
+### 7. Kept as-is
+- `RoleSwitcher` FAB stays mounted.
+- No changes to UI components, route layouts, Zustand action signatures, seed data, business screens, RLS, or schema.
+
+### Files touched
+- `src/lib/hasat/types.ts` — add `id?: string` to `User`.
+- `src/routes/login.tsx` — real `signInWithOtp` (with `data.role`) + `verifyOtp` + `profile.name` branching.
+- `src/routes/onboarding.farmer.tsx` — profile upsert + certifications insert.
+- `src/routes/onboarding.buyer.tsx` — profile upsert + buyer_profiles insert.
+- `src/routes/__root.tsx` — `AuthBootstrap` (getSession + onAuthStateChange).
+- `src/routes/farmer.settings.tsx`, `src/routes/buyer.account.tsx` — real `signOut`.

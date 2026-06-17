@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Bell, ChevronRight, LogOut, Pencil, Trash2 } from "lucide-react";
 import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/farmer/settings")({ component: Settings });
 
@@ -39,7 +40,11 @@ function Settings() {
     toast.success("Parsel güncellendi");
   };
 
-  const logout = () => { setRole(null); navigate({ to: "/" }); };
+  const logout = async () => {
+    try { await supabase.auth.signOut(); }
+    catch (e) { toast.error((e as Error).message); }
+    finally { setRole(null); navigate({ to: "/" }); }
+  };
 
   return (
     <>

@@ -1,11 +1,14 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
+import { toast } from "sonner";
 import { useHasat } from "@/lib/hasat/store";
 import { ProgressDots } from "@/components/hasat/ProgressDots";
 import { Input } from "@/components/ui/input";
 import { Slider } from "@/components/ui/slider";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { FileText } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import type { CertificationType } from "@/lib/hasat/types";
 
 export const Route = createFileRoute("/onboarding/farmer")({
   head: () => ({ meta: [{ title: "Kayıt — Hasat Çiftçi" }] }),
@@ -32,11 +35,53 @@ function Onboarding() {
   const [crops, setCrops] = useState<string[]>([]);
   const [land, setLand] = useState(5);
   const [certs, setCerts] = useState<string[]>([]);
+  const [saving, setSaving] = useState(false);
 
-  const finish = (skip = false) => {
-    setRole("farmer");
-    if (!skip) updateUser({ name, city, crops, landSize: land, certs });
-    navigate({ to: "/farmer/home" });
+  const finish = async (skip = false) => {
+    if (saving) return;
+    setSaving(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        toast.error("Oturum bulunamadı, lütfen tekrar giriş yapın.");
+        navigate({ to: "/login", search: { role: "farmer" } });
+        return;
+      }
+      const profileName = skip ? "Çiftçi" : name;
+      const { error: pErr } = await supabase.from("profiles").upsert({
+        id: user.id,
+        role: "farmer",
+        name: profileName,
+        city: skip ? null : city,
+        phone: user.phone ? "+" + user.phone : null,
+        premium: false,
+      });
+      if (pErr) throw pErr;
+
+      if (!skip && certs.length > 0) {
+        const validCerts = certs.filter((c): c is CertificationType =>
+          ["organik", "iso", "cografi"].includes(c),
+        );
+        await Promise.all(
+          validCerts.map((type) =>
+            supabase.from("certifications").insert({ farmer_id: user.id, type }),
+          ),
+        );
+      }
+
+      setRole("farmer");
+      updateUser({
+        id: user.id,
+        name: profileName,
+        premium: false,
+        ...(skip ? {} : { city, crops, landSize: land, certs }),
+      });
+      navigate({ to: "/farmer/home" });
+    } catch (e) {
+      toast.error((e as Error).message);
+    } finally {
+      setSaving(false);
+    }
   };
 
   const toggle = (arr: string[], setter: (v: string[]) => void, v: string) =>
@@ -154,10 +199,10 @@ function Onboarding() {
               <div className="text-xs text-hwhite/50">JPG, PDF — maks 10MB</div>
             </div>
 
-            <button onClick={() => finish(false)}
-              className="w-full rounded-xl py-3 text-sm font-medium"
-              style={{ background: "var(--saffron)", color: "var(--hwhite)" }}>Profilimi oluştur ✓</button>
-            <button onClick={() => finish(true)} className="mt-3 w-full text-sm text-hwhite/50">Şimdilik atla</button>
+            <button onClick={() => finish(false)} disabled={saving}
+              className="w-full rounded-xl py-3 text-sm font-medium disabled:opacity-40"
+              style={{ background: "var(--saffron)", color: "var(--hwhite)" }}>{saving ? "Kaydediliyor..." : "Profilimi oluştur ✓"}</button>
+            <button onClick={() => finish(true)} disabled={saving} className="mt-3 w-full text-sm text-hwhite/50 disabled:opacity-40">Şimdilik atla</button>
           </div>
         )}
       </div>
