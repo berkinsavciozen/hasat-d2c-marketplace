@@ -60,7 +60,8 @@ function BuyerOnboarding() {
       if (pErr) throw pErr;
 
       const buyerType = (type || "diger") as (typeof TYPES)[number]["id"];
-      const dbType = buyerType === "diger" ? "restoran" : buyerType;
+      const dbType =
+        buyerType === "market" ? "organik_market" : buyerType;
       const { error: bErr } = await supabase.from("buyer_profiles").insert({
         user_id: user.id,
         company_name: company,
