@@ -177,10 +177,10 @@ function NewEntry() {
 
         <button
           onClick={save}
-          disabled={!parcelId || qty <= 0}
+          disabled={!parcelId || qty <= 0 || createEntry.isPending}
           className="w-full rounded-xl bg-saffron py-3.5 text-white font-medium disabled:opacity-40"
         >
-          Kaydet ✓
+          {createEntry.isPending ? "Kaydediliyor…" : "Kaydet ✓"}
         </button>
       </div>
     </>
