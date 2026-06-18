@@ -30,13 +30,17 @@ function NewEntry() {
   const crop = parcel?.crops[0] ?? "Safran";
   const totalCost = Object.values(costs).reduce((a, b) => a + b, 0);
 
-  const save = () => {
-    addEntry({
-      parcelId, date, crop, quantity: qty, unit, quality, photos: [], notes, costs,
-      pricePerUnit: crop === "Safran" ? 345 : 180,
-    });
-    setSaved(true);
-    setTimeout(() => navigate({ to: "/farmer/journal" }), 1800);
+  const save = async () => {
+    try {
+      await createEntry.mutateAsync({
+        parcelId, date, crop, quantity: qty, unit, quality, photos: [], notes, costs,
+        pricePerUnit: crop === "Safran" ? 345 : 180,
+      });
+      setSaved(true);
+      setTimeout(() => navigate({ to: "/farmer/journal" }), 1800);
+    } catch (err) {
+      toast.error((err as Error).message);
+    }
   };
 
   if (saved) {
