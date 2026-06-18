@@ -57,7 +57,7 @@ function FarmerShell() {
             </div>
           </div>
           <div className="mt-3">
-            <FarmPill city="Karabük" area={5} crop="Safran" />
+            <FarmPill city={city} area={totalArea} crop={primaryCrop} />
           </div>
           <div className="mt-3">
             <SeasonBanner />
