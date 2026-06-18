@@ -13,8 +13,8 @@ export const Route = createFileRoute("/farmer/journal/new")({
 
 function NewEntry() {
   const navigate = useNavigate();
-  const parcels = useHasat((s) => s.parcels);
-  const addEntry = useHasat((s) => s.addEntry);
+  const { data: parcels = [] } = useParcels();
+  const createEntry = useCreateEntry();
 
   const [parcelId, setParcelId] = useState(parcels[0]?.id ?? "");
   const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
