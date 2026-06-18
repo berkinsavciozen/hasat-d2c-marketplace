@@ -175,8 +175,8 @@ export const useHasat = create<Store>()(
   persist(
     (set) => ({
       user: null,
-      parcels: seedParcels,
-      entries: seedEntries,
+      parcels: [],
+      entries: [],
       listings: seedListings,
       prices: seedPrices,
       offers: seedOffers,
