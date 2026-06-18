@@ -1,83 +1,84 @@
-## Phase 2 — Wire Journal / Parcels / Certifications to Supabase
+## Phase 3 — Wire Listings, Offers, Orders to Supabase
 
-Replace Zustand reads/writes in three farmer sections with real Supabase queries through TanStack Query. Zustand stays for non-migrated areas (offers, orders, listings, prices, buyer flows) — only the three sections below change.
+Same pattern as Phase 2: hooks in `src/lib/hasat/queries.ts`, mappers, ProgressDots loading, empty states. Zustand keeps owning producers, subscriptions, price alerts, community, pendingOffer hand-off, and notif prefs.
 
-### 1. New data hooks file: `src/lib/hasat/queries.ts`
+### 0. Schema fixup (migration)
 
-Centralize query options + mutations so routes stay thin. All hooks read `auth.uid()` from `supabase.auth.getUser()` (RLS handles row scoping but we still need it for inserts).
+The `orders` table requires `order_ref` (NOT NULL). The DB function `generate_order_ref()` exists but is not attached as a trigger. Attach it:
 
-Query keys:
-- `['parcels', userId]`
-- `['entries', userId]`
-- `['entry', entryId]`
-- `['certifications', userId]`
+```sql
+CREATE TRIGGER orders_set_order_ref
+BEFORE INSERT ON public.orders
+FOR EACH ROW
+WHEN (NEW.order_ref IS NULL OR NEW.order_ref = '')
+EXECUTE FUNCTION public.generate_order_ref();
+```
 
-Hooks:
-- `useParcels()` → `useQuery` selecting `*` from `parcels` ordered by `created_at`.
-- `useCreateParcel()` → `useMutation`. Before insert, ensure a `farms` row exists for the farmer (`select id` then `insert` if missing — first parcel creates the farm). Insert `{ farmer_id, farm_id, name, area, crops, location_label, lat, lng }`. On success invalidate `['parcels']`.
-- `useUpdateParcel()` / `useDeleteParcel()` → mutations by `id`; invalidate `['parcels']`.
-- `useEntries()` → select `*` from `harvest_entries` ordered by `harvest_date desc`.
-- `useEntry(id)` → select single by id (`maybeSingle`).
-- `useCreateEntry()` → insert `{ farmer_id, parcel_id, crop, quantity, unit, quality, notes, costs, harvest_date, photo_urls: [] }`. Invalidate `['entries']`.
-- `useDeleteEntry()` → delete by id. Invalidate `['entries']` + remove `['entry', id]`.
-- `useCertifications()` → select `*` from `certifications`.
+This lets inserts omit `order_ref`. Also confirm `order_seq` sequence exists (the function references it); if not, the migration creates it: `CREATE SEQUENCE IF NOT EXISTS public.order_seq;`.
 
-Each hook is `enabled: !!userId`. User id pulled via a small `useAuthUserId()` helper that subscribes to `supabase.auth.getSession()` once (or reads from existing Zustand `user.id` set by AuthBootstrap in Phase 1).
+### 1. Enum reality check (UI strings → DB enums)
 
-### 2. Map DB rows ↔ existing UI types
+- `order_status` enum is `preparing | shipped | delivered | disputed | completed` — **no `submitted`**. New orders insert as `'preparing'`. The first `order_timeline` row carries the human label "Sipariş Alındı" with `step: 'submitted'` (free-text column).
+- `offer_status` is `pending | accepted | rejected | counter | completed` — **no `cancelled`**. `useUpdateOfferStatus` accepts `'accepted' | 'rejected' | 'counter' | 'completed'`. If a route currently calls "cancelled", we map to `'rejected'`.
+- `delivery_type` enum is `kargo-buyer | kargo-seller | elden`. UI labels in offer screens get a small mapper.
+- `listing_status` is `active | sold | expired`.
 
-The journal UI uses `entry.date` (string), `entry.costs` (object), `entry.parcelId`, etc. DB columns are `harvest_date`, `costs` (jsonb), `parcel_id`. Add small mappers in `queries.ts`:
-- `dbToEntry(row)` → `{ id, parcelId, date: harvest_date, crop, quantity, unit, quality, notes: notes ?? '', costs: (costs as any) ?? {labor:0,...}, photos: photo_urls ?? [], pricePerUnit: undefined }`
-- `dbToParcel(row)` → `{ id, name, area, crops, location: { lat, lng, label: location_label } }`
+### 2. New hooks in `src/lib/hasat/queries.ts`
 
-This lets existing components keep using the current `Parcel` / `HarvestEntry` shapes without prop changes.
+Reuse existing `useAuthUserId()`. Mappers convert DB rows to the existing `Listing`, `Offer`, `Order` shapes the components already use.
+
+**Listings**
+- `useFarmerListings()` — `select * from listings where farmer_id = uid order by created_at desc`.
+- `useActiveListings()` — `select *, profiles!farmer_id(id,name,city) from listings where status='active' order by created_at desc`. Returns listings each with embedded farmer info.
+- `useCreateListing()` — insert `{ farmer_id: uid, harvest_entry_id, crop, quantity, unit, price_per_unit, min_order, quality, description, status: 'active' }`.
+- `useUpdateListing()` — update by id (status/price/quantity/etc).
+- `useDeleteListing()` — delete by id.
+
+**Offers**
+- `useFarmerOffers()` — `select *, buyer:profiles!buyer_id(id,name,city), listing:listings(crop,unit) from offers where farmer_id = uid order by created_at desc`.
+- `useBuyerOffers()` — `select *, listing:listings(crop,unit), farmer:profiles!farmer_id(id,name,city) from offers where buyer_id = uid order by created_at desc`.
+- `useCreateOffer()` — insert `{ buyer_id: uid, farmer_id, listing_id, quantity, price_per_unit, delivery, delivery_date, note, status: 'pending' }`.
+- `useUpdateOfferStatus({ id, status })` — special path for `'accepted'`:
+  1. `update offers set status='accepted' where id=? returning *`
+  2. `insert into orders { offer_id, buyer_id, farmer_id, status: 'preparing' }` returning `id` (DB trigger fills `order_ref`).
+  3. `insert into order_timeline { order_id, step: 'submitted', label: 'Sipariş Alındı', completed_at: now() }`.
+  4. Invalidate `['farmerOffers']`, `['buyerOffers']`, `['farmerOrders']`, `['buyerOrders']`.
+- For `'rejected' | 'counter' | 'completed'` just update status + invalidate offer keys.
+
+**Orders**
+- `useFarmerOrders()` — `select *, offer:offers(quantity,price_per_unit,delivery_date,listing_id, listing:listings(crop,unit)), buyer:profiles!buyer_id(id,name) from orders where farmer_id = uid order by created_at desc`.
+- `useBuyerOrders()` — same with `farmer:profiles!farmer_id(id,name,city)` instead.
+- `useOrderTimeline(orderId)` — `select * from order_timeline where order_id = ? order by completed_at asc nulls last`.
+- `useCreateOrder()` — exposed for direct use, but the typical path is via `useUpdateOfferStatus('accepted')`.
+
+Mappers produce the existing `Order` shape (`code` ← `order_ref`, `producerName` ← embedded farmer, `crop`/`unit`/`pricePerUnit`/`quantity` ← embedded listing/offer, `total` computed, `status` ← DB enum, `timeline` ← from `useOrderTimeline` when needed). Detail screen calls `useOrderTimeline` separately to avoid heavy joins on list pages.
 
 ### 3. Routes to update
 
-**`src/routes/farmer.journal.tsx`**
-- Remove `useHasat` for `parcels`, `entries`, `addParcel`.
-- Use `useParcels()` and `useEntries()`.
-- New parcel sheet calls `useCreateParcel().mutateAsync(...)`; close sheet on success, toast on error.
-- Loading: when either query `isLoading`, render centered `<ProgressDots current={1} total={3} />` with animated cycling (simple `useEffect` setInterval cycling 1→3) inside the parcel grid area.
-- Empty state: keep existing 🌱 block when `parcels.length === 0` after load.
-
-**`src/routes/farmer.journal.new.tsx`**
-- Replace `useHasat` parcels/addEntry with `useParcels()` + `useCreateEntry()`.
-- On save: `mutateAsync` then show success screen, navigate.
-- Disable button while mutation pending.
-
-**`src/routes/farmer.journal.$entryId.tsx`**
-- Replace `useHasat` `entries` lookup with `useEntry(entryId)` for the current entry and `useEntries()` for the YoY chart (filter same parcel client-side).
-- Replace `deleteEntry` with `useDeleteEntry().mutateAsync`.
-- Loading: `ProgressDots` while `isLoading`. If `data === null` after load → existing "Kayıt bulunamadı" block.
-
-**`src/routes/farmer.settings.tsx`**
-- Parcels section: `useParcels()`, `useUpdateParcel()`, `useDeleteParcel()` instead of Zustand.
-- Sertifikalar section: replace `user?.certs` with `useCertifications()`. Render each cert as a chip showing `type` + small line: `Doğrulandı: {verified_at|—}` and `Süre: {expires_at|—}` formatted via `toLocaleDateString('tr-TR')`. Keep existing "Sertifika eklenmemiş" empty state when list is empty after load.
-- Loading: `ProgressDots` placeholder inside each section.
+- `src/routes/farmer.storefront.tsx` — replace listings reads/writes with `useFarmerListings` + `useCreateListing` / `useUpdateListing` / `useDeleteListing`. ProgressDots while loading; existing empty state preserved. The "Add listing" sheet currently does not pick a `harvest_entry_id`; we pass `harvest_entry_id: null`.
+- `src/routes/farmer.home.tsx` — listings stat card uses `useFarmerListings` (count of active).
+- `src/routes/farmer.orders.tsx` — replace offers/addOrder/updateOffer with `useFarmerOffers` + `useUpdateOfferStatus`. The "accept" button calls `mutate({ id, status: 'accepted' })`; toast on success. Drop local `addOrder` call. The completed-orders tab queries `useFarmerOrders`.
+- `src/routes/farmer.orders.$offerId.counter.tsx` — replace `updateOffer` with `useUpdateOfferStatus({ status: 'counter' })` plus a separate `useUpdateOffer()` mutation that writes `counter_offer` jsonb (qty/price/delivery/date/note) and sets status to `'counter'` in one update. Add this mutation alongside `useUpdateOfferStatus`.
+- `src/routes/buyer.discover.tsx` — replace `producers` grid with `useActiveListings()`. Keep the search input filtering on listing crop or farmer name. Listing cards link to `/buyer/offer/$listingId` (existing route). Loading/empty/no-results states use existing markup with ProgressDots.
+- `src/routes/buyer.offer.$listingId.tsx` — fetch listing via a small `useListing(listingId)` (`select *, profiles!farmer_id(id,name,city)`) instead of pulling from `producers`. On submit, call `useCreateOffer()` and navigate to `/buyer/payment` (payment screen still mock-flows the rest, unchanged).
+- `src/routes/buyer.payment.tsx` — currently calls Zustand `addOffer` + `addOrder`. Replace with `useCreateOffer()` only; remove the manual `addOrder` (an order is created later when the farmer accepts). Keep `pendingOffer` Zustand hand-off as-is. After successful insert, navigate to `/buyer/orders`.
+- `src/routes/buyer.orders.tsx` — `useBuyerOrders()` + ProgressDots + empty state.
+- `src/routes/buyer.orders.$orderId.tsx` — fetch single via `useBuyerOrders` (find by id) plus `useOrderTimeline(orderId)` to feed the existing `OrderTimeline` component. Map DB timeline rows `{ step, label, completed_at }` to component shape `{ key, label, doneAt }`.
+- `src/routes/buyer.negotiation.$offerId.tsx` — replace Zustand offer lookup with `useBuyerOffers` (find by id) plus listing/producer info already embedded. On accept-counter / reject, call `useUpdateOfferStatus`.
 
 ### 4. Zustand store cleanup
 
-In `src/lib/hasat/store.ts`:
-- Remove `seedParcels` and `seedEntries` defaults (set initial `parcels: []`, `entries: []`).
-- Keep `addParcel`/`addEntry`/etc. action signatures intact for now (other code may still reference them) but they become no-ops scoped to local state — safer: leave actions untouched, just empty the seed arrays so no mock data leaks into the three migrated sections. Other consumers of `parcels`/`entries` from Zustand: a quick grep shows they're only the three migrated routes, so empty seeds are safe.
+`src/lib/hasat/store.ts`: empty `seedListings`, `seedOffers`, `seedOrders` → `[]`. Keep `producers` and `subscriptions` mocks intact (out of scope). Keep action signatures so non-migrated code (e.g. anything still referring to `addListing`) doesn't break — we will remove dead actions in a later cleanup once all consumers have moved off.
 
-If grep finds other consumers, we'll convert them too in this same pass.
+### 5. Out of scope (unchanged)
 
-### 5. Out of scope (explicitly NOT touched)
-
-- Buyer flows, offers, orders, listings, prices, subscriptions — still Zustand.
-- Photo uploads to `harvest-photos` bucket — `photo_urls` inserted as `[]`.
-- Cost editing in detail screen — read-only as today.
-- `RoleSwitcher` FAB stays.
-
-### Technical notes
-
-- All Supabase calls wrapped in try/catch inside mutation `mutationFn`; errors surfaced via `sonner` `toast.error(err.message)` from the route's `onError`.
-- RLS already scopes rows to the farmer; we still pass `farmer_id: userId` on inserts because the column is NOT NULL and policies likely require `farmer_id = auth.uid()`.
-- `farms` row creation: small helper `ensureFarm(userId)` → `select id from farms where farmer_id = ? limit 1`; if none, `insert { farmer_id }` and return new id. Cached in a module-level `Map<userId, farmId>` to avoid re-querying within a session.
+- Producers detail (`/buyer/producer/$id`), subscriptions, price alerts, community posts.
+- Real payments (UI only).
+- Photo uploads on listings (`photo_urls: []`).
+- Push/email notifications.
 
 ### Files touched
 
-- new: `src/lib/hasat/queries.ts`
-- edited: `src/routes/farmer.journal.tsx`, `src/routes/farmer.journal.new.tsx`, `src/routes/farmer.journal.$entryId.tsx`, `src/routes/farmer.settings.tsx`, `src/lib/hasat/store.ts` (empty seeds only)
+- migration: attach `orders_set_order_ref` trigger (+ `order_seq` if missing).
+- edited: `src/lib/hasat/queries.ts` (extend), `src/lib/hasat/store.ts` (empty seeds).
+- edited routes: `farmer.storefront.tsx`, `farmer.home.tsx`, `farmer.orders.tsx`, `farmer.orders.$offerId.counter.tsx`, `buyer.discover.tsx`, `buyer.offer.$listingId.tsx`, `buyer.payment.tsx`, `buyer.orders.tsx`, `buyer.orders.$orderId.tsx`, `buyer.negotiation.$offerId.tsx`.
