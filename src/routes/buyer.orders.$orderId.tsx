@@ -2,9 +2,10 @@ import { createFileRoute, Link, notFound } from "@tanstack/react-router";
 import { ArrowLeft, MessageCircle } from "lucide-react";
 import { useState } from "react";
 import { OrderTimeline } from "@/components/hasat/OrderTimeline";
+import { LoadingDots } from "@/components/hasat/LoadingDots";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { formatTRY } from "@/lib/hasat/format";
-import { useHasat } from "@/lib/hasat/store";
+import { useBuyerOrders, useOrderTimeline } from "@/lib/hasat/queries";
 
 export const Route = createFileRoute("/buyer/orders/$orderId")({
   head: () => ({ meta: [{ title: "Sipariş — Hasat" }] }),
@@ -14,9 +15,15 @@ export const Route = createFileRoute("/buyer/orders/$orderId")({
 
 function OrderTracker() {
   const { orderId } = Route.useParams();
-  const order = useHasat((s) => s.orders.find((o) => o.id === orderId));
+  const { data: orders = [], isLoading } = useBuyerOrders();
+  const { data: timeline = [] } = useOrderTimeline(orderId);
   const [chatOpen, setChatOpen] = useState(false);
+
+  if (isLoading) return <div className="p-8"><LoadingDots /></div>;
+  const order = orders.find((o) => o.id === orderId);
   if (!order) throw notFound();
+
+  const orderWithTimeline = { ...order, timeline };
 
   return (
     <div>
@@ -42,7 +49,7 @@ function OrderTracker() {
 
         <div className="rounded-2xl bg-card border p-5">
           <h2 className="font-serif text-lg mb-4">Durum</h2>
-          <OrderTimeline order={order} />
+          <OrderTimeline order={orderWithTimeline} />
         </div>
 
         <button onClick={() => setChatOpen(true)}

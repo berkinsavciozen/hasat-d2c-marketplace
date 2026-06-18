@@ -1,5 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useHasat } from "@/lib/hasat/store";
+import { useFarmerListings } from "@/lib/hasat/queries";
 import { FarmerHeader } from "./farmer";
 import { FarmPill } from "@/components/hasat/FarmPill";
 import { SeasonBanner } from "@/components/hasat/SeasonBanner";
@@ -16,9 +17,10 @@ export const Route = createFileRoute("/farmer/home")({
 function Home() {
   const user = useHasat((s) => s.user);
   const entries = useHasat((s) => s.entries);
-  const listings = useHasat((s) => s.listings);
+  const { data: listings = [] } = useFarmerListings();
 
   const totalRevenue = entries.reduce((sum, e) => sum + e.quantity * (e.pricePerUnit ?? 0), 0);
+
 
   const quickActions = [
     { icon: BookOpen, label: "Hasat Kaydet", to: "/farmer/journal/new" as const },

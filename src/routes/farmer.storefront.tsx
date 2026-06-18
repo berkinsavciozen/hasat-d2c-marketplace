@@ -1,9 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { FarmerHeader } from "./farmer";
-import { useHasat } from "@/lib/hasat/store";
+import { useFarmerListings, useCreateListing, useUpdateListing, useDeleteListing } from "@/lib/hasat/queries";
+import { LoadingDots } from "@/components/hasat/LoadingDots";
 import { formatTRY } from "@/lib/hasat/format";
-import { TrustBadge } from "@/components/hasat/TrustBadge";
 import { Stepper } from "@/components/hasat/Stepper";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
@@ -24,8 +24,8 @@ const CROP_EMOJI: Record<string, string> = { Safran: "🌸", Lavanta: "💜", "T
 const CROPS = ["Safran", "Lavanta", "Tıbbi Bitkiler", "Fındık", "Zeytinyağı"];
 
 function Storefront() {
-  const listings = useHasat((s) => s.listings);
-  const removeListing = useHasat((s) => s.removeListing);
+  const { data: listings = [], isLoading } = useFarmerListings();
+  const deleteListing = useDeleteListing();
   const [sheet, setSheet] = useState<{ open: boolean; editing?: Listing | null }>({ open: false });
   const [confirmDelete, setConfirmDelete] = useState<Listing | null>(null);
 
@@ -43,7 +43,9 @@ function Storefront() {
           </TabsList>
 
           <TabsContent value="active" className="mt-4 space-y-3">
-            {active.length === 0 ? (
+            {isLoading ? (
+              <LoadingDots />
+            ) : active.length === 0 ? (
               <div className="rounded-2xl border border-dashed py-12 text-center">
                 <div className="mb-3 text-5xl">🏪</div>
                 <div className="mb-1 font-medium">Henüz ürün listelemediniz</div>
@@ -61,7 +63,9 @@ function Storefront() {
           </TabsContent>
 
           <TabsContent value="history" className="mt-4 space-y-3">
-            {history.length === 0 ? (
+            {isLoading ? (
+              <LoadingDots />
+            ) : history.length === 0 ? (
               <div className="py-12 text-center text-sm text-hmuted">Geçmiş kayıt yok.</div>
             ) : (
               history.map((l) => <ListingCard key={l.id} listing={l} muted />)
@@ -92,10 +96,13 @@ function Storefront() {
           <AlertDialogFooter>
             <AlertDialogCancel>İptal</AlertDialogCancel>
             <AlertDialogAction
-              onClick={() => {
-                if (confirmDelete) {
-                  removeListing(confirmDelete.id);
+              onClick={async () => {
+                if (!confirmDelete) return;
+                try {
+                  await deleteListing.mutateAsync(confirmDelete.id);
                   toast.success("İlan kaldırıldı");
+                } catch (e: any) {
+                  toast.error(e.message ?? "Silinemedi");
                 }
                 setConfirmDelete(null);
               }}
@@ -140,8 +147,8 @@ function ListingCard({ listing, muted, onEdit, onRemove }: { listing: Listing; m
 }
 
 function ListingSheet({ open, editing, onClose }: { open: boolean; editing: Listing | null; onClose: () => void }) {
-  const addListing = useHasat((s) => s.addListing);
-  const updateListing = useHasat((s) => s.updateListing);
+  const createListing = useCreateListing();
+  const updateListing = useUpdateListing();
 
   const [crop, setCrop] = useState(editing?.crop ?? "Safran");
   const [quantity, setQuantity] = useState(editing?.quantity ?? 100);
@@ -151,9 +158,8 @@ function ListingSheet({ open, editing, onClose }: { open: boolean; editing: List
   const [quality, setQuality] = useState<"A" | "B" | "C">(editing?.quality ?? "A");
   const [desc, setDesc] = useState("");
 
-  // re-sync when editing changes
   const editingId = editing?.id;
-  useStateSync(editingId, () => {
+  useEffect(() => {
     if (editing) {
       setCrop(editing.crop); setQuantity(editing.quantity); setUnit(editing.unit);
       setPrice(editing.pricePerUnit); setMinOrder(editing.minOrder); setQuality(editing.quality);
@@ -161,17 +167,24 @@ function ListingSheet({ open, editing, onClose }: { open: boolean; editing: List
       setCrop("Safran"); setQuantity(100); setUnit("g"); setPrice(350); setMinOrder(10); setQuality("A");
     }
     setDesc("");
-  });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [editingId]);
 
-  const save = () => {
-    if (editing) {
-      updateListing(editing.id, { crop, quantity, unit, pricePerUnit: price, minOrder, quality });
-      toast.success("Ürün güncellendi");
-    } else {
-      addListing({ crop, quantity, unit, pricePerUnit: price, minOrder, quality, status: "active" });
-      toast.success("Ürün yayınlandı");
+  const pending = createListing.isPending || updateListing.isPending;
+
+  const save = async () => {
+    try {
+      if (editing) {
+        await updateListing.mutateAsync({ id: editing.id, patch: { crop, quantity, unit, pricePerUnit: price, minOrder, quality } });
+        toast.success("Ürün güncellendi");
+      } else {
+        await createListing.mutateAsync({ crop, quantity, unit, pricePerUnit: price, minOrder, quality, description: desc || undefined });
+        toast.success("Ürün yayınlandı");
+      }
+      onClose();
+    } catch (e: any) {
+      toast.error(e.message ?? "Kaydedilemedi");
     }
-    onClose();
   };
 
   return (
@@ -215,15 +228,11 @@ function ListingSheet({ open, editing, onClose }: { open: boolean; editing: List
             <div className="mb-1.5 text-xs font-medium text-hmuted">Açıklama</div>
             <Textarea value={desc} onChange={(e) => setDesc(e.target.value)} rows={3} placeholder="Ürününüzü tanıtın..." />
           </div>
-          <button onClick={save} className="w-full rounded-xl bg-saffron py-3 text-sm font-medium text-white">Yayınla ✓</button>
+          <button onClick={save} disabled={pending} className="w-full rounded-xl bg-saffron py-3 text-sm font-medium text-white disabled:opacity-50">
+            {pending ? "Kaydediliyor…" : "Yayınla ✓"}
+          </button>
         </div>
       </SheetContent>
     </Sheet>
   );
-}
-
-// tiny helper to reset form state when editing target changes
-import { useEffect } from "react";
-function useStateSync(key: unknown, fn: () => void) {
-  useEffect(() => { fn(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [key]);
 }

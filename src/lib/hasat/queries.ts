@@ -1,7 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import type { Parcel, HarvestEntry } from "./types";
+import type { Parcel, HarvestEntry, Listing, Offer, Order, OrderStatus, BuyerType } from "./types";
 
 export function useAuthUserId() {
   const [userId, setUserId] = useState<string | null>(null);
@@ -227,3 +227,467 @@ export function useCertifications() {
     },
   });
 }
+
+// =====================================================================
+// MARKETPLACE — listings, offers, orders
+// =====================================================================
+
+// ---- delivery label mapping (DB enum <-> UI label) ----
+const DELIVERY_DB_TO_LABEL: Record<string, string> = {
+  "kargo-buyer": "Kargo (Alıcı Öder)",
+  "kargo-seller": "Kargo",
+  "elden": "Üreticiden Teslim",
+};
+export function deliveryLabel(db?: string | null): string {
+  if (!db) return "Kargo";
+  return DELIVERY_DB_TO_LABEL[db] ?? db;
+}
+export function deliveryToDb(label?: string): "kargo-buyer" | "kargo-seller" | "elden" {
+  if (!label) return "kargo-seller";
+  const l = label.toLowerCase();
+  if (l.includes("üretici") || l.includes("teslim al") || l.includes("alıcı alır") || l.includes("kapıda")) return "elden";
+  if (l.includes("alıcı")) return "kargo-buyer";
+  return "kargo-seller";
+}
+
+// ---- mappers ----
+export function dbToListing(r: any): Listing {
+  return {
+    id: r.id,
+    crop: r.crop,
+    quantity: Number(r.quantity),
+    unit: r.unit,
+    pricePerUnit: Number(r.price_per_unit),
+    minOrder: Number(r.min_order),
+    quality: r.quality,
+    status: r.status,
+    producerId: r.farmer_id,
+  };
+}
+
+export interface ActiveListing extends Listing {
+  farmerName: string;
+  farmerCity: string;
+}
+
+export function dbToActiveListing(r: any): ActiveListing {
+  return {
+    ...dbToListing(r),
+    farmerName: r.profiles?.name ?? "Üretici",
+    farmerCity: r.profiles?.city ?? "",
+  };
+}
+
+function dbToOffer(r: any, side: "farmer" | "buyer"): Offer {
+  const counter = r.counter_offer && typeof r.counter_offer === "object" ? r.counter_offer : null;
+  const partyName =
+    side === "farmer" ? (r.buyer?.name ?? "Alıcı") : (r.farmer?.name ?? "Üretici");
+  return {
+    id: r.id,
+    buyerName: partyName,
+    buyerType: ((r.buyer?.buyer_type as BuyerType) ?? "restoran") as BuyerType,
+    crop: r.listing?.crop ?? "—",
+    unit: (r.listing?.unit ?? "kg") as Offer["unit"],
+    quantity: Number(r.quantity),
+    pricePerUnit: Number(r.price_per_unit),
+    createdAt: r.created_at,
+    status: r.status,
+    note: r.note ?? undefined,
+    delivery: deliveryLabel(r.delivery),
+    deliveryDate: r.delivery_date ?? undefined,
+    original: counter
+      ? {
+          quantity: Number(counter.quantity ?? r.quantity),
+          pricePerUnit: Number(counter.pricePerUnit ?? r.price_per_unit),
+          delivery: counter.delivery,
+          deliveryDate: counter.deliveryDate,
+          note: counter.note,
+        }
+      : undefined,
+    producerId: r.farmer_id,
+  };
+}
+
+function dbToOrder(r: any, side: "farmer" | "buyer"): Order {
+  const offer = r.offer ?? {};
+  const listing = offer.listing ?? {};
+  const qty = Number(offer.quantity ?? 0);
+  const price = Number(offer.price_per_unit ?? 0);
+  const partyName = side === "buyer" ? (r.farmer?.name ?? "Üretici") : (r.buyer?.name ?? "Alıcı");
+  // DB order_status -> UI OrderStatus
+  const statusMap: Record<string, OrderStatus> = {
+    preparing: "preparing",
+    shipped: "shipped",
+    delivered: "delivered",
+    completed: "delivered",
+    disputed: "preparing",
+  };
+  return {
+    id: r.id,
+    code: r.order_ref,
+    producerId: r.farmer_id,
+    producerName: partyName,
+    crop: listing.crop ?? "—",
+    quantity: qty,
+    unit: (listing.unit ?? "kg") as Order["unit"],
+    pricePerUnit: price,
+    total: qty * price,
+    delivery: "Kargo",
+    deliveryDate: offer.delivery_date ?? "",
+    status: statusMap[r.status] ?? "preparing",
+    createdAt: r.created_at,
+    timeline: [],
+  };
+}
+
+const TIMELINE_DEFAULT: { key: OrderStatus; label: string }[] = [
+  { key: "sent", label: "Teklif Gönderildi" },
+  { key: "accepted", label: "Kabul Edildi" },
+  { key: "preparing", label: "Hazırlanıyor" },
+  { key: "shipped", label: "Kargoya Verildi" },
+  { key: "delivered", label: "Teslim Edildi" },
+];
+
+function dbToTimeline(rows: any[]): Order["timeline"] {
+  // map step keys: 'submitted' -> 'sent'
+  const byKey = new Map<string, string>();
+  for (const r of rows) {
+    const key = r.step === "submitted" ? "sent" : r.step;
+    if (r.completed_at) byKey.set(key, r.completed_at);
+  }
+  return TIMELINE_DEFAULT.map((s) => ({
+    key: s.key,
+    label: s.label,
+    doneAt: byKey.get(s.key) ?? undefined,
+  }));
+}
+
+// =====================================================================
+// LISTINGS
+// =====================================================================
+export function useFarmerListings() {
+  const userId = useAuthUserId();
+  return useQuery({
+    queryKey: ["farmerListings", userId],
+    enabled: !!userId,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("listings").select("*")
+        .eq("farmer_id", userId!)
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      return (data ?? []).map(dbToListing);
+    },
+  });
+}
+
+export function useActiveListings() {
+  return useQuery({
+    queryKey: ["activeListings"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("listings")
+        .select("*, profiles!listings_farmer_id_fkey(id,name,city)")
+        .eq("status", "active")
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      return (data ?? []).map(dbToActiveListing);
+    },
+  });
+}
+
+export function useListing(listingId: string) {
+  return useQuery({
+    queryKey: ["listing", listingId],
+    enabled: !!listingId,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("listings")
+        .select("*, profiles!listings_farmer_id_fkey(id,name,city)")
+        .eq("id", listingId)
+        .maybeSingle();
+      if (error) throw error;
+      return data ? dbToActiveListing(data) : null;
+    },
+  });
+}
+
+export interface ListingInput {
+  crop: string;
+  quantity: number;
+  unit: "g" | "kg" | "L";
+  pricePerUnit: number;
+  minOrder: number;
+  quality: "A" | "B" | "C";
+  description?: string;
+  harvestEntryId?: string | null;
+}
+
+export function useCreateListing() {
+  const qc = useQueryClient();
+  const userId = useAuthUserId();
+  return useMutation({
+    mutationFn: async (l: ListingInput) => {
+      if (!userId) throw new Error("Oturum bulunamadı");
+      const { data, error } = await supabase.from("listings").insert({
+        farmer_id: userId,
+        harvest_entry_id: l.harvestEntryId ?? null,
+        crop: l.crop,
+        quantity: l.quantity,
+        unit: l.unit,
+        price_per_unit: l.pricePerUnit,
+        min_order: l.minOrder,
+        quality: l.quality,
+        description: l.description ?? null,
+        status: "active",
+      }).select("*").single();
+      if (error) throw error;
+      return dbToListing(data);
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["farmerListings", userId] });
+      qc.invalidateQueries({ queryKey: ["activeListings"] });
+    },
+  });
+}
+
+export function useUpdateListing() {
+  const qc = useQueryClient();
+  const userId = useAuthUserId();
+  return useMutation({
+    mutationFn: async ({ id, patch }: { id: string; patch: Partial<Listing> }) => {
+      const dbPatch: any = {};
+      if (patch.crop !== undefined) dbPatch.crop = patch.crop;
+      if (patch.quantity !== undefined) dbPatch.quantity = patch.quantity;
+      if (patch.unit !== undefined) dbPatch.unit = patch.unit;
+      if (patch.pricePerUnit !== undefined) dbPatch.price_per_unit = patch.pricePerUnit;
+      if (patch.minOrder !== undefined) dbPatch.min_order = patch.minOrder;
+      if (patch.quality !== undefined) dbPatch.quality = patch.quality;
+      if (patch.status !== undefined) dbPatch.status = patch.status;
+      const { error } = await supabase.from("listings").update(dbPatch).eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["farmerListings", userId] });
+      qc.invalidateQueries({ queryKey: ["activeListings"] });
+    },
+  });
+}
+
+export function useDeleteListing() {
+  const qc = useQueryClient();
+  const userId = useAuthUserId();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from("listings").delete().eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["farmerListings", userId] });
+      qc.invalidateQueries({ queryKey: ["activeListings"] });
+    },
+  });
+}
+
+// =====================================================================
+// OFFERS
+// =====================================================================
+export function useFarmerOffers() {
+  const userId = useAuthUserId();
+  return useQuery({
+    queryKey: ["farmerOffers", userId],
+    enabled: !!userId,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("offers")
+        .select("*, buyer:profiles!offers_buyer_id_fkey(id,name,city), listing:listings(crop,unit)")
+        .eq("farmer_id", userId!)
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      return (data ?? []).map((r) => dbToOffer(r, "farmer"));
+    },
+  });
+}
+
+export function useBuyerOffers() {
+  const userId = useAuthUserId();
+  return useQuery({
+    queryKey: ["buyerOffers", userId],
+    enabled: !!userId,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("offers")
+        .select("*, farmer:profiles!offers_farmer_id_fkey(id,name,city), listing:listings(crop,unit)")
+        .eq("buyer_id", userId!)
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      return (data ?? []).map((r) => dbToOffer(r, "buyer"));
+    },
+  });
+}
+
+export interface OfferInput {
+  farmerId: string;
+  listingId: string;
+  quantity: number;
+  pricePerUnit: number;
+  delivery?: string;
+  deliveryDate?: string;
+  note?: string;
+}
+
+export function useCreateOffer() {
+  const qc = useQueryClient();
+  const userId = useAuthUserId();
+  return useMutation({
+    mutationFn: async (o: OfferInput) => {
+      if (!userId) throw new Error("Oturum bulunamadı");
+      const { data, error } = await supabase.from("offers").insert({
+        buyer_id: userId,
+        farmer_id: o.farmerId,
+        listing_id: o.listingId,
+        quantity: o.quantity,
+        price_per_unit: o.pricePerUnit,
+        delivery: deliveryToDb(o.delivery),
+        delivery_date: o.deliveryDate || null,
+        note: o.note || null,
+        status: "pending",
+      }).select("*").single();
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["buyerOffers", userId] });
+      qc.invalidateQueries({ queryKey: ["farmerOffers"] });
+    },
+  });
+}
+
+export type OfferStatusUpdate = "accepted" | "rejected" | "counter" | "completed";
+
+export function useUpdateOfferStatus() {
+  const qc = useQueryClient();
+  const userId = useAuthUserId();
+  return useMutation({
+    mutationFn: async ({ id, status }: { id: string; status: OfferStatusUpdate }) => {
+      const { data: offerRow, error: e1 } = await supabase
+        .from("offers").update({ status }).eq("id", id).select("*").single();
+      if (e1) throw e1;
+
+      if (status === "accepted") {
+        const { data: order, error: e2 } = await supabase.from("orders").insert({
+          offer_id: offerRow.id,
+          buyer_id: offerRow.buyer_id,
+          farmer_id: offerRow.farmer_id,
+          status: "preparing",
+          order_ref: "",
+        } as any).select("id").single();
+        if (e2) throw e2;
+        const { error: e3 } = await supabase.from("order_timeline").insert({
+          order_id: order.id,
+          step: "submitted",
+          label: "Sipariş Alındı",
+          completed_at: new Date().toISOString(),
+        });
+        if (e3) throw e3;
+      }
+      return offerRow;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["farmerOffers", userId] });
+      qc.invalidateQueries({ queryKey: ["buyerOffers", userId] });
+      qc.invalidateQueries({ queryKey: ["farmerOrders", userId] });
+      qc.invalidateQueries({ queryKey: ["buyerOrders", userId] });
+    },
+  });
+}
+
+export interface OfferCounterPatch {
+  quantity: number;
+  pricePerUnit: number;
+  delivery?: string;
+  deliveryDate?: string;
+  note?: string;
+}
+
+export function useCounterOffer() {
+  const qc = useQueryClient();
+  const userId = useAuthUserId();
+  return useMutation({
+    mutationFn: async ({ id, patch, original }: { id: string; patch: OfferCounterPatch; original?: OfferCounterPatch }) => {
+      const { error } = await supabase.from("offers").update({
+        quantity: patch.quantity,
+        price_per_unit: patch.pricePerUnit,
+        delivery: deliveryToDb(patch.delivery),
+        delivery_date: patch.deliveryDate || null,
+        note: patch.note ?? null,
+        status: "counter",
+        counter_offer: original ?? null,
+      } as any).eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["farmerOffers", userId] });
+      qc.invalidateQueries({ queryKey: ["buyerOffers", userId] });
+    },
+  });
+}
+
+// =====================================================================
+// ORDERS
+// =====================================================================
+const ORDER_SELECT =
+  "*, offer:offers(quantity,price_per_unit,delivery_date,listing_id, listing:listings(crop,unit))";
+
+export function useFarmerOrders() {
+  const userId = useAuthUserId();
+  return useQuery({
+    queryKey: ["farmerOrders", userId],
+    enabled: !!userId,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("orders")
+        .select(`${ORDER_SELECT}, buyer:profiles!orders_buyer_id_fkey(id,name)`)
+        .eq("farmer_id", userId!)
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      return (data ?? []).map((r) => dbToOrder(r, "farmer"));
+    },
+  });
+}
+
+export function useBuyerOrders() {
+  const userId = useAuthUserId();
+  return useQuery({
+    queryKey: ["buyerOrders", userId],
+    enabled: !!userId,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("orders")
+        .select(`${ORDER_SELECT}, farmer:profiles!orders_farmer_id_fkey(id,name,city)`)
+        .eq("buyer_id", userId!)
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      return (data ?? []).map((r) => dbToOrder(r, "buyer"));
+    },
+  });
+}
+
+export function useOrderTimeline(orderId: string) {
+  return useQuery({
+    queryKey: ["orderTimeline", orderId],
+    enabled: !!orderId,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("order_timeline")
+        .select("*")
+        .eq("order_id", orderId)
+        .order("completed_at", { ascending: true, nullsFirst: false });
+      if (error) throw error;
+      return dbToTimeline(data ?? []);
+    },
+  });
+}
+
+// shared loading dots (3-cycle)
+export { ProgressDots } from "@/components/hasat/ProgressDots";

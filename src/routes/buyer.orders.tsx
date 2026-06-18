@@ -1,9 +1,10 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import { BuyerHeader } from "@/components/hasat/BuyerHeader";
+import { LoadingDots } from "@/components/hasat/LoadingDots";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { formatTRY } from "@/lib/hasat/format";
-import { useHasat } from "@/lib/hasat/store";
+import { useBuyerOrders } from "@/lib/hasat/queries";
 import type { Order } from "@/lib/hasat/types";
 
 export const Route = createFileRoute("/buyer/orders")({
@@ -21,13 +22,15 @@ const STATUS_LABEL: Record<Order["status"], { label: string; bg: string; fg: str
 
 function OrdersList() {
   const navigate = useNavigate();
-  const orders = useHasat((s) => s.orders);
+  const { data: orders = [], isLoading } = useBuyerOrders();
   const [tab, setTab] = useState("active");
   const active = orders.filter((o) => o.status !== "delivered");
   const done = orders.filter((o) => o.status === "delivered");
 
   const render = (list: Order[]) =>
-    list.length === 0 ? (
+    isLoading ? (
+      <LoadingDots />
+    ) : list.length === 0 ? (
       <div className="rounded-2xl border border-dashed p-8 text-center text-hmuted">Henüz sipariş yok.</div>
     ) : (
       <div className="space-y-3">
