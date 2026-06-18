@@ -33,12 +33,16 @@ function MakeOffer() {
   const [date, setDate] = useState("");
   const [notes, setNotes] = useState("");
 
+  useEffect(() => {
+    if (listing) {
+      setQty((q) => (q === 0 ? listing.minOrder : q));
+      setPrice((p) => (p === 0 ? listing.pricePerUnit : p));
+    }
+  }, [listing]);
+
   if (isLoading) return <div className="p-8"><LoadingDots /></div>;
   if (!listing) throw notFound();
 
-  // initialize once when listing loads
-  if (qty === 0) setQty(listing.minOrder);
-  if (price === 0) setPrice(listing.pricePerUnit);
 
   const total = qty * price;
   const negotiated = price !== listing.pricePerUnit;
