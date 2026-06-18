@@ -28,10 +28,17 @@ function Journal() {
   const { data: entries = [], isLoading: eLoading } = useEntries();
   const createParcel = useCreateParcel();
 
-  const [year, setYear] = useState("2028");
-  const yearEntries = entries.filter((e) => e.date.startsWith(year));
+  const years = Array.from(new Set(entries.map((e) => (e.date ?? "").slice(0, 4)).filter(Boolean))).sort().reverse();
+  const currentYear = String(new Date().getFullYear());
+  const [year, setYear] = useState<string>(currentYear);
+  useEffect(() => {
+    if (years.length && !years.includes(year)) setYear(years[0]);
+  }, [years.join(","), year]);
+  const displayYears = years.length ? years : [currentYear];
+  const yearEntries = entries.filter((e) => (e.date ?? "").startsWith(year));
   const totalQty = yearEntries.reduce((s, e) => s + e.quantity, 0);
-  const totalRev = yearEntries.reduce((s, e) => s + e.quantity * (e.pricePerUnit ?? 0), 0);
+  const totalRev = yearEntries.reduce((s, e) => s + e.quantity * ((e as any).pricePerUnit ?? 0), 0);
+
 
   const [pName, setPName] = useState("");
   const [pArea, setPArea] = useState(2);
@@ -66,13 +73,14 @@ function Journal() {
     <>
       <FarmerHeader title="Tarla Günlüğü">
         <div className="mt-4 flex gap-1 rounded-full bg-white/10 p-1 w-fit">
-          {["2027", "2028", "2029"].map((y) => (
+          {displayYears.map((y) => (
             <button key={y} onClick={() => setYear(y)}
               className={`rounded-full px-3 py-1 text-xs font-mono ${year === y ? "bg-saffron text-white" : "text-hwhite/70"}`}>
               {y}
             </button>
           ))}
         </div>
+
         <div className="mt-4 grid grid-cols-3 gap-2 text-center">
           <div className="rounded-lg bg-white/5 p-3">
             <div className="text-[10px] uppercase text-hwhite/50">Toplam Hasat</div>
@@ -200,12 +208,56 @@ function Journal() {
           </ul>
         )}
 
+        {!isLoading && parcels.length > 0 && (
+          <div className="mt-6">
+            <h2 className="font-serif text-xl mb-3">Hasat Kayıtları</h2>
+            {yearEntries.length === 0 ? (
+              <div className="rounded-xl border border-dashed py-8 text-center text-sm text-hmuted">
+                {year} yılında kayıt yok
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {parcels.map((p) => {
+                  const rows = yearEntries
+                    .filter((e) => e.parcelId === p.id)
+                    .slice()
+                    .sort((a, b) => (b.date ?? "").localeCompare(a.date ?? ""));
+                  if (rows.length === 0) return null;
+                  return (
+                    <div key={p.id} className="rounded-xl border bg-card">
+                      <div className="px-4 py-2 border-b text-xs font-medium text-hmuted">{p.name}</div>
+                      <ul className="divide-y">
+                        {rows.map((e) => (
+                          <li key={e.id}>
+                            <Link to="/farmer/journal/$entryId" params={{ entryId: e.id }}
+                              className="flex items-center justify-between px-4 py-3 hover:bg-muted/40">
+                              <div>
+                                <div className="text-sm font-medium">{e.crop}</div>
+                                <div className="text-xs text-hmuted mt-0.5">{e.date}</div>
+                              </div>
+                              <div className="text-right">
+                                <div className="font-mono text-sm">{e.quantity} {e.unit}</div>
+                                <div className="text-[11px] text-hmuted">Kalite {e.quality}</div>
+                              </div>
+                            </Link>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        )}
+
         <Link
           to="/farmer/journal/new"
           className="fixed bottom-20 right-4 md:bottom-8 md:right-8 z-30 flex items-center gap-2 rounded-full bg-saffron px-5 py-3.5 text-white font-medium shadow-lg shadow-saffron/40 hover:scale-105 transition"
         >
           <Plus className="h-4 w-4" /> Yeni Kayıt
         </Link>
+
       </div>
     </>
   );

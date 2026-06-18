@@ -1,8 +1,8 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { FarmerHeader } from "./farmer";
 import { useHasat } from "@/lib/hasat/store";
-import { useParcels, useUpdateParcel, useDeleteParcel, useCertifications } from "@/lib/hasat/queries";
+import { useParcels, useUpdateParcel, useDeleteParcel, useCertifications, useProfile, useUpdateProfile } from "@/lib/hasat/queries";
 import { ProgressDots } from "@/components/hasat/ProgressDots";
 import { Input } from "@/components/ui/input";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
@@ -14,21 +14,34 @@ export const Route = createFileRoute("/farmer/settings")({ component: Settings }
 
 function Settings() {
   const navigate = useNavigate();
-  const user = useHasat((s) => s.user);
+  const { data: profile } = useProfile();
+  const updateProfile = useUpdateProfile();
   const { data: parcels = [], isLoading: parcelsLoading } = useParcels();
   const { data: certs = [], isLoading: certsLoading } = useCertifications();
-  const updateUser = useHasat((s) => s.updateUser);
   const updateParcel = useUpdateParcel();
   const deleteParcel = useDeleteParcel();
   const setRole = useHasat((s) => s.setRole);
 
-  const [name, setName] = useState(user?.name ?? "");
-  const [city, setCity] = useState(user?.city ?? "");
+  const [name, setName] = useState("");
+  const [city, setCity] = useState("");
   const [editing, setEditing] = useState<string | null>(null);
   const [pName, setPName] = useState("");
   const [pArea, setPArea] = useState(0);
 
-  const saveProfile = () => { updateUser({ name, city }); toast.success("Profil güncellendi"); };
+  useEffect(() => {
+    if (profile) {
+      setName(profile.name ?? "");
+      setCity(profile.city ?? "");
+    }
+  }, [profile]);
+
+  const saveProfile = async () => {
+    try {
+      await updateProfile.mutateAsync({ name, city });
+      toast.success("Profil güncellendi");
+    } catch (e) { toast.error((e as Error).message); }
+  };
+
 
   const openEdit = (id: string) => {
     const p = parcels.find((x) => x.id === id);

@@ -221,12 +221,52 @@ export function useCertifications() {
     enabled: !!userId,
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("certifications").select("*").eq("farmer_id", userId!);
+        .from("certifications").select("*")
+        .eq("farmer_id", userId!)
+        .order("verified_at", { ascending: false, nullsFirst: false });
       if (error) throw error;
       return (data ?? []) as CertRow[];
     },
   });
 }
+
+// ---- profile ----
+export interface ProfileRow {
+  id: string;
+  name: string | null;
+  city: string | null;
+  role: string | null;
+}
+
+export function useProfile() {
+  const userId = useAuthUserId();
+  return useQuery({
+    queryKey: ["profile", userId],
+    enabled: !!userId,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("profiles").select("id, name, city, role")
+        .eq("id", userId!).maybeSingle();
+      if (error) throw error;
+      return (data ?? null) as ProfileRow | null;
+    },
+  });
+}
+
+export function useUpdateProfile() {
+  const qc = useQueryClient();
+  const userId = useAuthUserId();
+  return useMutation({
+    mutationFn: async (patch: { name?: string; city?: string }) => {
+      if (!userId) throw new Error("Oturum bulunamadı");
+      const { error } = await supabase.from("profiles").update(patch).eq("id", userId);
+      if (error) throw error;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["profile", userId] }),
+  });
+}
+
+
 
 // =====================================================================
 // MARKETPLACE — listings, offers, orders
