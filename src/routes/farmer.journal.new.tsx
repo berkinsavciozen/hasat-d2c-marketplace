@@ -1,9 +1,10 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import { ArrowLeft, ChevronDown, Plus } from "lucide-react";
-import { useHasat } from "@/lib/hasat/store";
+import { useParcels, useCreateEntry } from "@/lib/hasat/queries";
 import { Stepper } from "@/components/hasat/Stepper";
 import { formatTRY } from "@/lib/hasat/format";
+import { toast } from "sonner";
 
 export const Route = createFileRoute("/farmer/journal/new")({
   head: () => ({ meta: [{ title: "Yeni Hasat — Hasat" }] }),
