@@ -161,7 +161,12 @@ function EntryDetail() {
           <AlertDialogFooter>
             <AlertDialogCancel>Vazgeç</AlertDialogCancel>
             <AlertDialogAction
-              onClick={() => { deleteEntry(entry.id); navigate({ to: "/farmer/journal" }); }}
+              onClick={async () => {
+                try {
+                  await deleteEntry.mutateAsync(entry.id);
+                  navigate({ to: "/farmer/journal" });
+                } catch (err) { toast.error((err as Error).message); }
+              }}
               className="bg-hred text-white"
             >Sil</AlertDialogAction>
           </AlertDialogFooter>
