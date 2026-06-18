@@ -1,6 +1,6 @@
 import { createFileRoute, Link, useNavigate, notFound } from "@tanstack/react-router";
 import { ArrowLeft } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Stepper } from "@/components/hasat/Stepper";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
