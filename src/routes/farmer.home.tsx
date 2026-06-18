@@ -31,14 +31,7 @@ function Home() {
 
   return (
     <>
-      <FarmerHeader title={`Merhaba, ${user?.name?.split(" ")[0] ?? "Çiftçi"} 👋`}>
-        <div className="mt-3 flex flex-wrap items-center gap-2">
-          <FarmPill city="Karabük" area={5} crop="Safran" />
-        </div>
-        <div className="mt-3 md:hidden">
-          <SeasonBanner />
-        </div>
-      </FarmerHeader>
+      <FarmerHeader title={`Merhaba, ${user?.name?.split(" ")[0] ?? "Çiftçi"} 👋`} />
 
       <div className="p-4 md:p-8 space-y-4">
         {/* Quick actions */}
