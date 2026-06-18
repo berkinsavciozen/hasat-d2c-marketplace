@@ -28,10 +28,17 @@ function Journal() {
   const { data: entries = [], isLoading: eLoading } = useEntries();
   const createParcel = useCreateParcel();
 
-  const [year, setYear] = useState("2028");
-  const yearEntries = entries.filter((e) => e.date.startsWith(year));
+  const years = Array.from(new Set(entries.map((e) => (e.date ?? "").slice(0, 4)).filter(Boolean))).sort().reverse();
+  const currentYear = String(new Date().getFullYear());
+  const [year, setYear] = useState<string>(currentYear);
+  useEffect(() => {
+    if (years.length && !years.includes(year)) setYear(years[0]);
+  }, [years.join(","), year]);
+  const displayYears = years.length ? years : [currentYear];
+  const yearEntries = entries.filter((e) => (e.date ?? "").startsWith(year));
   const totalQty = yearEntries.reduce((s, e) => s + e.quantity, 0);
-  const totalRev = yearEntries.reduce((s, e) => s + e.quantity * (e.pricePerUnit ?? 0), 0);
+  const totalRev = yearEntries.reduce((s, e) => s + e.quantity * ((e as any).pricePerUnit ?? 0), 0);
+
 
   const [pName, setPName] = useState("");
   const [pArea, setPArea] = useState(2);
