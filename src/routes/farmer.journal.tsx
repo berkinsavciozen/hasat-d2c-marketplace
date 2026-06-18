@@ -16,10 +16,10 @@ export const Route = createFileRoute("/farmer/journal")({
 
 function LoadingDots() {
   const [i, setI] = useState(1);
-  useState(() => {
+  useEffect(() => {
     const t = setInterval(() => setI((p) => (p % 3) + 1), 400);
     return () => clearInterval(t);
-  });
+  }, []);
   return <div className="py-12"><ProgressDots current={i} total={3} /></div>;
 }
 
