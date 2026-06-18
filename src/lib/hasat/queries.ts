@@ -235,7 +235,6 @@ export interface ProfileRow {
   id: string;
   name: string | null;
   city: string | null;
-  crop: string | null;
   role: string | null;
 }
 
@@ -246,7 +245,7 @@ export function useProfile() {
     enabled: !!userId,
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("profiles").select("id, name, city, crop, role")
+        .from("profiles").select("id, name, city, role")
         .eq("id", userId!).maybeSingle();
       if (error) throw error;
       return (data ?? null) as ProfileRow | null;
@@ -258,7 +257,7 @@ export function useUpdateProfile() {
   const qc = useQueryClient();
   const userId = useAuthUserId();
   return useMutation({
-    mutationFn: async (patch: { name?: string; city?: string; crop?: string }) => {
+    mutationFn: async (patch: { name?: string; city?: string }) => {
       if (!userId) throw new Error("Oturum bulunamadı");
       const { error } = await supabase.from("profiles").update(patch).eq("id", userId);
       if (error) throw error;
@@ -266,6 +265,7 @@ export function useUpdateProfile() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ["profile", userId] }),
   });
 }
+
 
 
 // =====================================================================
