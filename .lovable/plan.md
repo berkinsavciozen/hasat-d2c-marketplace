@@ -1,74 +1,83 @@
-## Phase 1 — Real Supabase Phone OTP Auth (revised)
+## Phase 2 — Wire Journal / Parcels / Certifications to Supabase
 
-Replace the mock OTP/onboarding flow with real Supabase Auth. UI, routes, and Zustand store shape unchanged; only the data layer changes. Browser `supabase` client at `@/integrations/supabase/client` is reused; no server functions, no migrations.
+Replace Zustand reads/writes in three farmer sections with real Supabase queries through TanStack Query. Zustand stays for non-migrated areas (offers, orders, listings, prices, buyer flows) — only the three sections below change.
 
-### 1. Store change
-`src/lib/hasat/types.ts` — add optional `id?: string` to `User` so we can stash `auth.users.id` via the existing `updateUser` patch.
+### 1. New data hooks file: `src/lib/hasat/queries.ts`
 
-### 2. Login screen (`src/routes/login.tsx`)
-- **Send OTP**:
-  ```ts
-  await supabase.auth.signInWithOtp({
-    phone: '+90' + phoneDigits,
-    options: {
-      channel: channel === 'wa' ? 'whatsapp' : 'sms',
-      data: { role }, // 'farmer' | 'buyer' from existing Route.useSearch()
-    },
-  });
-  ```
-  Error → `toast.error(error.message)`. Success → advance to OTP step + start 30s countdown.
-- **Verify OTP**:
-  ```ts
-  const { data, error } = await supabase.auth.verifyOtp({
-    phone: '+90' + phoneDigits,
-    token: otp.join(''),
-    type: 'sms',
-  });
-  ```
-  Error → toast and stay. Success → fetch profile via `useQueryClient().fetchQuery` keyed `['profile', data.user.id]`:
-  `supabase.from('profiles').select('*').eq('id', data.user.id).single()`.
-  A DB trigger auto-creates the `profiles` row on `auth.users` insert (seeding `role` from `user_metadata.role` set above), so the row always exists. Branch on **`profile.name`**:
-  - `profile.name` null/empty → new user → `setRole(profile.role)`, `updateUser({ id: data.user.id })`, navigate to `/onboarding/${profile.role}`.
-  - `profile.name` non-empty → returning user → `setRole(profile.role)`, `updateUser({ id, name, phone, premium })`, navigate to `/farmer/home` or `/buyer/discover` based on `profile.role`.
-- Resend reuses `signInWithOtp` with same options.
+Centralize query options + mutations so routes stay thin. All hooks read `auth.uid()` from `supabase.auth.getUser()` (RLS handles row scoping but we still need it for inserts).
 
-### 3. Farmer onboarding (`src/routes/onboarding.farmer.tsx`)
-On final-step CTA:
-1. `const { data: { user } } = await supabase.auth.getUser()`; if no user → toast + navigate `/login?role=farmer`.
-2. `await supabase.from('profiles').upsert({ id: user.id, role: 'farmer', name, city, phone: user.phone, premium: false })`.
-3. Selected certifications → `Promise.all` of `supabase.from('certifications').insert({ farmer_id: user.id, type: certType })`.
-4. Any error → `toast.error`, stay.
-5. Success → `setRole('farmer')`, `updateUser({ id: user.id, name, premium: false, ...existing patch })`, navigate `/farmer/home`.
+Query keys:
+- `['parcels', userId]`
+- `['entries', userId]`
+- `['entry', entryId]`
+- `['certifications', userId]`
 
-### 4. Buyer onboarding (`src/routes/onboarding.buyer.tsx`)
-On final-step CTA:
-1. `getUser()` guard → fallback `/login?role=buyer`.
-2. `await supabase.from('profiles').upsert({ id: user.id, role: 'buyer', name: companyName, phone: user.phone })`.
-3. `await supabase.from('buyer_profiles').insert({ user_id: user.id, company_name: companyName, company_type: companyType, monthly_volume: volumeSelection })`.
-4. Errors → toast, stay. Success → `setRole('buyer')`, `updateUser({ id: user.id, ...existing })`, navigate `/buyer/discover`. Trial `Switch` keeps existing local `setPremium(true)`.
+Hooks:
+- `useParcels()` → `useQuery` selecting `*` from `parcels` ordered by `created_at`.
+- `useCreateParcel()` → `useMutation`. Before insert, ensure a `farms` row exists for the farmer (`select id` then `insert` if missing — first parcel creates the farm). Insert `{ farmer_id, farm_id, name, area, crops, location_label, lat, lng }`. On success invalidate `['parcels']`.
+- `useUpdateParcel()` / `useDeleteParcel()` → mutations by `id`; invalidate `['parcels']`.
+- `useEntries()` → select `*` from `harvest_entries` ordered by `harvest_date desc`.
+- `useEntry(id)` → select single by id (`maybeSingle`).
+- `useCreateEntry()` → insert `{ farmer_id, parcel_id, crop, quantity, unit, quality, notes, costs, harvest_date, photo_urls: [] }`. Invalidate `['entries']`.
+- `useDeleteEntry()` → delete by id. Invalidate `['entries']` + remove `['entry', id]`.
+- `useCertifications()` → select `*` from `certifications`.
 
-### 5. Session bootstrap (`src/routes/__root.tsx`)
-Mount `<AuthBootstrap />` inside `RootComponent` before `<Outlet />`. In a `useEffect`:
-- `supabase.auth.getSession()` → if `session.user`, fetch `profiles` row; populate Zustand `setRole` + `updateUser` when `profile.name` is set (otherwise leave role null — user is mid-onboarding).
-- Subscribe `supabase.auth.onAuthStateChange((event) => { if (event === 'SIGNED_OUT') { reset(); router.navigate({ to: '/' }); } })`. Cleanup unsubscribes.
-- No protected-route gating in Phase 1.
+Each hook is `enabled: !!userId`. User id pulled via a small `useAuthUserId()` helper that subscribes to `supabase.auth.getSession()` once (or reads from existing Zustand `user.id` set by AuthBootstrap in Phase 1).
 
-### 6. Logout
-`src/routes/farmer.settings.tsx` and `src/routes/buyer.account.tsx` — replace `reset()` + navigate handler with:
-```ts
-try { await supabase.auth.signOut(); }
-catch (e) { toast.error((e as Error).message); }
-finally { navigate({ to: '/' }); } // onAuthStateChange also resets store
-```
+### 2. Map DB rows ↔ existing UI types
 
-### 7. Kept as-is
-- `RoleSwitcher` FAB stays mounted.
-- No changes to UI components, route layouts, Zustand action signatures, seed data, business screens, RLS, or schema.
+The journal UI uses `entry.date` (string), `entry.costs` (object), `entry.parcelId`, etc. DB columns are `harvest_date`, `costs` (jsonb), `parcel_id`. Add small mappers in `queries.ts`:
+- `dbToEntry(row)` → `{ id, parcelId, date: harvest_date, crop, quantity, unit, quality, notes: notes ?? '', costs: (costs as any) ?? {labor:0,...}, photos: photo_urls ?? [], pricePerUnit: undefined }`
+- `dbToParcel(row)` → `{ id, name, area, crops, location: { lat, lng, label: location_label } }`
+
+This lets existing components keep using the current `Parcel` / `HarvestEntry` shapes without prop changes.
+
+### 3. Routes to update
+
+**`src/routes/farmer.journal.tsx`**
+- Remove `useHasat` for `parcels`, `entries`, `addParcel`.
+- Use `useParcels()` and `useEntries()`.
+- New parcel sheet calls `useCreateParcel().mutateAsync(...)`; close sheet on success, toast on error.
+- Loading: when either query `isLoading`, render centered `<ProgressDots current={1} total={3} />` with animated cycling (simple `useEffect` setInterval cycling 1→3) inside the parcel grid area.
+- Empty state: keep existing 🌱 block when `parcels.length === 0` after load.
+
+**`src/routes/farmer.journal.new.tsx`**
+- Replace `useHasat` parcels/addEntry with `useParcels()` + `useCreateEntry()`.
+- On save: `mutateAsync` then show success screen, navigate.
+- Disable button while mutation pending.
+
+**`src/routes/farmer.journal.$entryId.tsx`**
+- Replace `useHasat` `entries` lookup with `useEntry(entryId)` for the current entry and `useEntries()` for the YoY chart (filter same parcel client-side).
+- Replace `deleteEntry` with `useDeleteEntry().mutateAsync`.
+- Loading: `ProgressDots` while `isLoading`. If `data === null` after load → existing "Kayıt bulunamadı" block.
+
+**`src/routes/farmer.settings.tsx`**
+- Parcels section: `useParcels()`, `useUpdateParcel()`, `useDeleteParcel()` instead of Zustand.
+- Sertifikalar section: replace `user?.certs` with `useCertifications()`. Render each cert as a chip showing `type` + small line: `Doğrulandı: {verified_at|—}` and `Süre: {expires_at|—}` formatted via `toLocaleDateString('tr-TR')`. Keep existing "Sertifika eklenmemiş" empty state when list is empty after load.
+- Loading: `ProgressDots` placeholder inside each section.
+
+### 4. Zustand store cleanup
+
+In `src/lib/hasat/store.ts`:
+- Remove `seedParcels` and `seedEntries` defaults (set initial `parcels: []`, `entries: []`).
+- Keep `addParcel`/`addEntry`/etc. action signatures intact for now (other code may still reference them) but they become no-ops scoped to local state — safer: leave actions untouched, just empty the seed arrays so no mock data leaks into the three migrated sections. Other consumers of `parcels`/`entries` from Zustand: a quick grep shows they're only the three migrated routes, so empty seeds are safe.
+
+If grep finds other consumers, we'll convert them too in this same pass.
+
+### 5. Out of scope (explicitly NOT touched)
+
+- Buyer flows, offers, orders, listings, prices, subscriptions — still Zustand.
+- Photo uploads to `harvest-photos` bucket — `photo_urls` inserted as `[]`.
+- Cost editing in detail screen — read-only as today.
+- `RoleSwitcher` FAB stays.
+
+### Technical notes
+
+- All Supabase calls wrapped in try/catch inside mutation `mutationFn`; errors surfaced via `sonner` `toast.error(err.message)` from the route's `onError`.
+- RLS already scopes rows to the farmer; we still pass `farmer_id: userId` on inserts because the column is NOT NULL and policies likely require `farmer_id = auth.uid()`.
+- `farms` row creation: small helper `ensureFarm(userId)` → `select id from farms where farmer_id = ? limit 1`; if none, `insert { farmer_id }` and return new id. Cached in a module-level `Map<userId, farmId>` to avoid re-querying within a session.
 
 ### Files touched
-- `src/lib/hasat/types.ts` — add `id?: string` to `User`.
-- `src/routes/login.tsx` — real `signInWithOtp` (with `data.role`) + `verifyOtp` + `profile.name` branching.
-- `src/routes/onboarding.farmer.tsx` — profile upsert + certifications insert.
-- `src/routes/onboarding.buyer.tsx` — profile upsert + buyer_profiles insert.
-- `src/routes/__root.tsx` — `AuthBootstrap` (getSession + onAuthStateChange).
-- `src/routes/farmer.settings.tsx`, `src/routes/buyer.account.tsx` — real `signOut`.
+
+- new: `src/lib/hasat/queries.ts`
+- edited: `src/routes/farmer.journal.tsx`, `src/routes/farmer.journal.new.tsx`, `src/routes/farmer.journal.$entryId.tsx`, `src/routes/farmer.settings.tsx`, `src/lib/hasat/store.ts` (empty seeds only)
