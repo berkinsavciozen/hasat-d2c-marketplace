@@ -1,7 +1,8 @@
 import { createFileRoute, useNavigate, useRouter, notFound } from "@tanstack/react-router";
 import { useState } from "react";
 import { ArrowLeft } from "lucide-react";
-import { useHasat } from "@/lib/hasat/store";
+import { useBuyerOffers, useUpdateOfferStatus, useCounterOffer } from "@/lib/hasat/queries";
+import { LoadingDots } from "@/components/hasat/LoadingDots";
 import { formatTRY } from "@/lib/hasat/format";
 import { Stepper } from "@/components/hasat/Stepper";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
@@ -9,7 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import type { Offer, OrderStatus } from "@/lib/hasat/types";
+import type { Offer } from "@/lib/hasat/types";
 
 export const Route = createFileRoute("/buyer/negotiation/$offerId")({
   head: () => ({ meta: [{ title: "Müzakere — Hasat" }] }),
@@ -17,19 +18,20 @@ export const Route = createFileRoute("/buyer/negotiation/$offerId")({
   notFoundComponent: () => <div className="p-8 text-center text-hmuted">Teklif bulunamadı.</div>,
 });
 
-const DELIVERY_OPTS = ["Kapıda Teslim", "Kargo", "Üreticiden Teslim"] as const;
+const DELIVERY_OPTS = ["Üreticiden Teslim", "Kargo", "Kargo (Alıcı Öder)"] as const;
 
 function Negotiation() {
   const { offerId } = Route.useParams();
   const navigate = useNavigate();
   const router = useRouter();
-  const offer = useHasat((s) => s.offers.find((o) => o.id === offerId));
-  const updateOffer = useHasat((s) => s.updateOffer);
-  const addOrder = useHasat((s) => s.addOrder);
-  const producers = useHasat((s) => s.producers);
+  const { data: offers = [], isLoading } = useBuyerOffers();
+  const updateStatus = useUpdateOfferStatus();
+  const counterMut = useCounterOffer();
 
   const [sheetOpen, setSheetOpen] = useState(false);
 
+  if (isLoading) return <div className="p-8"><LoadingDots /></div>;
+  const offer = offers.find((o) => o.id === offerId);
   if (!offer) throw notFound();
   const original = offer.original ?? {
     quantity: offer.quantity,
@@ -43,34 +45,24 @@ function Negotiation() {
   const counterTotal = offer.quantity * offer.pricePerUnit;
   const diff = counterTotal - yourTotal;
 
-  const accept = () => {
-    updateOffer(offer.id, { status: "accepted" });
-    const code = `HT-2028-${String(Math.floor(Math.random() * 9000) + 1000)}`;
-    const status: OrderStatus = "accepted";
-    const all: { key: OrderStatus; label: string }[] = [
-      { key: "sent", label: "Teklif Gönderildi" },
-      { key: "accepted", label: "Kabul Edildi" },
-      { key: "preparing", label: "Hazırlanıyor" },
-      { key: "shipped", label: "Kargoya Verildi" },
-      { key: "delivered", label: "Teslim Edildi" },
-    ];
-    const now = new Date();
-    const timeline = all.map((s, i) => ({ ...s, doneAt: i <= 1 ? new Date(now.getTime() - (1 - i) * 3600 * 1000).toISOString() : undefined }));
-    const producer = producers.find((p) => p.id === offer.producerId) ?? producers[0];
-    addOrder({
-      code, producerId: producer.id, producerName: producer.name, crop: offer.crop,
-      quantity: offer.quantity, unit: offer.unit, pricePerUnit: offer.pricePerUnit,
-      total: counterTotal, delivery: offer.delivery ?? "Kargo",
-      deliveryDate: offer.deliveryDate ?? "", status, createdAt: now.toISOString(), timeline,
-    });
-    toast.success("Teklif kabul edildi · Sipariş oluşturuldu");
-    navigate({ to: "/buyer/orders" });
+  const accept = async () => {
+    try {
+      await updateStatus.mutateAsync({ id: offer.id, status: "accepted" });
+      toast.success("Teklif kabul edildi · Sipariş oluşturuldu");
+      navigate({ to: "/buyer/orders" });
+    } catch (e: any) {
+      toast.error(e.message ?? "İşlem başarısız");
+    }
   };
 
-  const reject = () => {
-    updateOffer(offer.id, { status: "rejected" });
-    toast("Teklif reddedildi");
-    router.history.back();
+  const reject = async () => {
+    try {
+      await updateStatus.mutateAsync({ id: offer.id, status: "rejected" });
+      toast("Teklif reddedildi");
+      router.history.back();
+    } catch (e: any) {
+      toast.error(e.message ?? "İşlem başarısız");
+    }
   };
 
   return (
@@ -106,11 +98,19 @@ function Negotiation() {
         </div>
       </div>
 
-      <CounterSheet open={sheetOpen} onOpenChange={setSheetOpen} offer={offer} onSubmit={(patch) => {
-        updateOffer(offer.id, { ...patch, status: "pending", original: { quantity: offer.quantity, pricePerUnit: offer.pricePerUnit, delivery: offer.delivery, deliveryDate: offer.deliveryDate, note: offer.note } });
-        toast.success("Karşı teklif gönderildi");
-        setSheetOpen(false);
-        navigate({ to: "/buyer/orders" });
+      <CounterSheet open={sheetOpen} onOpenChange={setSheetOpen} offer={offer} pending={counterMut.isPending} onSubmit={async (patch) => {
+        try {
+          await counterMut.mutateAsync({
+            id: offer.id,
+            patch,
+            original: { quantity: offer.quantity, pricePerUnit: offer.pricePerUnit, delivery: offer.delivery, deliveryDate: offer.deliveryDate, note: offer.note },
+          });
+          toast.success("Karşı teklif gönderildi");
+          setSheetOpen(false);
+          navigate({ to: "/buyer/orders" });
+        } catch (e: any) {
+          toast.error(e.message ?? "Gönderilemedi");
+        }
       }} />
     </div>
   );
@@ -147,7 +147,7 @@ function Row({ label, value, cls }: { label: string; value: string; cls?: string
   );
 }
 
-function CounterSheet({ open, onOpenChange, offer, onSubmit }: { open: boolean; onOpenChange: (b: boolean) => void; offer: Offer; onSubmit: (patch: Partial<Offer>) => void }) {
+function CounterSheet({ open, onOpenChange, offer, onSubmit, pending }: { open: boolean; onOpenChange: (b: boolean) => void; offer: Offer; onSubmit: (patch: { quantity: number; pricePerUnit: number; delivery: string; deliveryDate: string; note: string }) => void; pending: boolean }) {
   const [qty, setQty] = useState(offer.quantity);
   const [price, setPrice] = useState(offer.pricePerUnit);
   const [delivery, setDelivery] = useState(offer.delivery ?? DELIVERY_OPTS[1]);
@@ -192,9 +192,10 @@ function CounterSheet({ open, onOpenChange, offer, onSubmit }: { open: boolean; 
             <div className="text-xs text-hmuted">Yeni toplam</div>
             <div className="font-mono text-2xl font-bold text-saffron">{formatTRY(qty * price)}</div>
           </div>
-          <button onClick={() => onSubmit({ quantity: qty, pricePerUnit: price, delivery, deliveryDate: date, note: note || offer.note })}
-            className="w-full rounded-xl bg-saffron py-3 text-sm font-medium text-white">
-            Karşı Teklif Gönder
+          <button onClick={() => onSubmit({ quantity: qty, pricePerUnit: price, delivery, deliveryDate: date, note: note || offer.note || "" })}
+            disabled={pending}
+            className="w-full rounded-xl bg-saffron py-3 text-sm font-medium text-white disabled:opacity-50">
+            {pending ? "Gönderiliyor…" : "Karşı Teklif Gönder"}
           </button>
         </div>
       </SheetContent>
