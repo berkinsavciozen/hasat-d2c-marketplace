@@ -15,10 +15,11 @@ export const Route = createFileRoute("/farmer/settings")({ component: Settings }
 function Settings() {
   const navigate = useNavigate();
   const user = useHasat((s) => s.user);
-  const parcels = useHasat((s) => s.parcels);
+  const { data: parcels = [], isLoading: parcelsLoading } = useParcels();
+  const { data: certs = [], isLoading: certsLoading } = useCertifications();
   const updateUser = useHasat((s) => s.updateUser);
-  const updateParcel = useHasat((s) => s.updateParcel);
-  const deleteParcel = useHasat((s) => s.deleteParcel);
+  const updateParcel = useUpdateParcel();
+  const deleteParcel = useDeleteParcel();
   const setRole = useHasat((s) => s.setRole);
 
   const [name, setName] = useState(user?.name ?? "");
@@ -35,11 +36,20 @@ function Settings() {
     setEditing(id); setPName(p.name); setPArea(p.area);
   };
 
-  const saveParcel = () => {
+  const saveParcel = async () => {
     if (!editing) return;
-    updateParcel(editing, { name: pName, area: pArea });
-    setEditing(null);
-    toast.success("Parsel güncellendi");
+    try {
+      await updateParcel.mutateAsync({ id: editing, patch: { name: pName, area: pArea } });
+      setEditing(null);
+      toast.success("Parsel güncellendi");
+    } catch (e) { toast.error((e as Error).message); }
+  };
+
+  const removeParcel = async (id: string) => {
+    try {
+      await deleteParcel.mutateAsync(id);
+      toast.success("Parsel silindi");
+    } catch (e) { toast.error((e as Error).message); }
   };
 
   const logout = async () => {
@@ -47,6 +57,8 @@ function Settings() {
     catch (e) { toast.error((e as Error).message); }
     finally { setRole(null); navigate({ to: "/" }); }
   };
+
+  const fmtDate = (s: string | null) => s ? new Date(s).toLocaleDateString("tr-TR") : "—";
 
   return (
     <>
