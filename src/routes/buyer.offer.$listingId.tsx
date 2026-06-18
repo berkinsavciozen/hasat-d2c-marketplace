@@ -2,11 +2,12 @@ import { createFileRoute, Link, useNavigate, notFound } from "@tanstack/react-ro
 import { ArrowLeft } from "lucide-react";
 import { useState } from "react";
 import { Stepper } from "@/components/hasat/Stepper";
-import { TrustBadge } from "@/components/hasat/TrustBadge";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
+import { LoadingDots } from "@/components/hasat/LoadingDots";
 import { formatTRY } from "@/lib/hasat/format";
 import { useHasat } from "@/lib/hasat/store";
+import { useListing } from "@/lib/hasat/queries";
 
 export const Route = createFileRoute("/buyer/offer/$listingId")({
   head: () => ({ meta: [{ title: "Teklif Ver — Hasat" }] }),
@@ -15,36 +16,46 @@ export const Route = createFileRoute("/buyer/offer/$listingId")({
 });
 
 const DELIVERY = [
-  { id: "kargo", label: "Kargo", desc: "3-5 iş günü" },
-  { id: "kurye", label: "Aynı Gün Kurye", desc: "Sadece İstanbul" },
-  { id: "teslim", label: "Üreticiden Teslim", desc: "Çiftlikten alın" },
+  { id: "Kargo", label: "Kargo", desc: "3-5 iş günü" },
+  { id: "Kargo (Alıcı Öder)", label: "Aynı Gün Kurye", desc: "Sadece İstanbul" },
+  { id: "Üreticiden Teslim", label: "Üreticiden Teslim", desc: "Çiftlikten alın" },
 ];
 
 function MakeOffer() {
   const { listingId } = Route.useParams();
   const navigate = useNavigate();
-  const producers = useHasat((s) => s.producers);
   const setPendingOffer = useHasat((s) => s.setPendingOffer);
+  const { data: listing, isLoading } = useListing(listingId);
 
-  let producer = producers.find((p) => p.listings.some((l) => l.id === listingId));
-  const listing = producer?.listings.find((l) => l.id === listingId);
-  if (!producer || !listing) throw notFound();
-
-  const [qty, setQty] = useState(listing.minOrder);
-  const [price, setPrice] = useState(listing.pricePerUnit);
-  const [delivery, setDelivery] = useState("kargo");
+  const [qty, setQty] = useState(0);
+  const [price, setPrice] = useState(0);
+  const [delivery, setDelivery] = useState(DELIVERY[0].id);
   const [date, setDate] = useState("");
   const [notes, setNotes] = useState("");
+
+  if (isLoading) return <div className="p-8"><LoadingDots /></div>;
+  if (!listing) throw notFound();
+
+  // initialize once when listing loads
+  if (qty === 0) setQty(listing.minOrder);
+  if (price === 0) setPrice(listing.pricePerUnit);
 
   const total = qty * price;
   const negotiated = price !== listing.pricePerUnit;
 
   const submit = () => {
     setPendingOffer({
-      listingId, producerId: producer!.id, producerName: producer!.name,
-      crop: listing!.crop, quantity: qty, unit: listing!.unit, pricePerUnit: price,
-      delivery: DELIVERY.find((d) => d.id === delivery)?.label ?? delivery,
-      deliveryDate: date, notes, total,
+      listingId,
+      producerId: listing.producerId ?? "",
+      producerName: listing.farmerName,
+      crop: listing.crop,
+      quantity: qty,
+      unit: listing.unit,
+      pricePerUnit: price,
+      delivery,
+      deliveryDate: date,
+      notes,
+      total,
     });
     navigate({ to: "/buyer/payment" });
   };
@@ -52,7 +63,7 @@ function MakeOffer() {
   return (
     <div>
       <div className="px-4 pt-5 pb-4 md:px-8 flex items-center gap-3" style={{ background: "var(--dark)", color: "var(--hwhite)" }}>
-        <Link to="/buyer/producer/$id" params={{ id: producer.id }} className="grid h-9 w-9 place-items-center rounded-full bg-white/10">
+        <Link to="/buyer/discover" className="grid h-9 w-9 place-items-center rounded-full bg-white/10">
           <ArrowLeft className="h-4 w-4" />
         </Link>
         <h1 className="font-serif text-xl">Teklif Ver</h1>
@@ -60,11 +71,8 @@ function MakeOffer() {
 
       <div className="p-4 md:p-8 space-y-5 max-w-2xl">
         <div className="rounded-2xl bg-card border p-4">
-          <div className="text-xs text-hmuted">{producer.name}</div>
+          <div className="text-xs text-hmuted">{listing.farmerName} {listing.farmerCity ? `· ${listing.farmerCity}` : ""}</div>
           <div className="font-serif text-lg mt-1">{listing.crop}</div>
-          <div className="mt-2 flex flex-wrap gap-1">
-            {producer.badges.slice(0, 3).map((b) => <TrustBadge key={b} type={b} />)}
-          </div>
           <div className="mt-3 flex items-baseline justify-between">
             <div className="text-xs text-hmuted">Mevcut: {listing.quantity} {listing.unit} · Min {listing.minOrder} {listing.unit}</div>
             <div style={{ fontFamily: "Courier New, monospace", color: "var(--saffron)" }} className="text-base">
