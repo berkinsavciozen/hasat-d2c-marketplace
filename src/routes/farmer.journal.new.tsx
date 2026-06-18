@@ -1,9 +1,10 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import { ArrowLeft, ChevronDown, Plus } from "lucide-react";
-import { useHasat } from "@/lib/hasat/store";
+import { useParcels, useCreateEntry } from "@/lib/hasat/queries";
 import { Stepper } from "@/components/hasat/Stepper";
 import { formatTRY } from "@/lib/hasat/format";
+import { toast } from "sonner";
 
 export const Route = createFileRoute("/farmer/journal/new")({
   head: () => ({ meta: [{ title: "Yeni Hasat — Hasat" }] }),
@@ -12,8 +13,8 @@ export const Route = createFileRoute("/farmer/journal/new")({
 
 function NewEntry() {
   const navigate = useNavigate();
-  const parcels = useHasat((s) => s.parcels);
-  const addEntry = useHasat((s) => s.addEntry);
+  const { data: parcels = [] } = useParcels();
+  const createEntry = useCreateEntry();
 
   const [parcelId, setParcelId] = useState(parcels[0]?.id ?? "");
   const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
@@ -29,13 +30,17 @@ function NewEntry() {
   const crop = parcel?.crops[0] ?? "Safran";
   const totalCost = Object.values(costs).reduce((a, b) => a + b, 0);
 
-  const save = () => {
-    addEntry({
-      parcelId, date, crop, quantity: qty, unit, quality, photos: [], notes, costs,
-      pricePerUnit: crop === "Safran" ? 345 : 180,
-    });
-    setSaved(true);
-    setTimeout(() => navigate({ to: "/farmer/journal" }), 1800);
+  const save = async () => {
+    try {
+      await createEntry.mutateAsync({
+        parcelId, date, crop, quantity: qty, unit, quality, photos: [], notes, costs,
+        pricePerUnit: crop === "Safran" ? 345 : 180,
+      });
+      setSaved(true);
+      setTimeout(() => navigate({ to: "/farmer/journal" }), 1800);
+    } catch (err) {
+      toast.error((err as Error).message);
+    }
   };
 
   if (saved) {
@@ -172,10 +177,10 @@ function NewEntry() {
 
         <button
           onClick={save}
-          disabled={!parcelId || qty <= 0}
+          disabled={!parcelId || qty <= 0 || createEntry.isPending}
           className="w-full rounded-xl bg-saffron py-3.5 text-white font-medium disabled:opacity-40"
         >
-          Kaydet ✓
+          {createEntry.isPending ? "Kaydediliyor…" : "Kaydet ✓"}
         </button>
       </div>
     </>

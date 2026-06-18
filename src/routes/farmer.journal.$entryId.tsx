@@ -1,7 +1,9 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { ArrowLeft, Pencil, MoreVertical, Trash2 } from "lucide-react";
 import { useState } from "react";
-import { useHasat } from "@/lib/hasat/store";
+import { useEntry, useEntries, useDeleteEntry } from "@/lib/hasat/queries";
+import { ProgressDots } from "@/components/hasat/ProgressDots";
+import { toast } from "sonner";
 import { formatTRY, formatDelta } from "@/lib/hasat/format";
 import { AIInsightBanner } from "@/components/hasat/AIInsightBanner";
 import { BarChart, Bar, XAxis, ResponsiveContainer, Cell } from "recharts";
@@ -18,11 +20,15 @@ export const Route = createFileRoute("/farmer/journal/$entryId")({
 function EntryDetail() {
   const { entryId } = Route.useParams();
   const navigate = useNavigate();
-  const entry = useHasat((s) => s.entries.find((e) => e.id === entryId));
-  const allEntries = useHasat((s) => s.entries);
-  const deleteEntry = useHasat((s) => s.deleteEntry);
+  const { data: entry, isLoading } = useEntry(entryId);
+  const { data: allEntries = [] } = useEntries();
+  const deleteEntry = useDeleteEntry();
   const [menuOpen, setMenuOpen] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
+
+  if (isLoading) {
+    return <div className="p-12"><ProgressDots current={2} total={3} /></div>;
+  }
 
   if (!entry) {
     return (
@@ -33,7 +39,7 @@ function EntryDetail() {
     );
   }
 
-  const totalCost = Object.values(entry.costs).reduce((a, b) => a + b, 0);
+  const totalCost = Object.values(entry.costs).reduce((a: number, b: number) => a + b, 0);
   const revenue = entry.quantity * (entry.pricePerUnit ?? 0);
   const profit = revenue - totalCost;
   const margin = revenue > 0 ? (profit / revenue) * 100 : 0;
@@ -155,7 +161,12 @@ function EntryDetail() {
           <AlertDialogFooter>
             <AlertDialogCancel>Vazgeç</AlertDialogCancel>
             <AlertDialogAction
-              onClick={() => { deleteEntry(entry.id); navigate({ to: "/farmer/journal" }); }}
+              onClick={async () => {
+                try {
+                  await deleteEntry.mutateAsync(entry.id);
+                  navigate({ to: "/farmer/journal" });
+                } catch (err) { toast.error((err as Error).message); }
+              }}
               className="bg-hred text-white"
             >Sil</AlertDialogAction>
           </AlertDialogFooter>

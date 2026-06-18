@@ -2,6 +2,8 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import { FarmerHeader } from "./farmer";
 import { useHasat } from "@/lib/hasat/store";
+import { useParcels, useUpdateParcel, useDeleteParcel, useCertifications } from "@/lib/hasat/queries";
+import { ProgressDots } from "@/components/hasat/ProgressDots";
 import { Input } from "@/components/ui/input";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Bell, ChevronRight, LogOut, Pencil, Trash2 } from "lucide-react";
@@ -13,10 +15,11 @@ export const Route = createFileRoute("/farmer/settings")({ component: Settings }
 function Settings() {
   const navigate = useNavigate();
   const user = useHasat((s) => s.user);
-  const parcels = useHasat((s) => s.parcels);
+  const { data: parcels = [], isLoading: parcelsLoading } = useParcels();
+  const { data: certs = [], isLoading: certsLoading } = useCertifications();
   const updateUser = useHasat((s) => s.updateUser);
-  const updateParcel = useHasat((s) => s.updateParcel);
-  const deleteParcel = useHasat((s) => s.deleteParcel);
+  const updateParcel = useUpdateParcel();
+  const deleteParcel = useDeleteParcel();
   const setRole = useHasat((s) => s.setRole);
 
   const [name, setName] = useState(user?.name ?? "");
@@ -33,11 +36,20 @@ function Settings() {
     setEditing(id); setPName(p.name); setPArea(p.area);
   };
 
-  const saveParcel = () => {
+  const saveParcel = async () => {
     if (!editing) return;
-    updateParcel(editing, { name: pName, area: pArea });
-    setEditing(null);
-    toast.success("Parsel güncellendi");
+    try {
+      await updateParcel.mutateAsync({ id: editing, patch: { name: pName, area: pArea } });
+      setEditing(null);
+      toast.success("Parsel güncellendi");
+    } catch (e) { toast.error((e as Error).message); }
+  };
+
+  const removeParcel = async (id: string) => {
+    try {
+      await deleteParcel.mutateAsync(id);
+      toast.success("Parsel silindi");
+    } catch (e) { toast.error((e as Error).message); }
   };
 
   const logout = async () => {
@@ -45,6 +57,8 @@ function Settings() {
     catch (e) { toast.error((e as Error).message); }
     finally { setRole(null); navigate({ to: "/" }); }
   };
+
+  const fmtDate = (s: string | null) => s ? new Date(s).toLocaleDateString("tr-TR") : "—";
 
   return (
     <>
@@ -66,38 +80,54 @@ function Settings() {
         </Section>
 
         <Section title="Parsellerim">
-          <div className="space-y-2">
-            {parcels.map((p) => (
-              <div key={p.id} className="flex items-center justify-between rounded-lg border border-border p-3">
-                <div>
-                  <div className="text-sm font-medium">{p.name}</div>
-                  <div className="text-xs text-muted-foreground">{p.area} dönüm · {p.location.label}</div>
+          {parcelsLoading ? (
+            <div className="py-6"><ProgressDots current={2} total={3} /></div>
+          ) : (
+            <div className="space-y-2">
+              {parcels.map((p) => (
+                <div key={p.id} className="flex items-center justify-between rounded-lg border border-border p-3">
+                  <div>
+                    <div className="text-sm font-medium">{p.name}</div>
+                    <div className="text-xs text-muted-foreground">{p.area} dönüm · {p.location.label}</div>
+                  </div>
+                  <div className="flex gap-1">
+                    <button onClick={() => openEdit(p.id)} className="grid h-8 w-8 place-items-center rounded-md hover:bg-muted">
+                      <Pencil className="h-4 w-4" />
+                    </button>
+                    <button onClick={() => removeParcel(p.id)}
+                      className="grid h-8 w-8 place-items-center rounded-md hover:bg-destructive/10 text-destructive">
+                      <Trash2 className="h-4 w-4" />
+                    </button>
+                  </div>
                 </div>
-                <div className="flex gap-1">
-                  <button onClick={() => openEdit(p.id)} className="grid h-8 w-8 place-items-center rounded-md hover:bg-muted">
-                    <Pencil className="h-4 w-4" />
-                  </button>
-                  <button onClick={() => { deleteParcel(p.id); toast.success("Parsel silindi"); }}
-                    className="grid h-8 w-8 place-items-center rounded-md hover:bg-destructive/10 text-destructive">
-                    <Trash2 className="h-4 w-4" />
-                  </button>
-                </div>
-              </div>
-            ))}
-            {parcels.length === 0 && <div className="text-xs text-muted-foreground py-4 text-center">Henüz parsel yok</div>}
-          </div>
+              ))}
+              {parcels.length === 0 && <div className="text-xs text-muted-foreground py-4 text-center">Henüz parsel yok</div>}
+            </div>
+          )}
         </Section>
 
         <Section title="Sertifikalar">
-          <div className="flex flex-wrap gap-2">
-            {(user?.certs ?? []).length === 0 && <div className="text-xs text-muted-foreground">Sertifika eklenmemiş</div>}
-            {(user?.certs ?? []).map((c) => (
-              <span key={c} className="px-2 py-1 text-xs rounded-full" style={{ background: "color-mix(in oklab, var(--sage) 30%, transparent)" }}>
-                ✓ {c}
-              </span>
-            ))}
-          </div>
+          {certsLoading ? (
+            <div className="py-4"><ProgressDots current={1} total={3} /></div>
+          ) : certs.length === 0 ? (
+            <div className="text-xs text-muted-foreground">Sertifika eklenmemiş</div>
+          ) : (
+            <div className="flex flex-col gap-2">
+              {certs.map((c) => (
+                <div key={c.id} className="flex items-center justify-between rounded-lg border border-border px-3 py-2">
+                  <span className="px-2 py-1 text-xs rounded-full" style={{ background: "color-mix(in oklab, var(--sage) 30%, transparent)" }}>
+                    ✓ {c.type}
+                  </span>
+                  <div className="text-[11px] text-muted-foreground text-right">
+                    <div>Doğrulandı: {fmtDate(c.verified_at)}</div>
+                    <div>Süre: {fmtDate(c.expires_at)}</div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </Section>
+
 
         <Link to="/farmer/settings/notifs"
           className="flex items-center gap-3 rounded-xl border border-border bg-card p-4 hover:bg-muted/50">

@@ -1,28 +1,38 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Plus } from "lucide-react";
-import { useHasat } from "@/lib/hasat/store";
 import { FarmerHeader } from "./farmer";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { Stepper } from "@/components/hasat/Stepper";
+import { ProgressDots } from "@/components/hasat/ProgressDots";
 import { formatTRY } from "@/lib/hasat/format";
+import { useParcels, useEntries, useCreateParcel } from "@/lib/hasat/queries";
+import { toast } from "sonner";
 
 export const Route = createFileRoute("/farmer/journal")({
   head: () => ({ meta: [{ title: "Günlük — Hasat" }] }),
   component: Journal,
 });
 
+function LoadingDots() {
+  const [i, setI] = useState(1);
+  useEffect(() => {
+    const t = setInterval(() => setI((p) => (p % 3) + 1), 400);
+    return () => clearInterval(t);
+  }, []);
+  return <div className="py-12"><ProgressDots current={i} total={3} /></div>;
+}
+
 function Journal() {
-  const parcels = useHasat((s) => s.parcels);
-  const entries = useHasat((s) => s.entries);
-  const addParcel = useHasat((s) => s.addParcel);
+  const { data: parcels = [], isLoading: pLoading } = useParcels();
+  const { data: entries = [], isLoading: eLoading } = useEntries();
+  const createParcel = useCreateParcel();
 
   const [year, setYear] = useState("2028");
   const yearEntries = entries.filter((e) => e.date.startsWith(year));
   const totalQty = yearEntries.reduce((s, e) => s + e.quantity, 0);
   const totalRev = yearEntries.reduce((s, e) => s + e.quantity * (e.pricePerUnit ?? 0), 0);
 
-  // New parcel form
   const [pName, setPName] = useState("");
   const [pArea, setPArea] = useState(2);
   const [pCrops, setPCrops] = useState<string[]>(["Safran"]);
@@ -34,11 +44,23 @@ function Journal() {
     setTimeout(() => setGpsState("done"), 1500);
   };
 
-  const saveParcel = () => {
-    addParcel({ name: pName, area: pArea, crops: pCrops, location: { lat: 41.25, lng: 32.69, label: "Karabük, Safranbolu" } });
-    setOpen(false);
-    setPName(""); setPArea(2); setPCrops(["Safran"]); setGpsState("idle");
+  const saveParcel = async () => {
+    try {
+      await createParcel.mutateAsync({
+        name: pName,
+        area: pArea,
+        crops: pCrops,
+        location: { lat: 41.25, lng: 32.69, label: "Karabük, Safranbolu" },
+      });
+      setOpen(false);
+      setPName(""); setPArea(2); setPCrops(["Safran"]); setGpsState("idle");
+      toast.success("Parsel eklendi");
+    } catch (err) {
+      toast.error((err as Error).message);
+    }
   };
+
+  const isLoading = pLoading || eLoading;
 
   return (
     <>
@@ -128,17 +150,19 @@ function Journal() {
                 </div>
                 <button
                   onClick={saveParcel}
-                  disabled={!pName.trim()}
+                  disabled={!pName.trim() || createParcel.isPending}
                   className="w-full rounded-xl bg-saffron py-3 text-white font-medium disabled:opacity-40"
                 >
-                  Parseli Kaydet ✓
+                  {createParcel.isPending ? "Kaydediliyor…" : "Parseli Kaydet ✓"}
                 </button>
               </div>
             </SheetContent>
           </Sheet>
         </div>
 
-        {parcels.length === 0 ? (
+        {isLoading ? (
+          <LoadingDots />
+        ) : parcels.length === 0 ? (
           <div className="rounded-2xl border border-dashed py-12 text-center">
             <div className="text-4xl mb-2">🌱</div>
             <div className="font-serif text-lg">Henüz kayıt yok</div>
