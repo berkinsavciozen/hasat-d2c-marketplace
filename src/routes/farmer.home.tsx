@@ -2,8 +2,6 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useHasat } from "@/lib/hasat/store";
 import { useFarmerListings } from "@/lib/hasat/queries";
 import { FarmerHeader } from "./farmer";
-import { FarmPill } from "@/components/hasat/FarmPill";
-import { SeasonBanner } from "@/components/hasat/SeasonBanner";
 import { Sparkline } from "@/components/hasat/Sparkline";
 import { AIInsightBanner } from "@/components/hasat/AIInsightBanner";
 import { formatTRY } from "@/lib/hasat/format";
@@ -31,14 +29,7 @@ function Home() {
 
   return (
     <>
-      <FarmerHeader title={`Merhaba, ${user?.name?.split(" ")[0] ?? "Çiftçi"} 👋`}>
-        <div className="mt-3 flex flex-wrap items-center gap-2">
-          <FarmPill city="Karabük" area={5} crop="Safran" />
-        </div>
-        <div className="mt-3 md:hidden">
-          <SeasonBanner />
-        </div>
-      </FarmerHeader>
+      <FarmerHeader title={`Merhaba, ${user?.name?.split(" ")[0] ?? "Çiftçi"} 👋`} />
 
       <div className="p-4 md:p-8 space-y-4">
         {/* Quick actions */}

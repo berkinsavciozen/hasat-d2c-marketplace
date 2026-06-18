@@ -1,8 +1,10 @@
 import { createFileRoute, Link, Outlet, redirect, useRouterState } from "@tanstack/react-router";
-import { Bell, BarChart3, BookOpen, Home, LineChart, Store, Users, Settings, Crown, Handshake } from "lucide-react";
+import { useState } from "react";
+import { Bell, BarChart3, BookOpen, Home, LineChart, Store, Users, Settings, Crown, Handshake, MoreHorizontal } from "lucide-react";
 import { useProfile, useParcels } from "@/lib/hasat/queries";
 import { SeasonBanner } from "@/components/hasat/SeasonBanner";
 import { FarmPill } from "@/components/hasat/FarmPill";
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 
 export const Route = createFileRoute("/farmer")({
   beforeLoad: () => {
@@ -27,6 +29,19 @@ const tabs = [
   { to: "/farmer/analytics", label: "Analitik", icon: BarChart3 },
 ] as const;
 
+const mobileTabs = [
+  { to: "/farmer/home", label: "Ana Sayfa", icon: Home },
+  { to: "/farmer/journal", label: "Günlük", icon: BookOpen },
+  { to: "/farmer/prices", label: "Fiyatlar", icon: LineChart },
+  { to: "/farmer/storefront", label: "Vitrin", icon: Store },
+] as const;
+
+const moreItems = [
+  { to: "/farmer/analytics", label: "Analitik", icon: BarChart3 },
+  { to: "/farmer/community", label: "Topluluk", icon: Users },
+  { to: "/farmer/orders", label: "Teklifler", icon: Handshake, badge: 3 },
+] as const;
+
 const sidebarExtras = [
   { to: "/farmer/community", label: "Topluluk", icon: Users },
   { to: "/farmer/orders", label: "Teklifler", icon: Handshake, badge: 3 },
@@ -37,11 +52,14 @@ function FarmerShell() {
   const { data: profile } = useProfile();
   const { data: parcels = [] } = useParcels();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
+  const [moreOpen, setMoreOpen] = useState(false);
   const totalArea = parcels.reduce((s, p) => s + (p.area ?? 0), 0);
   const primaryCrop = parcels[0]?.crops?.[0] ?? "—";
   const city = profile?.city ?? "—";
   const displayName = profile?.name ?? "";
 
+  const moreActive = moreItems.some((i) => pathname.startsWith(i.to)) ||
+    pathname.startsWith("/farmer/premium") || pathname.startsWith("/farmer/settings");
 
   return (
     <div className="min-h-screen md:grid md:grid-cols-[230px_1fr]">
@@ -110,7 +128,7 @@ function FarmerShell() {
 
       {/* Bottom tabs (mobile) */}
       <nav className="md:hidden fixed bottom-0 inset-x-0 z-40 grid grid-cols-5 border-t pb-safe" style={{ background: "var(--dark)" }}>
-        {tabs.map(({ to, label, icon: Icon }) => {
+        {mobileTabs.map(({ to, label, icon: Icon }) => {
           const active = pathname.startsWith(to);
           return (
             <Link key={to} to={to} className="flex flex-col items-center gap-0.5 py-2 text-[10px]"
@@ -120,12 +138,94 @@ function FarmerShell() {
             </Link>
           );
         })}
+        <button
+          type="button"
+          onClick={() => setMoreOpen(true)}
+          className="flex flex-col items-center gap-0.5 py-2 text-[10px]"
+          style={{ color: moreActive ? "var(--saffron)" : "var(--hwhite)" }}
+          aria-label="Daha fazla"
+        >
+          <MoreHorizontal className="h-5 w-5" />
+          <span>Daha</span>
+        </button>
       </nav>
+
+      {/* Mobile "More" sheet */}
+      <Sheet open={moreOpen} onOpenChange={setMoreOpen}>
+        <SheetContent
+          side="bottom"
+          className="md:hidden rounded-t-2xl border-t-0 p-0"
+          style={{ background: "var(--dark)", color: "var(--hwhite)" }}
+        >
+          <SheetHeader className="px-4 pt-4 pb-2 text-left">
+            <SheetTitle className="text-hwhite font-serif">Menü</SheetTitle>
+          </SheetHeader>
+
+          <div className="px-3 pb-6 space-y-1">
+            <Link
+              to="/farmer/settings"
+              onClick={() => setMoreOpen(false)}
+              className="flex items-center gap-3 rounded-lg bg-white/5 p-3 hover:bg-white/10"
+            >
+              <div className="grid h-10 w-10 place-items-center rounded-full bg-saffron text-sm font-bold">
+                {displayName?.[0] ?? "M"}
+              </div>
+              <div className="flex-1 text-sm">
+                <div className="font-medium">{displayName || "Profil"}</div>
+                <div className="opacity-60 text-xs">{city}</div>
+              </div>
+              <Settings className="h-4 w-4 opacity-60" />
+            </Link>
+
+            {moreItems.map(({ to, label, icon: Icon, ...rest }) => {
+              const badge = (rest as { badge?: number }).badge;
+              const active = pathname.startsWith(to);
+              return (
+                <Link
+                  key={to}
+                  to={to}
+                  onClick={() => setMoreOpen(false)}
+                  className={`flex items-center gap-3 rounded-lg px-3 py-3 text-sm ${active ? "bg-saffron text-white" : "text-hwhite/80 hover:bg-white/5"}`}
+                >
+                  <Icon className="h-4 w-4" />
+                  <span className="flex-1">{label}</span>
+                  {badge ? <span className="rounded-full bg-saffron px-1.5 text-[10px] text-white">{badge}</span> : null}
+                </Link>
+              );
+            })}
+
+            <Link
+              to="/farmer/premium"
+              onClick={() => setMoreOpen(false)}
+              className="flex items-center gap-3 rounded-lg px-3 py-3 text-sm"
+              style={{ background: "color-mix(in oklab, var(--gold) 18%, transparent)", color: "var(--gold)" }}
+            >
+              <Crown className="h-4 w-4" />
+              <span className="flex-1">Premium'a Geç</span>
+            </Link>
+
+            <Link
+              to="/farmer/settings"
+              onClick={() => setMoreOpen(false)}
+              className="flex items-center gap-3 rounded-lg px-3 py-3 text-sm text-hwhite/80 hover:bg-white/5"
+            >
+              <Settings className="h-4 w-4" />
+              <span className="flex-1">Ayarlar</span>
+            </Link>
+          </div>
+        </SheetContent>
+      </Sheet>
     </div>
   );
 }
 
 export function FarmerHeader({ title, subtitle, children }: { title: string; subtitle?: string; children?: React.ReactNode }) {
+  const { data: profile } = useProfile();
+  const { data: parcels = [] } = useParcels();
+  const totalArea = parcels.reduce((s, p) => s + (p.area ?? 0), 0);
+  const primaryCrop = parcels[0]?.crops?.[0] ?? "—";
+  const city = profile?.city ?? "—";
+
   return (
     <div className="px-4 pt-5 pb-4 md:px-8 md:pt-8" style={{ background: "var(--dark)", color: "var(--hwhite)" }}>
       <div className="flex items-start justify-between">
@@ -136,6 +236,12 @@ export function FarmerHeader({ title, subtitle, children }: { title: string; sub
         <button className="grid h-9 w-9 place-items-center rounded-full bg-white/10">
           <Bell className="h-4 w-4" />
         </button>
+      </div>
+      <div className="md:hidden mt-3 flex flex-wrap items-center gap-2">
+        <FarmPill city={city} area={totalArea} crop={primaryCrop} />
+      </div>
+      <div className="md:hidden mt-3">
+        <SeasonBanner />
       </div>
       {children}
     </div>
