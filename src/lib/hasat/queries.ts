@@ -1,7 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import type { Parcel, HarvestEntry } from "./types";
+import type { Parcel, HarvestEntry, Listing, Offer, Order, OrderStatus, BuyerType } from "./types";
 
 export function useAuthUserId() {
   const [userId, setUserId] = useState<string | null>(null);
