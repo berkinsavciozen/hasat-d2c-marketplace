@@ -92,11 +92,12 @@ function FarmerShell() {
           </Link>
           <Link to="/farmer/settings" className="mt-3 flex items-center gap-2 rounded-lg bg-white/5 p-2 hover:bg-white/10">
             <div className="grid h-8 w-8 place-items-center rounded-full bg-saffron text-xs font-bold">
-              {user?.name?.[0] ?? "M"}
+              {displayName?.[0] ?? "M"}
             </div>
             <div className="flex-1 text-xs">
-              <div className="font-medium">{user?.name}</div>
-              <div className="opacity-50">{user?.city}</div>
+              <div className="font-medium">{displayName}</div>
+              <div className="opacity-50">{city}</div>
+
             </div>
             <Settings className="h-4 w-4 opacity-50" />
           </Link>
