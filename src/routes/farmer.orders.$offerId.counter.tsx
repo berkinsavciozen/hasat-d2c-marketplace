@@ -1,7 +1,8 @@
 import { createFileRoute, notFound, useNavigate, useRouter } from "@tanstack/react-router";
 import { useState } from "react";
 import { FarmerHeader } from "./farmer";
-import { useHasat } from "@/lib/hasat/store";
+import { useFarmerOffers, useCounterOffer } from "@/lib/hasat/queries";
+import { LoadingDots } from "@/components/hasat/LoadingDots";
 import { formatTRY } from "@/lib/hasat/format";
 import { Stepper } from "@/components/hasat/Stepper";
 import { Input } from "@/components/ui/input";
@@ -26,28 +27,46 @@ export const Route = createFileRoute("/farmer/orders/$offerId/counter")({
   },
 });
 
+const DELIVERY_OPTS = [
+  { v: "Üreticiden Teslim", l: "🚪 Kapıda Teslim" },
+  { v: "Kargo", l: "📦 Kargo" },
+  { v: "Kargo (Alıcı Öder)", l: "🚚 Alıcı Alır" },
+] as const;
+
 function Counter() {
   const { offerId } = Route.useParams();
   const navigate = useNavigate();
-  const offer = useHasat((s) => s.offers.find((o) => o.id === offerId));
-  const updateOffer = useHasat((s) => s.updateOffer);
+  const { data: offers = [], isLoading } = useFarmerOffers();
+  const counterMut = useCounterOffer();
 
+  if (isLoading) return <div className="p-8"><LoadingDots /></div>;
+  const offer = offers.find((o) => o.id === offerId);
   if (!offer) throw notFound();
 
+  return <CounterForm offer={offer} navigate={navigate} submit={async (patch) => {
+    try {
+      await counterMut.mutateAsync({
+        id: offer.id,
+        patch,
+        original: { quantity: offer.quantity, pricePerUnit: offer.pricePerUnit, delivery: offer.delivery, deliveryDate: offer.deliveryDate, note: offer.note },
+      });
+      toast.success("Karşı teklif gönderildi");
+      navigate({ to: "/farmer/orders" });
+    } catch (e: any) {
+      toast.error(e.message ?? "Gönderilemedi");
+    }
+  }} pending={counterMut.isPending} />;
+}
+
+function CounterForm({ offer, navigate, submit, pending }: { offer: any; navigate: any; submit: (p: any) => void; pending: boolean }) {
   const [qty, setQty] = useState(offer.quantity);
   const [price, setPrice] = useState(offer.pricePerUnit);
-  const [delivery, setDelivery] = useState<"kapida" | "kargo" | "alici">("kapida");
+  const [delivery, setDelivery] = useState<string>(DELIVERY_OPTS[1].v);
   const [date, setDate] = useState("");
   const [note, setNote] = useState("");
 
   const total = qty * price;
   const originalTotal = offer.quantity * offer.pricePerUnit;
-
-  const submit = () => {
-    updateOffer(offer.id, { status: "counter", quantity: qty, pricePerUnit: price, note });
-    toast.success("Karşı teklif gönderildi");
-    navigate({ to: "/farmer/orders" });
-  };
 
   return (
     <>
@@ -58,7 +77,6 @@ function Counter() {
       </FarmerHeader>
 
       <div className="px-4 md:px-8 py-5 space-y-4 max-w-2xl">
-        {/* Original summary */}
         <div className="rounded-2xl border bg-muted/40 p-4 opacity-80">
           <div className="mb-2 text-xs font-medium uppercase tracking-wider text-hmuted">Orijinal teklif</div>
           <div className="grid grid-cols-2 gap-2 text-sm">
@@ -80,11 +98,7 @@ function Counter() {
         <div>
           <div className="mb-1.5 text-xs font-medium text-hmuted">Teslim şekli</div>
           <div className="grid grid-cols-3 gap-2">
-            {([
-              { v: "kapida", l: "🚪 Kapıda Teslim" },
-              { v: "kargo", l: "📦 Kargo" },
-              { v: "alici", l: "🚚 Alıcı Alır" },
-            ] as const).map(({ v, l }) => (
+            {DELIVERY_OPTS.map(({ v, l }) => (
               <button key={v} type="button" onClick={() => setDelivery(v)}
                 className={`rounded-xl border py-2.5 text-xs font-medium ${delivery === v ? "bg-saffron text-white border-saffron" : "border-input text-hmuted"}`}>
                 {l}
@@ -107,7 +121,9 @@ function Counter() {
           <div className="text-[11px] text-hmuted">{qty} {offer.unit} × {formatTRY(price)}/{offer.unit}</div>
         </div>
 
-        <button onClick={submit} className="w-full rounded-xl bg-saffron py-3 text-sm font-medium text-white">Karşı Teklif Gönder</button>
+        <button onClick={() => submit({ quantity: qty, pricePerUnit: price, delivery, deliveryDate: date, note })} disabled={pending} className="w-full rounded-xl bg-saffron py-3 text-sm font-medium text-white disabled:opacity-50">
+          {pending ? "Gönderiliyor…" : "Karşı Teklif Gönder"}
+        </button>
       </div>
     </>
   );
