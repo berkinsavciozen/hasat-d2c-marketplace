@@ -4,7 +4,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { formatTRY } from "@/lib/hasat/format";
 import { useHasat } from "@/lib/hasat/store";
-import type { OrderStatus } from "@/lib/hasat/types";
+import { useCreateOffer } from "@/lib/hasat/queries";
+import { toast } from "sonner";
 
 export const Route = createFileRoute("/buyer/payment")({
   head: () => ({ meta: [{ title: "Ödeme — Hasat" }] }),
@@ -14,12 +15,10 @@ export const Route = createFileRoute("/buyer/payment")({
 function Payment() {
   const navigate = useNavigate();
   const pending = useHasat((s) => s.pendingOffer);
-  const addOrder = useHasat((s) => s.addOrder);
-  const addOffer = useHasat((s) => s.addOffer);
-  const user = useHasat((s) => s.user);
   const setPendingOffer = useHasat((s) => s.setPendingOffer);
+  const createOffer = useCreateOffer();
 
-  const [success, setSuccess] = useState<{ code: string; id: string } | null>(null);
+  const [success, setSuccess] = useState<{ ref: string } | null>(null);
   const [card, setCard] = useState({ num: "", exp: "", cvv: "", name: "" });
 
   if (!pending && !success) {
@@ -34,35 +33,24 @@ function Payment() {
   const fee = pending ? Math.round(pending.total * 0.025) : 0;
   const grand = pending ? pending.total + fee : 0;
 
-  const complete = () => {
+  const complete = async () => {
     if (!pending) return;
-    const code = `HT-2028-${String(Math.floor(Math.random() * 9000) + 1000)}`;
-    const status: OrderStatus = "accepted";
-    const all: { key: OrderStatus; label: string }[] = [
-      { key: "sent", label: "Teklif Gönderildi" },
-      { key: "accepted", label: "Kabul Edildi" },
-      { key: "preparing", label: "Hazırlanıyor" },
-      { key: "shipped", label: "Kargoya Verildi" },
-      { key: "delivered", label: "Teslim Edildi" },
-    ];
-    const now = new Date();
-    const timeline = all.map((s, i) => ({ ...s, doneAt: i <= 1 ? new Date(now.getTime() - (1 - i) * 3600 * 1000).toISOString() : undefined }));
-    const order = addOrder({
-      code, producerId: pending.producerId, producerName: pending.producerName, crop: pending.crop,
-      quantity: pending.quantity, unit: pending.unit, pricePerUnit: pending.pricePerUnit, total: grand,
-      delivery: pending.delivery, deliveryDate: pending.deliveryDate, status, createdAt: now.toISOString(), timeline,
-    });
-    // Surface as incoming offer on the farmer's A6 Orders screen.
-    addOffer({
-      buyerName: user?.company?.name ?? user?.name ?? "Alıcı",
-      buyerType: (user?.company?.type as never) ?? "restoran",
-      crop: pending.crop, unit: pending.unit, quantity: pending.quantity, pricePerUnit: pending.pricePerUnit,
-      createdAt: now.toISOString(), status: "pending",
-      delivery: pending.delivery, deliveryDate: pending.deliveryDate, note: pending.notes,
-      producerId: pending.producerId,
-    });
-    setPendingOffer(null);
-    setSuccess({ code, id: order.id });
+    try {
+      await createOffer.mutateAsync({
+        farmerId: pending.producerId,
+        listingId: pending.listingId,
+        quantity: pending.quantity,
+        pricePerUnit: pending.pricePerUnit,
+        delivery: pending.delivery,
+        deliveryDate: pending.deliveryDate,
+        note: pending.notes,
+      });
+      const ref = `HT-${new Date().getFullYear()}-${String(Math.floor(Math.random() * 9000) + 1000)}`;
+      setPendingOffer(null);
+      setSuccess({ ref });
+    } catch (e: any) {
+      toast.error(e.message ?? "Teklif gönderilemedi");
+    }
   };
 
   if (success) {
@@ -70,12 +58,12 @@ function Payment() {
       <div className="min-h-screen grid place-items-center p-6" style={{ background: "var(--sage)", color: "var(--hwhite)" }}>
         <div className="text-center max-w-sm">
           <div className="text-6xl mb-4">✅</div>
-          <h1 className="font-serif text-3xl">Sipariş Oluşturuldu!</h1>
-          <div className="mt-4 inline-block rounded-full bg-white/20 px-4 py-1.5 font-mono text-sm">{success.code}</div>
+          <h1 className="font-serif text-3xl">Teklif Gönderildi!</h1>
+          <div className="mt-4 inline-block rounded-full bg-white/20 px-4 py-1.5 font-mono text-sm">{success.ref}</div>
           <p className="mt-6 text-sm opacity-90">Üretici teklifinizi inceleyecek ve onaylar onaylamaz size bilgi vereceğiz.</p>
-          <button onClick={() => navigate({ to: "/buyer/orders/$orderId", params: { orderId: success.id } })}
+          <button onClick={() => navigate({ to: "/buyer/orders" })}
             className="mt-8 w-full rounded-xl bg-white py-3 text-sm font-medium" style={{ color: "var(--sage)" }}>
-            Siparişi Takip Et →
+            Siparişlerime Git →
           </button>
         </div>
       </div>
@@ -134,9 +122,9 @@ function Payment() {
           </TabsContent>
         </Tabs>
 
-        <button onClick={complete} className="w-full rounded-xl py-3.5 text-sm font-medium"
+        <button onClick={complete} disabled={createOffer.isPending} className="w-full rounded-xl py-3.5 text-sm font-medium disabled:opacity-50"
           style={{ background: "var(--saffron)", color: "var(--hwhite)" }}>
-          Ödemeyi Tamamla — {formatTRY(grand)}
+          {createOffer.isPending ? "Gönderiliyor…" : `Ödemeyi Tamamla — ${formatTRY(grand)}`}
         </button>
       </div>
     </div>
