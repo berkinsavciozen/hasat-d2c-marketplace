@@ -1,11 +1,12 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { FarmerHeader } from "./farmer";
-import { useHasat } from "@/lib/hasat/store";
+import { useFarmerOffers, useUpdateOfferStatus, useFarmerOrders } from "@/lib/hasat/queries";
+import { LoadingDots } from "@/components/hasat/LoadingDots";
 import { formatTRY } from "@/lib/hasat/format";
 import { OrderChip } from "@/components/hasat/OrderChip";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { toast } from "sonner";
-import type { Offer, BuyerType } from "@/lib/hasat/types";
+import type { Offer, BuyerType, Order } from "@/lib/hasat/types";
 
 export const Route = createFileRoute("/farmer/orders")({
   head: () => ({ meta: [{ title: "Siparişler — Hasat" }] }),
@@ -25,36 +26,23 @@ function timeAgo(iso: string) {
 }
 
 function Orders() {
-  const offers = useHasat((s) => s.offers);
-  const updateOffer = useHasat((s) => s.updateOffer);
-  const addOrder = useHasat((s) => s.addOrder);
-  const producers = useHasat((s) => s.producers);
+  const { data: offers = [], isLoading: oLoading } = useFarmerOffers();
+  const { data: orders = [], isLoading: rLoading } = useFarmerOrders();
+  const updateStatus = useUpdateOfferStatus();
   const navigate = useNavigate();
 
   const incoming = offers.filter((o) => o.status === "pending" || o.status === "counter");
-  const activeList = offers.filter((o) => o.status === "accepted" || o.status === "active");
-  const done = offers.filter((o) => o.status === "completed" || o.status === "rejected");
+  const activeOrders = orders.filter((o) => o.status !== "delivered");
+  const completedOffers = offers.filter((o) => o.status === "completed" || o.status === "rejected");
+  const completedOrders = orders.filter((o) => o.status === "delivered");
 
-  const accept = (o: Offer) => {
-    updateOffer(o.id, { status: "accepted" });
-    const code = `HT-2028-${String(Math.floor(Math.random() * 9000) + 1000)}`;
-    const all: { key: import("@/lib/hasat/types").OrderStatus; label: string }[] = [
-      { key: "sent", label: "Teklif Gönderildi" },
-      { key: "accepted", label: "Kabul Edildi" },
-      { key: "preparing", label: "Hazırlanıyor" },
-      { key: "shipped", label: "Kargoya Verildi" },
-      { key: "delivered", label: "Teslim Edildi" },
-    ];
-    const now = new Date();
-    const timeline = all.map((s, i) => ({ ...s, doneAt: i <= 2 ? new Date(now.getTime() - (2 - i) * 3600 * 1000).toISOString() : undefined }));
-    const producer = producers[0];
-    addOrder({
-      code, producerId: producer?.id ?? "pr1", producerName: o.buyerName, crop: o.crop,
-      quantity: o.quantity, unit: o.unit, pricePerUnit: o.pricePerUnit, total: o.quantity * o.pricePerUnit,
-      delivery: o.delivery ?? "Kargo", deliveryDate: o.deliveryDate ?? "", status: "preparing",
-      createdAt: now.toISOString(), timeline,
-    });
-    toast.success(`${o.buyerName} teklifi kabul edildi · Sipariş oluşturuldu`);
+  const accept = async (o: Offer) => {
+    try {
+      await updateStatus.mutateAsync({ id: o.id, status: "accepted" });
+      toast.success(`${o.buyerName} teklifi kabul edildi · Sipariş oluşturuldu`);
+    } catch (e: any) {
+      toast.error(e.message ?? "İşlem başarısız");
+    }
   };
   const counter = (o: Offer) => navigate({ to: "/farmer/orders/$offerId/counter", params: { offerId: o.id } });
 
@@ -65,20 +53,27 @@ function Orders() {
         <Tabs defaultValue="incoming">
           <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="incoming">Gelen ({incoming.length})</TabsTrigger>
-            <TabsTrigger value="active">Aktif ({activeList.length})</TabsTrigger>
+            <TabsTrigger value="active">Aktif ({activeOrders.length})</TabsTrigger>
             <TabsTrigger value="done">Tamamlanan</TabsTrigger>
           </TabsList>
 
           <TabsContent value="incoming" className="mt-4 space-y-3">
-            {incoming.length === 0 ? <Empty msg="Bekleyen teklif yok." /> : incoming.map((o) => (
+            {oLoading ? <LoadingDots /> : incoming.length === 0 ? <Empty msg="Bekleyen teklif yok." /> : incoming.map((o) => (
               <OfferCard key={o.id} offer={o} onAccept={() => accept(o)} onCounter={() => counter(o)} actions />
             ))}
           </TabsContent>
           <TabsContent value="active" className="mt-4 space-y-3">
-            {activeList.length === 0 ? <Empty msg="Aktif sipariş yok." /> : activeList.map((o) => <OfferCard key={o.id} offer={o} />)}
+            {rLoading ? <LoadingDots /> : activeOrders.length === 0 ? <Empty msg="Aktif sipariş yok." /> : activeOrders.map((o) => <OrderCard key={o.id} order={o} />)}
           </TabsContent>
           <TabsContent value="done" className="mt-4 space-y-3">
-            {done.length === 0 ? <Empty msg="Tamamlanmış sipariş yok." /> : done.map((o) => <OfferCard key={o.id} offer={o} muted />)}
+            {(oLoading || rLoading) ? <LoadingDots /> : (completedOffers.length === 0 && completedOrders.length === 0) ? (
+              <Empty msg="Tamamlanmış sipariş yok." />
+            ) : (
+              <>
+                {completedOrders.map((o) => <OrderCard key={o.id} order={o} muted />)}
+                {completedOffers.map((o) => <OfferCard key={o.id} offer={o} muted />)}
+              </>
+            )}
           </TabsContent>
         </Tabs>
       </div>
@@ -119,6 +114,22 @@ function OfferCard({ offer, actions, muted, onAccept, onCounter }: { offer: Offe
           <button onClick={onCounter} className="rounded-lg border border-saffron py-2.5 text-sm font-medium text-saffron hover:bg-saffron/5">Müzakere Et</button>
         </div>
       )}
+    </div>
+  );
+}
+
+function OrderCard({ order, muted }: { order: Order; muted?: boolean }) {
+  return (
+    <div className={`rounded-2xl border bg-card p-4 ${muted ? "opacity-60" : ""}`}>
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex-1">
+          <div className="font-mono text-xs text-hmuted">{order.code}</div>
+          <div className="mt-1 font-medium">{order.producerName}</div>
+          <div className="text-xs text-hmuted">{order.crop} · {order.quantity} {order.unit}</div>
+          <div className="mt-1.5 font-mono text-lg font-semibold">{formatTRY(order.total)}</div>
+        </div>
+        <span className="rounded-full px-2.5 py-0.5 text-[11px] bg-muted">{order.status}</span>
+      </div>
     </div>
   );
 }
