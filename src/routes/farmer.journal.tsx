@@ -73,13 +73,14 @@ function Journal() {
     <>
       <FarmerHeader title="Tarla Günlüğü">
         <div className="mt-4 flex gap-1 rounded-full bg-white/10 p-1 w-fit">
-          {["2027", "2028", "2029"].map((y) => (
+          {displayYears.map((y) => (
             <button key={y} onClick={() => setYear(y)}
               className={`rounded-full px-3 py-1 text-xs font-mono ${year === y ? "bg-saffron text-white" : "text-hwhite/70"}`}>
               {y}
             </button>
           ))}
         </div>
+
         <div className="mt-4 grid grid-cols-3 gap-2 text-center">
           <div className="rounded-lg bg-white/5 p-3">
             <div className="text-[10px] uppercase text-hwhite/50">Toplam Hasat</div>
