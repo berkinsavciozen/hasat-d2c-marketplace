@@ -35,8 +35,14 @@ const sidebarExtras = [
 
 
 function FarmerShell() {
-  const user = useHasat((s) => s.user);
+  const { data: profile } = useProfile();
+  const { data: parcels = [] } = useParcels();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
+  const totalArea = parcels.reduce((s, p) => s + (p.area ?? 0), 0);
+  const primaryCrop = parcels[0]?.crops?.[0] ?? "—";
+  const city = profile?.city ?? "—";
+  const displayName = profile?.name ?? "";
+
 
   return (
     <div className="min-h-screen md:grid md:grid-cols-[230px_1fr]">
