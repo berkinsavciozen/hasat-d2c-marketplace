@@ -1,6 +1,6 @@
 import { createFileRoute, Link, Outlet, redirect, useRouterState } from "@tanstack/react-router";
 import { Search, Package, BarChart3, MessageCircle, User, Repeat } from "lucide-react";
-import { useRealtimeSync } from "@/lib/hasat/queries";
+import { useRealtimeSync, useAuthUserId } from "@/lib/hasat/queries";
 
 export const Route = createFileRoute("/buyer")({
   beforeLoad: () => {
@@ -28,7 +28,7 @@ const tabs = [
 
 function BuyerShell() {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
-  useRealtimeSync();
+  useRealtimeSync(useAuthUserId());
   return (
     <div className="min-h-screen md:grid md:grid-cols-[230px_1fr]">
       <aside className="hidden md:flex flex-col gap-1 p-4 sticky top-0 h-screen" style={{ background: "var(--dark)", color: "var(--hwhite)" }}>

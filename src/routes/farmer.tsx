@@ -1,9 +1,11 @@
 import { createFileRoute, Link, Outlet, redirect, useRouterState } from "@tanstack/react-router";
 import { useState } from "react";
 import { Bell, BarChart3, BookOpen, Home, LineChart, Store, Users, Settings, Crown, Handshake, MoreHorizontal } from "lucide-react";
-import { useProfile, useParcels, useRealtimeSync } from "@/lib/hasat/queries";
+import { useProfile, useParcels, useRealtimeSync, useAuthUserId } from "@/lib/hasat/queries";
 import { SeasonBanner } from "@/components/hasat/SeasonBanner";
 import { FarmPill } from "@/components/hasat/FarmPill";
+import { NotificationBell } from "@/components/hasat/NotificationBell";
+
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 
 export const Route = createFileRoute("/farmer")({
@@ -53,7 +55,7 @@ function FarmerShell() {
   const { data: parcels = [] } = useParcels();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const [moreOpen, setMoreOpen] = useState(false);
-  useRealtimeSync();
+  useRealtimeSync(useAuthUserId());
   const totalArea = parcels.reduce((s, p) => s + (p.area ?? 0), 0);
   const primaryCrop = parcels[0]?.crops?.[0] ?? "—";
   const city = profile?.city ?? "—";
