@@ -132,31 +132,10 @@ function OfferCard({ offer, onAccept, onCounter, pending }: { offer: Offer; onAc
         </span>
       </div>
 
-      {isCounter && offer.original ? (
-        <div className="mt-3 space-y-1 text-sm">
-          <div className="flex items-center justify-between">
-            <span className="text-hmuted text-xs">Sizin teklifiniz</span>
-            <span className="font-mono text-hmuted line-through">
-              {formatTRY(offer.original.pricePerUnit)}/{offer.unit}
-            </span>
-          </div>
-          <div className="flex items-center justify-between">
-            <span className="text-xs text-saffron">Çiftçinin karşı teklifi</span>
-            <span className="font-mono font-bold text-saffron">
-              {formatTRY(offer.pricePerUnit)}/{offer.unit}
-            </span>
-          </div>
-          <div className="mt-2 flex items-center justify-between border-t pt-2">
-            <span className="text-xs text-hmuted">Yeni toplam</span>
-            <span className="font-mono font-semibold">{formatTRY(total)}</span>
-          </div>
-        </div>
-      ) : (
-        <div className="mt-3 flex items-center justify-between text-sm">
-          <span className="text-xs text-hmuted">{formatTRY(offer.pricePerUnit)}/{offer.unit}</span>
-          <span className="font-mono font-semibold">{formatTRY(total)}</span>
-        </div>
-      )}
+      <div className="mt-3">
+        <NegotiationTimeline offer={offer} viewer="buyer" compact />
+      </div>
+
 
       {isCounter && (
         <div className="mt-4 grid grid-cols-2 gap-2">
