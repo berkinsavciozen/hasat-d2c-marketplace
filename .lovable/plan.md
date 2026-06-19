@@ -1,55 +1,125 @@
-## Goal
+# Goal
 
-Give buyers a UI to see and respond to farmer counter-offers. Implement the "Tekliflerim" tab on `/buyer/orders` and confirm the existing negotiation route handles re-counter.
+After auditing the negotiation flow: today only **two** snapshots are visible (current + the one immediately before, stored in `offers.counter_offer`). Every new counter overwrites the prior one, so iteration #1 is lost the moment iteration #3 arrives. The buyer negotiation page, the "Tekliflerim" tab card, and the farmer counter form all reflect this two-version limit and they each render the comparison in a different shape.
 
-## Scope
+This plan persists the full chain and shows the same iteration timeline everywhere — for both farmer and buyer, on every round.
 
-Single file edit: **`src/routes/buyer.orders.tsx`**.
+# Audit findings
 
-No changes to: `queries.ts`, `buyer.negotiation.$offerId.tsx` (already works), farmer routes, DB schema, types.
+| Surface | Current behavior | Gap |
+| --- | --- | --- |
+| DB `offers.counter_offer` (jsonb) | Holds the single previous snapshot | Loses history past 1 round |
+| `dbToOffer` mapper | Exposes `offer.original` (the one prior version) | No `history` array |
+| Buyer `Tekliflerim` card (`buyer.orders.tsx`) | Shows struck buyer price → saffron farmer price | Only last 2 |
+| Buyer negotiation page (`buyer.negotiation.$offerId.tsx`) | Two side cards "Teklifiniz" vs "Çiftçinin Teklifi" | Only last 2; no chain |
+| Farmer counter form (`farmer.orders.$offerId.counter.tsx`) | "Orijinal teklif" panel = current main fields only | No history; no diff highlighting |
+| Farmer orders list | Counter offers shown but no version trail | Same gap |
 
-## Key facts from exploration
+# Plan
 
-- `useBuyerOffers()` returns the buyer's sent offers, mapped via `dbToOffer`.
-- The DB column is `counter_offer` (jsonb), **not** `counter_price`. When farmer counters, `dbToOffer` puts the **farmer's counter values** into the main offer fields (`pricePerUnit`, `quantity`, etc.) and stores the **buyer's previous values** in `offer.original`. So `offer.pricePerUnit` IS the farmer's counter price.
-- `useUpdateOfferStatus` already accepts `'accepted'` (used for inline Kabul Et).
-- `buyer.negotiation.$offerId.tsx` already renders side-by-side comparison + accept/reject/counter sheet calling `useCounterOffer`. Re-counter works today; no rewrite needed.
-- Per your answer: skip the "İptal Et" button on pending offers.
+## 1. Schema (migration)
 
-## Implementation — `src/routes/buyer.orders.tsx`
+Add a JSONB array column for the full chain. Keep `counter_offer` for backward read-compat (mapper falls back to it when `negotiation_history` is empty).
 
-1. **Imports**: add `useBuyerOffers`, `useUpdateOfferStatus`, `formatTRY` is already imported, `toast` from `sonner`, `Offer` type from `@/lib/hasat/types`.
-2. **State**: keep current `useBuyerOrders` for active/done tabs. Add `useBuyerOffers()` and filter `status in ('pending','counter')` for the new tab.
-3. **Tabs**: change `TabsList` to 3 columns: `Tekliflerim ({offers.length})` · `Aktif ({active.length})` · `Tamamlanan ({done.length})`. Default `tab` stays `"active"`; new value `"offers"`.
-4. **Offer card** (new `OfferCard` component, local to file):
-   - Header: crop name + `{quantity} {unit}` + status badge.
-     - `pending` → "Beklemede" (muted)
-     - `counter` → "Karşı Teklif Geldi" (saffron)
-   - Price row: `{formatTRY(pricePerUnit)}/{unit}` × quantity = total.
-   - When `status === 'counter'`: show two lines — "Sizin teklifiniz: {original.pricePerUnit}/unit" (muted, struck-through) and "Çiftçinin karşı teklifi: {pricePerUnit}/unit" (saffron, bold). Falls back to just current price if `original` is missing.
-   - Actions:
-     - `status === 'counter'`: two buttons — **Kabul Et** (calls `useUpdateOfferStatus.mutateAsync({ id, status: 'accepted' })`, toast "Teklif kabul edildi", invalidation already handled inside the mutation) and **Yeni Teklif Gönder** (navigate to `/buyer/negotiation/$offerId`).
-     - `status === 'pending'`: no action buttons (per your decision).
-5. **Loading / empty**: reuse `LoadingDots`. Empty state: "Henüz teklif yok."
-6. **Error handling**: try/catch around mutation, `toast.error` on failure.
-
-### Tab order in the UI
-
-```text
-[ Tekliflerim (n) ] [ Aktif (n) ] [ Tamamlanan (n) ]
+```sql
+ALTER TABLE public.offers
+  ADD COLUMN negotiation_history jsonb NOT NULL DEFAULT '[]'::jsonb;
 ```
 
-Tekliflerim placed first since it's the new actionable surface; Aktif remains the default selected tab so existing users see no behavior change on load.
+Each entry shape (TypeScript mirrors it):
+```ts
+type NegotiationSnapshot = {
+  by: 'buyer' | 'farmer';
+  at: string;            // ISO timestamp
+  quantity: number;
+  pricePerUnit: number;
+  delivery?: string;
+  deliveryDate?: string;
+  note?: string;
+};
+```
 
-## Out of scope / confirmations
+The current "live" offer fields (`quantity`, `price_per_unit`, etc.) always represent the **latest** proposal. `negotiation_history` holds every earlier snapshot in order, oldest first.
 
-- **buyer.negotiation.$offerId.tsx**: verified intact — accept/reject/counter all wired. No edits.
-- **Farmer side**: untouched.
-- **Realtime**: `useRealtimeSync` already invalidates `buyerOffers` on offers table changes, so the new tab updates live when the farmer counters.
+No grants/RLS changes — column inherits from the existing `offers` policies.
 
-## Verification
+## 2. Mutation update (`useCounterOffer`)
 
-1. As buyer, open `/buyer/orders` → Tekliflerim tab shows pending + countered offers.
-2. Farmer sends a counter → tab updates live, badge "Karşı Teklif Geldi" appears, prices show buyer's original (struck) vs farmer's counter (saffron).
-3. Click **Kabul Et** → toast, offer disappears from Tekliflerim, order appears in Aktif.
-4. Click **Yeni Teklif Gönder** → navigates to `/buyer/negotiation/$offerId`, existing UI handles re-counter.
+When the user (buyer or farmer) sends a counter:
+- Read the current row's `quantity`, `price_per_unit`, `delivery`, `delivery_date`, `note`, and existing `negotiation_history`.
+- Append a snapshot of those current fields tagged with `by` (the caller's role) and `at: now()`.
+- Update the row with the new patch values **and** the appended history array.
+- Mirror the same snapshot into the legacy `counter_offer` field so older clients still render the "previous" pill correctly during rollout.
+
+The mutation will receive `by: 'buyer' | 'farmer'` from the caller. We already have role context where it's invoked.
+
+## 3. Mapper (`dbToOffer`)
+
+Add `history: NegotiationSnapshot[]` to the `Offer` type and populate it from `negotiation_history`. Keep `original` as a derived convenience (= last entry of history) so existing components keep working.
+
+## 4. Shared UI: `<NegotiationTimeline />`
+
+New component in `src/components/hasat/NegotiationTimeline.tsx`. Renders the chain as a vertical list:
+
+```
+text
+[ Round 1 · Alıcı · 12 Haz ]   200 kg × ₺18,00 = ₺3.600
+       ↓
+[ Round 2 · Üretici · 13 Haz ] 200 kg × ₺22,00 = ₺4.400  (+₺800)
+       ↓
+[ Round 3 · Alıcı · 14 Haz ]   180 kg × ₺21,00 = ₺3.780  (-₺620)   ← current
+```
+
+- Diff vs previous round highlighted (saffron up, sage down) on each changed field (qty, price, delivery, date, note).
+- Latest round badged "Güncel".
+- Compact mode (used inside `Tekliflerim` card) collapses to last 3 + "Tümünü gör".
+
+## 5. Surfaces wired to the timeline
+
+- **Buyer negotiation page** — replaces the two-card SideCard layout with the timeline + the existing accept/reject/counter action bar.
+- **Buyer "Tekliflerim" card** — compact timeline (last 2 rounds + count badge "X tur") above existing buttons.
+- **Farmer counter form** — replaces the single "Orijinal teklif" muted card with the timeline (read-only) above the form fields.
+- **Farmer orders list** — counter offers row gets the same compact timeline strip.
+
+All four read from `offer.history`, so they stay in sync automatically.
+
+## 6. Backfill
+
+For existing rows where `negotiation_history = []` but `counter_offer IS NOT NULL`, seed history with that single snapshot. One-shot SQL inside the same migration:
+
+```sql
+UPDATE public.offers
+SET negotiation_history = jsonb_build_array(
+  jsonb_build_object(
+    'by', CASE WHEN status = 'counter' THEN 'buyer' ELSE 'farmer' END,
+    'at', COALESCE(updated_at, created_at),
+    'quantity', (counter_offer->>'quantity')::numeric,
+    'pricePerUnit', (counter_offer->>'pricePerUnit')::numeric,
+    'delivery', counter_offer->>'delivery',
+    'deliveryDate', counter_offer->>'deliveryDate',
+    'note', counter_offer->>'note'
+  )
+)
+WHERE negotiation_history = '[]'::jsonb AND counter_offer IS NOT NULL;
+```
+
+(`by` heuristic: if status is `counter`, the historical row is the buyer's previous proposal; otherwise the farmer's. Imperfect for legacy rows but only affects pre-existing data — new rows are tagged correctly.)
+
+# Out of scope
+
+- Per-round chat messages / threaded notes (notes still live on each snapshot).
+- Reverting to a previous round.
+- Notifications copy changes.
+
+# Files touched
+
+- `supabase/migrations/<new>.sql` (via migration tool)
+- `src/lib/hasat/types.ts` — add `NegotiationSnapshot`, extend `Offer.history`
+- `src/lib/hasat/queries.ts` — `dbToOffer`, `useCounterOffer`
+- `src/components/hasat/NegotiationTimeline.tsx` — new
+- `src/routes/buyer.negotiation.$offerId.tsx`
+- `src/routes/buyer.orders.tsx`
+- `src/routes/farmer.orders.$offerId.counter.tsx`
+- `src/routes/farmer.orders.tsx`
+
+Approve and I'll implement, starting with the migration.
