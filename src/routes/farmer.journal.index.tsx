@@ -16,7 +16,7 @@ import {
 } from "@/lib/hasat/journal-meta";
 import { toast } from "sonner";
 
-export const Route = createFileRoute("/farmer/journal")({
+export const Route = createFileRoute("/farmer/journal/")({
   head: () => ({ meta: [{ title: "Günlük — Hasat" }] }),
   component: Journal,
 });
