@@ -1,6 +1,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { BuyerHeader } from "@/components/hasat/BuyerHeader";
 import { useHasat } from "@/lib/hasat/store";
+import { useProfile } from "@/lib/hasat/queries";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
