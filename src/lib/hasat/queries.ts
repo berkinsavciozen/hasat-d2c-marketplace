@@ -781,7 +781,29 @@ export function useCounterOffer() {
   const qc = useQueryClient();
   const userId = useAuthUserId();
   return useMutation({
-    mutationFn: async ({ id, patch, original }: { id: string; patch: OfferCounterPatch; original?: OfferCounterPatch }) => {
+    mutationFn: async ({ id, patch, original, by }: { id: string; patch: OfferCounterPatch; original?: OfferCounterPatch; by: "buyer" | "farmer" }) => {
+      // Read current row to capture the snapshot we're about to overwrite, plus the existing history.
+      const { data: current, error: readErr } = await supabase
+        .from("offers")
+        .select("quantity, price_per_unit, delivery, delivery_date, note, negotiation_history")
+        .eq("id", id)
+        .single();
+      if (readErr) throw readErr;
+
+      const prevSnapshot = {
+        by,
+        at: new Date().toISOString(),
+        quantity: Number(current.quantity),
+        pricePerUnit: Number(current.price_per_unit),
+        delivery: deliveryLabel(current.delivery),
+        deliveryDate: current.delivery_date ?? undefined,
+        note: current.note ?? undefined,
+      };
+      const prevHistory = Array.isArray((current as any).negotiation_history)
+        ? (current as any).negotiation_history
+        : [];
+      const nextHistory = [...prevHistory, prevSnapshot];
+
       const { error } = await supabase.from("offers").update({
         quantity: patch.quantity,
         price_per_unit: patch.pricePerUnit,
@@ -790,6 +812,7 @@ export function useCounterOffer() {
         note: patch.note ?? null,
         status: "counter",
         counter_offer: original ?? null,
+        negotiation_history: nextHistory,
       } as any).eq("id", id);
       if (error) throw error;
     },
