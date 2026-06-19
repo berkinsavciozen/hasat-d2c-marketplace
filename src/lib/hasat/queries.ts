@@ -368,6 +368,18 @@ export function dbToActiveListing(r: any): ActiveListing {
 
 function dbToOffer(r: any, side: "farmer" | "buyer"): Offer {
   const counter = r.counter_offer && typeof r.counter_offer === "object" ? r.counter_offer : null;
+  const rawHistory = Array.isArray(r.negotiation_history) ? r.negotiation_history : [];
+  const history = rawHistory
+    .map((h: any) => ({
+      by: h?.by === "farmer" ? "farmer" : "buyer",
+      at: typeof h?.at === "string" ? h.at : r.created_at,
+      quantity: Number(h?.quantity ?? 0),
+      pricePerUnit: Number(h?.pricePerUnit ?? 0),
+      delivery: h?.delivery ?? undefined,
+      deliveryDate: h?.deliveryDate ?? undefined,
+      note: h?.note ?? undefined,
+    }))
+    .filter((h: any) => Number.isFinite(h.quantity) && Number.isFinite(h.pricePerUnit));
   const partyName =
     side === "farmer" ? (r.buyer?.name ?? "Alıcı") : (r.farmer?.name ?? "Üretici");
   return {
@@ -391,7 +403,16 @@ function dbToOffer(r: any, side: "farmer" | "buyer"): Offer {
           deliveryDate: counter.deliveryDate,
           note: counter.note,
         }
-      : undefined,
+      : history.length > 0
+        ? {
+            quantity: history[history.length - 1].quantity,
+            pricePerUnit: history[history.length - 1].pricePerUnit,
+            delivery: history[history.length - 1].delivery,
+            deliveryDate: history[history.length - 1].deliveryDate,
+            note: history[history.length - 1].note,
+          }
+        : undefined,
+    history,
     producerId: r.farmer_id,
   };
 }
