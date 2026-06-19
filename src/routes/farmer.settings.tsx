@@ -206,6 +206,44 @@ function Settings() {
           </div>
         </SheetContent>
       </Sheet>
+
+      <Sheet open={certSheet} onOpenChange={(o) => { if (!o) { setCertSheet(false); setCertFile(null); setCertExpires(""); } }}>
+        <SheetContent side="bottom" className="rounded-t-2xl">
+          <SheetHeader><SheetTitle>Sertifika Ekle</SheetTitle></SheetHeader>
+          <div className="mt-4 space-y-3">
+            <div>
+              <label className="text-xs text-muted-foreground">Tür</label>
+              <select value={certType} onChange={(e) => setCertType(e.target.value as CertType)}
+                className="mt-1 w-full rounded-md border border-input bg-background px-3 py-2 text-sm">
+                {CERT_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="text-xs text-muted-foreground">Bitiş Tarihi (opsiyonel)</label>
+              <Input type="date" value={certExpires} onChange={(e) => setCertExpires(e.target.value)} className="mt-1" />
+            </div>
+            <div>
+              <label className="text-xs text-muted-foreground">Dosya (PDF/Resim)</label>
+              <Input type="file" accept="application/pdf,image/*" onChange={(e) => setCertFile(e.target.files?.[0] ?? null)} className="mt-1" />
+            </div>
+            {uploadCert.isPending && <ProgressDots current={2} total={3} />}
+            <button
+              onClick={async () => {
+                if (!certFile) { toast.error("Dosya seçin"); return; }
+                try {
+                  await uploadCert.mutateAsync({ type: certType, file: certFile, expiresAt: certExpires || null });
+                  toast.success("Sertifika yüklendi");
+                  setCertSheet(false); setCertFile(null); setCertExpires("");
+                } catch (e) { toast.error((e as Error).message); }
+              }}
+              disabled={uploadCert.isPending}
+              className="w-full rounded-xl py-2.5 text-sm font-medium disabled:opacity-50"
+              style={{ background: "var(--saffron)", color: "var(--hwhite)" }}>
+              {uploadCert.isPending ? "Yükleniyor…" : "Yükle"}
+            </button>
+          </div>
+        </SheetContent>
+      </Sheet>
     </>
   );
 }
