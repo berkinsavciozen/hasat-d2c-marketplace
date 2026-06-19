@@ -52,11 +52,9 @@ function Home() {
             <div>
               <div className="text-xs text-hwhite/60 uppercase tracking-wide">Bu Sezon</div>
               <div className="mt-1 font-mono text-3xl md:text-4xl" style={{ color: "var(--gold)" }}>
-                {formatTRY(totalRevenue || 340000)}
+                {formatTRY(totalRevenue)}
               </div>
-              <div className="mt-1 text-xs" style={{ color: "var(--sage)" }}>+23% geçen sezona göre</div>
             </div>
-            <Sparkline data={[120, 180, 160, 220, 260, 240, 320, 380]} />
           </div>
         </div>
 
