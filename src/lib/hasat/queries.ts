@@ -236,6 +236,7 @@ export interface ProfileRow {
   name: string | null;
   city: string | null;
   role: string | null;
+  phone: string | null;
 }
 
 export function useProfile() {
@@ -245,7 +246,7 @@ export function useProfile() {
     enabled: !!userId,
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("profiles").select("id, name, city, role")
+        .from("profiles").select("id, name, city, role, phone")
         .eq("id", userId!).maybeSingle();
       if (error) throw error;
       return (data ?? null) as ProfileRow | null;
