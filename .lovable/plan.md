@@ -1,31 +1,55 @@
 ## Goal
-Remove all hardcoded seed/demo data from `src/lib/hasat/store.ts` and verify nothing else inserts sample rows into the DB on mount/onboarding.
 
-## Audit results
+Eliminate the last bits of static "demo" content that show up before the user has any data, and make the Fiyatlar page actually load from the database (currently shows a permanent empty state because no query is wired up).
 
-**Already empty (no change needed):** `parcels`, `entries`, `listings`, `offers`, `orders`, `subscriptions`, `priceAlerts`, `pendingOffer` all initialize to `[]`/`null` in the Zustand store. No `useEffect` anywhere inserts demo rows. Onboarding only writes the user's own profile + chosen certifications — that's real user data, not seed.
+## Findings from the audit
 
-**Hardcoded fallback arrays still present in `src/lib/hasat/store.ts`:**
-1. `seedPrices` (5 fake price points) — used by `farmer.prices.tsx` and read via `s.prices`. There is no real Supabase query for `price_points`, so removing this leaves the page with no data source.
-2. `seedProducers` (4 fake producer profiles with listings/reviews/yield history) — used by `buyer.producer.$id.tsx` and `buyer.subscription.$producerId.tsx`. There is no real producers query.
-3. `seedNotifPrefs` — defaults for the notif preferences screen. Not demo content per se (defaults), but the user listed nothing about notif prefs; **leave as-is**.
-4. `setRole` mints a fake user with hardcoded name (`"Mehmet Yılmaz"` / `"Ayşe Demir"`) and phone `+90 555 000 0000`. Overwritten by real `updateUser` immediately after, but the hardcoded literals are demo content.
+### 1. Farmer home — `src/routes/farmer.home.tsx`
+
+Three hardcoded blocks render for every new user, regardless of whether they have data:
+
+- **Weather card**: literal `Karabük`, `14°C · Parçalı bulutlu`, `14°`, "Sulama gerekmiyor", "Hasat: 8 gün kaldı".
+- **"Verim anomalisi tespit edildi" card**: fake AI insight claiming "Bu yılki safran verimi geçen yıla göre %12 düşük".
+- **"Son Etkinlikler" feed**: three fake rows (`Eataly İstanbul ₺72.000`, `Mikla Restoran ₺28.500`, `Safran D2C ₺358/g`).
+- **Bottom AIInsightBanner**: hardcoded "Safran D2C fiyatı 7 gün içinde %8.4 arttı…".
+
+### 2. Farmer journal — `src/routes/farmer.journal.index.tsx`
+
+`saveParcel` hardcodes every new parsel's location to `{ lat: 41.25, lng: 32.69, label: "Karabük, Safranbolu" }` regardless of where the user is. The "GPS ile algıla" button is also fake (just a 1.5s timeout that flips state to "done").
+
+### 3. Fiyatlar page is broken — `src/routes/farmer.prices.tsx`
+
+`prices` is read from the Zustand store, which is permanently initialized to `[]`. The Supabase table `public.price_points` already contains 5 real rows (Safran, Lavanta, Tıbbi Bitkiler, Fındık, Zeytin) but no query loads them. Result: the empty-state guard added previously fires forever → "Fiyatlar menu not responding".
 
 ## Changes
 
-### `src/lib/hasat/store.ts`
-- Delete `seedParcels`, `seedEntries`, `seedListings`, `seedPrices`, `seedOffers`, `seedProducers`, `seedOrders` constants and the `ts` / `tlSteps` helpers (only used by `seedOrders`).
-- In the store's initial state, change `prices: seedPrices` → `prices: []` and `producers: seedProducers` → `producers: []`.
-- In `setRole`, drop the hardcoded `name`/`phone`/`city` literals — set only `{ id, role, premium: false }` and let `updateUser` populate the rest from real auth/profile data.
-- Keep `seedNotifPrefs` (it represents default toggles, not demo content) unless you want it removed too.
+### A. `src/routes/farmer.home.tsx`
 
-### Consumer guards (minimum needed so empty arrays don't crash)
-With `prices = []` and `producers = []`, three screens currently assume a non-empty array:
-- `src/routes/farmer.prices.tsx` line 35 dereferences `selected.crop` after `prices[0]` — will crash. Needs a `if (prices.length === 0) return <EmptyState/>;` early-return using the project's existing empty-state component.
-- `src/routes/buyer.producer.$id.tsx` and `src/routes/buyer.subscription.$producerId.tsx` already use `find(...)` — they'll show "producer not found", which is acceptable.
+- Delete the weather card block, the verim-anomalisi card, the hardcoded activity feed, and the bottom hardcoded AIInsightBanner.
+- Keep: header, quick actions, "Bu Sezon" card (uses real `entries`), "Aktif Ürünler" list (uses real `listings`).
+- If both `entries` and `listings` are empty, show a single onboarding-style empty card pointing to "Hasat Kaydet" and "Vitrine Ekle" instead of the now-bare page.
 
-The user's instruction is "do not replace seed logic with anything — empty states already exist." The producer pages are fine. **Open question:** `farmer.prices.tsx` does not currently have an empty-state branch — it will throw on `selected.crop` when `prices` is empty. I will add a minimal early-return rendering the project's existing empty-state pattern (no new UI design, copy existing pattern from another farmer screen) to avoid a runtime crash.
+### B. `src/routes/farmer.journal.index.tsx`
+
+- Remove the hardcoded `{ lat: 41.25, lng: 32.69, label: "Karabük, Safranbolu" }` payload.
+- When the user clicks "GPS ile algıla", call `navigator.geolocation.getCurrentPosition` and store the real coords; on failure, leave location undefined.
+- Replace the static "✓ Karabük, Safranbolu — Doğrulandı" success line with the actual coords (or a generic "Konum kaydedildi" if no reverse-geocoding is available).
+- Make the parsel save without a location possible (location becomes optional in the insert payload).
+
+### C. Fiyatlar — wire real data without breaking the empty-state guard
+
+- Add `usePricePoints()` in `src/lib/hasat/queries.ts` that selects from `public.price_points`, ordered by `recorded_date desc`, and maps DB columns (`d2c_price`, `hal_price`, `export_price`, `delta_7d`, `recorded_date`) into the existing `PricePoint` shape used by the UI.
+- Reduce to one row per crop (latest `recorded_date`).
+- Update `src/routes/farmer.prices.tsx` to read from `usePricePoints()` instead of `useHasat((s) => s.prices)`. Keep the existing empty-state guard for the case where the table is genuinely empty, and add an `isLoading` branch that renders `<LoadingDots />` so the page is never silent on first load.
+- Leave the store's `prices: []` field in place (other code may still reference it), just stop reading it on this page.
+
+### D. Sanity sweep
+
+- Re-grep for any remaining literal mock strings (`Eataly`, `Mikla`, `Karabük`, `14°C`, `358`, `72.000`, `28.500`) and confirm only `onboarding.farmer.tsx` city dropdown options remain — those are legitimate user-facing choices, not demo data.
+- Confirm `buyer.discover.tsx`, `buyer.reports.tsx`, `farmer.community.tsx`, `farmer.analytics.tsx`, `farmer.orders.index.tsx`, `farmer.storefront.tsx` already render proper empty states from real queries.
 
 ## Out of scope
-- No changes to Supabase queries, RLS, onboarding flow, or any UI design.
-- No edits to `queries.ts` (already DB-backed for parcels, listings, offers, orders, entries, alerts, subscriptions, community posts, notifications).
+
+- Real weather integration, real "verim anomalisi" detection, real activity feed, and reverse geocoding. Those are separate features and need their own data sources/APIs — for now the corresponding cards are simply removed rather than replaced.
+- No DB migrations, no RLS changes, no Twilio/edge-function changes.
+- No styling/design changes beyond removing or relocating the affected blocks.
