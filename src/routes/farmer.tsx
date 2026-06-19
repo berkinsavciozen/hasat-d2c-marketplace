@@ -185,10 +185,11 @@ function FarmerShell() {
               <Settings className="h-4 w-4 opacity-60" />
             </Link>
 
-            {moreItems.map(({ to, label, icon: Icon, ...rest }) => {
-              const badge = (rest as { badge?: number }).badge;
+            {moreItems.map(({ to, label, icon: Icon }) => {
+              const badge = to === "/farmer/orders" ? pendingCount : 0;
               const active = pathname.startsWith(to);
               return (
+
                 <Link
                   key={to}
                   to={to}
