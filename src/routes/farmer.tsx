@@ -254,7 +254,6 @@ export function FarmerHeader({ title, subtitle, children }: { title: string; sub
       <div className="md:hidden mt-3 flex flex-wrap items-center gap-2">
         <FarmPill city={city} area={areaForChip} crop={primaryCrop} />
       </div>
-      </div>
       <div className="md:hidden mt-3">
         <SeasonBanner />
       </div>
