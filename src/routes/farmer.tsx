@@ -60,7 +60,10 @@ function FarmerShell() {
   const [moreOpen, setMoreOpen] = useState(false);
   useRealtimeSync(useAuthUserId());
   const totalArea = parcels.reduce((s, p) => s + (p.area ?? 0), 0);
-  const primaryCrop = parcels[0]?.crops?.[0] ?? "—";
+  const allCrops = parcels.flatMap((p) => p.crops ?? []);
+  const cropCounts = allCrops.reduce<Record<string, number>>((m, c) => { m[c] = (m[c] ?? 0) + 1; return m; }, {});
+  const primaryCrop = allCrops.length === 0 ? "—" : Object.entries(cropCounts).sort((a, b) => b[1] - a[1])[0][0];
+  const areaForChip = parcels.length === 0 ? null : totalArea;
 
   const city = profile?.city ?? "—";
   const displayName = profile?.name ?? "";
