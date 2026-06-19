@@ -83,6 +83,11 @@ function Settings() {
       <FarmerHeader title="Ayarlar" />
       <div className="p-4 md:p-8 max-w-2xl space-y-5">
         <Section title="Profil">
+          {!name.trim() && (
+            <div className="mb-4 rounded-xl border border-saffron/40 bg-saffron/10 px-4 py-3 text-sm text-saffron">
+              Profilinizi tamamlayın — alıcılar sizi tanısın.
+            </div>
+          )}
           <div className="flex items-center gap-3 mb-4">
             <div className="grid h-14 w-14 place-items-center rounded-full text-lg font-bold"
               style={{ background: "var(--saffron)", color: "var(--hwhite)" }}>{name[0] ?? "?"}</div>
