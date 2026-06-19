@@ -2,6 +2,8 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
 import { FarmerHeader } from "./farmer";
 import { useHasat } from "@/lib/hasat/store";
+import { usePriceAlerts, useCreatePriceAlert, useDeletePriceAlert } from "@/lib/hasat/queries";
+import { LoadingDots } from "@/components/hasat/LoadingDots";
 import { AIInsightBanner } from "@/components/hasat/AIInsightBanner";
 import { TrustBadge } from "@/components/hasat/TrustBadge";
 import { Sparkline } from "@/components/hasat/Sparkline";
@@ -24,8 +26,8 @@ const CROP_EMOJI: Record<string, string> = {
 
 function Prices() {
   const prices = useHasat((s) => s.prices);
-  const priceAlerts = useHasat((s) => s.priceAlerts);
-  const removePriceAlert = useHasat((s) => s.removePriceAlert);
+  const { data: priceAlerts = [], isLoading: alertsLoading } = usePriceAlerts();
+  const deleteAlert = useDeletePriceAlert();
   const [selectedCrop, setSelectedCrop] = useState<string>("Safran");
   const [sheetOpen, setSheetOpen] = useState(false);
 
@@ -109,14 +111,18 @@ function Prices() {
           {selected.crop} fiyatı 7 günde {formatDelta(selected.delta7d)} değişti — vitrindeki listenizi güncellemek ister misiniz?
         </AIInsightBanner>
 
-        {priceAlerts.length > 0 && (
+        {alertsLoading ? (
+          <div className="mt-4"><LoadingDots /></div>
+        ) : priceAlerts.length === 0 ? (
+          <div className="mt-4 text-center text-xs text-hmuted">Henüz fiyat alarmı eklenmemiş.</div>
+        ) : (
           <div className="mt-4">
             <div className="text-[11px] font-medium uppercase tracking-wider text-hmuted mb-1.5">Aktif alarmlar</div>
             <div className="flex flex-wrap gap-1.5">
               {priceAlerts.map((a) => (
                 <span key={a.id} className="inline-flex items-center gap-1 rounded-full bg-saffron/10 border border-saffron/30 px-2.5 py-1 text-[11px] text-saffron">
                   {a.crop} {a.condition === "above" ? "≥" : "≤"} {formatTRY(a.target)}
-                  <button onClick={() => removePriceAlert(a.id)} className="ml-1 text-saffron/70 hover:text-saffron" aria-label="Alarmı kaldır">×</button>
+                  <button onClick={() => deleteAlert.mutate(a.id)} className="ml-1 text-saffron/70 hover:text-saffron" aria-label="Alarmı kaldır">×</button>
                 </span>
               ))}
             </div>
@@ -159,7 +165,7 @@ function PriceRow({ label, value, delta, accent }: { label: string; value: strin
 }
 
 function PriceAlarmSheet({ open, onOpenChange, crops, defaultCrop, defaultPrice }: { open: boolean; onOpenChange: (b: boolean) => void; crops: string[]; defaultCrop: string; defaultPrice: number; }) {
-  const addPriceAlert = useHasat((s) => s.addPriceAlert);
+  const createAlert = useCreatePriceAlert();
   const [crop, setCrop] = useState(defaultCrop);
   const [price, setPrice] = useState(defaultPrice);
   const [direction, setDirection] = useState<"above" | "below">("above");
@@ -213,14 +219,19 @@ function PriceAlarmSheet({ open, onOpenChange, crops, defaultCrop, defaultPrice 
             </div>
           </div>
           <button
-            onClick={() => {
-              addPriceAlert({ crop, target: price, condition: direction, channels });
-              toast.success(`Alarm kuruldu: ${crop} ${direction === "above" ? "≥" : "≤"} ${formatTRY(price)}`);
-              onOpenChange(false);
+            disabled={createAlert.isPending}
+            onClick={async () => {
+              try {
+                await createAlert.mutateAsync({ crop, target: price, condition: direction, channels });
+                toast.success(`Alarm kuruldu: ${crop} ${direction === "above" ? "≥" : "≤"} ${formatTRY(price)}`);
+                onOpenChange(false);
+              } catch (e: any) {
+                toast.error(e?.message ?? "Alarm kurulamadı");
+              }
             }}
-            className="w-full rounded-xl bg-saffron py-3 text-sm font-medium text-white"
+            className="w-full rounded-xl bg-saffron py-3 text-sm font-medium text-white disabled:opacity-50"
           >
-            Kaydet
+            {createAlert.isPending ? "Kaydediliyor…" : "Kaydet"}
           </button>
         </div>
       </SheetContent>

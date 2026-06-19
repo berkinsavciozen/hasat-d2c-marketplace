@@ -732,3 +732,254 @@ export function useOrderTimeline(orderId: string) {
 
 // shared loading dots (3-cycle)
 export { ProgressDots } from "@/components/hasat/ProgressDots";
+
+// ---- price alerts (4A) ----
+export interface PriceAlertRow {
+  id: string;
+  crop: string;
+  target: number;
+  condition: "above" | "below";
+  channels: { whatsapp: boolean; push: boolean; sms: boolean };
+  active: boolean;
+  createdAt: string;
+}
+
+function dbToPriceAlert(r: any): PriceAlertRow {
+  const ch: string[] = Array.isArray(r.channels) ? r.channels : [];
+  return {
+    id: r.id,
+    crop: r.crop,
+    target: Number(r.target_price),
+    condition: r.condition,
+    channels: { whatsapp: ch.includes("whatsapp"), push: ch.includes("push"), sms: ch.includes("sms") },
+    active: !!r.active,
+    createdAt: r.created_at,
+  };
+}
+
+export function usePriceAlerts() {
+  const userId = useAuthUserId();
+  return useQuery({
+    queryKey: ["priceAlerts", userId],
+    enabled: !!userId,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("price_alerts").select("*")
+        .eq("farmer_id", userId!)
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      return (data ?? []).map(dbToPriceAlert);
+    },
+  });
+}
+
+export function useCreatePriceAlert() {
+  const qc = useQueryClient();
+  const userId = useAuthUserId();
+  return useMutation({
+    mutationFn: async (input: { crop: string; target: number; condition: "above" | "below"; channels: { whatsapp: boolean; push: boolean; sms: boolean } }) => {
+      if (!userId) throw new Error("Oturum bulunamadı");
+      const channels = (Object.keys(input.channels) as Array<keyof typeof input.channels>).filter((k) => input.channels[k]);
+      const { data, error } = await supabase.from("price_alerts").insert({
+        farmer_id: userId,
+        crop: input.crop,
+        target_price: input.target,
+        condition: input.condition,
+        channels,
+        active: true,
+      }).select("*").single();
+      if (error) throw error;
+      return dbToPriceAlert(data);
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["priceAlerts"] }),
+  });
+}
+
+export function useDeletePriceAlert() {
+  const qc = useQueryClient();
+  const userId = useAuthUserId();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      if (!userId) throw new Error("Oturum bulunamadı");
+      const { error } = await supabase.from("price_alerts").delete().eq("id", id).eq("farmer_id", userId);
+      if (error) throw error;
+      return id;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["priceAlerts"] }),
+  });
+}
+
+export function useTogglePriceAlert() {
+  const qc = useQueryClient();
+  const userId = useAuthUserId();
+  return useMutation({
+    mutationFn: async ({ id, active }: { id: string; active: boolean }) => {
+      if (!userId) throw new Error("Oturum bulunamadı");
+      const { error } = await supabase.from("price_alerts").update({ active }).eq("id", id).eq("farmer_id", userId);
+      if (error) throw error;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["priceAlerts"] }),
+  });
+}
+
+// ---- harvest subscriptions (4B) ----
+export interface SubscriptionRow {
+  id: string;
+  buyerId: string;
+  farmerId: string;
+  farmerName: string | null;
+  farmerCity: string | null;
+  nextHarvestDate: string | null;
+  estimatedQty: number | null;
+  volumeCommitment: number | null;
+  priceLock: boolean;
+  lockedPrice: number | null;
+  lockedAt: string | null;
+  status: string;
+  createdAt: string;
+}
+
+function dbToSubscription(r: any): SubscriptionRow {
+  return {
+    id: r.id,
+    buyerId: r.buyer_id,
+    farmerId: r.farmer_id,
+    farmerName: r.farmer?.name ?? null,
+    farmerCity: r.farmer?.city ?? null,
+    nextHarvestDate: r.next_harvest_date,
+    estimatedQty: r.estimated_qty != null ? Number(r.estimated_qty) : null,
+    volumeCommitment: r.volume_commitment != null ? Number(r.volume_commitment) : null,
+    priceLock: !!r.price_lock,
+    lockedPrice: r.locked_price != null ? Number(r.locked_price) : null,
+    lockedAt: r.locked_at,
+    status: r.status,
+    createdAt: r.created_at,
+  };
+}
+
+export function useMySubscriptions() {
+  const userId = useAuthUserId();
+  return useQuery({
+    queryKey: ["mySubscriptions", userId],
+    enabled: !!userId,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("harvest_subscriptions")
+        .select("*, farmer:profiles!harvest_subscriptions_farmer_id_fkey(id,name,city)")
+        .eq("buyer_id", userId!)
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      return (data ?? []).map(dbToSubscription);
+    },
+  });
+}
+
+export function useCreateSubscription() {
+  const qc = useQueryClient();
+  const userId = useAuthUserId();
+  return useMutation({
+    mutationFn: async (input: {
+      farmerId: string;
+      volumeCommitment: number;
+      priceLock: boolean;
+      lockedPrice?: number | null;
+      nextHarvestDate?: string | null;
+      estimatedQty?: number | null;
+    }) => {
+      if (!userId) throw new Error("Oturum bulunamadı");
+      const { data, error } = await supabase.from("harvest_subscriptions").insert({
+        buyer_id: userId,
+        farmer_id: input.farmerId,
+        volume_commitment: input.volumeCommitment,
+        price_lock: input.priceLock,
+        locked_price: input.priceLock ? input.lockedPrice ?? null : null,
+        locked_at: input.priceLock ? new Date().toISOString() : null,
+        next_harvest_date: input.nextHarvestDate ?? null,
+        estimated_qty: input.estimatedQty ?? null,
+        status: "active",
+      }).select("*").single();
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["mySubscriptions"] }),
+  });
+}
+
+export function useCancelSubscription() {
+  const qc = useQueryClient();
+  const userId = useAuthUserId();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      if (!userId) throw new Error("Oturum bulunamadı");
+      const { error } = await supabase
+        .from("harvest_subscriptions")
+        .update({ status: "cancelled" })
+        .eq("id", id)
+        .eq("buyer_id", userId);
+      if (error) throw error;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["mySubscriptions"] }),
+  });
+}
+
+// ---- community posts (4C) ----
+export interface CommunityPostRow {
+  id: string;
+  authorId: string;
+  authorName: string | null;
+  authorCity: string | null;
+  content: string;
+  category: string;
+  likesCount: number;
+  commentsCount: number;
+  createdAt: string;
+}
+
+function dbToPost(r: any): CommunityPostRow {
+  return {
+    id: r.id,
+    authorId: r.author_id,
+    authorName: r.author?.name ?? null,
+    authorCity: r.author?.city ?? null,
+    content: r.content,
+    category: r.category,
+    likesCount: r.likes_count ?? 0,
+    commentsCount: r.comments_count ?? 0,
+    createdAt: r.created_at,
+  };
+}
+
+export function useCommunityPosts(categoryFilter?: string) {
+  const filter = categoryFilter && categoryFilter !== "Tümü" ? categoryFilter : null;
+  return useQuery({
+    queryKey: ["communityPosts", filter],
+    queryFn: async () => {
+      let q = supabase
+        .from("community_posts")
+        .select("*, author:profiles!community_posts_author_id_fkey(id,name,city)")
+        .order("created_at", { ascending: false });
+      if (filter) q = q.eq("category", filter);
+      const { data, error } = await q;
+      if (error) throw error;
+      return (data ?? []).map(dbToPost);
+    },
+  });
+}
+
+export function useCreatePost() {
+  const qc = useQueryClient();
+  const userId = useAuthUserId();
+  return useMutation({
+    mutationFn: async (input: { content: string; category: string }) => {
+      if (!userId) throw new Error("Oturum bulunamadı");
+      const { data, error } = await supabase.from("community_posts").insert({
+        author_id: userId,
+        content: input.content,
+        category: input.category,
+      }).select("*").single();
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["communityPosts"] }),
+  });
+}
