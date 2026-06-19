@@ -32,6 +32,7 @@ import { Route as BuyerOrdersRouteImport } from './routes/buyer.orders'
 import { Route as BuyerMessagesRouteImport } from './routes/buyer.messages'
 import { Route as BuyerDiscoverRouteImport } from './routes/buyer.discover'
 import { Route as BuyerAccountRouteImport } from './routes/buyer.account'
+import { Route as FarmerJournalIndexRouteImport } from './routes/farmer.journal.index'
 import { Route as FarmerSettingsNotifsRouteImport } from './routes/farmer.settings.notifs'
 import { Route as FarmerJournalNewRouteImport } from './routes/farmer.journal.new'
 import { Route as FarmerJournalEntryIdRouteImport } from './routes/farmer.journal.$entryId'
@@ -157,6 +158,11 @@ const BuyerAccountRoute = BuyerAccountRouteImport.update({
   path: '/account',
   getParentRoute: () => BuyerRoute,
 } as any)
+const FarmerJournalIndexRoute = FarmerJournalIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => FarmerJournalRoute,
+} as any)
 const FarmerSettingsNotifsRoute = FarmerSettingsNotifsRouteImport.update({
   id: '/notifs',
   path: '/notifs',
@@ -237,6 +243,7 @@ export interface FileRoutesByFullPath {
   '/farmer/journal/$entryId': typeof FarmerJournalEntryIdRoute
   '/farmer/journal/new': typeof FarmerJournalNewRoute
   '/farmer/settings/notifs': typeof FarmerSettingsNotifsRoute
+  '/farmer/journal/': typeof FarmerJournalIndexRoute
   '/farmer/orders/$offerId/counter': typeof FarmerOrdersOfferIdCounterRoute
 }
 export interface FileRoutesByTo {
@@ -254,7 +261,6 @@ export interface FileRoutesByTo {
   '/farmer/billing': typeof FarmerBillingRoute
   '/farmer/community': typeof FarmerCommunityRoute
   '/farmer/home': typeof FarmerHomeRoute
-  '/farmer/journal': typeof FarmerJournalRouteWithChildren
   '/farmer/offers': typeof FarmerOffersRoute
   '/farmer/orders': typeof FarmerOrdersRouteWithChildren
   '/farmer/premium': typeof FarmerPremiumRoute
@@ -271,6 +277,7 @@ export interface FileRoutesByTo {
   '/farmer/journal/$entryId': typeof FarmerJournalEntryIdRoute
   '/farmer/journal/new': typeof FarmerJournalNewRoute
   '/farmer/settings/notifs': typeof FarmerSettingsNotifsRoute
+  '/farmer/journal': typeof FarmerJournalIndexRoute
   '/farmer/orders/$offerId/counter': typeof FarmerOrdersOfferIdCounterRoute
 }
 export interface FileRoutesById {
@@ -306,6 +313,7 @@ export interface FileRoutesById {
   '/farmer/journal/$entryId': typeof FarmerJournalEntryIdRoute
   '/farmer/journal/new': typeof FarmerJournalNewRoute
   '/farmer/settings/notifs': typeof FarmerSettingsNotifsRoute
+  '/farmer/journal/': typeof FarmerJournalIndexRoute
   '/farmer/orders/$offerId/counter': typeof FarmerOrdersOfferIdCounterRoute
 }
 export interface FileRouteTypes {
@@ -342,6 +350,7 @@ export interface FileRouteTypes {
     | '/farmer/journal/$entryId'
     | '/farmer/journal/new'
     | '/farmer/settings/notifs'
+    | '/farmer/journal/'
     | '/farmer/orders/$offerId/counter'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -359,7 +368,6 @@ export interface FileRouteTypes {
     | '/farmer/billing'
     | '/farmer/community'
     | '/farmer/home'
-    | '/farmer/journal'
     | '/farmer/offers'
     | '/farmer/orders'
     | '/farmer/premium'
@@ -376,6 +384,7 @@ export interface FileRouteTypes {
     | '/farmer/journal/$entryId'
     | '/farmer/journal/new'
     | '/farmer/settings/notifs'
+    | '/farmer/journal'
     | '/farmer/orders/$offerId/counter'
   id:
     | '__root__'
@@ -410,6 +419,7 @@ export interface FileRouteTypes {
     | '/farmer/journal/$entryId'
     | '/farmer/journal/new'
     | '/farmer/settings/notifs'
+    | '/farmer/journal/'
     | '/farmer/orders/$offerId/counter'
   fileRoutesById: FileRoutesById
 }
@@ -585,6 +595,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof BuyerAccountRouteImport
       parentRoute: typeof BuyerRoute
     }
+    '/farmer/journal/': {
+      id: '/farmer/journal/'
+      path: '/'
+      fullPath: '/farmer/journal/'
+      preLoaderRoute: typeof FarmerJournalIndexRouteImport
+      parentRoute: typeof FarmerJournalRoute
+    }
     '/farmer/settings/notifs': {
       id: '/farmer/settings/notifs'
       path: '/notifs'
@@ -694,11 +711,13 @@ const BuyerRouteWithChildren = BuyerRoute._addFileChildren(BuyerRouteChildren)
 interface FarmerJournalRouteChildren {
   FarmerJournalEntryIdRoute: typeof FarmerJournalEntryIdRoute
   FarmerJournalNewRoute: typeof FarmerJournalNewRoute
+  FarmerJournalIndexRoute: typeof FarmerJournalIndexRoute
 }
 
 const FarmerJournalRouteChildren: FarmerJournalRouteChildren = {
   FarmerJournalEntryIdRoute: FarmerJournalEntryIdRoute,
   FarmerJournalNewRoute: FarmerJournalNewRoute,
+  FarmerJournalIndexRoute: FarmerJournalIndexRoute,
 }
 
 const FarmerJournalRouteWithChildren = FarmerJournalRoute._addFileChildren(

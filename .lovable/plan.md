@@ -1,58 +1,30 @@
-## Phase 5 — File uploads + payment polish
+## Sorun
 
-### 5A — Certification upload (farmer.settings.tsx)
+`farmer.journal.new.tsx` ve `farmer.journal.$entryId.tsx` mevcut → TanStack Router `farmer.journal.tsx`'i bu çocukların parent layout'u olarak görüyor. Parent layout `<Outlet />` render etmediği sürece çocuk route eşleşse bile ekran parent içeriğiyle dolu kalıyor. Şu an olan tam olarak bu: URL `/farmer/journal/new` ama görsel hâlâ liste ekranı.
 
-**queries.ts**
-- `useUploadCertification()` — mutation `{ type, file, expiresAt? }`:
-  1. `supabase.storage.from('certificates').upload(`${userId}/${Date.now()}-${file.name}`, file)` (private bucket)
-  2. Insert `certifications` row: `{ farmer_id: userId, type, document_url: path, expires_at, verified_at: null }`
-  3. Invalidate `['certifications', userId]`
-- `useDeleteCertification()` — mutation `{ id, document_url }`: delete DB row + `storage.from('certificates').remove([document_url])`, invalidate.
-- `useCertificationSignedUrl(path)` — helper returning a 1-hour signed URL on demand (used when user taps a row to view).
+## Çözüm (tek dosya işlemi, salt routing fix)
 
-**farmer.settings.tsx — Sertifikalar Section**
-- Replace static empty state with:
-  - List existing certs (already wired) + add a delete (trash) button per row.
-  - "Sertifika Ekle" button opens a Sheet with: `type` Select (enum values from cert_type), optional `expires_at` date input, file picker (PDF/image), Save.
-- Save calls `useUploadCertification`. Toast success/error. `LoadingDots` while pending.
-- Tapping a cert row opens its signed URL in a new tab.
+1. **Mevcut `src/routes/farmer.journal.tsx` içeriğini `src/routes/farmer.journal.index.tsx`'e taşı.** Tek değişiklik: `createFileRoute("/farmer/journal")` → `createFileRoute("/farmer/journal/")`. İçerik (FarmerHeader, stats bar, parsel sheet, gruplar, FAB, hepsi) aynı kalır.
+2. **`src/routes/farmer.journal.tsx`'i pathless layout'a çevir.** Sadece `<Outlet />` döndüren küçük bir component:
+   ```tsx
+   import { createFileRoute, Outlet } from "@tanstack/react-router";
+   export const Route = createFileRoute("/farmer/journal")({
+     component: () => <Outlet />,
+   });
+   ```
+3. Build sırasında `routeTree.gen.ts` otomatik regenerate olur — manuel düzenleme yok.
 
-### 5B — Listing photo upload (farmer.storefront.tsx)
+## Sonuç
 
-**queries.ts** — extend existing mutations:
-- `useCreateListing()` accepts optional `photoFile?: File | null`. If present:
-  1. Insert listing first to get `id`.
-  2. Upload to `harvest-photos/{userId}/{listingId}/{filename}`.
-  3. Get public URL via `getPublicUrl`, then `update listings set photo_urls = ARRAY[publicUrl] where id = listingId`.
-  4. Invalidate listings.
-- `useUpdateListing()` accepts optional `photoFile`. Same upload path, replaces `photo_urls` with `[publicUrl]` (single-element array).
+- `/farmer/journal` → `farmer.journal.index.tsx` (mevcut liste ekranı, Bevel-stili)
+- `/farmer/journal/new` → `farmer.journal.new.tsx` (yeni form, structured sections)
+- `/farmer/journal/$entryId` → mevcut detay ekranı
 
-**farmer.storefront.tsx — ListingSheet**
-- Add file input (image/*) above "Yayınla" button. Local preview via `URL.createObjectURL`.
-- Pass `photoFile` to mutation. Reset on close.
+Publish meselesi: routing fix uygulandıktan ve preview'da yeni form göründükten sonra, sen onaylarsan Publish'i ben tetikleyebilirim — ama önce preview'da doğrulayalım.
 
-**ListingCard**: if `listing.photos[0]` exists, render `<img>` thumbnail in the 12×12 slot instead of the emoji.
+## Değişen dosyalar
 
-### 5C — Buyer payment (buyer.payment.tsx)
+- yeni: `src/routes/farmer.journal.index.tsx` (mevcut journal.tsx içeriği aynen)
+- değişti: `src/routes/farmer.journal.tsx` (sadece Outlet wrapper, ~6 satır)
 
-Per the user's choice, keep current behavior (submit offer → success screen). Only polish:
-- Confirm `LoadingDots`/disabled state on submit (already present via `createOffer.isPending`).
-- Toast success after offer creation: "Teklifiniz gönderildi".
-- No `useCreateOrder` work in this phase.
-
-### General
-- Storage paths follow `{userId}/...` to match existing RLS.
-- Public URLs for `harvest-photos`; signed URLs (3600s) on demand for `certificates`.
-- `LoadingDots` on all async paths; toasts on success and error.
-- No DB migrations.
-
-### Files touched
-- `src/lib/hasat/queries.ts` — new cert hooks; extend `useCreateListing`/`useUpdateListing` with `photoFile`.
-- `src/routes/farmer.settings.tsx` — cert add/delete UI + view via signed URL.
-- `src/routes/farmer.storefront.tsx` — photo picker in sheet, thumbnail in card.
-- `src/routes/buyer.payment.tsx` — minor toast/copy only (no flow change).
-
-### Out of scope
-- No `useCreateOrder`, no offer→order chain.
-- No `photo_url` migration; sticking with `photo_urls[0]`.
-- No multi-photo gallery; single-photo replace semantics.
+Başka hiçbir route, query, ya da component dosyasına dokunulmayacak.
