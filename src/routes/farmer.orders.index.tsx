@@ -8,7 +8,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { toast } from "sonner";
 import type { Offer, BuyerType, Order } from "@/lib/hasat/types";
 
-export const Route = createFileRoute("/farmer/orders")({
+export const Route = createFileRoute("/farmer/orders/")({
   head: () => ({ meta: [{ title: "Siparişler — Hasat" }] }),
   component: Orders,
 });
