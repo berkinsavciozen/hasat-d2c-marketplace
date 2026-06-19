@@ -1,68 +1,46 @@
-# Phase 8 polish
+# Demo polish
 
-Four small, surgical fixes. No schema, no new hooks.
+## 1. Page titles
 
-## 1. Farmer sidebar chips (`src/routes/farmer.tsx`)
+Existing routes use `head: () => ({ meta: [{ title: "X — Hasat" }] })`. The user's spec uses `|` (pipe) as separator — I'll standardize to that exact format on the listed routes. (Note: there is no `farmer.analitik.tsx`; the file is `farmer.analytics.tsx` — I'll target that.)
 
-Current code already calls `useProfile()` + `useParcels()` and feeds `<FarmPill>`, but:
-- `area` field is named `area` (not `size`) in `Parcel` — fine, keep.
-- Crop list lives in `parcels[].crops: string[]` (not `crop_type`). Current code takes `parcels[0].crops[0]` only.
-- When the farmer has no parcels yet, `totalArea` becomes `0` ("0 dönüm") and `primaryCrop` stays `"—"`. The user wants a dash fallback in that case too.
+| Route | Current | New |
+| --- | --- | --- |
+| `farmer.prices.tsx` | "Fiyatlar — Hasat" | "Fiyat Takibi \| Hasat" |
+| `farmer.analytics.tsx` | (no head) | "Analitik \| Hasat" |
+| `buyer.subscriptions.tsx` | "Aboneliklerim — Hasat" | "Aboneliklerim \| Hasat" |
+| `farmer.community.tsx` | (no head) | "Topluluk \| Hasat" |
+| `buyer.reports.tsx` | "Raporlar — Hasat" | "Raporlar \| Hasat" |
 
-Changes (both shell instances — desktop sidebar lines 55–65 and mobile shell lines 232–236):
-- Compute `mostCommonCrop`: flatten `parcels.flatMap(p => p.crops ?? [])`, count occurrences, pick the highest; fall back to first parcel's first crop. If no crops, `"—"`.
-- Show area as `"—"` when `parcels.length === 0`, otherwise `${totalArea} dönüm` (formatted via `<FarmPill>` which already appends "dönüm").
-- City stays as `profile?.city ?? "—"` (already correct).
-- During `useProfile().isLoading` / `useParcels().isLoading`, all three render `"—"`.
+For the two routes missing `head` entirely (analytics, community), add it to the existing `createFileRoute` config — same shape as the other three.
 
-Pass already-formatted strings into `<FarmPill>`. To avoid changing the FarmPill API ("area: number"), accept `area: number | null` and render `"—"` when null. Tiny one-line change in the component.
+## 2. Mobile (390px) overflow fixes
 
-## 2. Buyer "Tekliflerim" default tab (`src/routes/buyer.orders.tsx`)
+### `NegotiationTimeline.tsx` (used in 4 places — fix once, propagate everywhere)
 
-Line 30: `useState("active")` → `useState("offers")`. One-character change. No other behavior touched.
+- **Total row** (line 140–155): the `Toplam` label + total + diff badge can exceed card width with large numbers. Allow the right cluster to wrap: change the right `<span>` from `flex items-baseline gap-2` to `flex flex-wrap items-baseline justify-end gap-x-2 gap-y-0.5 min-w-0`. Add `min-w-0` on the parent.
+- **Header row** (line 104–116): "Tur N · Sen" + date + "Güncel" pill can crowd. Add `flex-wrap gap-y-1` on the outer flex; add `shrink-0` to the date span and the Güncel pill so the round/author label is the only thing that can shrink.
+- **`Field` component** (line 165–188): in `grid-cols-2` cells, long values like `₺18.000,00/kg` or a date string can push the cell wider than 50%. Make value side truncate: wrapper `flex items-baseline gap-1.5 min-w-0`; label `shrink-0`; value `truncate min-w-0`.
 
-## 3. Empty-state audit
+These changes flow automatically into the farmer counter form, farmer orders list compact strip, buyer Tekliflerim card compact strip, and buyer negotiation page — all of which render the same component.
 
-The three target routes already have empty-state branches but they're inconsistent. Bring them in line with the `farmer.community.tsx` pattern (centered emoji + text inside a dashed card).
+### Buyer Tekliflerim action buttons (`buyer.orders.tsx` line 141)
 
-- **`farmer.community.tsx` line 80–84** — already centered icon + text; tweak the empty copy to match the requested string: `"Henüz gönderi yok. İlk gönderiyi sen paylaş!"` when `posts.length === 0` (keep "Sonuç bulunamadı" for the search-no-match branch).
-- **`buyer.subscriptions.tsx` line 47–50** — wrap the existing dashed card in the same shape, add a `🌾` icon above the text. Copy: `"Henüz aboneliğiniz yok."` (matches user's wording — current one says "abonelik oluşturmadınız").
-- **`buyer.reports.tsx` line 68–71** — same treatment, add a `📊` icon above the text. Keep existing copy `"Henüz tamamlanmış siparişiniz yok."`.
+Change `<div className="mt-4 grid grid-cols-2 gap-2">` to `<div className="mt-4 flex flex-col gap-2 sm:grid sm:grid-cols-2">`. Stacks on mobile, side-by-side from `sm:` (640px) up — so 390px gets the vertical layout.
 
-All three use the same shell:
-```
-text
-<div className="rounded-2xl border border-dashed p-10 text-center text-hmuted">
-  <div className="text-4xl mb-2">{emoji}</div>
-  {message}
-</div>
-```
+### Farmer journal stats bar (`farmer.journal.index.tsx` line 118–129)
 
-## 4. Profile-completion nudge
-
-A controlled banner that hides as soon as the name input has any non-whitespace value.
-
-- **`src/routes/farmer.settings.tsx`** — already has `name` state (line 31) and a name `<Input>` (line 92). Add above the form (just before the avatar block, line ~85):
-  ```tsx
-  {!name.trim() && (
-    <div className="rounded-xl border border-saffron/40 bg-saffron/10 px-4 py-3 text-sm text-saffron">
-      Profilinizi tamamlayın — alıcılar sizi tanısın.
-    </div>
-  )}
-  ```
-  This auto-hides as the user types, no extra effect needed (it's tied to `name`, not the persisted profile).
-
-- **Buyer equivalent (`src/routes/buyer.account.tsx`)** — read-only screen today, no name input. Show the same banner at the top when `useProfile().data?.name` is empty/whitespace, *not* gated on input state (there's nothing to type into). Hides automatically once the profile name is set elsewhere. This keeps the nudge consistent across roles without adding an editor.
+The bar is `flex items-center justify-between`; the left side is one inline-text run (`{n} kayıt · {n} parsel · Son: {date}`) and the right is a "+ Parsel" button. On 390px, the long Turkish "Son:" suffix can push the button off-screen. Fix: change the outer to `flex flex-wrap items-center justify-between gap-x-3 gap-y-1`, add `min-w-0` to the left text container, and `shrink-0` to the button. (No font-size or padding tweaks — the user explicitly said no design changes.)
 
 # Files touched
 
-- `src/routes/farmer.tsx` — sidebar chip computation (both shells), pass through.
-- `src/components/hasat/FarmPill.tsx` — accept nullable area, render `"—"`.
-- `src/routes/buyer.orders.tsx` — default tab string.
-- `src/routes/farmer.community.tsx` — empty copy.
-- `src/routes/buyer.subscriptions.tsx` — add icon + tweak copy.
-- `src/routes/buyer.reports.tsx` — add icon.
-- `src/routes/farmer.settings.tsx` — banner above form.
-- `src/routes/buyer.account.tsx` — banner above account card.
+- `src/routes/farmer.prices.tsx` — title text
+- `src/routes/farmer.analytics.tsx` — add `head`
+- `src/routes/buyer.subscriptions.tsx` — title text
+- `src/routes/farmer.community.tsx` — add `head`
+- `src/routes/buyer.reports.tsx` — title text
+- `src/components/hasat/NegotiationTimeline.tsx` — flex-wrap + min-w-0 + truncate
+- `src/routes/buyer.orders.tsx` — `flex-col sm:grid` button row
+- `src/routes/farmer.journal.index.tsx` — flex-wrap stats bar
 
-No new hooks, no migrations, no layout shifts.
+No new components, no logic changes.
