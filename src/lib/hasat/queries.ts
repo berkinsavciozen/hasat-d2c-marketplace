@@ -677,26 +677,38 @@ export function useUpdateOfferStatus() {
   const userId = useAuthUserId();
   return useMutation({
     mutationFn: async ({ id, status }: { id: string; status: OfferStatusUpdate }) => {
+      // capture previous status for rollback
+      const { data: prev, error: ePrev } = await supabase
+        .from("offers").select("status").eq("id", id).single();
+      if (ePrev) throw ePrev;
+      const prevStatus = prev?.status ?? "pending";
+
       const { data: offerRow, error: e1 } = await supabase
         .from("offers").update({ status }).eq("id", id).select("*").single();
       if (e1) throw e1;
 
       if (status === "accepted") {
-        const { data: order, error: e2 } = await supabase.from("orders").insert({
-          offer_id: offerRow.id,
-          buyer_id: offerRow.buyer_id,
-          farmer_id: offerRow.farmer_id,
-          status: "preparing",
-          order_ref: "",
-        } as any).select("id").single();
-        if (e2) throw e2;
-        const { error: e3 } = await supabase.from("order_timeline").insert({
-          order_id: order.id,
-          step: "submitted",
-          label: "Sipariş Alındı",
-          completed_at: new Date().toISOString(),
-        });
-        if (e3) throw e3;
+        try {
+          const { data: order, error: e2 } = await supabase.from("orders").insert({
+            offer_id: offerRow.id,
+            buyer_id: offerRow.buyer_id,
+            farmer_id: offerRow.farmer_id,
+            status: "preparing",
+            order_ref: "",
+          } as any).select("id").single();
+          if (e2) throw e2;
+          const { error: e3 } = await supabase.from("order_timeline").insert({
+            order_id: order.id,
+            step: "submitted",
+            label: "Sipariş Alındı",
+            completed_at: new Date().toISOString(),
+          });
+          if (e3) throw e3;
+        } catch (err) {
+          // roll back the offer status
+          await supabase.from("offers").update({ status: prevStatus }).eq("id", id);
+          throw err;
+        }
       }
       return offerRow;
     },
@@ -708,6 +720,7 @@ export function useUpdateOfferStatus() {
     },
   });
 }
+
 
 export interface OfferCounterPatch {
   quantity: number;
@@ -1047,5 +1060,81 @@ export function useCreatePost() {
       return data;
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["communityPosts"] }),
+  });
+}
+
+// =====================================================================
+// REALTIME SYNC (6A)
+// =====================================================================
+export function useRealtimeSync() {
+  const qc = useQueryClient();
+  useEffect(() => {
+    const offersCh = supabase
+      .channel("offers-changes")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "offers" },
+        () => {
+          qc.invalidateQueries({ queryKey: ["farmerOffers"] });
+          qc.invalidateQueries({ queryKey: ["buyerOffers"] });
+        },
+      )
+      .subscribe();
+    const ordersCh = supabase
+      .channel("orders-changes")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "orders" },
+        () => {
+          qc.invalidateQueries({ queryKey: ["farmerOrders"] });
+          qc.invalidateQueries({ queryKey: ["buyerOrders"] });
+          qc.invalidateQueries({ queryKey: ["buyerAnalytics"] });
+        },
+      )
+      .subscribe();
+    return () => {
+      supabase.removeChannel(offersCh);
+      supabase.removeChannel(ordersCh);
+    };
+  }, [qc]);
+}
+
+// =====================================================================
+// BUYER ANALYTICS (6C)
+// =====================================================================
+export interface BuyerAnalyticsRow {
+  id: string;
+  status: string;
+  created_at: string;
+  order_ref: string;
+  offer: {
+    quantity: number;
+    price_per_unit: number;
+    listing: { crop: string; unit: string } | null;
+  } | null;
+}
+
+export function useBuyerAnalytics() {
+  const userId = useAuthUserId();
+  return useQuery({
+    queryKey: ["buyerAnalytics", userId],
+    enabled: !!userId,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("orders")
+        .select(
+          "id, status, created_at, order_ref, offer:offers(quantity, price_per_unit, listing:listings(crop, unit))",
+        )
+        .eq("buyer_id", userId!)
+        .neq("status", "cancelled" as any)
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      // one-time shape log to confirm price column name
+      if (data && data.length && typeof window !== "undefined") {
+        // eslint-disable-next-line no-console
+        console.log("[buyerAnalytics] sample row:", data[0]);
+      }
+      return (data ?? []) as unknown as BuyerAnalyticsRow[];
+    },
   });
 }

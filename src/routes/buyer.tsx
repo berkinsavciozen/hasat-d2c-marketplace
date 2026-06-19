@@ -1,5 +1,6 @@
 import { createFileRoute, Link, Outlet, redirect, useRouterState } from "@tanstack/react-router";
-import { Search, Package, BarChart3, MessageCircle, User } from "lucide-react";
+import { Search, Package, BarChart3, MessageCircle, User, Repeat } from "lucide-react";
+import { useRealtimeSync } from "@/lib/hasat/queries";
 
 export const Route = createFileRoute("/buyer")({
   beforeLoad: () => {
@@ -19,6 +20,7 @@ export const Route = createFileRoute("/buyer")({
 const tabs = [
   { to: "/buyer/discover", label: "Keşfet", icon: Search },
   { to: "/buyer/orders", label: "Siparişler", icon: Package },
+  { to: "/buyer/subscriptions", label: "Abonelikler", icon: Repeat },
   { to: "/buyer/reports", label: "Raporlar", icon: BarChart3 },
   { to: "/buyer/messages", label: "Mesajlar", icon: MessageCircle },
   { to: "/buyer/account", label: "Hesap", icon: User },
@@ -26,6 +28,7 @@ const tabs = [
 
 function BuyerShell() {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
+  useRealtimeSync();
   return (
     <div className="min-h-screen md:grid md:grid-cols-[230px_1fr]">
       <aside className="hidden md:flex flex-col gap-1 p-4 sticky top-0 h-screen" style={{ background: "var(--dark)", color: "var(--hwhite)" }}>
