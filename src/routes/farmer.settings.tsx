@@ -20,6 +20,12 @@ function Settings() {
   const { data: certs = [], isLoading: certsLoading } = useCertifications();
   const updateParcel = useUpdateParcel();
   const deleteParcel = useDeleteParcel();
+  const uploadCert = useUploadCertification();
+  const deleteCert = useDeleteCertification();
+  const [certSheet, setCertSheet] = useState(false);
+  const [certType, setCertType] = useState<CertType>("organik");
+  const [certExpires, setCertExpires] = useState("");
+  const [certFile, setCertFile] = useState<File | null>(null);
   const setRole = useHasat((s) => s.setRole);
 
   const [name, setName] = useState("");
