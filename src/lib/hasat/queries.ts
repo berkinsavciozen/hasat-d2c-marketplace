@@ -1062,3 +1062,79 @@ export function useCreatePost() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ["communityPosts"] }),
   });
 }
+
+// =====================================================================
+// REALTIME SYNC (6A)
+// =====================================================================
+export function useRealtimeSync() {
+  const qc = useQueryClient();
+  useEffect(() => {
+    const offersCh = supabase
+      .channel("offers-changes")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "offers" },
+        () => {
+          qc.invalidateQueries({ queryKey: ["farmerOffers"] });
+          qc.invalidateQueries({ queryKey: ["buyerOffers"] });
+        },
+      )
+      .subscribe();
+    const ordersCh = supabase
+      .channel("orders-changes")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "orders" },
+        () => {
+          qc.invalidateQueries({ queryKey: ["farmerOrders"] });
+          qc.invalidateQueries({ queryKey: ["buyerOrders"] });
+          qc.invalidateQueries({ queryKey: ["buyerAnalytics"] });
+        },
+      )
+      .subscribe();
+    return () => {
+      supabase.removeChannel(offersCh);
+      supabase.removeChannel(ordersCh);
+    };
+  }, [qc]);
+}
+
+// =====================================================================
+// BUYER ANALYTICS (6C)
+// =====================================================================
+export interface BuyerAnalyticsRow {
+  id: string;
+  status: string;
+  created_at: string;
+  order_ref: string;
+  offer: {
+    quantity: number;
+    price_per_unit: number;
+    listing: { crop: string; unit: string } | null;
+  } | null;
+}
+
+export function useBuyerAnalytics() {
+  const userId = useAuthUserId();
+  return useQuery({
+    queryKey: ["buyerAnalytics", userId],
+    enabled: !!userId,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("orders")
+        .select(
+          "id, status, created_at, order_ref, offer:offers(quantity, price_per_unit, listing:listings(crop, unit))",
+        )
+        .eq("buyer_id", userId!)
+        .neq("status", "cancelled")
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      // one-time shape log to confirm price column name
+      if (data && data.length && typeof window !== "undefined") {
+        // eslint-disable-next-line no-console
+        console.log("[buyerAnalytics] sample row:", data[0]);
+      }
+      return (data ?? []) as unknown as BuyerAnalyticsRow[];
+    },
+  });
+}
