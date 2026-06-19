@@ -147,7 +147,7 @@ function LoginPage() {
         navigate({ to: profileRole === "buyer" ? "/buyer/discover" : "/farmer/home" });
       }
     } catch (e) {
-      toast.error((e as Error).message);
+      toast.error(translateAuthError(e as Error));
     } finally {
       setVerifying(false);
     }
