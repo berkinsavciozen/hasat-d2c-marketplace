@@ -1,4 +1,4 @@
-import { Bell } from "lucide-react";
+import { NotificationBell } from "./NotificationBell";
 
 export function BuyerHeader({ title, subtitle, children }: { title: string; subtitle?: string; children?: React.ReactNode }) {
   return (
@@ -8,9 +8,7 @@ export function BuyerHeader({ title, subtitle, children }: { title: string; subt
           <h1 className="font-serif text-2xl md:text-3xl">{title}</h1>
           {subtitle ? <p className="text-sm text-hwhite/60 mt-0.5">{subtitle}</p> : null}
         </div>
-        <button className="grid h-9 w-9 place-items-center rounded-full bg-white/10">
-          <Bell className="h-4 w-4" />
-        </button>
+        <NotificationBell />
       </div>
       {children}
     </div>
