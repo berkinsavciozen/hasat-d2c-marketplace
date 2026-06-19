@@ -79,18 +79,18 @@ function Negotiation() {
       </div>
 
       <div className="p-4 md:p-8 max-w-3xl mx-auto md:mx-0 space-y-5 pb-32">
-        <div className="grid gap-3 md:grid-cols-2">
-          <SideCard title="Teklifiniz" snap={original} unit={offer.unit} total={yourTotal} />
-          <SideCard title="Çiftçinin Teklifi" snap={offer} unit={offer.unit} total={counterTotal} highlight original={original} />
+        <div>
+          <div className="mb-2 text-xs font-medium uppercase tracking-wider text-hmuted">Müzakere geçmişi</div>
+          <NegotiationTimeline offer={offer} viewer="buyer" />
         </div>
 
         <div className="rounded-2xl border p-4 bg-card">
-          <div className="text-xs text-hmuted">Fark</div>
+          <div className="text-xs text-hmuted">İlk teklifinize göre fark</div>
           <div className={`font-mono text-xl mt-1 ${diff > 0 ? "text-hred" : diff < 0 ? "text-sage" : ""}`}>
             {diff > 0 ? "+" : ""}{formatTRY(diff)}
           </div>
-          <div className="text-[11px] text-hmuted">Sizin toplamınıza göre.</div>
         </div>
+
 
         <div className="fixed inset-x-0 bottom-0 z-30 grid grid-cols-3 gap-2 border-t bg-background p-3 pb-safe md:static md:border-0 md:bg-transparent md:p-0">
           <Button variant="outline" onClick={reject} className="border-hred/40 text-hred hover:bg-hred/5">Reddet</Button>
