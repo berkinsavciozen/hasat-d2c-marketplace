@@ -677,26 +677,38 @@ export function useUpdateOfferStatus() {
   const userId = useAuthUserId();
   return useMutation({
     mutationFn: async ({ id, status }: { id: string; status: OfferStatusUpdate }) => {
+      // capture previous status for rollback
+      const { data: prev, error: ePrev } = await supabase
+        .from("offers").select("status").eq("id", id).single();
+      if (ePrev) throw ePrev;
+      const prevStatus = prev?.status ?? "pending";
+
       const { data: offerRow, error: e1 } = await supabase
         .from("offers").update({ status }).eq("id", id).select("*").single();
       if (e1) throw e1;
 
       if (status === "accepted") {
-        const { data: order, error: e2 } = await supabase.from("orders").insert({
-          offer_id: offerRow.id,
-          buyer_id: offerRow.buyer_id,
-          farmer_id: offerRow.farmer_id,
-          status: "preparing",
-          order_ref: "",
-        } as any).select("id").single();
-        if (e2) throw e2;
-        const { error: e3 } = await supabase.from("order_timeline").insert({
-          order_id: order.id,
-          step: "submitted",
-          label: "Sipariş Alındı",
-          completed_at: new Date().toISOString(),
-        });
-        if (e3) throw e3;
+        try {
+          const { data: order, error: e2 } = await supabase.from("orders").insert({
+            offer_id: offerRow.id,
+            buyer_id: offerRow.buyer_id,
+            farmer_id: offerRow.farmer_id,
+            status: "preparing",
+            order_ref: "",
+          } as any).select("id").single();
+          if (e2) throw e2;
+          const { error: e3 } = await supabase.from("order_timeline").insert({
+            order_id: order.id,
+            step: "submitted",
+            label: "Sipariş Alındı",
+            completed_at: new Date().toISOString(),
+          });
+          if (e3) throw e3;
+        } catch (err) {
+          // roll back the offer status
+          await supabase.from("offers").update({ status: prevStatus }).eq("id", id);
+          throw err;
+        }
       }
       return offerRow;
     },
@@ -708,6 +720,7 @@ export function useUpdateOfferStatus() {
     },
   });
 }
+
 
 export interface OfferCounterPatch {
   quantity: number;
