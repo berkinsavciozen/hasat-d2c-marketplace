@@ -26,8 +26,8 @@ const CROP_EMOJI: Record<string, string> = {
 
 function Prices() {
   const prices = useHasat((s) => s.prices);
-  const priceAlerts = useHasat((s) => s.priceAlerts);
-  const removePriceAlert = useHasat((s) => s.removePriceAlert);
+  const { data: priceAlerts = [], isLoading: alertsLoading } = usePriceAlerts();
+  const deleteAlert = useDeletePriceAlert();
   const [selectedCrop, setSelectedCrop] = useState<string>("Safran");
   const [sheetOpen, setSheetOpen] = useState(false);
 
