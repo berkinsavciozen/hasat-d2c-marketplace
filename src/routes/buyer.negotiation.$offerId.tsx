@@ -11,6 +11,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import type { Offer } from "@/lib/hasat/types";
+import { NegotiationTimeline } from "@/components/hasat/NegotiationTimeline";
 
 export const Route = createFileRoute("/buyer/negotiation/$offerId")({
   head: () => ({ meta: [{ title: "Müzakere — Hasat" }] }),
