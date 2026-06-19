@@ -1,5 +1,5 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { useHasat } from "@/lib/hasat/store";
 import { ProgressDots } from "@/components/hasat/ProgressDots";
