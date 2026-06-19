@@ -24,11 +24,20 @@ const CROP_EMOJI: Record<string, string> = {
 };
 
 function Prices() {
-  const prices = useHasat((s) => s.prices);
+  const { data: prices = [], isLoading: pricesLoading } = usePricePoints();
   const { data: priceAlerts = [], isLoading: alertsLoading } = usePriceAlerts();
   const deleteAlert = useDeletePriceAlert();
   const [selectedCrop, setSelectedCrop] = useState<string>("Safran");
   const [sheetOpen, setSheetOpen] = useState(false);
+
+  if (pricesLoading) {
+    return (
+      <>
+        <FarmerHeader title="Fiyat İstihbaratı" subtitle="" />
+        <div className="px-4 md:px-8 py-12"><LoadingDots /></div>
+      </>
+    );
+  }
 
   if (prices.length === 0) {
     return (
