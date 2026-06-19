@@ -219,14 +219,19 @@ function PriceAlarmSheet({ open, onOpenChange, crops, defaultCrop, defaultPrice 
             </div>
           </div>
           <button
-            onClick={() => {
-              addPriceAlert({ crop, target: price, condition: direction, channels });
-              toast.success(`Alarm kuruldu: ${crop} ${direction === "above" ? "≥" : "≤"} ${formatTRY(price)}`);
-              onOpenChange(false);
+            disabled={createAlert.isPending}
+            onClick={async () => {
+              try {
+                await createAlert.mutateAsync({ crop, target: price, condition: direction, channels });
+                toast.success(`Alarm kuruldu: ${crop} ${direction === "above" ? "≥" : "≤"} ${formatTRY(price)}`);
+                onOpenChange(false);
+              } catch (e: any) {
+                toast.error(e?.message ?? "Alarm kurulamadı");
+              }
             }}
-            className="w-full rounded-xl bg-saffron py-3 text-sm font-medium text-white"
+            className="w-full rounded-xl bg-saffron py-3 text-sm font-medium text-white disabled:opacity-50"
           >
-            Kaydet
+            {createAlert.isPending ? "Kaydediliyor…" : "Kaydet"}
           </button>
         </div>
       </SheetContent>
