@@ -61,9 +61,9 @@ export const useHasat = create<Store>()(
       parcels: [],
       entries: [],
       listings: [],
-      prices: seedPrices,
+      prices: [],
       offers: [],
-      producers: seedProducers,
+      producers: [],
       orders: [],
 
       subscriptions: [],
@@ -73,9 +73,10 @@ export const useHasat = create<Store>()(
       setRole: (role) =>
         set(() => ({
           user: role
-            ? { id: "u1", role, name: role === "farmer" ? "Mehmet Yılmaz" : "Ayşe Demir", phone: "+90 555 000 0000", city: role === "farmer" ? "Karabük" : "İstanbul", premium: false }
+            ? { id: "u1", role, name: "", phone: "", city: "", premium: false }
             : null,
         })),
+
       setPremium: (v) => set((s) => ({ user: s.user ? { ...s.user, premium: v } : s.user })),
       updateUser: (patch) => set((s) => ({ user: s.user ? { ...s.user, ...patch } : s.user })),
       addParcel: (p) => { const np: Parcel = { ...p, id: newId() }; set((s) => ({ parcels: [...s.parcels, np] })); return np; },
