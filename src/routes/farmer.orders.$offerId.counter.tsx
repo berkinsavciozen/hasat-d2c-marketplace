@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { ArrowLeft } from "lucide-react";
+import { NegotiationTimeline } from "@/components/hasat/NegotiationTimeline";
 
 export const Route = createFileRoute("/farmer/orders/$offerId/counter")({
   head: () => ({ meta: [{ title: "Karşı Teklif — Hasat" }] }),
