@@ -18,6 +18,8 @@ function Account() {
   const navigate = useNavigate();
   const user = useHasat((s) => s.user);
   const reset = useHasat((s) => s.reset);
+  const { data: profile } = useProfile();
+  const needsName = !profile?.name?.trim();
 
   const logout = async () => {
     try { await supabase.auth.signOut(); }
