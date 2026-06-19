@@ -214,6 +214,9 @@ export interface CertRow {
   document_url: string | null;
 }
 
+export const CERT_TYPES = ["organik", "iso", "cografi", "hasat", "premium", "yeni"] as const;
+export type CertType = (typeof CERT_TYPES)[number];
+
 export function useCertifications() {
   const userId = useAuthUserId();
   return useQuery({
@@ -223,11 +226,54 @@ export function useCertifications() {
       const { data, error } = await supabase
         .from("certifications").select("*")
         .eq("farmer_id", userId!)
-        .order("verified_at", { ascending: false, nullsFirst: false });
+        .order("created_at", { ascending: false });
       if (error) throw error;
       return (data ?? []) as CertRow[];
     },
   });
+}
+
+export function useUploadCertification() {
+  const qc = useQueryClient();
+  const userId = useAuthUserId();
+  return useMutation({
+    mutationFn: async ({ type, file, expiresAt }: { type: CertType; file: File; expiresAt?: string | null }) => {
+      if (!userId) throw new Error("Oturum bulunamadı");
+      const path = `${userId}/${Date.now()}-${file.name}`;
+      const up = await supabase.storage.from("certificates").upload(path, file, { upsert: false });
+      if (up.error) throw up.error;
+      const { error } = await supabase.from("certifications").insert({
+        farmer_id: userId,
+        type,
+        document_url: path,
+        expires_at: expiresAt || null,
+      });
+      if (error) {
+        await supabase.storage.from("certificates").remove([path]);
+        throw error;
+      }
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["certifications", userId] }),
+  });
+}
+
+export function useDeleteCertification() {
+  const qc = useQueryClient();
+  const userId = useAuthUserId();
+  return useMutation({
+    mutationFn: async ({ id, document_url }: { id: string; document_url: string | null }) => {
+      const { error } = await supabase.from("certifications").delete().eq("id", id);
+      if (error) throw error;
+      if (document_url) await supabase.storage.from("certificates").remove([document_url]);
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["certifications", userId] }),
+  });
+}
+
+export async function getCertificationSignedUrl(path: string): Promise<string> {
+  const { data, error } = await supabase.storage.from("certificates").createSignedUrl(path, 3600);
+  if (error) throw error;
+  return data.signedUrl;
 }
 
 // ---- profile ----
@@ -302,6 +348,7 @@ export function dbToListing(r: any): Listing {
     minOrder: Number(r.min_order),
     quality: r.quality,
     status: r.status,
+    photos: r.photo_urls ?? [],
     producerId: r.farmer_id,
   };
 }
@@ -464,11 +511,19 @@ export interface ListingInput {
   harvestEntryId?: string | null;
 }
 
+async function uploadListingPhoto(userId: string, listingId: string, file: File): Promise<string> {
+  const path = `${userId}/${listingId}/${Date.now()}-${file.name}`;
+  const up = await supabase.storage.from("harvest-photos").upload(path, file, { upsert: false });
+  if (up.error) throw up.error;
+  const { data } = supabase.storage.from("harvest-photos").getPublicUrl(path);
+  return data.publicUrl;
+}
+
 export function useCreateListing() {
   const qc = useQueryClient();
   const userId = useAuthUserId();
   return useMutation({
-    mutationFn: async (l: ListingInput) => {
+    mutationFn: async (l: ListingInput & { photoFile?: File | null }) => {
       if (!userId) throw new Error("Oturum bulunamadı");
       const { data, error } = await supabase.from("listings").insert({
         farmer_id: userId,
@@ -483,7 +538,14 @@ export function useCreateListing() {
         status: "active",
       }).select("*").single();
       if (error) throw error;
-      return dbToListing(data);
+      let row = data;
+      if (l.photoFile) {
+        const url = await uploadListingPhoto(userId, data.id, l.photoFile);
+        const upd = await supabase.from("listings").update({ photo_urls: [url] }).eq("id", data.id).select("*").single();
+        if (upd.error) throw upd.error;
+        row = upd.data;
+      }
+      return dbToListing(row);
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["farmerListings", userId] });
@@ -496,7 +558,7 @@ export function useUpdateListing() {
   const qc = useQueryClient();
   const userId = useAuthUserId();
   return useMutation({
-    mutationFn: async ({ id, patch }: { id: string; patch: Partial<Listing> }) => {
+    mutationFn: async ({ id, patch, photoFile }: { id: string; patch: Partial<Listing>; photoFile?: File | null }) => {
       const dbPatch: any = {};
       if (patch.crop !== undefined) dbPatch.crop = patch.crop;
       if (patch.quantity !== undefined) dbPatch.quantity = patch.quantity;
@@ -505,6 +567,10 @@ export function useUpdateListing() {
       if (patch.minOrder !== undefined) dbPatch.min_order = patch.minOrder;
       if (patch.quality !== undefined) dbPatch.quality = patch.quality;
       if (patch.status !== undefined) dbPatch.status = patch.status;
+      if (photoFile && userId) {
+        const url = await uploadListingPhoto(userId, id, photoFile);
+        dbPatch.photo_urls = [url];
+      }
       const { error } = await supabase.from("listings").update(dbPatch).eq("id", id);
       if (error) throw error;
     },

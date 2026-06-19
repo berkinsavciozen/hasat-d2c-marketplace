@@ -1,57 +1,58 @@
-# Mobile vs Desktop Parity (Farmer)
+## Phase 5 — File uploads + payment polish
 
-The desktop sidebar exposes routes and context that the mobile shell hides. This plan closes the gap without touching desktop layout.
+### 5A — Certification upload (farmer.settings.tsx)
 
-## Audit findings
+**queries.ts**
+- `useUploadCertification()` — mutation `{ type, file, expiresAt? }`:
+  1. `supabase.storage.from('certificates').upload(`${userId}/${Date.now()}-${file.name}`, file)` (private bucket)
+  2. Insert `certifications` row: `{ farmer_id: userId, type, document_url: path, expires_at, verified_at: null }`
+  3. Invalidate `['certifications', userId]`
+- `useDeleteCertification()` — mutation `{ id, document_url }`: delete DB row + `storage.from('certificates').remove([document_url])`, invalidate.
+- `useCertificationSignedUrl(path)` — helper returning a 1-hour signed URL on demand (used when user taps a row to view).
 
-Desktop-only on the farmer shell (`src/routes/farmer.tsx`):
-- Sidebar links: **Topluluk**, **Teklifler** (badge), **Premium'a Geç**, **Settings/profile pill**
-- Context widgets: **FarmPill** (city · area · crop), **SeasonBanner**
+**farmer.settings.tsx — Sertifikalar Section**
+- Replace static empty state with:
+  - List existing certs (already wired) + add a delete (trash) button per row.
+  - "Sertifika Ekle" button opens a Sheet with: `type` Select (enum values from cert_type), optional `expires_at` date input, file picker (PDF/image), Save.
+- Save calls `useUploadCertification`. Toast success/error. `LoadingDots` while pending.
+- Tapping a cert row opens its signed URL in a new tab.
 
-Mobile bottom nav has only the 5 main tabs. Other farmer pages on mobile lose all sidebar context.
+### 5B — Listing photo upload (farmer.storefront.tsx)
 
-Buyer shell is at parity already — no changes there.
+**queries.ts** — extend existing mutations:
+- `useCreateListing()` accepts optional `photoFile?: File | null`. If present:
+  1. Insert listing first to get `id`.
+  2. Upload to `harvest-photos/{userId}/{listingId}/{filename}`.
+  3. Get public URL via `getPublicUrl`, then `update listings set photo_urls = ARRAY[publicUrl] where id = listingId`.
+  4. Invalidate listings.
+- `useUpdateListing()` accepts optional `photoFile`. Same upload path, replaces `photo_urls` with `[publicUrl]` (single-element array).
 
-## Changes
+**farmer.storefront.tsx — ListingSheet**
+- Add file input (image/*) above "Yayınla" button. Local preview via `URL.createObjectURL`.
+- Pass `photoFile` to mutation. Reset on close.
 
-### 1. Bottom nav: replace 5th tab with "Daha" (More)
+**ListingCard**: if `listing.photos[0]` exists, render `<img>` thumbnail in the 12×12 slot instead of the emoji.
 
-`src/routes/farmer.tsx`
+### 5C — Buyer payment (buyer.payment.tsx)
 
-- Mobile bottom-nav tabs become: **Ana Sayfa · Günlük · Fiyatlar · Vitrin · Daha**
-- "Analitik" moves out of the bottom row into the Daha sheet (still reachable on desktop sidebar — sidebar list unchanged).
-- "Daha" is a `<button>` (not a Link) that opens a bottom Sheet (use existing `src/components/ui/sheet.tsx` with `side="bottom"`, or `Drawer`).
-- Active state for "Daha": highlight when current pathname matches any of its inner items.
+Per the user's choice, keep current behavior (submit offer → success screen). Only polish:
+- Confirm `LoadingDots`/disabled state on submit (already present via `createOffer.isPending`).
+- Toast success after offer creation: "Teklifiniz gönderildi".
+- No `useCreateOrder` work in this phase.
 
-Sheet contents (vertical list, dark theme to match sidebar):
-- Profile row at top: avatar + `displayName` + `city` → links to `/farmer/settings`
-- **Analitik** → `/farmer/analytics`
-- **Topluluk** → `/farmer/community`
-- **Teklifler** → `/farmer/orders` (with badge `3`)
-- **Premium'a Geç** → `/farmer/premium` (gold accent, matches sidebar style)
-- **Ayarlar** → `/farmer/settings`
-- Sheet closes on item tap (`onOpenChange(false)` via state).
+### General
+- Storage paths follow `{userId}/...` to match existing RLS.
+- Public URLs for `harvest-photos`; signed URLs (3600s) on demand for `certificates`.
+- `LoadingDots` on all async paths; toasts on success and error.
+- No DB migrations.
 
-### 2. FarmerHeader: always-on context on mobile
+### Files touched
+- `src/lib/hasat/queries.ts` — new cert hooks; extend `useCreateListing`/`useUpdateListing` with `photoFile`.
+- `src/routes/farmer.settings.tsx` — cert add/delete UI + view via signed URL.
+- `src/routes/farmer.storefront.tsx` — photo picker in sheet, thumbnail in card.
+- `src/routes/buyer.payment.tsx` — minor toast/copy only (no flow change).
 
-`src/routes/farmer.tsx` — the exported `FarmerHeader` component.
-
-- Add `<FarmPill city area crop />` and `<SeasonBanner />` inside `FarmerHeader`, wrapped in a `md:hidden` block so desktop is unchanged (desktop already shows them in the sidebar).
-- Pull data with the existing `useProfile()` + `useParcels()` hooks already used by `FarmerShell`. Compute `totalArea` and `primaryCrop` the same way.
-- Remove the now-duplicate `<FarmPill>` + mobile-only `<SeasonBanner>` block currently inside `farmer.home.tsx` (lines ~35–40) so home doesn't render them twice.
-
-### 3. Bottom nav layout
-
-Keep the bottom nav `grid grid-cols-5`. The "Daha" cell uses the same `flex flex-col items-center` styling and a `MoreHorizontal` icon from lucide-react.
-
-## Out of scope
-
-- Buyer shell (already at parity).
-- Desktop sidebar (unchanged).
-- Any data-layer / business-logic changes.
-- Onboarding / login routes.
-
-## Files touched
-
-- `src/routes/farmer.tsx` — bottom nav 5th tab → Daha sheet; `FarmerHeader` gets mobile-only FarmPill + SeasonBanner.
-- `src/routes/farmer.home.tsx` — drop the duplicate mobile FarmPill/SeasonBanner block now rendered globally by FarmerHeader.
+### Out of scope
+- No `useCreateOrder`, no offer→order chain.
+- No `photo_url` migration; sticking with `photo_urls[0]`.
+- No multi-photo gallery; single-photo replace semantics.

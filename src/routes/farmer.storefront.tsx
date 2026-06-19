@@ -120,10 +120,15 @@ function Storefront() {
 function ListingCard({ listing, muted, onEdit, onRemove }: { listing: Listing; muted?: boolean; onEdit?: () => void; onRemove?: () => void }) {
   const statusLabel = listing.status === "active" ? "Aktif" : listing.status === "sold" ? "Satıldı" : "Süresi Doldu";
   const statusColor = listing.status === "active" ? "var(--sage)" : listing.status === "sold" ? "var(--gold)" : "var(--hmuted)";
+  const photo = listing.photos?.[0];
   return (
     <div className={`rounded-2xl border bg-card p-4 ${muted ? "opacity-60" : ""}`}>
       <div className="flex items-start gap-3">
-        <div className="grid h-12 w-12 place-items-center rounded-xl bg-cream text-2xl">{CROP_EMOJI[listing.crop] ?? "🌾"}</div>
+        {photo ? (
+          <img src={photo} alt={listing.crop} className="h-12 w-12 rounded-xl object-cover" />
+        ) : (
+          <div className="grid h-12 w-12 place-items-center rounded-xl bg-cream text-2xl">{CROP_EMOJI[listing.crop] ?? "🌾"}</div>
+        )}
         <div className="flex-1">
           <div className="flex items-center gap-2">
             <div className="font-medium">{listing.crop}</div>
@@ -157,6 +162,7 @@ function ListingSheet({ open, editing, onClose }: { open: boolean; editing: List
   const [minOrder, setMinOrder] = useState(editing?.minOrder ?? 10);
   const [quality, setQuality] = useState<"A" | "B" | "C">(editing?.quality ?? "A");
   const [desc, setDesc] = useState("");
+  const [photoFile, setPhotoFile] = useState<File | null>(null);
 
   const editingId = editing?.id;
   useEffect(() => {
@@ -167,6 +173,7 @@ function ListingSheet({ open, editing, onClose }: { open: boolean; editing: List
       setCrop("Safran"); setQuantity(100); setUnit("g"); setPrice(350); setMinOrder(10); setQuality("A");
     }
     setDesc("");
+    setPhotoFile(null);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [editingId]);
 
@@ -175,10 +182,10 @@ function ListingSheet({ open, editing, onClose }: { open: boolean; editing: List
   const save = async () => {
     try {
       if (editing) {
-        await updateListing.mutateAsync({ id: editing.id, patch: { crop, quantity, unit, pricePerUnit: price, minOrder, quality } });
+        await updateListing.mutateAsync({ id: editing.id, patch: { crop, quantity, unit, pricePerUnit: price, minOrder, quality }, photoFile });
         toast.success("Ürün güncellendi");
       } else {
-        await createListing.mutateAsync({ crop, quantity, unit, pricePerUnit: price, minOrder, quality, description: desc || undefined });
+        await createListing.mutateAsync({ crop, quantity, unit, pricePerUnit: price, minOrder, quality, description: desc || undefined, photoFile });
         toast.success("Ürün yayınlandı");
       }
       onClose();
@@ -227,6 +234,16 @@ function ListingSheet({ open, editing, onClose }: { open: boolean; editing: List
           <div>
             <div className="mb-1.5 text-xs font-medium text-hmuted">Açıklama</div>
             <Textarea value={desc} onChange={(e) => setDesc(e.target.value)} rows={3} placeholder="Ürününüzü tanıtın..." />
+          </div>
+          <div>
+            <div className="mb-1.5 text-xs font-medium text-hmuted">Fotoğraf (opsiyonel)</div>
+            <Input type="file" accept="image/*" onChange={(e) => setPhotoFile(e.target.files?.[0] ?? null)} />
+            {photoFile && (
+              <img src={URL.createObjectURL(photoFile)} alt="preview" className="mt-2 h-24 w-24 rounded-lg object-cover" />
+            )}
+            {!photoFile && editing?.photos?.[0] && (
+              <img src={editing.photos[0]} alt="current" className="mt-2 h-24 w-24 rounded-lg object-cover opacity-70" />
+            )}
           </div>
           <button onClick={save} disabled={pending} className="w-full rounded-xl bg-saffron py-3 text-sm font-medium text-white disabled:opacity-50">
             {pending ? "Kaydediliyor…" : "Yayınla ✓"}

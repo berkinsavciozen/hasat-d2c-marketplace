@@ -48,6 +48,7 @@ function Payment() {
       const ref = `HT-${new Date().getFullYear()}-${String(Math.floor(Math.random() * 9000) + 1000)}`;
       setPendingOffer(null);
       setSuccess({ ref });
+      toast.success("Teklifiniz gönderildi");
     } catch (e: any) {
       toast.error(e.message ?? "Teklif gönderilemedi");
     }

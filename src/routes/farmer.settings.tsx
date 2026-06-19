@@ -2,7 +2,7 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { FarmerHeader } from "./farmer";
 import { useHasat } from "@/lib/hasat/store";
-import { useParcels, useUpdateParcel, useDeleteParcel, useCertifications, useProfile, useUpdateProfile } from "@/lib/hasat/queries";
+import { useParcels, useUpdateParcel, useDeleteParcel, useCertifications, useProfile, useUpdateProfile, useUploadCertification, useDeleteCertification, getCertificationSignedUrl, CERT_TYPES, type CertType } from "@/lib/hasat/queries";
 import { ProgressDots } from "@/components/hasat/ProgressDots";
 import { Input } from "@/components/ui/input";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
@@ -20,6 +20,12 @@ function Settings() {
   const { data: certs = [], isLoading: certsLoading } = useCertifications();
   const updateParcel = useUpdateParcel();
   const deleteParcel = useDeleteParcel();
+  const uploadCert = useUploadCertification();
+  const deleteCert = useDeleteCertification();
+  const [certSheet, setCertSheet] = useState(false);
+  const [certType, setCertType] = useState<CertType>("organik");
+  const [certExpires, setCertExpires] = useState("");
+  const [certFile, setCertFile] = useState<File | null>(null);
   const setRole = useHasat((s) => s.setRole);
 
   const [name, setName] = useState("");
@@ -121,21 +127,47 @@ function Settings() {
         <Section title="Sertifikalar">
           {certsLoading ? (
             <div className="py-4"><ProgressDots current={1} total={3} /></div>
-          ) : certs.length === 0 ? (
-            <div className="text-xs text-muted-foreground">Sertifika eklenmemiş</div>
           ) : (
             <div className="flex flex-col gap-2">
+              {certs.length === 0 && (
+                <div className="text-xs text-muted-foreground">Sertifika eklenmemiş</div>
+              )}
               {certs.map((c) => (
                 <div key={c.id} className="flex items-center justify-between rounded-lg border border-border px-3 py-2">
-                  <span className="px-2 py-1 text-xs rounded-full" style={{ background: "color-mix(in oklab, var(--sage) 30%, transparent)" }}>
+                  <button
+                    onClick={async () => {
+                      if (!c.document_url) return;
+                      try {
+                        const url = await getCertificationSignedUrl(c.document_url);
+                        window.open(url, "_blank");
+                      } catch (e) { toast.error((e as Error).message); }
+                    }}
+                    className="px-2 py-1 text-xs rounded-full hover:opacity-80"
+                    style={{ background: "color-mix(in oklab, var(--sage) 30%, transparent)" }}>
                     ✓ {c.type}
-                  </span>
-                  <div className="text-[11px] text-muted-foreground text-right">
-                    <div>Doğrulandı: {fmtDate(c.verified_at)}</div>
-                    <div>Süre: {fmtDate(c.expires_at)}</div>
+                  </button>
+                  <div className="flex items-center gap-2">
+                    <div className="text-[11px] text-muted-foreground text-right">
+                      <div>Doğrulandı: {fmtDate(c.verified_at)}</div>
+                      <div>Süre: {fmtDate(c.expires_at)}</div>
+                    </div>
+                    <button
+                      onClick={async () => {
+                        try {
+                          await deleteCert.mutateAsync({ id: c.id, document_url: c.document_url });
+                          toast.success("Sertifika silindi");
+                        } catch (e) { toast.error((e as Error).message); }
+                      }}
+                      className="grid h-8 w-8 place-items-center rounded-md hover:bg-destructive/10 text-destructive">
+                      <Trash2 className="h-4 w-4" />
+                    </button>
                   </div>
                 </div>
               ))}
+              <button onClick={() => setCertSheet(true)}
+                className="mt-2 self-start rounded-lg px-3 py-1.5 text-xs font-medium border border-border hover:bg-muted">
+                + Sertifika Ekle
+              </button>
             </div>
           )}
         </Section>
@@ -171,6 +203,44 @@ function Settings() {
             <button onClick={saveParcel}
               className="w-full rounded-xl py-2.5 text-sm font-medium"
               style={{ background: "var(--saffron)", color: "var(--hwhite)" }}>Kaydet</button>
+          </div>
+        </SheetContent>
+      </Sheet>
+
+      <Sheet open={certSheet} onOpenChange={(o) => { if (!o) { setCertSheet(false); setCertFile(null); setCertExpires(""); } }}>
+        <SheetContent side="bottom" className="rounded-t-2xl">
+          <SheetHeader><SheetTitle>Sertifika Ekle</SheetTitle></SheetHeader>
+          <div className="mt-4 space-y-3">
+            <div>
+              <label className="text-xs text-muted-foreground">Tür</label>
+              <select value={certType} onChange={(e) => setCertType(e.target.value as CertType)}
+                className="mt-1 w-full rounded-md border border-input bg-background px-3 py-2 text-sm">
+                {CERT_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="text-xs text-muted-foreground">Bitiş Tarihi (opsiyonel)</label>
+              <Input type="date" value={certExpires} onChange={(e) => setCertExpires(e.target.value)} className="mt-1" />
+            </div>
+            <div>
+              <label className="text-xs text-muted-foreground">Dosya (PDF/Resim)</label>
+              <Input type="file" accept="application/pdf,image/*" onChange={(e) => setCertFile(e.target.files?.[0] ?? null)} className="mt-1" />
+            </div>
+            {uploadCert.isPending && <ProgressDots current={2} total={3} />}
+            <button
+              onClick={async () => {
+                if (!certFile) { toast.error("Dosya seçin"); return; }
+                try {
+                  await uploadCert.mutateAsync({ type: certType, file: certFile, expiresAt: certExpires || null });
+                  toast.success("Sertifika yüklendi");
+                  setCertSheet(false); setCertFile(null); setCertExpires("");
+                } catch (e) { toast.error((e as Error).message); }
+              }}
+              disabled={uploadCert.isPending}
+              className="w-full rounded-xl py-2.5 text-sm font-medium disabled:opacity-50"
+              style={{ background: "var(--saffron)", color: "var(--hwhite)" }}>
+              {uploadCert.isPending ? "Yükleniyor…" : "Yükle"}
+            </button>
           </div>
         </SheetContent>
       </Sheet>
