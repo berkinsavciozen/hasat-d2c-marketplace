@@ -1126,7 +1126,7 @@ export function useBuyerAnalytics() {
           "id, status, created_at, order_ref, offer:offers(quantity, price_per_unit, listing:listings(crop, unit))",
         )
         .eq("buyer_id", userId!)
-        .neq("status", "cancelled")
+        .neq("status", "cancelled" as any)
         .order("created_at", { ascending: false });
       if (error) throw error;
       // one-time shape log to confirm price column name
