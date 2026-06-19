@@ -348,6 +348,7 @@ export function dbToListing(r: any): Listing {
     minOrder: Number(r.min_order),
     quality: r.quality,
     status: r.status,
+    photos: r.photo_urls ?? [],
     producerId: r.farmer_id,
   };
 }
