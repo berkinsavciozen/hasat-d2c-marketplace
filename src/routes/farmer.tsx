@@ -60,7 +60,10 @@ function FarmerShell() {
   const [moreOpen, setMoreOpen] = useState(false);
   useRealtimeSync(useAuthUserId());
   const totalArea = parcels.reduce((s, p) => s + (p.area ?? 0), 0);
-  const primaryCrop = parcels[0]?.crops?.[0] ?? "—";
+  const allCrops = parcels.flatMap((p) => p.crops ?? []);
+  const cropCounts = allCrops.reduce<Record<string, number>>((m, c) => { m[c] = (m[c] ?? 0) + 1; return m; }, {});
+  const primaryCrop = allCrops.length === 0 ? "—" : Object.entries(cropCounts).sort((a, b) => b[1] - a[1])[0][0];
+  const areaForChip = parcels.length === 0 ? null : totalArea;
 
   const city = profile?.city ?? "—";
   const displayName = profile?.name ?? "";
@@ -81,7 +84,7 @@ function FarmerShell() {
             </div>
           </div>
           <div className="mt-3">
-            <FarmPill city={city} area={totalArea} crop={primaryCrop} />
+            <FarmPill city={city} area={areaForChip} crop={primaryCrop} />
           </div>
           <div className="mt-3">
             <SeasonBanner />
@@ -232,7 +235,10 @@ export function FarmerHeader({ title, subtitle, children }: { title: string; sub
   const { data: profile } = useProfile();
   const { data: parcels = [] } = useParcels();
   const totalArea = parcels.reduce((s, p) => s + (p.area ?? 0), 0);
-  const primaryCrop = parcels[0]?.crops?.[0] ?? "—";
+  const allCrops = parcels.flatMap((p) => p.crops ?? []);
+  const cropCounts = allCrops.reduce<Record<string, number>>((m, c) => { m[c] = (m[c] ?? 0) + 1; return m; }, {});
+  const primaryCrop = allCrops.length === 0 ? "—" : Object.entries(cropCounts).sort((a, b) => b[1] - a[1])[0][0];
+  const areaForChip = parcels.length === 0 ? null : totalArea;
   const city = profile?.city ?? "—";
 
   return (
@@ -246,7 +252,7 @@ export function FarmerHeader({ title, subtitle, children }: { title: string; sub
 
       </div>
       <div className="md:hidden mt-3 flex flex-wrap items-center gap-2">
-        <FarmPill city={city} area={totalArea} crop={primaryCrop} />
+        <FarmPill city={city} area={areaForChip} crop={primaryCrop} />
       </div>
       <div className="md:hidden mt-3">
         <SeasonBanner />

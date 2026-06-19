@@ -78,9 +78,9 @@ function Community() {
         {isLoading ? (
           <LoadingDots />
         ) : filtered.length === 0 ? (
-          <div className="text-center py-12 text-muted-foreground text-sm">
+          <div className="rounded-2xl border border-dashed p-10 text-center text-hmuted">
             <div className="text-4xl mb-2">🌾</div>
-            {posts.length === 0 ? "İlk gönderiyi sen paylaş." : "Sonuç bulunamadı"}
+            {posts.length === 0 ? "Henüz gönderi yok. İlk gönderiyi sen paylaş!" : "Sonuç bulunamadı"}
           </div>
         ) : (
           <div className="space-y-3">
