@@ -94,7 +94,7 @@ function LoginPage() {
       setStep("otp");
       setOtp(["", "", "", "", "", ""]);
     } catch (e) {
-      toast.error((e as Error).message);
+      toast.error(translateAuthError(e as Error));
     } finally {
       setSending(false);
     }
