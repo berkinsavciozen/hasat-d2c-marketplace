@@ -138,8 +138,16 @@ function AuthBootstrap() {
         .select("*")
         .eq("id", session.user.id)
         .maybeSingle();
-      if (cancelled || !profile || !profile.name) return;
-      setRole((profile.role === "buyer" ? "buyer" : "farmer") as "farmer" | "buyer");
+      if (cancelled || !profile) return;
+      const role = (profile.role === "buyer" ? "buyer" : "farmer") as "farmer" | "buyer";
+      setRole(role);
+      if (!profile.name || profile.name.trim() === "") {
+        const path = window.location.pathname;
+        if (!path.startsWith("/login") && !path.startsWith("/onboarding")) {
+          router.navigate({ to: role === "buyer" ? "/onboarding/buyer" : "/onboarding/farmer" });
+        }
+        return;
+      }
       updateUser({
         id: session.user.id,
         name: profile.name,
