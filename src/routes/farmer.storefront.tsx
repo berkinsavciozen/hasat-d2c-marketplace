@@ -120,10 +120,15 @@ function Storefront() {
 function ListingCard({ listing, muted, onEdit, onRemove }: { listing: Listing; muted?: boolean; onEdit?: () => void; onRemove?: () => void }) {
   const statusLabel = listing.status === "active" ? "Aktif" : listing.status === "sold" ? "Satıldı" : "Süresi Doldu";
   const statusColor = listing.status === "active" ? "var(--sage)" : listing.status === "sold" ? "var(--gold)" : "var(--hmuted)";
+  const photo = listing.photos?.[0];
   return (
     <div className={`rounded-2xl border bg-card p-4 ${muted ? "opacity-60" : ""}`}>
       <div className="flex items-start gap-3">
-        <div className="grid h-12 w-12 place-items-center rounded-xl bg-cream text-2xl">{CROP_EMOJI[listing.crop] ?? "🌾"}</div>
+        {photo ? (
+          <img src={photo} alt={listing.crop} className="h-12 w-12 rounded-xl object-cover" />
+        ) : (
+          <div className="grid h-12 w-12 place-items-center rounded-xl bg-cream text-2xl">{CROP_EMOJI[listing.crop] ?? "🌾"}</div>
+        )}
         <div className="flex-1">
           <div className="flex items-center gap-2">
             <div className="font-medium">{listing.crop}</div>
