@@ -1,0 +1,1 @@
+CREATE POLICY "Buyers insert order timeline" ON public.order_timeline FOR INSERT TO authenticated WITH CHECK (EXISTS (SELECT 1 FROM public.orders o WHERE o.id = order_timeline.order_id AND o.buyer_id = auth.uid()));
