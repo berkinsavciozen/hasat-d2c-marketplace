@@ -165,7 +165,7 @@ function LoginPage() {
     }
   };
 
-  const onbHref = role === "buyer" ? "/onboarding/buyer" : "/onboarding/farmer";
+  
   const titleColor = role === "buyer" ? "var(--gold)" : "var(--saffron)";
 
   return (
