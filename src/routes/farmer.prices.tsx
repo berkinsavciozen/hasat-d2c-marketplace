@@ -165,7 +165,7 @@ function PriceRow({ label, value, delta, accent }: { label: string; value: strin
 }
 
 function PriceAlarmSheet({ open, onOpenChange, crops, defaultCrop, defaultPrice }: { open: boolean; onOpenChange: (b: boolean) => void; crops: string[]; defaultCrop: string; defaultPrice: number; }) {
-  const addPriceAlert = useHasat((s) => s.addPriceAlert);
+  const createAlert = useCreatePriceAlert();
   const [crop, setCrop] = useState(defaultCrop);
   const [price, setPrice] = useState(defaultPrice);
   const [direction, setDirection] = useState<"above" | "below">("above");
