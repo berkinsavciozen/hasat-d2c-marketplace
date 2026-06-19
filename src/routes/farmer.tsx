@@ -54,11 +54,14 @@ const sidebarExtras = [
 function FarmerShell() {
   const { data: profile } = useProfile();
   const { data: parcels = [] } = useParcels();
+  const { data: offers } = useFarmerOffers();
+  const pendingCount = offers?.filter((o) => o.status === "pending").length ?? 0;
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const [moreOpen, setMoreOpen] = useState(false);
   useRealtimeSync(useAuthUserId());
   const totalArea = parcels.reduce((s, p) => s + (p.area ?? 0), 0);
   const primaryCrop = parcels[0]?.crops?.[0] ?? "—";
+
   const city = profile?.city ?? "—";
   const displayName = profile?.name ?? "";
 
