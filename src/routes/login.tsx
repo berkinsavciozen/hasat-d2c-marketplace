@@ -33,7 +33,31 @@ function LoginPage() {
     return () => clearInterval(t);
   }, [step]);
 
-  const phoneDigits = phone.replace(/\D/g, "").slice(0, 10);
+  // Redirect already-authenticated users away from /login
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (cancelled || !session?.user) return;
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("role, name")
+        .eq("id", session.user.id)
+        .maybeSingle();
+      if (cancelled) return;
+      const r = (profile?.role === "buyer" ? "buyer" : "farmer") as "farmer" | "buyer";
+      if (!profile?.name || profile.name.trim() === "") {
+        navigate({ to: r === "buyer" ? "/onboarding/buyer" : "/onboarding/farmer" });
+      } else {
+        navigate({ to: r === "buyer" ? "/buyer/discover" : "/farmer/home" });
+      }
+    })();
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Strip leading 0 (TR local format: 0533... -> 533...) before taking 10 digits
+  const phoneDigits = phone.replace(/\D/g, "").replace(/^0+/, "").slice(0, 10);
   const formattedPhone = phoneDigits.replace(/(\d{3})(\d{0,3})(\d{0,2})(\d{0,2})/, (_, a, b, c, d) =>
     [a, b, c, d].filter(Boolean).join(" "),
   );
