@@ -24,13 +24,13 @@ function Negotiation() {
   const { offerId } = Route.useParams();
   const navigate = useNavigate();
   const router = useRouter();
-  const { data: offers = [], isLoading } = useBuyerOffers();
+  const { data: offers, isPending, isFetching } = useBuyerOffers();
   const updateStatus = useUpdateOfferStatus();
   const counterMut = useCounterOffer();
 
   const [sheetOpen, setSheetOpen] = useState(false);
 
-  if (isLoading) return <div className="p-8"><LoadingDots /></div>;
+  if (isPending || isFetching || !offers) return <div className="p-8"><LoadingDots /></div>;
   const offer = offers.find((o) => o.id === offerId);
   if (!offer) throw notFound();
   const original = offer.original ?? {
