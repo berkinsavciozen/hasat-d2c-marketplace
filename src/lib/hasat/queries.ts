@@ -1317,3 +1317,32 @@ export function useBuyerAnalytics() {
     },
   });
 }
+
+// ---- price points ----
+export function usePricePoints() {
+  return useQuery({
+    queryKey: ["pricePoints"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("price_points")
+        .select("crop, hal_price, d2c_price, export_price, delta_7d, recorded_date")
+        .order("recorded_date", { ascending: false });
+      if (error) throw error;
+      const seen = new Set<string>();
+      const latest: import("./types").PricePoint[] = [];
+      for (const r of data ?? []) {
+        if (seen.has(r.crop)) continue;
+        seen.add(r.crop);
+        latest.push({
+          crop: r.crop,
+          hal: Number(r.hal_price ?? 0),
+          d2c: Number(r.d2c_price ?? 0),
+          export: Number(r.export_price ?? 0),
+          delta7d: Number(r.delta_7d ?? 0),
+          date: r.recorded_date ?? "",
+        });
+      }
+      return latest;
+    },
+  });
+}

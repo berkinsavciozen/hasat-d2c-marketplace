@@ -81,12 +81,24 @@ function Journal() {
   const [pName, setPName] = useState("");
   const [pArea, setPArea] = useState(2);
   const [pCrops, setPCrops] = useState<string[]>(["Safran"]);
-  const [gpsState, setGpsState] = useState<"idle" | "loading" | "done">("idle");
+  const [gpsState, setGpsState] = useState<"idle" | "loading" | "done" | "error">("idle");
+  const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(null);
   const [open, setOpen] = useState(false);
 
   const startGps = () => {
+    if (!navigator.geolocation) {
+      setGpsState("error");
+      return;
+    }
     setGpsState("loading");
-    setTimeout(() => setGpsState("done"), 1500);
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        setCoords({ lat: pos.coords.latitude, lng: pos.coords.longitude });
+        setGpsState("done");
+      },
+      () => setGpsState("error"),
+      { enableHighAccuracy: true, timeout: 10000 },
+    );
   };
 
   const saveParcel = async () => {
@@ -95,10 +107,12 @@ function Journal() {
         name: pName,
         area: pArea,
         crops: pCrops,
-        location: { lat: 41.25, lng: 32.69, label: "Karabük, Safranbolu" },
+        location: coords
+          ? { lat: coords.lat, lng: coords.lng, label: "" }
+          : { lat: 0, lng: 0, label: "" },
       });
       setOpen(false);
-      setPName(""); setPArea(2); setPCrops(["Safran"]); setGpsState("idle");
+      setPName(""); setPArea(2); setPCrops(["Safran"]); setGpsState("idle"); setCoords(null);
       toast.success("Parsel eklendi");
     } catch (err) {
       toast.error((err as Error).message);
@@ -176,10 +190,15 @@ function Journal() {
                         <span className="inline-block animate-pulse">📡 Konum algılanıyor…</span>
                       </div>
                     )}
-                    {gpsState === "done" && (
+                    {gpsState === "done" && coords && (
                       <div className="rounded-lg bg-sage/15 px-3 py-2.5 text-sm text-sage">
-                        ✓ Karabük, Safranbolu — Doğrulandı
+                        ✓ Konum kaydedildi ({coords.lat.toFixed(4)}, {coords.lng.toFixed(4)})
                       </div>
+                    )}
+                    {gpsState === "error" && (
+                      <button type="button" onClick={startGps} className="w-full rounded-lg border border-dashed border-hred/40 py-3 text-sm text-hred hover:bg-hred/5">
+                        Konum alınamadı — tekrar dene
+                      </button>
                     )}
                   </div>
                 </div>
