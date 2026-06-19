@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useHasat } from "@/lib/hasat/store";
-import { useFarmerListings } from "@/lib/hasat/queries";
+import { useFarmerListings, useEntries } from "@/lib/hasat/queries";
 import { FarmerHeader } from "./farmer";
 import { formatTRY } from "@/lib/hasat/format";
 import { BookOpen, LineChart, Store, Users2 } from "lucide-react";
@@ -12,7 +12,7 @@ export const Route = createFileRoute("/farmer/home")({
 
 function Home() {
   const user = useHasat((s) => s.user);
-  const entries = useHasat((s) => s.entries);
+  const { data: entries = [] } = useEntries();
   const { data: listings = [] } = useFarmerListings();
 
   const totalRevenue = entries.reduce((sum, e) => sum + e.quantity * (e.pricePerUnit ?? 0), 0);
