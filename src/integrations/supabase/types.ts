@@ -468,6 +468,7 @@ export type Database = {
           farmer_id: string
           id: string
           listing_id: string
+          negotiation_history: Json
           note: string | null
           price_per_unit: number
           quantity: number
@@ -483,6 +484,7 @@ export type Database = {
           farmer_id: string
           id?: string
           listing_id: string
+          negotiation_history?: Json
           note?: string | null
           price_per_unit: number
           quantity: number
@@ -498,6 +500,7 @@ export type Database = {
           farmer_id?: string
           id?: string
           listing_id?: string
+          negotiation_history?: Json
           note?: string | null
           price_per_unit?: number
           quantity?: number
