@@ -89,10 +89,11 @@ function FarmerShell() {
         </div>
 
         <nav className="flex flex-col gap-1 mt-2">
-          {[...tabs, ...sidebarExtras].map(({ to, label, icon: Icon, ...rest }) => {
+          {[...tabs, ...sidebarExtras].map(({ to, label, icon: Icon }) => {
             const active = pathname.startsWith(to);
-            const badge = (rest as { badge?: number }).badge;
+            const badge = to === "/farmer/orders" ? pendingCount : 0;
             return (
+
               <Link
                 key={to}
                 to={to}
