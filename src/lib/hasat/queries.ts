@@ -663,12 +663,25 @@ export function useCreateOffer() {
       if (error) throw error;
       return data;
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
       qc.invalidateQueries({ queryKey: ["buyerOffers", userId] });
       qc.invalidateQueries({ queryKey: ["farmerOffers"] });
+      // Best-effort SMS to farmer
+      if (data?.farmer_id) {
+        supabase.functions
+          .invoke("send-sms", {
+            body: {
+              userId: data.farmer_id,
+              message: "Hasat: Yeni bir teklif aldınız.",
+              event: "new_offer",
+            },
+          })
+          .catch((e) => console.warn("[send-sms] offer_received failed", e));
+      }
     },
   });
 }
+
 
 export type OfferStatusUpdate = "accepted" | "rejected" | "counter" | "completed";
 
@@ -710,6 +723,18 @@ export function useUpdateOfferStatus() {
           throw err;
         }
       }
+      // Best-effort SMS to buyer on accepted/counter
+      if (status === "accepted" || status === "counter") {
+        const msg =
+          status === "accepted"
+            ? "Hasat: Teklifiniz kabul edildi."
+            : "Hasat: Karşı teklif geldi.";
+        supabase.functions
+          .invoke("send-sms", {
+            body: { userId: offerRow.buyer_id, message: msg, event: "new_offer" },
+          })
+          .catch((e) => console.warn("[send-sms] offer_status failed", e));
+      }
       return offerRow;
     },
     onSuccess: () => {
@@ -720,6 +745,7 @@ export function useUpdateOfferStatus() {
     },
   });
 }
+
 
 
 export interface OfferCounterPatch {
@@ -1066,7 +1092,7 @@ export function useCreatePost() {
 // =====================================================================
 // REALTIME SYNC (6A)
 // =====================================================================
-export function useRealtimeSync() {
+export function useRealtimeSync(userId?: string | null) {
   const qc = useQueryClient();
   useEffect(() => {
     const offersCh = supabase
@@ -1092,12 +1118,121 @@ export function useRealtimeSync() {
         },
       )
       .subscribe();
+    let notifCh: ReturnType<typeof supabase.channel> | null = null;
+    if (userId) {
+      notifCh = supabase
+        .channel(`notif-changes-${userId}`)
+        .on(
+          "postgres_changes",
+          {
+            event: "INSERT",
+            schema: "public",
+            table: "notifications",
+            filter: `user_id=eq.${userId}`,
+          },
+          () => {
+            qc.invalidateQueries({ queryKey: ["notifications", userId] });
+            qc.invalidateQueries({ queryKey: ["notifCount", userId] });
+          },
+        )
+        .subscribe();
+    }
     return () => {
       supabase.removeChannel(offersCh);
       supabase.removeChannel(ordersCh);
+      if (notifCh) supabase.removeChannel(notifCh);
     };
-  }, [qc]);
+  }, [qc, userId]);
 }
+
+// =====================================================================
+// NOTIFICATIONS (Phase 7)
+// =====================================================================
+export interface NotificationRow {
+  id: string;
+  user_id: string;
+  type: string;
+  title: string;
+  body: string | null;
+  related_id: string | null;
+  read_at: string | null;
+  created_at: string;
+}
+
+export function useNotifications() {
+  const userId = useAuthUserId();
+  return useQuery({
+    queryKey: ["notifications", userId],
+    enabled: !!userId,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("notifications")
+        .select("*")
+        .eq("user_id", userId!)
+        .order("created_at", { ascending: false })
+        .limit(50);
+      if (error) throw error;
+      return (data ?? []) as NotificationRow[];
+    },
+  });
+}
+
+export function useUnreadCount() {
+  const userId = useAuthUserId();
+  return useQuery({
+    queryKey: ["notifCount", userId],
+    enabled: !!userId,
+    refetchInterval: 30000,
+    queryFn: async () => {
+      const { count, error } = await supabase
+        .from("notifications")
+        .select("*", { count: "exact", head: true })
+        .eq("user_id", userId!)
+        .is("read_at", null);
+      if (error) throw error;
+      return count ?? 0;
+    },
+  });
+}
+
+export function useMarkAllRead() {
+  const qc = useQueryClient();
+  const userId = useAuthUserId();
+  return useMutation({
+    mutationFn: async () => {
+      if (!userId) return;
+      const { error } = await supabase
+        .from("notifications")
+        .update({ read_at: new Date().toISOString() })
+        .eq("user_id", userId)
+        .is("read_at", null);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["notifications", userId] });
+      qc.invalidateQueries({ queryKey: ["notifCount", userId] });
+    },
+  });
+}
+
+export function useMarkOneRead() {
+  const qc = useQueryClient();
+  const userId = useAuthUserId();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase
+        .from("notifications")
+        .update({ read_at: new Date().toISOString() })
+        .eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["notifications", userId] });
+      qc.invalidateQueries({ queryKey: ["notifCount", userId] });
+    },
+  });
+}
+
 
 // =====================================================================
 // BUYER ANALYTICS (6C)
