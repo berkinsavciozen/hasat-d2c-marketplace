@@ -46,6 +46,7 @@ export interface Listing {
   minOrder: number;
   quality: "A" | "B" | "C";
   status: "active" | "sold" | "expired";
+  photos?: string[];
   producerId?: string;
 }
 
