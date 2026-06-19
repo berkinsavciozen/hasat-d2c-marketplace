@@ -7,6 +7,7 @@ import { OrderChip } from "@/components/hasat/OrderChip";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { toast } from "sonner";
 import type { Offer, BuyerType, Order } from "@/lib/hasat/types";
+import { NegotiationTimeline } from "@/components/hasat/NegotiationTimeline";
 
 export const Route = createFileRoute("/farmer/orders/")({
   head: () => ({ meta: [{ title: "Siparişler — Hasat" }] }),
