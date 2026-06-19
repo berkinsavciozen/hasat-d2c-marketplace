@@ -1,6 +1,6 @@
 import { createFileRoute, Link, Outlet, redirect, useRouterState } from "@tanstack/react-router";
 import { useState } from "react";
-import { Bell, BarChart3, BookOpen, Home, LineChart, Store, Users, Settings, Crown, Handshake, MoreHorizontal } from "lucide-react";
+import { BarChart3, BookOpen, Home, LineChart, Store, Users, Settings, Crown, Handshake, MoreHorizontal } from "lucide-react";
 import { useProfile, useParcels, useRealtimeSync, useAuthUserId } from "@/lib/hasat/queries";
 import { SeasonBanner } from "@/components/hasat/SeasonBanner";
 import { FarmPill } from "@/components/hasat/FarmPill";
