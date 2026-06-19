@@ -162,6 +162,7 @@ function ListingSheet({ open, editing, onClose }: { open: boolean; editing: List
   const [minOrder, setMinOrder] = useState(editing?.minOrder ?? 10);
   const [quality, setQuality] = useState<"A" | "B" | "C">(editing?.quality ?? "A");
   const [desc, setDesc] = useState("");
+  const [photoFile, setPhotoFile] = useState<File | null>(null);
 
   const editingId = editing?.id;
   useEffect(() => {
@@ -172,6 +173,7 @@ function ListingSheet({ open, editing, onClose }: { open: boolean; editing: List
       setCrop("Safran"); setQuantity(100); setUnit("g"); setPrice(350); setMinOrder(10); setQuality("A");
     }
     setDesc("");
+    setPhotoFile(null);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [editingId]);
 
