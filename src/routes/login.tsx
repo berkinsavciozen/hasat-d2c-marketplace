@@ -11,6 +11,18 @@ export const Route = createFileRoute("/login")({
   component: LoginPage,
 });
 
+function translateAuthError(e: Error): string {
+  const m = (e?.message || "").toLowerCase();
+  if (m.includes("expired") || m.includes("invalid") && m.includes("token") || m.includes("otp")) {
+    return "Kod hatalı veya süresi dolmuş. Tekrar deneyin.";
+  }
+  if (m.includes("rate") || m.includes("too many") || m.includes("limit")) {
+    return "Çok fazla deneme. Lütfen biraz bekleyin.";
+  }
+  if (m.includes("phone")) return "Telefon numarası geçersiz.";
+  return e?.message || "Bir hata oluştu.";
+}
+
 function LoginPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
