@@ -29,11 +29,10 @@ function Settings() {
   const [pArea, setPArea] = useState(0);
 
   useEffect(() => {
-    if (profile) {
-      setName(profile.name ?? "");
-      setCity(profile.city ?? "");
-    }
-  }, [profile]);
+    if (!profile) return;
+    setName(profile.name ?? "");
+    setCity(profile.city ?? "");
+  }, [profile?.name, profile?.city]);
 
   const saveProfile = async () => {
     try {
