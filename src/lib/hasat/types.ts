@@ -91,7 +91,7 @@ export interface Offer {
   /** Original buyer offer values, retained when farmer responds with a counter. */
   original?: OfferSnapshot;
   /** Full negotiation history, oldest first. The "live" offer fields are the latest proposal. */
-  history: NegotiationSnapshot[];
+  history?: NegotiationSnapshot[];
   producerId?: string;
 }
 
