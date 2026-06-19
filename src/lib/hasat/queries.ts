@@ -214,6 +214,9 @@ export interface CertRow {
   document_url: string | null;
 }
 
+export const CERT_TYPES = ["organik", "iso", "cografi", "hasat", "premium", "yeni"] as const;
+export type CertType = (typeof CERT_TYPES)[number];
+
 export function useCertifications() {
   const userId = useAuthUserId();
   return useQuery({
@@ -223,11 +226,54 @@ export function useCertifications() {
       const { data, error } = await supabase
         .from("certifications").select("*")
         .eq("farmer_id", userId!)
-        .order("verified_at", { ascending: false, nullsFirst: false });
+        .order("created_at", { ascending: false });
       if (error) throw error;
       return (data ?? []) as CertRow[];
     },
   });
+}
+
+export function useUploadCertification() {
+  const qc = useQueryClient();
+  const userId = useAuthUserId();
+  return useMutation({
+    mutationFn: async ({ type, file, expiresAt }: { type: CertType; file: File; expiresAt?: string | null }) => {
+      if (!userId) throw new Error("Oturum bulunamadı");
+      const path = `${userId}/${Date.now()}-${file.name}`;
+      const up = await supabase.storage.from("certificates").upload(path, file, { upsert: false });
+      if (up.error) throw up.error;
+      const { error } = await supabase.from("certifications").insert({
+        farmer_id: userId,
+        type,
+        document_url: path,
+        expires_at: expiresAt || null,
+      });
+      if (error) {
+        await supabase.storage.from("certificates").remove([path]);
+        throw error;
+      }
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["certifications", userId] }),
+  });
+}
+
+export function useDeleteCertification() {
+  const qc = useQueryClient();
+  const userId = useAuthUserId();
+  return useMutation({
+    mutationFn: async ({ id, document_url }: { id: string; document_url: string | null }) => {
+      const { error } = await supabase.from("certifications").delete().eq("id", id);
+      if (error) throw error;
+      if (document_url) await supabase.storage.from("certificates").remove([document_url]);
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["certifications", userId] }),
+  });
+}
+
+export async function getCertificationSignedUrl(path: string): Promise<string> {
+  const { data, error } = await supabase.storage.from("certificates").createSignedUrl(path, 3600);
+  if (error) throw error;
+  return data.signedUrl;
 }
 
 // ---- profile ----
