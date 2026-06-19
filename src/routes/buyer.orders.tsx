@@ -7,6 +7,7 @@ import { formatTRY } from "@/lib/hasat/format";
 import { useBuyerOrders, useBuyerOffers, useUpdateOfferStatus } from "@/lib/hasat/queries";
 import { toast } from "sonner";
 import type { Order, Offer } from "@/lib/hasat/types";
+import { NegotiationTimeline } from "@/components/hasat/NegotiationTimeline";
 
 export const Route = createFileRoute("/buyer/orders")({
   head: () => ({ meta: [{ title: "Siparişlerim — Hasat" }] }),
