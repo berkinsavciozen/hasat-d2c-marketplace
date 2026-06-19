@@ -109,6 +109,11 @@ function OfferCard({ offer, actions, muted, onAccept, onCounter }: { offer: Offe
           <span className="text-[10px] text-hmuted">{timeAgo(offer.createdAt)}</span>
         </div>
       </div>
+      {(offer.history?.length ?? 0) > 0 && (
+        <div className="mt-3 border-t pt-3">
+          <NegotiationTimeline offer={offer} viewer="farmer" compact />
+        </div>
+      )}
       {actions && (
         <div className="mt-3 grid grid-cols-2 gap-2">
           <button onClick={onAccept} className="rounded-lg py-2.5 text-sm font-medium text-white" style={{ background: "var(--sage)" }}>Kabul Et</button>
