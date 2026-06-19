@@ -127,21 +127,47 @@ function Settings() {
         <Section title="Sertifikalar">
           {certsLoading ? (
             <div className="py-4"><ProgressDots current={1} total={3} /></div>
-          ) : certs.length === 0 ? (
-            <div className="text-xs text-muted-foreground">Sertifika eklenmemiş</div>
           ) : (
             <div className="flex flex-col gap-2">
+              {certs.length === 0 && (
+                <div className="text-xs text-muted-foreground">Sertifika eklenmemiş</div>
+              )}
               {certs.map((c) => (
                 <div key={c.id} className="flex items-center justify-between rounded-lg border border-border px-3 py-2">
-                  <span className="px-2 py-1 text-xs rounded-full" style={{ background: "color-mix(in oklab, var(--sage) 30%, transparent)" }}>
+                  <button
+                    onClick={async () => {
+                      if (!c.document_url) return;
+                      try {
+                        const url = await getCertificationSignedUrl(c.document_url);
+                        window.open(url, "_blank");
+                      } catch (e) { toast.error((e as Error).message); }
+                    }}
+                    className="px-2 py-1 text-xs rounded-full hover:opacity-80"
+                    style={{ background: "color-mix(in oklab, var(--sage) 30%, transparent)" }}>
                     ✓ {c.type}
-                  </span>
-                  <div className="text-[11px] text-muted-foreground text-right">
-                    <div>Doğrulandı: {fmtDate(c.verified_at)}</div>
-                    <div>Süre: {fmtDate(c.expires_at)}</div>
+                  </button>
+                  <div className="flex items-center gap-2">
+                    <div className="text-[11px] text-muted-foreground text-right">
+                      <div>Doğrulandı: {fmtDate(c.verified_at)}</div>
+                      <div>Süre: {fmtDate(c.expires_at)}</div>
+                    </div>
+                    <button
+                      onClick={async () => {
+                        try {
+                          await deleteCert.mutateAsync({ id: c.id, document_url: c.document_url });
+                          toast.success("Sertifika silindi");
+                        } catch (e) { toast.error((e as Error).message); }
+                      }}
+                      className="grid h-8 w-8 place-items-center rounded-md hover:bg-destructive/10 text-destructive">
+                      <Trash2 className="h-4 w-4" />
+                    </button>
                   </div>
                 </div>
               ))}
+              <button onClick={() => setCertSheet(true)}
+                className="mt-2 self-start rounded-lg px-3 py-1.5 text-xs font-medium border border-border hover:bg-muted">
+                + Sertifika Ekle
+              </button>
             </div>
           )}
         </Section>
