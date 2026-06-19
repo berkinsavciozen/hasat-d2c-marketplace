@@ -4,8 +4,9 @@ import { BuyerHeader } from "@/components/hasat/BuyerHeader";
 import { LoadingDots } from "@/components/hasat/LoadingDots";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { formatTRY } from "@/lib/hasat/format";
-import { useBuyerOrders } from "@/lib/hasat/queries";
-import type { Order } from "@/lib/hasat/types";
+import { useBuyerOrders, useBuyerOffers, useUpdateOfferStatus } from "@/lib/hasat/queries";
+import { toast } from "sonner";
+import type { Order, Offer } from "@/lib/hasat/types";
 
 export const Route = createFileRoute("/buyer/orders")({
   head: () => ({ meta: [{ title: "Siparişlerim — Hasat" }] }),
@@ -22,13 +23,26 @@ const STATUS_LABEL: Record<Order["status"], { label: string; bg: string; fg: str
 
 function OrdersList() {
   const navigate = useNavigate();
-  const { data: orders = [], isLoading } = useBuyerOrders();
+  const { data: orders = [], isLoading: ordersLoading } = useBuyerOrders();
+  const { data: offers = [], isLoading: offersLoading } = useBuyerOffers();
+  const updateStatus = useUpdateOfferStatus();
   const [tab, setTab] = useState("active");
+
+  const pendingOffers = offers.filter((o) => o.status === "pending" || o.status === "counter");
   const active = orders.filter((o) => o.status !== "delivered");
   const done = orders.filter((o) => o.status === "delivered");
 
-  const render = (list: Order[]) =>
-    isLoading ? (
+  const accept = async (offer: Offer) => {
+    try {
+      await updateStatus.mutateAsync({ id: offer.id, status: "accepted" });
+      toast.success("Teklif kabul edildi");
+    } catch (e: any) {
+      toast.error(e.message ?? "İşlem başarısız");
+    }
+  };
+
+  const renderOrders = (list: Order[]) =>
+    ordersLoading ? (
       <LoadingDots />
     ) : list.length === 0 ? (
       <div className="rounded-2xl border border-dashed p-8 text-center text-hmuted">Henüz sipariş yok.</div>
@@ -57,19 +71,111 @@ function OrdersList() {
       </div>
     );
 
+  const renderOffers = () =>
+    offersLoading ? (
+      <LoadingDots />
+    ) : pendingOffers.length === 0 ? (
+      <div className="rounded-2xl border border-dashed p-8 text-center text-hmuted">Henüz teklif yok.</div>
+    ) : (
+      <div className="space-y-3">
+        {pendingOffers.map((o) => (
+          <OfferCard
+            key={o.id}
+            offer={o}
+            onAccept={() => accept(o)}
+            onCounter={() => navigate({ to: "/buyer/negotiation/$offerId", params: { offerId: o.id } })}
+            pending={updateStatus.isPending}
+          />
+        ))}
+      </div>
+    );
+
   return (
     <>
       <BuyerHeader title="Siparişlerim" />
       <div className="p-4 md:p-8 max-w-3xl">
         <Tabs value={tab} onValueChange={setTab}>
-          <TabsList>
+          <TabsList className="grid w-full grid-cols-3">
+            <TabsTrigger value="offers">Tekliflerim ({pendingOffers.length})</TabsTrigger>
             <TabsTrigger value="active">Aktif ({active.length})</TabsTrigger>
             <TabsTrigger value="done">Tamamlanan ({done.length})</TabsTrigger>
           </TabsList>
-          <TabsContent value="active" className="mt-4">{render(active)}</TabsContent>
-          <TabsContent value="done" className="mt-4">{render(done)}</TabsContent>
+          <TabsContent value="offers" className="mt-4">{renderOffers()}</TabsContent>
+          <TabsContent value="active" className="mt-4">{renderOrders(active)}</TabsContent>
+          <TabsContent value="done" className="mt-4">{renderOrders(done)}</TabsContent>
         </Tabs>
       </div>
     </>
+  );
+}
+
+function OfferCard({ offer, onAccept, onCounter, pending }: { offer: Offer; onAccept: () => void; onCounter: () => void; pending: boolean }) {
+  const isCounter = offer.status === "counter";
+  const total = offer.quantity * offer.pricePerUnit;
+  return (
+    <div className={`rounded-2xl border p-4 bg-card ${isCounter ? "border-saffron" : ""}`}>
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex-1">
+          <div className="font-medium">{offer.crop}</div>
+          <div className="text-xs text-hmuted mt-0.5">{offer.quantity} {offer.unit} · {offer.buyerName}</div>
+        </div>
+        <span
+          className="rounded-full px-2.5 py-0.5 text-[11px] font-medium"
+          style={
+            isCounter
+              ? { background: "color-mix(in oklab, var(--saffron) 18%, transparent)", color: "var(--saffron)" }
+              : { background: "var(--muted)", color: "var(--hmuted)" }
+          }
+        >
+          {isCounter ? "Karşı Teklif Geldi" : "Beklemede"}
+        </span>
+      </div>
+
+      {isCounter && offer.original ? (
+        <div className="mt-3 space-y-1 text-sm">
+          <div className="flex items-center justify-between">
+            <span className="text-hmuted text-xs">Sizin teklifiniz</span>
+            <span className="font-mono text-hmuted line-through">
+              {formatTRY(offer.original.pricePerUnit)}/{offer.unit}
+            </span>
+          </div>
+          <div className="flex items-center justify-between">
+            <span className="text-xs text-saffron">Çiftçinin karşı teklifi</span>
+            <span className="font-mono font-bold text-saffron">
+              {formatTRY(offer.pricePerUnit)}/{offer.unit}
+            </span>
+          </div>
+          <div className="mt-2 flex items-center justify-between border-t pt-2">
+            <span className="text-xs text-hmuted">Yeni toplam</span>
+            <span className="font-mono font-semibold">{formatTRY(total)}</span>
+          </div>
+        </div>
+      ) : (
+        <div className="mt-3 flex items-center justify-between text-sm">
+          <span className="text-xs text-hmuted">{formatTRY(offer.pricePerUnit)}/{offer.unit}</span>
+          <span className="font-mono font-semibold">{formatTRY(total)}</span>
+        </div>
+      )}
+
+      {isCounter && (
+        <div className="mt-4 grid grid-cols-2 gap-2">
+          <button
+            onClick={onAccept}
+            disabled={pending}
+            className="rounded-lg py-2.5 text-sm font-medium text-white disabled:opacity-50"
+            style={{ background: "var(--sage)" }}
+          >
+            {pending ? "..." : "Kabul Et"}
+          </button>
+          <button
+            onClick={onCounter}
+            disabled={pending}
+            className="rounded-lg border border-saffron py-2.5 text-sm font-medium text-saffron hover:bg-saffron/5 disabled:opacity-50"
+          >
+            Yeni Teklif Gönder
+          </button>
+        </div>
+      )}
+    </div>
   );
 }
