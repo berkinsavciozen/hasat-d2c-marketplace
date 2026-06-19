@@ -31,6 +31,11 @@ function Account() {
     <>
       <BuyerHeader title="Hesap" />
       <div className="p-4 md:p-8 max-w-2xl space-y-5">
+        {needsName && (
+          <div className="rounded-xl border border-saffron/40 bg-saffron/10 px-4 py-3 text-sm text-saffron">
+            Profilinizi tamamlayın — alıcılar sizi tanısın.
+          </div>
+        )}
         <div className="rounded-2xl bg-card border p-5">
           <div className="flex items-center gap-3">
             <div className="grid h-14 w-14 place-items-center rounded-full text-xl font-bold text-white" style={{ background: "var(--gold)" }}>
