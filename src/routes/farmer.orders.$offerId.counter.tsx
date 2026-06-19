@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { ArrowLeft } from "lucide-react";
+import { NegotiationTimeline } from "@/components/hasat/NegotiationTimeline";
 
 export const Route = createFileRoute("/farmer/orders/$offerId/counter")({
   head: () => ({ meta: [{ title: "Karşı Teklif — Hasat" }] }),
@@ -52,6 +53,7 @@ function Counter() {
       await counterMut.mutateAsync({
         id: offer.id,
         patch,
+        by: "farmer",
         original: { quantity: offer.quantity, pricePerUnit: offer.pricePerUnit, delivery: offer.delivery, deliveryDate: offer.deliveryDate, note: offer.note },
       });
       toast.success("Karşı teklif gönderildi");
@@ -81,15 +83,13 @@ function CounterForm({ offer, navigate, submit, pending }: { offer: any; navigat
       </FarmerHeader>
 
       <div className="px-4 md:px-8 py-5 space-y-4 max-w-2xl">
-        <div className="rounded-2xl border bg-muted/40 p-4 opacity-80">
-          <div className="mb-2 text-xs font-medium uppercase tracking-wider text-hmuted">Orijinal teklif</div>
-          <div className="grid grid-cols-2 gap-2 text-sm">
-            <div><span className="text-hmuted">Ürün:</span> {offer.crop}</div>
-            <div><span className="text-hmuted">Miktar:</span> {offer.quantity} {offer.unit}</div>
-            <div><span className="text-hmuted">Fiyat:</span> <span className="font-mono">{formatTRY(offer.pricePerUnit)}/{offer.unit}</span></div>
-            <div><span className="text-hmuted">Toplam:</span> <span className="font-mono font-semibold">{formatTRY(originalTotal)}</span></div>
+        <div>
+          <div className="mb-2 text-xs font-medium uppercase tracking-wider text-hmuted">
+            {offer.crop} · Müzakere geçmişi
           </div>
+          <NegotiationTimeline offer={offer} viewer="farmer" />
         </div>
+
 
         <div>
           <div className="mb-1.5 text-xs font-medium text-hmuted">Önerilen miktar ({offer.unit})</div>

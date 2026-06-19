@@ -368,6 +368,18 @@ export function dbToActiveListing(r: any): ActiveListing {
 
 function dbToOffer(r: any, side: "farmer" | "buyer"): Offer {
   const counter = r.counter_offer && typeof r.counter_offer === "object" ? r.counter_offer : null;
+  const rawHistory = Array.isArray(r.negotiation_history) ? r.negotiation_history : [];
+  const history = rawHistory
+    .map((h: any) => ({
+      by: h?.by === "farmer" ? "farmer" : "buyer",
+      at: typeof h?.at === "string" ? h.at : r.created_at,
+      quantity: Number(h?.quantity ?? 0),
+      pricePerUnit: Number(h?.pricePerUnit ?? 0),
+      delivery: h?.delivery ?? undefined,
+      deliveryDate: h?.deliveryDate ?? undefined,
+      note: h?.note ?? undefined,
+    }))
+    .filter((h: any) => Number.isFinite(h.quantity) && Number.isFinite(h.pricePerUnit));
   const partyName =
     side === "farmer" ? (r.buyer?.name ?? "Alıcı") : (r.farmer?.name ?? "Üretici");
   return {
@@ -391,7 +403,16 @@ function dbToOffer(r: any, side: "farmer" | "buyer"): Offer {
           deliveryDate: counter.deliveryDate,
           note: counter.note,
         }
-      : undefined,
+      : history.length > 0
+        ? {
+            quantity: history[history.length - 1].quantity,
+            pricePerUnit: history[history.length - 1].pricePerUnit,
+            delivery: history[history.length - 1].delivery,
+            deliveryDate: history[history.length - 1].deliveryDate,
+            note: history[history.length - 1].note,
+          }
+        : undefined,
+    history,
     producerId: r.farmer_id,
   };
 }
@@ -760,7 +781,29 @@ export function useCounterOffer() {
   const qc = useQueryClient();
   const userId = useAuthUserId();
   return useMutation({
-    mutationFn: async ({ id, patch, original }: { id: string; patch: OfferCounterPatch; original?: OfferCounterPatch }) => {
+    mutationFn: async ({ id, patch, original, by }: { id: string; patch: OfferCounterPatch; original?: OfferCounterPatch; by: "buyer" | "farmer" }) => {
+      // Read current row to capture the snapshot we're about to overwrite, plus the existing history.
+      const { data: current, error: readErr } = await supabase
+        .from("offers")
+        .select("quantity, price_per_unit, delivery, delivery_date, note, negotiation_history")
+        .eq("id", id)
+        .single();
+      if (readErr) throw readErr;
+
+      const prevSnapshot = {
+        by,
+        at: new Date().toISOString(),
+        quantity: Number(current.quantity),
+        pricePerUnit: Number(current.price_per_unit),
+        delivery: deliveryLabel(current.delivery),
+        deliveryDate: current.delivery_date ?? undefined,
+        note: current.note ?? undefined,
+      };
+      const prevHistory = Array.isArray((current as any).negotiation_history)
+        ? (current as any).negotiation_history
+        : [];
+      const nextHistory = [...prevHistory, prevSnapshot];
+
       const { error } = await supabase.from("offers").update({
         quantity: patch.quantity,
         price_per_unit: patch.pricePerUnit,
@@ -769,6 +812,7 @@ export function useCounterOffer() {
         note: patch.note ?? null,
         status: "counter",
         counter_offer: original ?? null,
+        negotiation_history: nextHistory,
       } as any).eq("id", id);
       if (error) throw error;
     },
