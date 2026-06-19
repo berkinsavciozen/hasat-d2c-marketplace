@@ -182,10 +182,10 @@ function ListingSheet({ open, editing, onClose }: { open: boolean; editing: List
   const save = async () => {
     try {
       if (editing) {
-        await updateListing.mutateAsync({ id: editing.id, patch: { crop, quantity, unit, pricePerUnit: price, minOrder, quality } });
+        await updateListing.mutateAsync({ id: editing.id, patch: { crop, quantity, unit, pricePerUnit: price, minOrder, quality }, photoFile });
         toast.success("Ürün güncellendi");
       } else {
-        await createListing.mutateAsync({ crop, quantity, unit, pricePerUnit: price, minOrder, quality, description: desc || undefined });
+        await createListing.mutateAsync({ crop, quantity, unit, pricePerUnit: price, minOrder, quality, description: desc || undefined, photoFile });
         toast.success("Ürün yayınlandı");
       }
       onClose();
