@@ -36,12 +36,16 @@ const DELIVERY_OPTS = [
 function Counter() {
   const { offerId } = Route.useParams();
   const navigate = useNavigate();
-  const { data: offers = [], isLoading } = useFarmerOffers();
+  const { data: offers, isLoading } = useFarmerOffers();
   const counterMut = useCounterOffer();
 
-  if (isLoading) return <div className="p-8"><LoadingDots /></div>;
+  // Wait for both auth + query to settle. While userId is null the query is
+  // disabled (isLoading=false, data=undefined); only treat as "not found"
+  // once we actually have the offers list.
+  if (isLoading || offers === undefined) return <div className="p-8"><LoadingDots /></div>;
   const offer = offers.find((o) => o.id === offerId);
   if (!offer) throw notFound();
+
 
   return <CounterForm offer={offer} navigate={navigate} submit={async (patch) => {
     try {

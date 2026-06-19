@@ -1,7 +1,7 @@
 import { createFileRoute, Link, Outlet, redirect, useRouterState } from "@tanstack/react-router";
 import { useState } from "react";
 import { BarChart3, BookOpen, Home, LineChart, Store, Users, Settings, Crown, Handshake, MoreHorizontal } from "lucide-react";
-import { useProfile, useParcels, useRealtimeSync, useAuthUserId } from "@/lib/hasat/queries";
+import { useProfile, useParcels, useRealtimeSync, useAuthUserId, useFarmerOffers } from "@/lib/hasat/queries";
 import { SeasonBanner } from "@/components/hasat/SeasonBanner";
 import { FarmPill } from "@/components/hasat/FarmPill";
 import { NotificationBell } from "@/components/hasat/NotificationBell";
@@ -41,23 +41,27 @@ const mobileTabs = [
 const moreItems = [
   { to: "/farmer/analytics", label: "Analitik", icon: BarChart3 },
   { to: "/farmer/community", label: "Topluluk", icon: Users },
-  { to: "/farmer/orders", label: "Teklifler", icon: Handshake, badge: 3 },
+  { to: "/farmer/orders", label: "Teklifler", icon: Handshake },
 ] as const;
 
 const sidebarExtras = [
   { to: "/farmer/community", label: "Topluluk", icon: Users },
-  { to: "/farmer/orders", label: "Teklifler", icon: Handshake, badge: 3 },
+  { to: "/farmer/orders", label: "Teklifler", icon: Handshake },
 ] as const;
+
 
 
 function FarmerShell() {
   const { data: profile } = useProfile();
   const { data: parcels = [] } = useParcels();
+  const { data: offers } = useFarmerOffers();
+  const pendingCount = offers?.filter((o) => o.status === "pending").length ?? 0;
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const [moreOpen, setMoreOpen] = useState(false);
   useRealtimeSync(useAuthUserId());
   const totalArea = parcels.reduce((s, p) => s + (p.area ?? 0), 0);
   const primaryCrop = parcels[0]?.crops?.[0] ?? "—";
+
   const city = profile?.city ?? "—";
   const displayName = profile?.name ?? "";
 
@@ -85,10 +89,11 @@ function FarmerShell() {
         </div>
 
         <nav className="flex flex-col gap-1 mt-2">
-          {[...tabs, ...sidebarExtras].map(({ to, label, icon: Icon, ...rest }) => {
+          {[...tabs, ...sidebarExtras].map(({ to, label, icon: Icon }) => {
             const active = pathname.startsWith(to);
-            const badge = (rest as { badge?: number }).badge;
+            const badge = to === "/farmer/orders" ? pendingCount : 0;
             return (
+
               <Link
                 key={to}
                 to={to}
@@ -180,10 +185,11 @@ function FarmerShell() {
               <Settings className="h-4 w-4 opacity-60" />
             </Link>
 
-            {moreItems.map(({ to, label, icon: Icon, ...rest }) => {
-              const badge = (rest as { badge?: number }).badge;
+            {moreItems.map(({ to, label, icon: Icon }) => {
+              const badge = to === "/farmer/orders" ? pendingCount : 0;
               const active = pathname.startsWith(to);
               return (
+
                 <Link
                   key={to}
                   to={to}
