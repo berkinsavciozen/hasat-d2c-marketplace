@@ -38,6 +38,30 @@ function BuyerOnboarding() {
   const [trial, setTrial] = useState(true);
   const [saving, setSaving] = useState(false);
 
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (cancelled) return;
+      if (!session?.user) {
+        navigate({ to: "/login", search: { role: "buyer" } });
+        return;
+      }
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("role, name")
+        .eq("id", session.user.id)
+        .maybeSingle();
+      if (cancelled) return;
+      if (profile?.name && profile.name.trim() !== "") {
+        const r = profile.role === "buyer" ? "buyer" : "farmer";
+        navigate({ to: r === "buyer" ? "/buyer/discover" : "/farmer/home" });
+      }
+    })();
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const toggle = (arr: string[], setter: (v: string[]) => void, v: string) =>
     setter(arr.includes(v) ? arr.filter((x) => x !== v) : [...arr, v]);
 
