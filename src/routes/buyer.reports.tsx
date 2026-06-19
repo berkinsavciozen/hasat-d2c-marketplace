@@ -67,6 +67,7 @@ function Reports() {
           <LoadingDots />
         ) : rows.length === 0 ? (
           <div className="rounded-2xl border border-dashed p-10 text-center text-hmuted">
+            <div className="text-4xl mb-2">📊</div>
             Henüz tamamlanmış siparişiniz yok.
           </div>
         ) : (
