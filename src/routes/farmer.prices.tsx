@@ -16,7 +16,7 @@ import { LineChart, Line, ResponsiveContainer, YAxis, Tooltip } from "recharts";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/farmer/prices")({
-  head: () => ({ meta: [{ title: "Fiyatlar — Hasat" }] }),
+  head: () => ({ meta: [{ title: "Fiyat Takibi | Hasat" }] }),
   component: Prices,
 });
 

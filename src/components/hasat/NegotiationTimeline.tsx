@@ -101,14 +101,14 @@ function Round({
         isLatest ? "border-saffron/60 bg-saffron/5" : "border-input bg-muted/30"
       }`}
     >
-      <div className="mb-1.5 flex items-center justify-between text-xs">
-        <span className="font-medium text-hmuted">
+      <div className="mb-1.5 flex flex-wrap items-center justify-between gap-x-2 gap-y-1 text-xs">
+        <span className="min-w-0 font-medium text-hmuted">
           Tur {round} · <span className="text-foreground">{author}</span>
         </span>
-        <span className="flex items-center gap-2">
-          <span className="text-hmuted">{formatDate(snap.at)}</span>
+        <span className="flex shrink-0 items-center gap-2">
+          <span className="shrink-0 text-hmuted">{formatDate(snap.at)}</span>
           {isLatest && (
-            <span className="rounded-full bg-saffron px-2 py-0.5 text-[10px] font-medium text-white">
+            <span className="shrink-0 rounded-full bg-saffron px-2 py-0.5 text-[10px] font-medium text-white">
               Güncel
             </span>
           )}
@@ -137,9 +137,9 @@ function Round({
           changed={!!prev && (prev.deliveryDate ?? "") !== (snap.deliveryDate ?? "")}
         />
       </div>
-      <div className="mt-2 flex items-baseline justify-between">
-        <span className="text-[11px] text-hmuted">Toplam</span>
-        <span className="flex items-baseline gap-2">
+      <div className="mt-2 flex flex-wrap items-baseline justify-between gap-x-2 gap-y-1 min-w-0">
+        <span className="shrink-0 text-[11px] text-hmuted">Toplam</span>
+        <span className="flex min-w-0 flex-wrap items-baseline justify-end gap-x-2 gap-y-0.5">
           <span className="font-mono text-base font-semibold">{formatTRY(total)}</span>
           {prevTotal !== null && totalDiff !== 0 && (
             <span
@@ -174,10 +174,10 @@ function Field({
   mono?: boolean;
 }) {
   return (
-    <div className="flex items-baseline gap-1.5">
-      <span className="text-hmuted">{label}:</span>
+    <div className="flex min-w-0 items-baseline gap-1.5">
+      <span className="shrink-0 text-hmuted">{label}:</span>
       <span
-        className={`${mono ? "font-mono" : ""} ${
+        className={`min-w-0 truncate ${mono ? "font-mono" : ""} ${
           changed ? "font-semibold text-saffron" : "text-foreground"
         }`}
       >

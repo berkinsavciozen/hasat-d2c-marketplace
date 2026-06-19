@@ -115,8 +115,8 @@ function Journal() {
 
       <div className="p-4 md:p-8 space-y-4 relative">
         {/* Compact stats bar */}
-        <div className="rounded-2xl border px-4 py-3 flex items-center justify-between" style={{ background: "var(--cream)", borderColor: "var(--border)" }}>
-          <div className="text-sm text-dark">
+        <div className="rounded-2xl border px-4 py-3 flex flex-wrap items-center justify-between gap-x-3 gap-y-1" style={{ background: "var(--cream)", borderColor: "var(--border)" }}>
+          <div className="min-w-0 text-sm text-dark">
             <span className="font-mono font-medium">{entries.length}</span> kayıt
             <span className="mx-1.5 opacity-40">·</span>
             <span className="font-mono font-medium">{parcels.length}</span> parsel
@@ -129,7 +129,7 @@ function Journal() {
           </div>
           <Sheet open={open} onOpenChange={setOpen}>
             <SheetTrigger asChild>
-              <button className="text-xs text-saffron font-medium whitespace-nowrap">+ Parsel</button>
+              <button className="shrink-0 text-xs text-saffron font-medium whitespace-nowrap">+ Parsel</button>
             </SheetTrigger>
             <SheetContent side="bottom" className="rounded-t-3xl max-h-[85vh]">
               <div className="mx-auto h-1.5 w-12 rounded-full bg-muted -mt-2 mb-3" />
