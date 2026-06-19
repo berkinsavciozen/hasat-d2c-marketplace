@@ -70,6 +70,11 @@ export interface OfferSnapshot {
   note?: string;
 }
 
+export interface NegotiationSnapshot extends OfferSnapshot {
+  by: "buyer" | "farmer";
+  at: string;
+}
+
 export interface Offer {
   id: string;
   buyerName: string;
@@ -85,6 +90,8 @@ export interface Offer {
   deliveryDate?: string;
   /** Original buyer offer values, retained when farmer responds with a counter. */
   original?: OfferSnapshot;
+  /** Full negotiation history, oldest first. The "live" offer fields are the latest proposal. */
+  history: NegotiationSnapshot[];
   producerId?: string;
 }
 
