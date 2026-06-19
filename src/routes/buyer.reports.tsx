@@ -6,7 +6,7 @@ import { formatTRY } from "@/lib/hasat/format";
 import { useBuyerAnalytics, type BuyerAnalyticsRow } from "@/lib/hasat/queries";
 
 export const Route = createFileRoute("/buyer/reports")({
-  head: () => ({ meta: [{ title: "Raporlar — Hasat" }] }),
+  head: () => ({ meta: [{ title: "Raporlar | Hasat" }] }),
   component: Reports,
 });
 

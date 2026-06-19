@@ -9,7 +9,10 @@ import { useCommunityPosts, useCreatePost } from "@/lib/hasat/queries";
 import { LoadingDots } from "@/components/hasat/LoadingDots";
 import { toast } from "sonner";
 
-export const Route = createFileRoute("/farmer/community")({ component: Community });
+export const Route = createFileRoute("/farmer/community")({
+  head: () => ({ meta: [{ title: "Topluluk | Hasat" }] }),
+  component: Community,
+});
 
 const CATS = ["Tümü", "Safran", "Pazar", "Hava", "Hastalık", "Diğer"];
 

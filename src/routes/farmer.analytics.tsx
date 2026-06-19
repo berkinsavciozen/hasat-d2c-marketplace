@@ -5,7 +5,10 @@ import { useHasat } from "@/lib/hasat/store";
 import { formatTRY } from "@/lib/hasat/format";
 import { Area, AreaChart, Bar, BarChart, CartesianGrid, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 
-export const Route = createFileRoute("/farmer/analytics")({ component: Analytics });
+export const Route = createFileRoute("/farmer/analytics")({
+  head: () => ({ meta: [{ title: "Analitik | Hasat" }] }),
+  component: Analytics,
+});
 
 const RANGES = ["Bu Ay", "Q3 2028", "2028 Tümü"] as const;
 type Range = typeof RANGES[number];

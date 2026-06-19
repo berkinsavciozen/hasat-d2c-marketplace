@@ -138,7 +138,7 @@ function OfferCard({ offer, onAccept, onCounter, pending }: { offer: Offer; onAc
 
 
       {isCounter && (
-        <div className="mt-4 grid grid-cols-2 gap-2">
+        <div className="mt-4 flex flex-col gap-2 sm:grid sm:grid-cols-2">
           <button
             onClick={onAccept}
             disabled={pending}

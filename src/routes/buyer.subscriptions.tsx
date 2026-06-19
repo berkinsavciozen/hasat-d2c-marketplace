@@ -17,7 +17,7 @@ import {
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/buyer/subscriptions")({
-  head: () => ({ meta: [{ title: "Aboneliklerim — Hasat" }] }),
+  head: () => ({ meta: [{ title: "Aboneliklerim | Hasat" }] }),
   component: Subscriptions,
 });
 
