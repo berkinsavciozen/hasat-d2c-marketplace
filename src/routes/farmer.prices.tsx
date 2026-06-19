@@ -31,8 +31,20 @@ function Prices() {
   const [selectedCrop, setSelectedCrop] = useState<string>("Safran");
   const [sheetOpen, setSheetOpen] = useState(false);
 
+  if (prices.length === 0) {
+    return (
+      <>
+        <FarmerHeader title="Fiyat İstihbaratı" subtitle="" />
+        <div className="px-4 md:px-8 py-12 text-center text-hwhite/70 text-sm">
+          Henüz fiyat verisi yok.
+        </div>
+      </>
+    );
+  }
+
   const selected = prices.find((p) => p.crop === selectedCrop) ?? prices[0];
   const others = prices.filter((p) => p.crop !== selected.crop);
+
 
   // 7-day synthetic series for D2C
   const series = [0.94, 0.96, 0.97, 0.99, 1.0, 1.01, 1.0].map((m, i) => ({ day: i + 1, value: Math.round(selected.d2c * m) }));
