@@ -27,7 +27,7 @@ function OrdersList() {
   const { data: orders = [], isLoading: ordersLoading } = useBuyerOrders();
   const { data: offers = [], isLoading: offersLoading } = useBuyerOffers();
   const updateStatus = useUpdateOfferStatus();
-  const [tab, setTab] = useState("active");
+  const [tab, setTab] = useState("offers");
 
   const pendingOffers = offers.filter((o) => o.status === "pending" || o.status === "counter");
   const active = orders.filter((o) => o.status !== "delivered");
