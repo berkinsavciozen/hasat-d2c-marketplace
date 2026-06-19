@@ -41,13 +41,14 @@ const mobileTabs = [
 const moreItems = [
   { to: "/farmer/analytics", label: "Analitik", icon: BarChart3 },
   { to: "/farmer/community", label: "Topluluk", icon: Users },
-  { to: "/farmer/orders", label: "Teklifler", icon: Handshake, badge: 3 },
+  { to: "/farmer/orders", label: "Teklifler", icon: Handshake },
 ] as const;
 
 const sidebarExtras = [
   { to: "/farmer/community", label: "Topluluk", icon: Users },
-  { to: "/farmer/orders", label: "Teklifler", icon: Handshake, badge: 3 },
+  { to: "/farmer/orders", label: "Teklifler", icon: Handshake },
 ] as const;
+
 
 
 function FarmerShell() {
