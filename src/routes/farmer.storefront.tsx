@@ -235,6 +235,16 @@ function ListingSheet({ open, editing, onClose }: { open: boolean; editing: List
             <div className="mb-1.5 text-xs font-medium text-hmuted">Açıklama</div>
             <Textarea value={desc} onChange={(e) => setDesc(e.target.value)} rows={3} placeholder="Ürününüzü tanıtın..." />
           </div>
+          <div>
+            <div className="mb-1.5 text-xs font-medium text-hmuted">Fotoğraf (opsiyonel)</div>
+            <Input type="file" accept="image/*" onChange={(e) => setPhotoFile(e.target.files?.[0] ?? null)} />
+            {photoFile && (
+              <img src={URL.createObjectURL(photoFile)} alt="preview" className="mt-2 h-24 w-24 rounded-lg object-cover" />
+            )}
+            {!photoFile && editing?.photos?.[0] && (
+              <img src={editing.photos[0]} alt="current" className="mt-2 h-24 w-24 rounded-lg object-cover opacity-70" />
+            )}
+          </div>
           <button onClick={save} disabled={pending} className="w-full rounded-xl bg-saffron py-3 text-sm font-medium text-white disabled:opacity-50">
             {pending ? "Kaydediliyor…" : "Yayınla ✓"}
           </button>
