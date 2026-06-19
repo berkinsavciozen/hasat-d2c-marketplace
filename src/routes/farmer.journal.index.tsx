@@ -190,10 +190,15 @@ function Journal() {
                         <span className="inline-block animate-pulse">📡 Konum algılanıyor…</span>
                       </div>
                     )}
-                    {gpsState === "done" && (
+                    {gpsState === "done" && coords && (
                       <div className="rounded-lg bg-sage/15 px-3 py-2.5 text-sm text-sage">
-                        ✓ Karabük, Safranbolu — Doğrulandı
+                        ✓ Konum kaydedildi ({coords.lat.toFixed(4)}, {coords.lng.toFixed(4)})
                       </div>
+                    )}
+                    {gpsState === "error" && (
+                      <button type="button" onClick={startGps} className="w-full rounded-lg border border-dashed border-hred/40 py-3 text-sm text-hred hover:bg-hred/5">
+                        Konum alınamadı — tekrar dene
+                      </button>
                     )}
                   </div>
                 </div>
