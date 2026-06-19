@@ -104,6 +104,7 @@ function Negotiation() {
           await counterMut.mutateAsync({
             id: offer.id,
             patch,
+            by: "buyer",
             original: { quantity: offer.quantity, pricePerUnit: offer.pricePerUnit, delivery: offer.delivery, deliveryDate: offer.deliveryDate, note: offer.note },
           });
           toast.success("Karşı teklif gönderildi");
