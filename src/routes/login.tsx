@@ -224,8 +224,8 @@ function LoginPage() {
             <button onClick={() => setStep("phone")} className="mt-3 w-full text-xs text-hwhite/50">← Numarayı değiştir</button>
           </>
         )}
-        <div className="mt-8 text-center text-sm text-hwhite/60">
-          Hesabın yok mu? <Link to={onbHref} className="underline" style={{ color: titleColor }}>Kayıt ol →</Link>
+        <div className="mt-8 text-center text-xs text-hwhite/50">
+          Hesabın yoksa otomatik oluşturulur. Telefonunla devam et.
         </div>
       </div>
     </div>
