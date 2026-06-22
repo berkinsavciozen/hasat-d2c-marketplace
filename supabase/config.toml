@@ -5,3 +5,6 @@ verify_jwt = true
 
 [functions.whatsapp-ai-webhook]
 verify_jwt = false
+
+[functions.ai-chat-stream]
+verify_jwt = true
