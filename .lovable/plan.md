@@ -1,89 +1,76 @@
-# P10 — Farmer AI Chat (FAB + Panel)
 
-## Inspection findings
+## P11 — Inline Journal Entry Card from AI Chat
 
-- **Bottom nav** (`src/routes/farmer.tsx`): `fixed bottom-0 inset-x-0 z-40`, `grid-cols-5`, `py-2 pb-safe`, dark background. Effective height ≈ 56px + safe-area. Main content uses `pb-24 md:pb-0`.
-- **No existing FAB** in farmer interface. New pattern.
-- **LOVABLE_API_KEY** is server-only (used in `whatsapp-ai-webhook` edge function). Cannot call gateway directly from browser. Need a server proxy.
-- **Existing edge function pattern** uses `https://ai.gateway.lovable.dev/v1/chat/completions` with `Lovable-API-Key` header and `google/gemini-3-flash-preview`.
-- **Auth**: `useAuthUserId()` hook reads `supabase.auth.getUser()`.
-- **Zustand store** holds a synthetic `user` (`id: "u1"`) — NOT the real auth user. Tier/premium flag in store may exist but is unreliable for the real DB user. Plan: read real `user_id` via `useAuthUserId`, fetch `profiles.tier` + `profiles.name` + `profiles.city` once via existing `useProfile()` query.
-- **TanStack route**: current path via `useRouterState({ select: s => s.location.pathname })`.
+### Findings (from inspection)
 
-## Plan
+- **Existing journal flow** (`src/routes/farmer.journal.new.tsx` + `useCreateEntry` in `src/lib/hasat/queries.ts`): inserts into `harvest_entries` with `{ farmer_id, parcel_id, crop, quantity, unit, quality, notes, costs, harvest_date, photo_urls: [] }`. Notes are encoded with `encodeNotes({ work, health, text })` producing `[work:<key>][health:<n>] <text>`. Costs default to `ZERO_COSTS = {labor,fertilizer,packaging,transport,other:0}`.
+- **harvest_entries schema** (confirmed): `parcel_id uuid NOT NULL`, `farmer_id uuid NOT NULL`, `harvest_date date NOT NULL`, `crop text NOT NULL`, `quantity numeric NOT NULL`, `unit unit_type NOT NULL DEFAULT 'g'` (enum: `g|kg|L`), `quality quality_grade NOT NULL DEFAULT 'A'` (enum: `A|B|C`), `notes text NULL`, `costs jsonb NOT NULL DEFAULT {labor:0,fertilizer:0,packaging:0,transport:0,other:0}`, `photo_urls text[] NULL DEFAULT '{}'`. Only the PK index — **no unique constraint on (farmer_id, crop, harvest_date)**, so duplicate detection is purely a client-side soft check via SELECT.
+- **Assistant rendering** (`FarmerAIChat.tsx`, `MessageBubble`): assistant content is currently passed directly through `renderMarkdown(m.content)` in a `dangerouslySetInnerHTML`. This is the single insertion point to intercept.
+- **Message state shape** (`useAIChat.ts`, `ChatMessage`): `{ id, role, content, created_at, streaming? }`. Messages are appended both during streaming and after completion. The post-stream finalization happens in the `setMessages((m) => m.map(... { content: assistantText, streaming: false }))` line — that's where we can also stamp parsed journal data.
+- **Parcels in context**: `fetchContextBlock` queries parcels but flattens them into the prompt string and discards the array. The hook does NOT expose parcels to the UI. The card will use the existing `useParcels()` query hook (already used by the journal page) — keeps the card self-contained.
+- **No DB changes** needed.
 
-### 1. New edge function: `supabase/functions/ai-chat-stream/index.ts`
+### Architecture
 
-- `verify_jwt = true` (in `supabase/config.toml`) — only authenticated farmers can call.
-- Accepts `POST { messages: ChatMessage[], systemPrompt: string }`.
-- Streams Lovable AI Gateway response back to browser as SSE (pass-through). Sets `Content-Type: text/event-stream`, forwards the upstream ReadableStream chunk-by-chunk.
-- Handles `429` / `402` by emitting a single SSE error event the client can render.
-- Does NOT touch DB — gating + storage happens client-side per spec.
+1. **Parser util** (new) `src/components/hasat/ai-chat/parseJournalEntry.ts`:
+   - `parseAssistantContent(raw)` → `{ visibleText, journal: ParsedJournal | null, parseError?: string }`.
+   - Regex: `/\[JOURNAL_ENTRY\]([\s\S]*?)\[\/JOURNAL_ENTRY\]/`. First match only; subsequent blocks stripped from visible text and console-warned.
+   - JSON-parses the inner payload. Validates required fields: `crop` (string), `quantity` (number-coercible), `unit` (one of `g|kg|L`, with mapping for common synonyms `gram→g`, `kilo|kilogram→kg`, `litre|liter→L`), `harvest_date` (YYYY-MM-DD; if missing, today). Optional: `quality` (A/B/C with mapping `iyi|good|kaliteli→A`, `orta|medium→B`, `düşük|kötü|low→C`; default A), `parcel_id`, `parcel_name`, `notes`, `costs` (object, sanitized to known keys + numbers).
+   - On malformed JSON or missing required field: returns `journal: null` and `parseError`, leaves the original block in `visibleText` unchanged (fallback per spec).
+   - Strips the matched block from `visibleText` and trims whitespace.
 
-### 2. New components
+2. **State flag** in `useAIChat.ts`:
+   - Extend `ChatMessage` with optional `journal?: ParsedJournal` (and the visible content already strips the block).
+   - Apply parsing in **two** places:
+     - On stream completion (just before `setMessages(... streaming:false)`): run `parseAssistantContent(assistantText)`, set `content = visibleText`, attach `journal`.
+     - On `loadLatestSession` / `loadSession` row hydration: map each assistant row through the parser so historical journal cards re-render (in saved state — see #4).
+   - Streaming partial chunks are NOT parsed (the block may be incomplete); during streaming, the raw text shows transiently — acceptable since the card replaces it the moment streaming ends.
 
-```
-src/components/hasat/ai-chat/
-  AIChatFAB.tsx          – fixed FAB, lav #8B9BF0, bottom: calc(56px + safe-area + 16px) on mobile, bottom: 24px on md+
-  AIChatPanel.tsx        – Sheet (side="bottom"), 80vh, hosts header + meter + list + input
-  ChatHeader.tsx         – ✨ Hasat AI · session indicator · Yeni Sohbet · Geçmiş · close
-  ChatMessageList.tsx    – auto-scroll, typing indicator, markdown (basic bold + line breaks)
-  ChatMessageBubble.tsx  – user (saffron, right) / assistant (dark + lav left border, left)
-  ChatInput.tsx          – textarea + send; disabled at limit / offline
-  UsageMeter.tsx         – free tier only; X/50; green/amber/red thresholds
-  SessionHistorySheet.tsx – list of sessions (date + first message preview)
-  CoachMark.tsx          – tooltip; localStorage `hasat_ai_chat_coach_dismissed`
-  useAIChat.ts           – hook: session state, messages, send(), stream parsing, RPC calls
-```
+3. **JournalEntryCard component** (new) `src/components/hasat/ai-chat/JournalEntryCard.tsx`:
+   - Props: `{ initial: ParsedJournal; messageId: string }`.
+   - Self-contained: uses `useParcels()` and `useAuthUserId()` directly; manages all field state locally.
+   - Layout: rounded card with 1px lavender (`var(--lav)`) left border + soft lav-tinted background, inside the assistant bubble below the visible text.
+   - Fields:
+     - **Crop**: text input.
+     - **Quantity**: numeric input.
+     - **Unit**: 3-button segmented `g | kg | L`.
+     - **Quality**: 3-button segmented `A | B | C`.
+     - **Date**: native `<input type="date">`.
+     - **Parcel**: native `<select>` populated from `useParcels()`. Pre-selection rules: explicit `parcel_id` match → case-insensitive `parcel_name` match → if exactly one parcel, auto-select → otherwise empty with "Parsel seçin" placeholder.
+     - **Notes**: textarea (optional).
+     - **Costs**: collapsed by default behind "Maliyet ekle" toggle; expands to a small repeater of `{label, amount}` rows. On save serialized as `{ labor, fertilizer, packaging, transport, other, ...customs }` merged onto `ZERO_COSTS`. Custom labels go under `other` summed; or stored as their own keys if they match known keys (`labor`/`fertilizer`/`packaging`/`transport`).
+   - Local state machine: `idle → checking → warning(duplicate) → saving → saved | error`.
+   - **Duplicate check**: on mount AND on date/crop change (debounced 250ms): `supabase.from('harvest_entries').select('id, quantity, unit, quality, notes, costs, parcel_id').eq('farmer_id', userId).eq('crop', crop).eq('harvest_date', date).maybeSingle()`. If found → set `existing` state, show inline warning banner.
+   - Buttons:
+     - Default: **Kaydet** (saffron) + **İptal** (ghost; collapses card via local `dismissed` flag — bubble keeps visible text).
+     - With duplicate: **Yine de Kaydet** (saffron) + **Mevcut Kaydı Güncelle** (sage outline) + **İptal**.
+   - Save: validates required fields (crop, qty>0, unit, quality, date, parcelId) — inline red helper text per missing field. Insert via `supabase.from('harvest_entries').insert({...})` mirroring the exact column shape from `useCreateEntry`. Notes are stored verbatim (no `encodeNotes` wrapper, since AI-authored notes don't have a `work`/`health` UI — keeps notes human-readable; this is consistent with the column being plain `text NULL`).
+     - Update path: `supabase.from('harvest_entries').update({ quantity, unit, quality, notes, costs }).eq('id', existing.id)` — does not change `parcel_id` per spec.
+   - On success: invalidate `["entries", userId]` query (so the journal page refreshes), enter `saved` state showing **✅ Kaydedildi** + `<Link to="/farmer/journal">Günlüğe git →</Link>`. Card becomes read-only.
+   - On error: inline red banner "Kayıt sırasında bir hata oluştu. Tekrar deneyin." Fields stay editable.
+   - **Persistence of saved state across reload**: when hydrating from DB, run the same duplicate check; if a matching `harvest_entries` row exists, render the card directly in `saved` state with the "Günlüğe git →" link. (No new schema needed.)
 
-### 3. Injection
+4. **Wiring in `FarmerAIChat.tsx` `MessageBubble`**:
+   - When `m.role === 'assistant'`: render `m.content` (already stripped) via `renderMarkdown`, then if `m.journal` render `<JournalEntryCard initial={m.journal} messageId={m.id} />` below.
+   - User bubbles unchanged.
+   - When `m.content` is empty AND `m.journal` exists, suppress the bubble's text node so the card stands alone (no empty bubble background).
 
-Append a single `<FarmerAIChat />` wrapper in `src/routes/farmer.tsx` after the mobile More sheet (purely additive, before closing root div). It internally renders FAB + panel and is gated to the farmer layout only.
+### Files
 
-### 4. `useAIChat` hook flow
+- New: `src/components/hasat/ai-chat/parseJournalEntry.ts`
+- New: `src/components/hasat/ai-chat/JournalEntryCard.tsx`
+- Edited: `src/components/hasat/ai-chat/useAIChat.ts` — extend `ChatMessage`, parse on stream completion + on session load.
+- Edited: `src/components/hasat/ai-chat/FarmerAIChat.tsx` — `MessageBubble` renders the card when `m.journal` is set.
 
-- On panel open with no current session: load most recent `session_id` for user where `source='in_app'` from `ai_chat_messages` (latest `created_at`); if exists, load all its messages; if none, generate fresh UUIDv4.
-- "Yeni Sohbet": set new UUIDv4, clear messages.
-- On send:
-  1. `await supabase.rpc('can_send_ai_message', { _user_id })` → if false, set limit-reached flag, abort.
-  2. Insert user row into `ai_chat_messages` (role `user`, `source='in_app'`, `page_context = pathname`, `session_id`).
-  3. Build payload: system prompt (filled with name/city/tier/page; on first send of session also include context block: last 5 `harvest_entries`, active `listings`, pending `offers` count + oldest, `parcels [id,name]`) + last 10 messages of session.
-  4. `fetch('/functions/v1/ai-chat-stream', { headers: { Authorization: Bearer <session.access_token> } })`, parse SSE: read `data: {choices:[{delta:{content}}]}` lines, append tokens to a streaming assistant bubble.
-  5. On `[DONE]`: insert assistant row to `ai_chat_messages`; `await supabase.rpc('increment_ai_usage', { _user_id })`; update meter count with returned int.
-  6. On stream error: show inline error toast in panel; do NOT insert assistant row.
+### Out of scope
 
-### 5. Usage meter
+- No DB schema changes. No edits to `farmer.journal.new.tsx`, `useCreateEntry`, or any journal page. No changes to streaming logic or system prompt. Photos/images on AI-created entries (stays empty array).
 
-- Query `ai_usage_tracking` for `(user_id, current YYYY-MM)` on panel open (free tier only).
-- Local count updates from `increment_ai_usage` return value.
-- At 50: input disabled, "Mesaj limitine ulaştınız. Premium'a geç →" link to `/farmer/premium`.
-- Premium: meter not rendered.
+### Verification
 
-### 6. Coach mark
-
-- On FAB mount: if `localStorage.hasat_ai_chat_coach_dismissed !== '1'` AND user has zero rows in `ai_chat_messages` (cheap `head: true, count: 'exact'` query, limit 1), show tooltip. Dismiss on any tap → set flag.
-
-### 7. Styling
-
-- FAB: 56px round, bg `#8B9BF0`, white sparkle icon (`Sparkles` from lucide), shadow-lg, `z-50` (above nav `z-40`). Position:
-  - mobile: `right-4 bottom-[calc(56px+env(safe-area-inset-bottom)+16px)]`
-  - desktop: `right-6 bottom-6`
-- Panel uses existing shadcn `Sheet` with `side="bottom"` + `h-[80vh] rounded-t-2xl`.
-- User bubble: `bg-saffron text-white`. Assistant: `bg-card border-l-2 border-[#8B9BF0]`.
-
-### 8. Constraints respected
-
-- No DB schema changes.
-- No changes to existing pages, routing, navigation.
-- `[JOURNAL_ENTRY]` block rendered as plain text (P11 will handle).
-- Buyer routes unaffected (component only mounted inside `/farmer` layout).
-- Panel state in local React state (no Zustand).
-
-### 9. Files touched
-
-- **New**: `supabase/functions/ai-chat-stream/index.ts`, 9 component files under `src/components/hasat/ai-chat/`.
-- **Edited**: `supabase/config.toml` (register function), `src/routes/farmer.tsx` (one-line mount of `<FarmerAIChat />`).
-
-### 10. Verification
-
-- Type-check + manual test: send message as test farmer `0868e4fe-86d2-4c5d-8ba5-f15fd4fac146`, confirm streaming, confirm row count in `ai_chat_messages` increments by 2 per exchange, confirm `ai_usage_tracking.message_count` increments.
+1. Send "Bugün 2kg safran hasat ettim, kalite A" → after stream ends, the bubble shows AI's prose and a card pre-filled `crop=safran, qty=2, unit=kg, quality=A, date=today`.
+2. Parcel pre-selected when farmer has one parcel; otherwise dropdown forces selection before Save.
+3. Save inserts a row visible in Supabase + on `/farmer/journal`.
+4. Saving the same crop+date again shows the duplicate warning with both action buttons.
+5. Reload chat → previously-saved card still renders in saved state with "Günlüğe git →".
+6. AI message without a `[JOURNAL_ENTRY]` block renders identically to P10 (no card, no regression).

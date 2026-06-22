@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { parseAssistantContent, type ParsedJournal } from "./parseJournalEntry";
 
 export interface ChatMessage {
   id: string;
@@ -7,9 +8,16 @@ export interface ChatMessage {
   content: string;
   created_at: string;
   streaming?: boolean;
+  journal?: ParsedJournal | null;
 }
 
 interface ProfileCtx { name: string | null; city: string | null; tier: "free" | "premium" }
+
+function hydrateAssistant(m: ChatMessage): ChatMessage {
+  if (m.role !== "assistant" || m.streaming) return m;
+  const { visibleText, journal } = parseAssistantContent(m.content);
+  return { ...m, content: visibleText, journal };
+}
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL as string;
 const SUPABASE_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string;
@@ -92,7 +100,7 @@ export function useAIChat(opts: { userId: string | null; pathname: string; profi
           .select("id, role, content, created_at")
           .eq("session_id", latest.session_id)
           .order("created_at", { ascending: true });
-        setMessages((msgs ?? []) as ChatMessage[]);
+        setMessages(((msgs ?? []) as ChatMessage[]).map(hydrateAssistant));
       } else {
         setSessionId(uuid());
         setMessages([]);
@@ -124,7 +132,7 @@ export function useAIChat(opts: { userId: string | null; pathname: string; profi
       const { data } = await supabase.from("ai_chat_messages")
         .select("id, role, content, created_at")
         .eq("session_id", sid).order("created_at", { ascending: true });
-      setMessages((data ?? []) as ChatMessage[]);
+      setMessages(((data ?? []) as ChatMessage[]).map(hydrateAssistant));
     } finally { setLoading(false); }
   }, []);
 
@@ -222,7 +230,8 @@ export function useAIChat(opts: { userId: string | null; pathname: string; profi
         user_id: userId, session_id: sessionId, role: "assistant", content: assistantText,
         source: "in_app", page_context: pathname, metadata: {},
       });
-      setMessages((m) => m.map((x) => x.id === asstId ? { ...x, content: assistantText, streaming: false } : x));
+      const parsed = parseAssistantContent(assistantText);
+      setMessages((m) => m.map((x) => x.id === asstId ? { ...x, content: parsed.visibleText, journal: parsed.journal, streaming: false } : x));
 
       const { data: newCount } = await supabase.rpc("increment_ai_usage", { _user_id: userId });
       if (typeof newCount === "number") setUsageCount(newCount);
