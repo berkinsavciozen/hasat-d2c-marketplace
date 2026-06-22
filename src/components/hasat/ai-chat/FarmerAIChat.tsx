@@ -12,6 +12,7 @@ import {
   fetchTier,
   type ChatMessage,
 } from "./useAIChat";
+import { JournalEntryCard } from "./JournalEntryCard";
 
 const COACH_KEY = "hasat_ai_chat_coach_dismissed";
 const FREE_LIMIT = 50;
@@ -54,10 +55,15 @@ function MessageBubble({ m }: { m: ChatMessage }) {
               <span className="h-1.5 w-1.5 rounded-full bg-foreground/40 animate-pulse [animation-delay:120ms]" />
               <span className="h-1.5 w-1.5 rounded-full bg-foreground/40 animate-pulse [animation-delay:240ms]" />
             </span>
-          ) : (
+          ) : m.content ? (
             <span dangerouslySetInnerHTML={{ __html: renderMarkdown(m.content) }} />
-          )}
+          ) : m.journal ? (
+            <span className="text-muted-foreground text-xs italic">Günlük kaydı hazır</span>
+          ) : null}
         </div>
+        {m.journal && !m.streaming && (
+          <JournalEntryCard initial={m.journal} messageId={m.id} />
+        )}
         <div className="text-[10px] text-muted-foreground mt-0.5">{fmtTime(m.created_at)}</div>
       </div>
     </div>
