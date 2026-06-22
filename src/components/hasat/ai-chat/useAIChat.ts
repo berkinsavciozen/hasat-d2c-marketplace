@@ -240,7 +240,7 @@ export function useAIChat(opts: { userId: string | null; pathname: string; profi
 
   return {
     sessionId, messages, loading, sending, usageCount, limitReached, error,
-    loadLatestSession, loadUsage, newSession, loadSession, setError,
+    loadLatestSession, loadUsage, newSession, loadSession, setError, send,
   };
 }
 
