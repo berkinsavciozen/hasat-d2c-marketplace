@@ -1,55 +1,63 @@
-## Goal
+# AI Features — DB Foundation (revised)
 
-Eliminate the last bits of static "demo" content that show up before the user has any data, and make the Fiyatlar page actually load from the database (currently shows a permanent empty state because no query is wired up).
+## Current state
+- `public.profiles`: `id, role, name, phone, city, premium boolean default false, created_at, updated_at`. No `tier` column.
+- No existing AI tables (`ai_*`, `*chat*`, `*usage*`).
+- `profiles.premium` is read by `login.tsx`, `__root.tsx`, `buyer.account.tsx`, `farmer.premium.tsx`, `lib/hasat/store.ts`, and written `false` by `onboarding.farmer.tsx`. We must keep `premium` working.
 
-## Findings from the audit
+## Single idempotent migration
 
-### 1. Farmer home — `src/routes/farmer.home.tsx`
+### 1. `profiles.tier`
+- Create enum `public.user_tier AS ENUM ('free','premium')` if not exists.
+- `ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS tier public.user_tier NOT NULL DEFAULT 'free'`.
+- Backfill: `UPDATE public.profiles SET tier='premium' WHERE premium=true AND tier='free'`.
+- BEFORE INSERT/UPDATE trigger `profiles_sync_tier_premium` keeping `tier` ↔ `premium` in sync both directions, so legacy reads/writes of `premium` continue to work.
 
-Three hardcoded blocks render for every new user, regardless of whether they have data:
+### 2. `public.ai_chat_messages`
+Columns: `id uuid pk default gen_random_uuid()`, `user_id uuid not null references auth.users(id) on delete cascade`, `session_id uuid not null`, `role text check in ('user','assistant','system')`, `content text not null`, `source text default 'in_app' check in ('in_app','whatsapp')`, `page_context text null`, `metadata jsonb default '{}'`, `created_at timestamptz default now()`.
+Indexes: `(user_id, created_at desc)`, `(user_id, session_id, created_at)`.
+Grants: `SELECT, INSERT TO authenticated`; `ALL TO service_role`.
+RLS enabled. Policies (authenticated): select own, insert own. No update/delete (permanent).
 
-- **Weather card**: literal `Karabük`, `14°C · Parçalı bulutlu`, `14°`, "Sulama gerekmiyor", "Hasat: 8 gün kaldı".
-- **"Verim anomalisi tespit edildi" card**: fake AI insight claiming "Bu yılki safran verimi geçen yıla göre %12 düşük".
-- **"Son Etkinlikler" feed**: three fake rows (`Eataly İstanbul ₺72.000`, `Mikla Restoran ₺28.500`, `Safran D2C ₺358/g`).
-- **Bottom AIInsightBanner**: hardcoded "Safran D2C fiyatı 7 gün içinde %8.4 arttı…".
+### 3. `public.ai_usage_tracking`
+Columns: `user_id uuid not null references auth.users(id) on delete cascade`, `month text not null check (month ~ '^\d{4}-\d{2}$')`, `message_count integer not null default 0 check >= 0`, `updated_at timestamptz default now()`. PK `(user_id, month)`.
+Grants: `SELECT, INSERT, UPDATE TO authenticated`; `ALL TO service_role`.
+RLS enabled. Policies (authenticated): select/insert/update own (`auth.uid() = user_id`). Service role bypasses RLS.
 
-### 2. Farmer journal — `src/routes/farmer.journal.index.tsx`
+### 4. Helper functions (`SECURITY DEFINER`, `SET search_path = public`)
 
-`saveParcel` hardcodes every new parsel's location to `{ lat: 41.25, lng: 32.69, label: "Karabük, Safranbolu" }` regardless of where the user is. The "GPS ile algıla" button is also fake (just a 1.5s timeout that flips state to "done").
+Both functions use a **role-aware assertion** so the WhatsApp edge function can call them as `service_role` (where `auth.uid()` is null):
 
-### 3. Fiyatlar page is broken — `src/routes/farmer.prices.tsx`
+```sql
+IF current_setting('request.jwt.claims', true)::jsonb->>'role' = 'authenticated' THEN
+  IF _user_id <> auth.uid() THEN
+    RAISE EXCEPTION 'Cross-user access not allowed';
+  END IF;
+END IF;
+```
 
-`prices` is read from the Zustand store, which is permanently initialized to `[]`. The Supabase table `public.price_points` already contains 5 real rows (Safran, Lavanta, Tıbbi Bitkiler, Fındık, Zeytin) but no query loads them. Result: the empty-state guard added previously fires forever → "Fiyatlar menu not responding".
+Applied to **both** `can_send_ai_message` and `increment_ai_usage`. Service-role callers (edge functions) skip the check; anon callers also skip but they have no `EXECUTE` grant so they can't reach the function anyway.
 
-## Changes
+**`public.can_send_ai_message(_user_id uuid) returns boolean`**
+- Run role-aware assertion.
+- If `profiles.tier = 'premium'` → return true.
+- Else return `(coalesce(message_count,0) < 50)` for current month (`to_char(now(),'YYYY-MM')`).
+- Free-tier limit `50` as constant in body.
+- Grant `EXECUTE TO authenticated, service_role`; revoke from `anon, public`.
 
-### A. `src/routes/farmer.home.tsx`
+**`public.increment_ai_usage(_user_id uuid) returns integer`**
+- Run role-aware assertion.
+- `INSERT ... ON CONFLICT (user_id, month) DO UPDATE SET message_count = ai_usage_tracking.message_count + 1, updated_at = now()` for current month, `RETURNING message_count`.
+- Grant `EXECUTE TO authenticated, service_role`; revoke from `anon, public`.
 
-- Delete the weather card block, the verim-anomalisi card, the hardcoded activity feed, and the bottom hardcoded AIInsightBanner.
-- Keep: header, quick actions, "Bu Sezon" card (uses real `entries`), "Aktif Ürünler" list (uses real `listings`).
-- If both `entries` and `listings` are empty, show a single onboarding-style empty card pointing to "Hasat Kaydet" and "Vitrine Ekle" instead of the now-bare page.
-
-### B. `src/routes/farmer.journal.index.tsx`
-
-- Remove the hardcoded `{ lat: 41.25, lng: 32.69, label: "Karabük, Safranbolu" }` payload.
-- When the user clicks "GPS ile algıla", call `navigator.geolocation.getCurrentPosition` and store the real coords; on failure, leave location undefined.
-- Replace the static "✓ Karabük, Safranbolu — Doğrulandı" success line with the actual coords (or a generic "Konum kaydedildi" if no reverse-geocoding is available).
-- Make the parsel save without a location possible (location becomes optional in the insert payload).
-
-### C. Fiyatlar — wire real data without breaking the empty-state guard
-
-- Add `usePricePoints()` in `src/lib/hasat/queries.ts` that selects from `public.price_points`, ordered by `recorded_date desc`, and maps DB columns (`d2c_price`, `hal_price`, `export_price`, `delta_7d`, `recorded_date`) into the existing `PricePoint` shape used by the UI.
-- Reduce to one row per crop (latest `recorded_date`).
-- Update `src/routes/farmer.prices.tsx` to read from `usePricePoints()` instead of `useHasat((s) => s.prices)`. Keep the existing empty-state guard for the case where the table is genuinely empty, and add an `isLoading` branch that renders `<LoadingDots />` so the page is never silent on first load.
-- Leave the store's `prices: []` field in place (other code may still reference it), just stop reading it on this page.
-
-### D. Sanity sweep
-
-- Re-grep for any remaining literal mock strings (`Eataly`, `Mikla`, `Karabük`, `14°C`, `358`, `72.000`, `28.500`) and confirm only `onboarding.farmer.tsx` city dropdown options remain — those are legitimate user-facing choices, not demo data.
-- Confirm `buyer.discover.tsx`, `buyer.reports.tsx`, `farmer.community.tsx`, `farmer.analytics.tsx`, `farmer.orders.index.tsx`, `farmer.storefront.tsx` already render proper empty states from real queries.
+### 5. Sanity check (executed after migration)
+```sql
+SELECT public.can_send_ai_message('0868e4fe-86d2-4c5d-8ba5-f15fd4fac146');
+-- expected: true
+```
 
 ## Out of scope
+- No changes to `premium` column, no other table changes, no frontend code, no changes to existing RLS policies.
 
-- Real weather integration, real "verim anomalisi" detection, real activity feed, and reverse geocoding. Those are separate features and need their own data sources/APIs — for now the corresponding cards are simply removed rather than replaced.
-- No DB migrations, no RLS changes, no Twilio/edge-function changes.
-- No styling/design changes beyond removing or relocating the affected blocks.
+## Will report back
+Created column, table names, function names, and sanity-check result.
