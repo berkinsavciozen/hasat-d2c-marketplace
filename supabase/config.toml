@@ -2,3 +2,6 @@ project_id = "efuqpiaavrzimvstpdpm"
 
 [functions.send-sms]
 verify_jwt = true
+
+[functions.whatsapp-ai-webhook]
+verify_jwt = false
