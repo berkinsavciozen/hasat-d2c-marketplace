@@ -228,6 +228,8 @@ function FarmerShell() {
           </div>
         </SheetContent>
       </Sheet>
+
+      <FarmerAIChat />
     </div>
   );
 }
