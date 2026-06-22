@@ -1,63 +1,92 @@
-# AI Features — DB Foundation (revised)
+# P9-B — WhatsApp AI Webhook (Edge Function)
 
-## Current state
-- `public.profiles`: `id, role, name, phone, city, premium boolean default false, created_at, updated_at`. No `tier` column.
-- No existing AI tables (`ai_*`, `*chat*`, `*usage*`).
-- `profiles.premium` is read by `login.tsx`, `__root.tsx`, `buyer.account.tsx`, `farmer.premium.tsx`, `lib/hasat/store.ts`, and written `false` by `onboarding.farmer.tsx`. We must keep `premium` working.
+## Inspection findings
 
-## Single idempotent migration
+- **Existing edge function**: only `send-sms`. Uses `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_MESSAGING_SERVICE_SID` (already secrets). New function reuses none of these for the inbound TwiML reply path.
+- **AI**: no existing AI calls. Use Lovable AI Gateway (`https://ai.gateway.lovable.dev/v1/chat/completions`) with `LOVABLE_API_KEY` (already a secret), model `google/gemini-3-flash-preview`.
+- **profiles.phone**: format inconsistent (`+905001234567` and `905007654321` both exist). Lookup must try both forms.
+- **harvest_entries**: `parcel_id NOT NULL`; `quality` is enum `quality_grade` accepting only `'A' | 'B' | 'C'`.
+- **P9-A confirmed**: `ai_chat_messages`, `ai_usage_tracking`, `can_send_ai_message`, `increment_ai_usage`, `profiles.tier` all in place.
 
-### 1. `profiles.tier`
-- Create enum `public.user_tier AS ENUM ('free','premium')` if not exists.
-- `ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS tier public.user_tier NOT NULL DEFAULT 'free'`.
-- Backfill: `UPDATE public.profiles SET tier='premium' WHERE premium=true AND tier='free'`.
-- BEFORE INSERT/UPDATE trigger `profiles_sync_tier_premium` keeping `tier` ↔ `premium` in sync both directions, so legacy reads/writes of `premium` continue to work.
+## Function: `supabase/functions/whatsapp-ai-webhook/index.ts`
 
-### 2. `public.ai_chat_messages`
-Columns: `id uuid pk default gen_random_uuid()`, `user_id uuid not null references auth.users(id) on delete cascade`, `session_id uuid not null`, `role text check in ('user','assistant','system')`, `content text not null`, `source text default 'in_app' check in ('in_app','whatsapp')`, `page_context text null`, `metadata jsonb default '{}'`, `created_at timestamptz default now()`.
-Indexes: `(user_id, created_at desc)`, `(user_id, session_id, created_at)`.
-Grants: `SELECT, INSERT TO authenticated`; `ALL TO service_role`.
-RLS enabled. Policies (authenticated): select own, insert own. No update/delete (permanent).
+Public webhook (Twilio cannot send a Supabase JWT). Add `[functions.whatsapp-ai-webhook]` with `verify_jwt = false` to `supabase/config.toml`.
 
-### 3. `public.ai_usage_tracking`
-Columns: `user_id uuid not null references auth.users(id) on delete cascade`, `month text not null check (month ~ '^\d{4}-\d{2}$')`, `message_count integer not null default 0 check >= 0`, `updated_at timestamptz default now()`. PK `(user_id, month)`.
-Grants: `SELECT, INSERT, UPDATE TO authenticated`; `ALL TO service_role`.
-RLS enabled. Policies (authenticated): select/insert/update own (`auth.uid() = user_id`). Service role bypasses RLS.
+### Flow
 
-### 4. Helper functions (`SECURITY DEFINER`, `SET search_path = public`)
+1. Parse `application/x-www-form-urlencoded` body. Extract `From`, `Body`.
+2. Normalize phone: strip `whatsapp:` prefix → `raw`. Build candidates `[raw, raw without leading '+', '+' + raw if missing]`.
+3. Look up `profiles` where `phone = ANY(candidates) AND role='farmer'`. None → reply `"Hasat uygulamasına kayıt olmak için: hasat.lovable.app"`, stop.
+4. RPC `can_send_ai_message(user_id)`. False → reply premium upsell, stop.
+5. Fetch context in parallel (service role):
+   - last 10 `ai_chat_messages` for user (newest first, then reversed).
+   - last 5 `harvest_entries` (`crop, quantity, unit, quality, harvest_date`).
+   - active `listings` (`status='active'`) for farmer.
+   - pending `offers` count + oldest pending date.
+   - farmer's `parcels` (`id, name, crops`) — for journal auto-save resolution.
+6. Build system prompt per spec, interpolating `farmer_name`, `city`, plus a compact context block (recent harvests, active listings, pending offers, parcel list).
+7. Call Lovable AI Gateway, model `google/gemini-3-flash-preview`. Handle 429/402/non-2xx → return generic Turkish error reply, do NOT save or increment.
+8. Parse `[JOURNAL_ENTRY]{json}[/JOURNAL_ENTRY]` in AI reply:
+   - Required: `crop, quantity, unit, harvest_date`. Optional: `quality`, `parcel_id` or `parcel_name`, `notes`.
+   - Resolve `parcel_id`: explicit id (verify ownership) → match `parcel_name` against farmer's parcels (case-insensitive) → if exactly one parcel, use it.
+   - **Quality mapping** (enum is `'A'|'B'|'C'`):
+     - `iyi` / `good` / `kaliteli` / `A` → `'A'`
+     - `orta` / `medium` / `B` → `'B'`
+     - `düşük` / `dusuk` / `kötü` / `kotu` / `low` / `C` → `'C'`
+     - missing or unrecognized → default `'A'`
+   - On success: insert `harvest_entries` (costs `'{}'::jsonb`, quality from mapping), strip block, append `"✅ Günlük kaydınız oluşturuldu."`.
+   - Parcel unresolvable: strip block, replace reply with `"Hangi parselden hasat ettiniz? Parsellerin: <list>"`, do not insert.
+9. Insert two rows in `ai_chat_messages` (`role='user'` + `role='assistant'`, `source='whatsapp'`, `page_context='whatsapp'`, shared `session_id`).
+10. RPC `increment_ai_usage(user_id)` only after successful AI response.
+11. Return TwiML 200, `Content-Type: text/xml`, reply XML-escaped and truncated to 1600 chars. Always 200, even on errors.
 
-Both functions use a **role-aware assertion** so the WhatsApp edge function can call them as `service_role` (where `auth.uid()` is null):
+### Session ID — daily session per user
 
-```sql
-IF current_setting('request.jwt.claims', true)::jsonb->>'role' = 'authenticated' THEN
-  IF _user_id <> auth.uid() THEN
-    RAISE EXCEPTION 'Cross-user access not allowed';
-  END IF;
-END IF;
+Deterministic UUID derived from SHA-256 of `${user_id}:${YYYY-MM-DD UTC}`, formatted as a v4-style UUID. Same `session_id` for all messages from a user on a given calendar day. Rationale: WhatsApp has no native session boundary; daily granularity gives the in-app P10 chat view a natural conversation grouping while keeping context windows bounded. The in-app chat will mint its own session UUID per chat open.
+
+### Error handling
+
+- AI non-2xx / throw → generic Turkish error reply, skip storage and increment, return 200.
+- Context-fetch DB failures → continue with empty context, log.
+- Message-insert / increment failures → log, still send the reply.
+- Always TwiML 200 (Twilio retries on non-200 → duplicates).
+- No stack traces in user-facing replies.
+
+## Secrets
+
+All required secrets already present — nothing to add:
+
+| Secret | Status | Used for |
+|---|---|---|
+| `SUPABASE_URL` | auto | Supabase client |
+| `SUPABASE_SERVICE_ROLE_KEY` | auto | Service-role client |
+| `LOVABLE_API_KEY` | already set | AI Gateway auth |
+
+Twilio outbound creds not needed (TwiML synchronous reply). Signature validation deferred.
+
+## Twilio Console configuration
+
+Webhook URL:
+```
+https://efuqpiaavrzimvstpdpm.supabase.co/functions/v1/whatsapp-ai-webhook
 ```
 
-Applied to **both** `can_send_ai_message` and `increment_ai_usage`. Service-role callers (edge functions) skip the check; anon callers also skip but they have no `EXECUTE` grant so they can't reach the function anyway.
-
-**`public.can_send_ai_message(_user_id uuid) returns boolean`**
-- Run role-aware assertion.
-- If `profiles.tier = 'premium'` → return true.
-- Else return `(coalesce(message_count,0) < 50)` for current month (`to_char(now(),'YYYY-MM')`).
-- Free-tier limit `50` as constant in body.
-- Grant `EXECUTE TO authenticated, service_role`; revoke from `anon, public`.
-
-**`public.increment_ai_usage(_user_id uuid) returns integer`**
-- Run role-aware assertion.
-- `INSERT ... ON CONFLICT (user_id, month) DO UPDATE SET message_count = ai_usage_tracking.message_count + 1, updated_at = now()` for current month, `RETURNING message_count`.
-- Grant `EXECUTE TO authenticated, service_role`; revoke from `anon, public`.
-
-### 5. Sanity check (executed after migration)
-```sql
-SELECT public.can_send_ai_message('0868e4fe-86d2-4c5d-8ba5-f15fd4fac146');
--- expected: true
-```
+Steps:
+1. **Messaging → Senders → WhatsApp senders** (production) or **Messaging → Try it out → WhatsApp Sandbox Settings** (testing).
+2. Open the WhatsApp-enabled number / sandbox config.
+3. **"When a message comes in"**: paste the URL above. Method: **HTTP POST**.
+4. **Status callback URL**: leave blank.
+5. Save. (Sandbox: farmer sends `join <sandbox-code>` once to opt in.)
 
 ## Out of scope
-- No changes to `premium` column, no other table changes, no frontend code, no changes to existing RLS policies.
 
-## Will report back
-Created column, table names, function names, and sanity-check result.
+- No frontend changes.
+- No DB schema changes.
+- No edits to `send-sms` or any existing function.
+- No Twilio signature validation.
+- No outbound proactive messaging.
+
+## Files changed
+
+- `supabase/functions/whatsapp-ai-webhook/index.ts` (new)
+- `supabase/config.toml` (add `[functions.whatsapp-ai-webhook] verify_jwt = false`)
