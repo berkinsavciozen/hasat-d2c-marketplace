@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { parseAssistantContent, type ParsedJournal } from "./parseJournalEntry";
 
 export interface ChatMessage {
   id: string;
@@ -7,9 +8,16 @@ export interface ChatMessage {
   content: string;
   created_at: string;
   streaming?: boolean;
+  journal?: ParsedJournal | null;
 }
 
 interface ProfileCtx { name: string | null; city: string | null; tier: "free" | "premium" }
+
+function hydrateAssistant(m: ChatMessage): ChatMessage {
+  if (m.role !== "assistant" || m.streaming) return m;
+  const { visibleText, journal } = parseAssistantContent(m.content);
+  return { ...m, content: visibleText, journal };
+}
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL as string;
 const SUPABASE_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string;
