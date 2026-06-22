@@ -7,6 +7,7 @@ import { FarmPill } from "@/components/hasat/FarmPill";
 import { NotificationBell } from "@/components/hasat/NotificationBell";
 
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { FarmerAIChat } from "@/components/hasat/ai-chat/FarmerAIChat";
 
 export const Route = createFileRoute("/farmer")({
   beforeLoad: () => {
@@ -227,6 +228,8 @@ function FarmerShell() {
           </div>
         </SheetContent>
       </Sheet>
+
+      <FarmerAIChat />
     </div>
   );
 }
