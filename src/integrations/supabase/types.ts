@@ -14,6 +14,63 @@ export type Database = {
   }
   public: {
     Tables: {
+      ai_chat_messages: {
+        Row: {
+          content: string
+          created_at: string
+          id: string
+          metadata: Json
+          page_context: string | null
+          role: string
+          session_id: string
+          source: string
+          user_id: string
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          id?: string
+          metadata?: Json
+          page_context?: string | null
+          role: string
+          session_id: string
+          source?: string
+          user_id: string
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          id?: string
+          metadata?: Json
+          page_context?: string | null
+          role?: string
+          session_id?: string
+          source?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      ai_usage_tracking: {
+        Row: {
+          message_count: number
+          month: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          message_count?: number
+          month: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          message_count?: number
+          month?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       buyer_profiles: {
         Row: {
           company_name: string
@@ -758,6 +815,7 @@ export type Database = {
           phone: string | null
           premium: boolean
           role: Database["public"]["Enums"]["user_role"]
+          tier: Database["public"]["Enums"]["user_tier"]
           updated_at: string
         }
         Insert: {
@@ -768,6 +826,7 @@ export type Database = {
           phone?: string | null
           premium?: boolean
           role: Database["public"]["Enums"]["user_role"]
+          tier?: Database["public"]["Enums"]["user_tier"]
           updated_at?: string
         }
         Update: {
@@ -778,6 +837,7 @@ export type Database = {
           phone?: string | null
           premium?: boolean
           role?: Database["public"]["Enums"]["user_role"]
+          tier?: Database["public"]["Enums"]["user_tier"]
           updated_at?: string
         }
         Relationships: []
@@ -787,7 +847,9 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      can_send_ai_message: { Args: { _user_id: string }; Returns: boolean }
       get_my_role: { Args: never; Returns: string }
+      increment_ai_usage: { Args: { _user_id: string }; Returns: number }
     }
     Enums: {
       certification_type:
@@ -823,6 +885,7 @@ export type Database = {
       subscription_status: "active" | "cancelled" | "fulfilled"
       unit_type: "g" | "kg" | "L"
       user_role: "farmer" | "buyer"
+      user_tier: "free" | "premium"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -981,6 +1044,7 @@ export const Constants = {
       subscription_status: ["active", "cancelled", "fulfilled"],
       unit_type: ["g", "kg", "L"],
       user_role: ["farmer", "buyer"],
+      user_tier: ["free", "premium"],
     },
   },
 } as const
