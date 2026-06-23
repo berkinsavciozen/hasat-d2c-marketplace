@@ -8,3 +8,6 @@ verify_jwt = false
 
 [functions.ai-chat-stream]
 verify_jwt = true
+
+[functions.ai-box-insights]
+verify_jwt = true

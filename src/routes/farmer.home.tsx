@@ -1,6 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useHasat } from "@/lib/hasat/store";
 import { useFarmerListings, useEntries } from "@/lib/hasat/queries";
+import { AIBox } from "@/components/hasat/AIBox";
 import { FarmerHeader } from "./farmer";
 import { formatTRY } from "@/lib/hasat/format";
 import { BookOpen, LineChart, Store, Users2 } from "lucide-react";
@@ -30,6 +31,8 @@ function Home() {
       <FarmerHeader title={`Merhaba, ${user?.name?.split(" ")[0] ?? "Çiftçi"} 👋`} />
 
       <div className="p-4 md:p-8 space-y-4">
+        <AIBox page="dashboard" />
+
         {/* Quick actions */}
         <div className="-mx-4 px-4 md:mx-0 md:px-0 flex gap-2 overflow-x-auto pb-1">
           {quickActions.map((a) => (
