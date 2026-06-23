@@ -143,6 +143,18 @@ export function FarmerAIChat() {
   // Focus input on open
   useEffect(() => { if (open) setTimeout(() => inputRef.current?.focus(), 200); }, [open]);
 
+  // Deeplink: external trigger to open chat with optional prefill
+  useEffect(() => {
+    const handler = (ev: Event) => {
+      const detail = (ev as CustomEvent).detail as { prefill?: string } | undefined;
+      setOpen(true);
+      if (detail?.prefill) setDraft(detail.prefill);
+      setTimeout(() => inputRef.current?.focus(), 250);
+    };
+    window.addEventListener("hasat:ai-chat:open", handler as EventListener);
+    return () => window.removeEventListener("hasat:ai-chat:open", handler as EventListener);
+  }, []);
+
   const dismissCoach = () => {
     setShowCoach(false);
     if (typeof window !== "undefined") localStorage.setItem(COACH_KEY, "1");
