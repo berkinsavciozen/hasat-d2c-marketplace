@@ -175,6 +175,23 @@ export function AIBox({ page }: { page: AIBoxPage }) {
           </ul>
         </div>
       )}
+
+      {showCoach && (
+        <>
+          <div className="fixed inset-0 z-40" onClick={dismissCoach} />
+          <div
+            onClick={dismissCoach}
+            className="absolute z-50 left-3 right-3 -bottom-2 translate-y-full text-xs rounded-xl px-3 py-2 shadow-lg cursor-pointer"
+            style={{ background: "var(--dark)", color: "var(--hwhite)" }}
+          >
+            ✨ Bu kutu verilerine göre kişisel AI analizi gösterir. Detay için bir öneriye dokun.
+            <span
+              className="absolute -top-1 left-6 h-2 w-2 rotate-45"
+              style={{ background: "var(--dark)" }}
+            />
+          </div>
+        </>
+      )}
     </div>
   );
 }
