@@ -2,13 +2,15 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { FarmerHeader } from "./farmer";
 import { useHasat } from "@/lib/hasat/store";
-import { useParcels, useUpdateParcel, useDeleteParcel, useCertifications, useProfile, useUpdateProfile, useUploadCertification, useDeleteCertification, getCertificationSignedUrl, CERT_TYPES, type CertType } from "@/lib/hasat/queries";
+import { useParcels, useUpdateParcel, useDeleteParcel, useCertifications, useProfile, useUpdateProfile, useUploadCertification, useDeleteCertification, getCertificationSignedUrl, useAIUsageThisMonth, CERT_TYPES, type CertType } from "@/lib/hasat/queries";
 import { ProgressDots } from "@/components/hasat/ProgressDots";
 import { Input } from "@/components/ui/input";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
-import { Bell, ChevronRight, LogOut, Pencil, Trash2 } from "lucide-react";
+import { Bell, ChevronRight, LogOut, Pencil, Trash2, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+import { TierBadge } from "@/components/hasat/TierBadge";
+import { UpgradeModal } from "@/components/hasat/UpgradeModal";
 
 export const Route = createFileRoute("/farmer/settings")({ component: Settings });
 
