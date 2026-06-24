@@ -50,12 +50,19 @@ export function AIBox({ page }: { page: AIBoxPage }) {
     return localStorage.getItem(storageKey) === "1";
   });
 
+  const [showCoach, setShowCoach] = useState(false);
+
   const toggle = () => {
     setCollapsed((c) => {
       const next = !c;
       if (typeof window !== "undefined") localStorage.setItem(storageKey, next ? "1" : "0");
       return next;
     });
+  };
+
+  const dismissCoach = () => {
+    setShowCoach(false);
+    if (typeof window !== "undefined") localStorage.setItem(COACH_KEY, "1");
   };
 
   const { data, isLoading, isError } = useQuery({
