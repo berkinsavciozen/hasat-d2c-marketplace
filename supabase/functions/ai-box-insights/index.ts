@@ -103,6 +103,119 @@ async function fetchAnalytics(supa: any, userId: string) {
   };
 }
 
+async function fetchJournal(supa: any, userId: string) {
+  const today = new Date();
+  const todayStr = today.toISOString().slice(0, 10);
+  const since31 = new Date(Date.now() - 31 * 86400_000).toISOString().slice(0, 10);
+  const dow = (today.getUTCDay() + 6) % 7;
+  const weekStart = new Date(today.getTime() - dow * 86400_000).toISOString().slice(0, 10);
+  const monthStart = todayStr.slice(0, 8) + "01";
+
+  const [recent, last3, allCrops] = await Promise.all([
+    supa.from("harvest_entries").select("crop, quantity, unit, harvest_date")
+      .eq("farmer_id", userId).gte("harvest_date", since31),
+    supa.from("harvest_entries").select("crop, quantity, unit, harvest_date")
+      .eq("farmer_id", userId).order("harvest_date", { ascending: false }).limit(3),
+    supa.from("harvest_entries").select("crop").eq("farmer_id", userId),
+  ]);
+
+  const rows = (recent.data ?? []) as any[];
+  const bucket = (since: string) => {
+    const f = rows.filter((r) => (r.harvest_date ?? "") >= since);
+    return { count: f.length, qty: f.reduce((s, r) => s + Number(r.quantity ?? 0), 0) };
+  };
+  const distinct = new Set(((allCrops.data ?? []) as any[]).map((r) => r.crop).filter(Boolean));
+
+  return {
+    today: bucket(todayStr),
+    week: bucket(weekStart),
+    month: bucket(monthStart),
+    last_entries: (last3.data ?? []) as any[],
+    distinct_crops: distinct.size,
+  };
+}
+
+async function fetchPrices(supa: any, userId: string) {
+  const since14 = new Date(Date.now() - 14 * 86400_000).toISOString().slice(0, 10);
+  const alertsRes = await supa.from("price_alerts")
+    .select("crop, target_price, condition")
+    .eq("farmer_id", userId).eq("active", true);
+  const alerts = (alertsRes.data ?? []) as any[];
+
+  let crops: string[] = alerts.map((a) => a.crop).filter(Boolean);
+  if (crops.length === 0) {
+    const recent = await supa.from("harvest_entries").select("crop")
+      .eq("farmer_id", userId).order("harvest_date", { ascending: false }).limit(5);
+    crops = Array.from(new Set(((recent.data ?? []) as any[]).map((r) => r.crop).filter(Boolean)));
+  }
+
+  let tracked: any[] = [];
+  if (crops.length > 0) {
+    const pts = await supa.from("price_points")
+      .select("crop, hal_price, d2c_price, delta_7d, recorded_date")
+      .in("crop", crops).gte("recorded_date", since14)
+      .order("recorded_date", { ascending: false });
+    const byCrop = new Map<string, any[]>();
+    for (const p of ((pts.data ?? []) as any[])) {
+      if (!byCrop.has(p.crop)) byCrop.set(p.crop, []);
+      byCrop.get(p.crop)!.push(p);
+    }
+    tracked = Array.from(byCrop.entries()).map(([crop, arr]) => {
+      const latest = arr[0];
+      return {
+        crop,
+        latest_d2c: Number(latest?.d2c_price ?? 0),
+        latest_hal: Number(latest?.hal_price ?? 0),
+        delta_7d: Number(latest?.delta_7d ?? 0),
+        points: arr.length,
+        latest_date: latest?.recorded_date ?? null,
+      };
+    });
+  }
+  return { alerts, tracked_crops: tracked };
+}
+
+async function fetchStorefront(supa: any, userId: string) {
+  const [listingsRes, offersRes] = await Promise.all([
+    supa.from("listings").select("status, crop, quantity, price_per_unit, created_at")
+      .eq("farmer_id", userId).order("created_at", { ascending: false }),
+    supa.from("offers").select("status, price_per_unit, quantity, listing_id, created_at")
+      .eq("farmer_id", userId),
+  ]);
+  const ls = (listingsRes.data ?? []) as any[];
+  const os = (offersRes.data ?? []) as any[];
+
+  const lCount = (s: string) => ls.filter((l) => l.status === s).length;
+  const oCount = (s: string) => os.filter((o) => o.status === s).length;
+  const pending = os.filter((o) => o.status === "pending");
+  const oldestPending = pending.reduce<string | null>(
+    (m, o) => (!m || (o.created_at ?? "") < m ? o.created_at : m), null);
+  const now = Date.now();
+  const avgAge = pending.length
+    ? +(pending.reduce((s, o) => s + (now - new Date(o.created_at).getTime()) / 86400_000, 0) / pending.length).toFixed(1)
+    : 0;
+
+  return {
+    listings: {
+      total: ls.length,
+      active: lCount("active"),
+      sold: lCount("sold"),
+      expired: lCount("expired"),
+      top: ls.filter((l) => l.status === "active").slice(0, 5).map((l) => ({
+        crop: l.crop, quantity: Number(l.quantity ?? 0), price_per_unit: Number(l.price_per_unit ?? 0),
+      })),
+    },
+    offers: {
+      pending: oCount("pending"),
+      accepted: oCount("accepted"),
+      rejected: oCount("rejected"),
+      countered: oCount("counter"),
+      oldest_pending_at: oldestPending,
+      avg_pending_age_days: avgAge,
+    },
+  };
+}
+
 function isEmpty(pageType: string, ctx: any): boolean {
   if (pageType === "dashboard") {
     return ctx.listings_total === 0 && ctx.offers_pending === 0 && ctx.orders_active === 0 && ctx.entries_last_30d === 0;
@@ -110,8 +223,26 @@ function isEmpty(pageType: string, ctx: any): boolean {
   if (pageType === "analytics") {
     return (ctx.crops_last_90d?.length ?? 0) === 0 && ctx.listings_revenue_potential === 0 && ctx.completed_orders_90d === 0;
   }
+  if (pageType === "journal") {
+    return (ctx.today?.count ?? 0) === 0 && (ctx.week?.count ?? 0) === 0 && (ctx.month?.count ?? 0) === 0 && (ctx.last_entries?.length ?? 0) === 0;
+  }
+  if (pageType === "prices") {
+    return (ctx.alerts?.length ?? 0) === 0 && (ctx.tracked_crops?.length ?? 0) === 0;
+  }
+  if (pageType === "storefront") {
+    const o = ctx.offers ?? {};
+    return (ctx.listings?.total ?? 0) === 0 && (o.pending ?? 0) === 0 && (o.accepted ?? 0) === 0 && (o.rejected ?? 0) === 0 && (o.countered ?? 0) === 0;
+  }
   return false;
 }
+
+const PAGE_GOALS: Record<string, string> = {
+  dashboard: "Genel durum özeti ve aksiyon önerileri.",
+  analytics: "Üretim ve gelir analizleri.",
+  journal: "Çiftçinin günlük tutma alışkanlığını özetle (bugün/hafta/ay). 1-2 kısa öneri ekle. urgency yalnızca bu hafta 0 kayıt varsa.",
+  prices: "Takip edilen ürünlerde son fiyat hareketlerini yorumla. urgency: 7 günde |delta|>10% ya da bir alarm koşulu tetiklendiyse.",
+  storefront: "Vitrin ve teklif durumunu değerlendir. urgency: 7 günden eski bekleyen teklif varsa.",
+};
 
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: cors });
