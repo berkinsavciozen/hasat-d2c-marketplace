@@ -28,6 +28,8 @@ function Settings() {
   const [certType, setCertType] = useState<CertType>("organik");
   const [certExpires, setCertExpires] = useState("");
   const [certFile, setCertFile] = useState<File | null>(null);
+  const [upgradeOpen, setUpgradeOpen] = useState(false);
+  const { data: aiUsage } = useAIUsageThisMonth();
   const setRole = useHasat((s) => s.setRole);
 
   const [name, setName] = useState("");
