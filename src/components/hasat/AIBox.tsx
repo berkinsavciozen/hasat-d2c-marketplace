@@ -129,17 +129,6 @@ export function AIBox({ page }: { page: AIBoxPage }) {
   const teaser = insights[0].length > 60 ? insights[0].slice(0, 60) + "…" : insights[0];
 
   return (
-  // trigger coach mark once insights render (not loading/empty)
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    if (coachShownThisSession) return;
-    if (insights.length === 0) return;
-    if (localStorage.getItem(COACH_KEY) === "1") return;
-    coachShownThisSession = true;
-    setShowCoach(true);
-  }, [insights.length]);
-
-  return (
     <div className="relative rounded-xl p-3 md:p-4 mb-4" style={cardStyle}>
       <button
         type="button"
