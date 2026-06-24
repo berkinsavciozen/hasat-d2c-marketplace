@@ -300,6 +300,7 @@ function Settings() {
           </div>
         </SheetContent>
       </Sheet>
+      <UpgradeModal open={upgradeOpen} onOpenChange={setUpgradeOpen} />
     </>
   );
 }
