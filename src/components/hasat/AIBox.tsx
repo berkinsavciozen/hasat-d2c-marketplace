@@ -6,6 +6,8 @@ import { useAuthUserId } from "@/lib/hasat/queries";
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL as string;
 const SUPABASE_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string;
+const COACH_KEY = "hasat_aibox_coach_dismissed";
+let coachShownThisSession = false;
 
 export type AIBoxPage = "dashboard" | "analytics" | "journal" | "prices" | "storefront";
 
