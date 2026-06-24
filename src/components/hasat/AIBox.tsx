@@ -74,6 +74,16 @@ export function AIBox({ page }: { page: AIBoxPage }) {
     retry: false,
   });
 
+  const insightsCount = data?.insights?.length ?? 0;
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (coachShownThisSession) return;
+    if (insightsCount === 0) return;
+    if (localStorage.getItem(COACH_KEY) === "1") return;
+    coachShownThisSession = true;
+    setShowCoach(true);
+  }, [insightsCount]);
+
   if (!userId) return null;
   if (isError) return null;
   if (data?.error) return null;
