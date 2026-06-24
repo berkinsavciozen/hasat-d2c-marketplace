@@ -262,6 +262,9 @@ serve(async (req) => {
   try {
     if (pageType === "dashboard") ctx = await fetchDashboard(supa, userId);
     else if (pageType === "analytics") ctx = await fetchAnalytics(supa, userId);
+    else if (pageType === "journal") ctx = await fetchJournal(supa, userId);
+    else if (pageType === "prices") ctx = await fetchPrices(supa, userId);
+    else if (pageType === "storefront") ctx = await fetchStorefront(supa, userId);
     else ctx = {};
   } catch (e) {
     console.error("[ai-box-insights] context fetch error", e);
@@ -272,6 +275,7 @@ serve(async (req) => {
     return json({ insights: [], urgency: null, empty: true });
   }
 
+  const goal = PAGE_GOALS[pageType] ?? "";
   const systemPrompt = `Sen Hasat platformunun AI analiz motorusun. Türk çiftçilere kısa, öz, uygulanabilir Türkçe içgörüler üretiyorsun.
 Cevabını JSON formatında döndür: { "insights": ["...", "...", "..."], "urgency": "..." veya null }
 
@@ -280,7 +284,8 @@ insights: 2-3 kısa cümle. Her biri bağımsız bir gözlem veya öneri. Gereks
 urgency: Acil aksiyon gerektiren bir durum varsa tek cümle. Yoksa null.
 
 Çiftçiye doğrudan hitap et (sen). Sade Türkçe, jargon yok. Maksimum 20 kelime per insight.
-Sayfa bağlamı: ${pageType}. Veri: ${JSON.stringify(ctx)}`;
+Sayfa bağlamı: ${pageType}. Amaç: ${goal}
+Veri: ${JSON.stringify(ctx)}`;
 
   try {
     const upstream = await fetch(AI_URL, {
