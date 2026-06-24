@@ -13,6 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Bell, TrendingUp, TrendingDown } from "lucide-react";
 import { LineChart, Line, ResponsiveContainer, YAxis, Tooltip } from "recharts";
 import { toast } from "sonner";
+import { AIBox } from "@/components/hasat/AIBox";
 
 export const Route = createFileRoute("/farmer/prices")({
   head: () => ({ meta: [{ title: "Fiyat Takibi | Hasat" }] }),
@@ -110,6 +111,7 @@ function Prices() {
       </FarmerHeader>
 
       <div className="px-4 md:px-8 py-5 space-y-3">
+        <AIBox page="prices" />
         <div className="text-xs font-medium uppercase tracking-wider text-hmuted">Diğer Ürünler</div>
         {others.map((p) => (
           <button

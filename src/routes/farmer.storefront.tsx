@@ -14,6 +14,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Plus, Pencil, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import type { Listing } from "@/lib/hasat/types";
+import { AIBox } from "@/components/hasat/AIBox";
 
 export const Route = createFileRoute("/farmer/storefront")({
   head: () => ({ meta: [{ title: "Vitrin — Hasat" }] }),
@@ -36,6 +37,7 @@ function Storefront() {
     <>
       <FarmerHeader title="Vitrin" subtitle="Aktif listelemeleriniz" />
       <div className="px-4 md:px-8 py-5 pb-32 md:pb-5">
+        <AIBox page="storefront" />
         <Tabs defaultValue="active">
           <TabsList className="grid w-full grid-cols-2">
             <TabsTrigger value="active">Ürünlerim</TabsTrigger>

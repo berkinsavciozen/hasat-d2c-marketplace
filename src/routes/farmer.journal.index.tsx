@@ -15,6 +15,7 @@ import {
   cropChipColor,
 } from "@/lib/hasat/journal-meta";
 import { toast } from "sonner";
+import { AIBox } from "@/components/hasat/AIBox";
 
 export const Route = createFileRoute("/farmer/journal/")({
   head: () => ({ meta: [{ title: "Günlük — Hasat" }] }),
@@ -128,6 +129,7 @@ function Journal() {
       </FarmerHeader>
 
       <div className="p-4 md:p-8 space-y-4 relative">
+        <AIBox page="journal" />
         {/* Compact stats bar */}
         <div className="rounded-2xl border px-4 py-3 flex flex-wrap items-center justify-between gap-x-3 gap-y-1" style={{ background: "var(--cream)", borderColor: "var(--border)" }}>
           <div className="min-w-0 text-sm text-dark">
