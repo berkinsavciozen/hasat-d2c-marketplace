@@ -346,6 +346,8 @@ export function FarmerAIChat() {
           </div>
         </SheetContent>
       </Sheet>
+
+      <UpgradeModal open={upgradeOpen} onOpenChange={setUpgradeOpen} />
     </>
   );
 }
