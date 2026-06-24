@@ -6,6 +6,8 @@ import { useAuthUserId } from "@/lib/hasat/queries";
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL as string;
 const SUPABASE_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string;
+const COACH_KEY = "hasat_aibox_coach_dismissed";
+let coachShownThisSession = false;
 
 export type AIBoxPage = "dashboard" | "analytics" | "journal" | "prices" | "storefront";
 
@@ -48,12 +50,19 @@ export function AIBox({ page }: { page: AIBoxPage }) {
     return localStorage.getItem(storageKey) === "1";
   });
 
+  const [showCoach, setShowCoach] = useState(false);
+
   const toggle = () => {
     setCollapsed((c) => {
       const next = !c;
       if (typeof window !== "undefined") localStorage.setItem(storageKey, next ? "1" : "0");
       return next;
     });
+  };
+
+  const dismissCoach = () => {
+    setShowCoach(false);
+    if (typeof window !== "undefined") localStorage.setItem(COACH_KEY, "1");
   };
 
   const { data, isLoading, isError } = useQuery({
@@ -64,6 +73,16 @@ export function AIBox({ page }: { page: AIBoxPage }) {
     gcTime: 300_000,
     retry: false,
   });
+
+  const insightsCount = data?.insights?.length ?? 0;
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (coachShownThisSession) return;
+    if (insightsCount === 0) return;
+    if (localStorage.getItem(COACH_KEY) === "1") return;
+    coachShownThisSession = true;
+    setShowCoach(true);
+  }, [insightsCount]);
 
   if (!userId) return null;
   if (isError) return null;
@@ -110,7 +129,7 @@ export function AIBox({ page }: { page: AIBoxPage }) {
   const teaser = insights[0].length > 60 ? insights[0].slice(0, 60) + "…" : insights[0];
 
   return (
-    <div className="rounded-xl p-3 md:p-4 mb-4" style={cardStyle}>
+    <div className="relative rounded-xl p-3 md:p-4 mb-4" style={cardStyle}>
       <button
         type="button"
         onClick={toggle}
@@ -155,6 +174,23 @@ export function AIBox({ page }: { page: AIBoxPage }) {
             ))}
           </ul>
         </div>
+      )}
+
+      {showCoach && (
+        <>
+          <div className="fixed inset-0 z-40" onClick={dismissCoach} />
+          <div
+            onClick={dismissCoach}
+            className="absolute z-50 left-3 right-3 -bottom-2 translate-y-full text-xs rounded-xl px-3 py-2 shadow-lg cursor-pointer"
+            style={{ background: "var(--dark)", color: "var(--hwhite)" }}
+          >
+            ✨ Bu kutu verilerine göre kişisel AI analizi gösterir. Detay için bir öneriye dokun.
+            <span
+              className="absolute -top-1 left-6 h-2 w-2 rotate-45"
+              style={{ background: "var(--dark)" }}
+            />
+          </div>
+        </>
       )}
     </div>
   );

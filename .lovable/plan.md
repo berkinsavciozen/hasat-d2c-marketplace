@@ -1,75 +1,61 @@
-## P13 — AIBox on Günlük / Fiyatlar / Vitrin / Teklifler
+# P14 — AI Tier Experience Polish
 
-### Findings
+## Findings (from inspection)
 
-- Edge fn `supabase/functions/ai-box-insights/index.ts` already routes via `if/else` on `pageType` (`dashboard`, `analytics`) and has shared CORS, JWT decode, AI gateway call, and isEmpty helper. We extend the same `if/else` chain plus add empty checks.
-- `AIBox.tsx` prop union already includes `"journal" | "prices" | "storefront"` — no type change needed.
-- Routes confirmed:
-  - Günlük: `src/routes/farmer.journal.index.tsx` — header `<FarmerHeader title="Tarla Günlüğü">`, content begins `<div className="p-4 md:p-8 space-y-4 relative">`. Mount AIBox as first child.
-  - Fiyatlar: `src/routes/farmer.prices.tsx` — header ends; main content `<div className="px-4 md:px-8 py-5 space-y-3">`. Mount as first child of that div.
-  - Vitrin: `src/routes/farmer.storefront.tsx` — `<div className="px-4 md:px-8 py-5 pb-32 md:pb-5">` wrapping `<Tabs>`. Mount above the Tabs.
-  - Teklifler: `src/routes/farmer.offers.tsx` — currently a one-liner "Yakında" placeholder. Replace with a proper component that keeps the placeholder body but adds the AIBox above it (same `storefront` page_type).
-- Schemas confirmed (relevant columns):
-  - `harvest_entries(farmer_id, harvest_date, crop, quantity, unit, quality, notes, created_at)`
-  - `price_points(crop, hal_price, d2c_price, export_price, delta_7d, recorded_date)` — global, no farmer_id
-  - `price_alerts(farmer_id, crop, target_price, condition, channels, active, created_at)`
-  - `listings(farmer_id, crop, quantity, unit, price_per_unit, status, created_at)`
-  - `offers(farmer_id, listing_id, status, price_per_unit, quantity, created_at)` — has farmer_id directly (no join needed)
-  - `orders(farmer_id, status, created_at)` — no monetary column on orders; storefront fetch sticks to counts.
+- **Limit UI today** (`FarmerAIChat.tsx` lines 269-273): inline text + plain `<a href="/farmer/premium">Premium'a geç →</a>`. Triggered when `tier==='free' && usageCount>=50` or `chat.limitReached`. This is the only existing limit surface.
+- **Settings** (`src/routes/farmer.settings.tsx`): clean `Section` pattern — Profil / Parsellerim / Sertifikalar / Bildirim Tercihleri link / Hesap. Natural insertion: new `Section title="AI Asistan"` right after Profil (so plan/tier sits with identity).
+- **Profile display**: settings Profil section is the only place name/city are shown. Tier badge goes here, next to the avatar/name block.
+- **`farmer.premium.tsx`**: untouched — modal just navigates to `/farmer/premium`.
+- **AIBox**: no coach-mark logic exists. Need to add self-contained overlay gated on `localStorage["hasat_aibox_coach_dismissed"]`, only after insights render (not during skeleton/empty).
+- **`notif_prefs`**: has typed boolean cols (no JSONB grab-bag). Coach-mark state → **localStorage** (matches existing `hasat_ai_chat_coach_dismissed` pattern).
+- **`profiles.tier`**: column exists but NOT in `useProfile()` SELECT (`id, name, city, role, phone` only). Must extend SELECT + `ProfileRow` type. `fetchTier()` in `useAIChat.ts` already reads it separately — keep as-is to avoid touching chat logic.
+- **Sheet vs Dialog**: app uses `Sheet` bottom sheets consistently → use Sheet for upgrade modal.
+- **WhatsApp number**: none configured in code. Use a named constant `HASAT_WHATSAPP_NUMBER` in a new shared file with a TODO comment.
 
-### Edge function — three new cases
+## Changes
 
-In `supabase/functions/ai-box-insights/index.ts`, add three fetch functions and extend the `if/else` page_type dispatch + `isEmpty` rules. Same AI gateway call path, same JSON response contract (`{ insights, urgency, empty?, error? }`).
+### New files
 
-**fetchJournal(supa, userId)**
-- One range query: `harvest_entries` last 31 days, columns `crop, quantity, unit, harvest_date`. In JS, bucket counts/qty by today / this ISO week / this month.
-- Separate query: last 3 entries overall (`order by harvest_date desc limit 3`).
-- Distinct crop count: `select crop` for this farmer, dedupe in JS.
-- Context: `{ today: {count, qty}, week: {…}, month: {…}, last_entries: [...], distinct_crops: n }`.
-- Empty when all bucket counts are 0 AND `last_entries.length === 0`.
+1. **`src/components/hasat/UpgradeModal.tsx`** — shared bottom-sheet modal.
+   - Props: `open`, `onOpenChange`.
+   - Title "Bu ay AI limitine ulaştınız" (Sparkles icon, lav color), body copy as specified, primary "Premium'a Geç" (saffron) → `navigate({to:'/farmer/premium'})` + close, secondary "Belki Sonra" ghost → close.
 
-**fetchPrices(supa, userId)**
-- `price_alerts` where `farmer_id=userId AND active=true` → list `{crop, target_price, condition}`.
-- Determine crops set: if alerts exist → alert crops; else → distinct crops from this farmer's most recent 5 `harvest_entries`.
-- `price_points` where `crop = ANY(crops)` AND `recorded_date >= today-14d` ordered by `recorded_date desc`. Group by crop in JS: latest price + 7-day pct change (`delta_7d` already on the row, or compute first-vs-last in window).
-- Context: `{ alerts: [...], tracked_crops: [{crop, latest_d2c, latest_hal, delta_7d, points: 14}] }`.
-- Empty when `alerts.length === 0 && tracked_crops.length === 0`.
+2. **`src/lib/hasat/constants.ts`** — `export const HASAT_WHATSAPP_NUMBER = "905555555555"; // TODO: replace with real business WhatsApp number`.
 
-**fetchStorefront(supa, userId)**
-- `listings` for farmer: select `status, crop, quantity, price_per_unit, created_at`. In JS: total count, count by status (active/sold/expired), and listing summaries (top 5 active by created_at desc).
-- `offers` where `farmer_id=userId`: select `status, price_per_unit, quantity, listing_id, created_at`. Bucket counts by status; for pending compute `oldest_pending_at` (min created_at) and an `avg_pending_age_days`.
-- Context: `{ listings: {total, active, sold, expired, top: [...]}, offers: {pending, accepted, rejected, countered, oldest_pending_at, avg_pending_age_days} }`.
-- Empty when listings.total===0 AND every offer bucket is 0.
+3. **`src/components/hasat/TierBadge.tsx`** — small chip. `"Ücretsiz"` = muted cream/gray bg, dark text. `"Premium"` = gold (#D4A843) bg, dark text. Props: `tier: "free"|"premium"`.
 
-**Dispatch + AI prompt**
-- Extend `if/else`: `journal` → fetchJournal, `prices` → fetchPrices, `storefront` → fetchStorefront. Unknown page_type still returns `{}` → empty.
-- Same system prompt template, with `pageType` and `ctx` interpolated. Per-page goal added as a one-liner inside the prompt:
-  - journal: "Çiftçinin günlük tutma alışkanlığını özetle (bugün/hafta/ay). 1–2 kısa öneri ekle. urgency yalnızca bu hafta 0 kayıt varsa."
-  - prices: "Takip edilen ürünlerde son hareketleri yorumla. urgency: 7 günde |delta|>10% ya da bir alarm koşulu tetiklendiyse."
-  - storefront: "Vitrin ve teklif durumunu değerlendir. urgency: 7 günden eski bekleyen teklif varsa."
+### Edits
 
-### Frontend mounts
+4. **`src/lib/hasat/queries.ts`**
+   - `ProfileRow`: add `tier: "free"|"premium"|null`.
+   - SELECT: add `tier`.
+   - New hook `useAIUsageThisMonth()` — query `ai_usage_tracking` for current `YYYY-MM`, returns `{ count: number }`, `staleTime: 60_000`. Returns 0 when no row.
 
-- `farmer.journal.index.tsx`: import AIBox, render `<AIBox page="journal" />` as first child of `<div className="p-4 md:p-8 space-y-4 relative">`, above the stats bar.
-- `farmer.prices.tsx`: import AIBox, render `<AIBox page="prices" />` as first child of `<div className="px-4 md:px-8 py-5 space-y-3">`.
-- `farmer.storefront.tsx`: import AIBox, render `<AIBox page="storefront" />` as first child of `<div className="px-4 md:px-8 py-5 pb-32 md:pb-5">`, above `<Tabs>`.
-- `farmer.offers.tsx`: rewrite the inline component into a real `function Offers()` body, render `<FarmerHeader title="Teklifler" subtitle="Yakında" />`, then a container div with `<AIBox page="storefront" />` followed by the existing "🚧 Bu ekran sonraki adımda hazırlanacak." placeholder. Same `page="storefront"` as Vitrin — by design.
+5. **`src/components/hasat/ai-chat/FarmerAIChat.tsx`**
+   - Add `upgradeOpen` state + `<UpgradeModal>` instance.
+   - Replace the limit block (269-273) with a button that opens the modal (keep same wording, button instead of `<a>`).
+   - In header just below the title row (inside the message-list top), add a subtle WhatsApp link: small muted text + WhatsApp-green icon (`MessageCircle` from lucide, color `#25D366`), label "WhatsApp'tan da yazabilirsin →", `<a href={`https://wa.me/${HASAT_WHATSAPP_NUMBER}`} target="_blank" rel="noopener">`. Does not close panel.
 
-### Out of scope
+6. **`src/routes/farmer.settings.tsx`**
+   - Add tier badge next to name/avatar in Profil section using `<TierBadge tier={profile?.tier ?? 'free'} />`.
+   - New `<Section title="AI Asistan">` after Profil:
+     - Row 1: "Üyelik" + `<TierBadge>`.
+     - If free: "Bu ay AI mesajları" + `X / 50` + mini progress bar (same green/amber/red thresholds as `UsageMeter`). Then "Premium'a Geç →" button that opens `<UpgradeModal>`.
+     - If premium: sage-colored "Sınırsız AI sohbeti" row, hide usage + upgrade button.
+   - Local `upgradeOpen` state + mount `<UpgradeModal>`.
 
-No DB changes, no RLS changes, no AIBox component changes (prop union already covers it), no edits to `ai-chat-stream`, no usage-meter increments, no real Teklifler UI.
+7. **`src/components/hasat/AIBox.tsx`**
+   - Add `showCoach` state: on mount, if `localStorage["hasat_aibox_coach_dismissed"] !== "1"` AND insights are rendered (not loading/empty/error), show overlay tooltip.
+   - Overlay: absolutely positioned dark chip pointing to insight list, text "✨ Bu kutu verilerine göre kişisel AI analizi gösterir. Detay için bir öneriye dokun."
+   - Dismiss: click anywhere (tooltip + a transparent full-page click-catcher) → set flag + hide.
+   - Module-level `coachShownThisSession` guard so only the first AIBox on the page shows it.
 
-### Files
+## Out of scope
 
-- Edited: `supabase/functions/ai-box-insights/index.ts` (add 3 fetchers + dispatch + isEmpty branches + per-page prompt goal)
-- Edited: `src/routes/farmer.journal.index.tsx`, `src/routes/farmer.prices.tsx`, `src/routes/farmer.storefront.tsx`, `src/routes/farmer.offers.tsx` (single mount + import each; offers also gets a real component body)
+No DB / RLS / edge function / chat-streaming changes. `farmer.premium.tsx` untouched. No new tables (coach mark = localStorage).
 
-### Verification
+## Report to deliver after build
 
-1. Visit Günlük → shimmer then journal-specific TR insights; today/week/month numbers reflect reality.
-2. Visit Fiyatlar → insights mention farmer's tracked crops; if any active alert hit or |delta_7d|>10% appears as urgency.
-3. Visit Vitrin → insights mention active listings + pending offers; old pending offer surfaces as urgency.
-4. Visit Teklifler → same insights as Vitrin (identical payload), shown above placeholder.
-5. Fresh farmer (no entries/alerts/listings/offers) → each page shows the "Henüz yeterli veri yok…" empty card.
-6. Collapse on each page persists independently via `hasat_aibox_{page}_collapsed`.
-7. Tapping any insight opens AI Chat with prefilled prompt (existing deeplink).
+- WhatsApp constant: `HASAT_WHATSAPP_NUMBER` in `src/lib/hasat/constants.ts` (placeholder `905555555555`).
+- Upgrade modal: `src/components/hasat/UpgradeModal.tsx`, reused by chat limit state + settings.
+- `profiles.tier` added to `useProfile()` SELECT and `ProfileRow` type.

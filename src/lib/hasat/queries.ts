@@ -283,6 +283,7 @@ export interface ProfileRow {
   city: string | null;
   role: string | null;
   phone: string | null;
+  tier: "free" | "premium" | null;
 }
 
 export function useProfile() {
@@ -292,10 +293,30 @@ export function useProfile() {
     enabled: !!userId,
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("profiles").select("id, name, city, role, phone")
+        .from("profiles").select("id, name, city, role, phone, tier")
         .eq("id", userId!).maybeSingle();
       if (error) throw error;
       return (data ?? null) as ProfileRow | null;
+    },
+  });
+}
+
+export function useAIUsageThisMonth() {
+  const userId = useAuthUserId();
+  return useQuery({
+    queryKey: ["ai-usage-month", userId],
+    enabled: !!userId,
+    staleTime: 60_000,
+    queryFn: async () => {
+      const month = new Date().toISOString().slice(0, 7); // YYYY-MM
+      const { data, error } = await supabase
+        .from("ai_usage_tracking")
+        .select("message_count")
+        .eq("user_id", userId!)
+        .eq("month", month)
+        .maybeSingle();
+      if (error) throw error;
+      return { count: (data?.message_count as number | undefined) ?? 0 };
     },
   });
 }

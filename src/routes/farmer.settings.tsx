@@ -2,13 +2,15 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { FarmerHeader } from "./farmer";
 import { useHasat } from "@/lib/hasat/store";
-import { useParcels, useUpdateParcel, useDeleteParcel, useCertifications, useProfile, useUpdateProfile, useUploadCertification, useDeleteCertification, getCertificationSignedUrl, CERT_TYPES, type CertType } from "@/lib/hasat/queries";
+import { useParcels, useUpdateParcel, useDeleteParcel, useCertifications, useProfile, useUpdateProfile, useUploadCertification, useDeleteCertification, getCertificationSignedUrl, useAIUsageThisMonth, CERT_TYPES, type CertType } from "@/lib/hasat/queries";
 import { ProgressDots } from "@/components/hasat/ProgressDots";
 import { Input } from "@/components/ui/input";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
-import { Bell, ChevronRight, LogOut, Pencil, Trash2 } from "lucide-react";
+import { Bell, ChevronRight, LogOut, Pencil, Trash2, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+import { TierBadge } from "@/components/hasat/TierBadge";
+import { UpgradeModal } from "@/components/hasat/UpgradeModal";
 
 export const Route = createFileRoute("/farmer/settings")({ component: Settings });
 
@@ -26,6 +28,8 @@ function Settings() {
   const [certType, setCertType] = useState<CertType>("organik");
   const [certExpires, setCertExpires] = useState("");
   const [certFile, setCertFile] = useState<File | null>(null);
+  const [upgradeOpen, setUpgradeOpen] = useState(false);
+  const { data: aiUsage } = useAIUsageThisMonth();
   const setRole = useHasat((s) => s.setRole);
 
   const [name, setName] = useState("");
@@ -91,7 +95,10 @@ function Settings() {
           <div className="flex items-center gap-3 mb-4">
             <div className="grid h-14 w-14 place-items-center rounded-full text-lg font-bold"
               style={{ background: "var(--saffron)", color: "var(--hwhite)" }}>{name[0] ?? "?"}</div>
-            <button className="text-xs text-muted-foreground underline">Değiştir</button>
+            <div className="flex flex-col gap-1">
+              <button className="text-xs text-muted-foreground underline text-left">Değiştir</button>
+              <TierBadge tier={profile?.tier ?? "free"} />
+            </div>
           </div>
           <label className="text-xs text-muted-foreground">Ad Soyad</label>
           <Input value={name} onChange={(e) => setName(e.target.value)} className="mt-1 mb-3" />
@@ -101,6 +108,50 @@ function Settings() {
             className="rounded-lg px-4 py-2 text-sm font-medium"
             style={{ background: "var(--saffron)", color: "var(--hwhite)" }}>Kaydet</button>
         </Section>
+
+        <Section title="AI Asistan">
+          {(() => {
+            const isPremium = profile?.tier === "premium";
+            const count = aiUsage?.count ?? 0;
+            const pct = Math.min(100, (count / 50) * 100);
+            const color = count <= 35 ? "#16a34a" : count <= 45 ? "#d97706" : "#dc2626";
+            return (
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2 text-sm">
+                    <Sparkles className="h-4 w-4" style={{ color: "var(--lav)" }} />
+                    <span>Üyelik</span>
+                  </div>
+                  <TierBadge tier={profile?.tier ?? "free"} />
+                </div>
+                {isPremium ? (
+                  <div className="text-sm font-medium" style={{ color: "var(--sage, #4f8a4f)" }}>
+                    ✓ Sınırsız AI sohbeti
+                  </div>
+                ) : (
+                  <>
+                    <div className="flex items-center justify-between text-sm">
+                      <span>Bu ay AI mesajları</span>
+                      <span className="text-muted-foreground">{count} / 50 mesaj</span>
+                    </div>
+                    <div className="h-1.5 w-full rounded-full bg-muted overflow-hidden">
+                      <div className="h-full transition-all" style={{ width: `${pct}%`, background: color }} />
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setUpgradeOpen(true)}
+                      className="text-sm font-medium underline"
+                      style={{ color: "var(--saffron)" }}
+                    >
+                      Premium'a Geç →
+                    </button>
+                  </>
+                )}
+              </div>
+            );
+          })()}
+        </Section>
+
 
         <Section title="Parsellerim">
           {parcelsLoading ? (
@@ -249,6 +300,7 @@ function Settings() {
           </div>
         </SheetContent>
       </Sheet>
+      <UpgradeModal open={upgradeOpen} onOpenChange={setUpgradeOpen} />
     </>
   );
 }

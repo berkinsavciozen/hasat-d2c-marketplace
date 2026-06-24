@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Sparkles, X, Send, Plus, History, ChevronLeft } from "lucide-react";
+import { Sparkles, X, Send, Plus, History, ChevronLeft, MessageCircle } from "lucide-react";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -13,6 +13,8 @@ import {
   type ChatMessage,
 } from "./useAIChat";
 import { JournalEntryCard } from "./JournalEntryCard";
+import { UpgradeModal } from "@/components/hasat/UpgradeModal";
+import { HASAT_WHATSAPP_NUMBER } from "@/lib/hasat/constants";
 
 const COACH_KEY = "hasat_ai_chat_coach_dismissed";
 const FREE_LIMIT = 50;
@@ -92,6 +94,7 @@ export function FarmerAIChat() {
   const [tier, setTier] = useState<"free" | "premium">("free");
   const [showCoach, setShowCoach] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
+  const [upgradeOpen, setUpgradeOpen] = useState(false);
   const [sessions, setSessions] = useState<{ sessionId: string; preview: string; date: string }[]>([]);
   const [draft, setDraft] = useState("");
   const [online, setOnline] = useState(typeof navigator === "undefined" ? true : navigator.onLine);
@@ -247,6 +250,17 @@ export function FarmerAIChat() {
             </Button>
           </div>
 
+          {/* WhatsApp secondary entry */}
+          <a
+            href={`https://wa.me/${HASAT_WHATSAPP_NUMBER}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-1.5 px-4 py-1.5 text-[11px] text-muted-foreground hover:bg-muted/40 border-b"
+          >
+            <MessageCircle className="h-3.5 w-3.5" style={{ color: "#25D366" }} />
+            <span>WhatsApp'tan da yazabilirsin →</span>
+          </a>
+
           {/* Message list */}
           <div className="flex-1 overflow-y-auto px-4 py-3 space-y-3" style={{ background: "color-mix(in oklab, var(--hwhite) 50%, white)" }}>
             {chat.loading && chat.messages.length === 0 ? (
@@ -269,7 +283,14 @@ export function FarmerAIChat() {
             {limited || chat.limitReached ? (
               <div className="text-xs text-center py-2">
                 Mesaj limitine ulaştınız.{" "}
-                <a href="/farmer/premium" className="underline" style={{ color: "var(--saffron)" }}>Premium'a geç →</a>
+                <button
+                  type="button"
+                  onClick={() => setUpgradeOpen(true)}
+                  className="underline font-medium"
+                  style={{ color: "var(--saffron)" }}
+                >
+                  Premium'a geç →
+                </button>
               </div>
             ) : !online ? (
               <div className="text-xs text-center py-2 text-muted-foreground">Bağlantı yok</div>
@@ -325,6 +346,8 @@ export function FarmerAIChat() {
           </div>
         </SheetContent>
       </Sheet>
+
+      <UpgradeModal open={upgradeOpen} onOpenChange={setUpgradeOpen} />
     </>
   );
 }
