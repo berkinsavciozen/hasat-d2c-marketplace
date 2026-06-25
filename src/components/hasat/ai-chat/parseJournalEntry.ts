@@ -108,7 +108,15 @@ export function parseAssistantContent(raw: string): ParseResult {
   const crop = typeof norm.crop === "string" ? norm.crop.trim() : "";
   const quantity = typeof norm.quantity === "number" ? norm.quantity : Number(norm.quantity);
   const unit = mapUnit(norm.unit);
-  const date = normalizeDate(norm.harvest_date) ?? todayISO();
+  let date = normalizeDate(norm.harvest_date) ?? todayISO();
+
+  // Sanity check: reject hallucinated past/future dates.
+  const yearNum = parseInt(date.slice(0, 4), 10);
+  const currentYear = new Date().getFullYear();
+  if (!Number.isFinite(yearNum) || yearNum < 2024 || yearNum > currentYear + 1) {
+    console.warn("AI returned suspicious date, defaulting to today:", date);
+    date = todayISO();
+  }
 
   if (!crop || !Number.isFinite(quantity) || !unit) {
     console.warn("[parseAssistantContent] missing required fields", { crop, quantity, unit });
