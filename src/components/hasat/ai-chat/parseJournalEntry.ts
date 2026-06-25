@@ -80,10 +80,35 @@ export function parseAssistantContent(raw: string): ParseResult {
     return { visibleText: raw, journal: null, parseError: "json_parse_failed" };
   }
 
-  const crop = typeof payload?.crop === "string" ? payload.crop.trim() : "";
-  const quantity = typeof payload?.quantity === "number" ? payload.quantity : Number(payload?.quantity);
-  const unit = mapUnit(payload?.unit);
-  const date = normalizeDate(payload?.harvest_date) ?? todayISO();
+  // Normalize AI schema drift: accept common field-name variants.
+  const norm: any = {};
+  norm.crop = typeof payload?.crop === "string" ? payload.crop : undefined;
+  norm.quality = payload?.quality;
+  norm.harvest_date = payload?.harvest_date ?? payload?.date;
+  norm.parcel_name = payload?.parcel_name ?? payload?.parcel ?? payload?.field;
+  norm.parcel_id = payload?.parcel_id;
+  norm.notes = payload?.notes ?? payload?.note;
+  norm.costs = payload?.costs;
+
+  // quantity + unit: accept numeric quantity, "5g"/"5 kg" strings, or amount field.
+  const AMOUNT_RE = /^\s*(\d+(?:[.,]\d+)?)\s*(g|gr|gram|kg|kilo|kilogram|l|lt|litre|liter)?\s*$/i;
+  const parseAmount = (v: unknown): { q?: number; u?: string } => {
+    if (typeof v === "number" && Number.isFinite(v)) return { q: v };
+    if (typeof v === "string") {
+      const m = v.match(AMOUNT_RE);
+      if (m) return { q: Number(m[1].replace(",", ".")), u: m[2] };
+    }
+    return {};
+  };
+  const fromQty = parseAmount(payload?.quantity);
+  const fromAmt = parseAmount(payload?.amount);
+  norm.quantity = fromQty.q ?? fromAmt.q;
+  norm.unit = payload?.unit ?? fromQty.u ?? fromAmt.u;
+
+  const crop = typeof norm.crop === "string" ? norm.crop.trim() : "";
+  const quantity = typeof norm.quantity === "number" ? norm.quantity : Number(norm.quantity);
+  const unit = mapUnit(norm.unit);
+  const date = normalizeDate(norm.harvest_date) ?? todayISO();
 
   if (!crop || !Number.isFinite(quantity) || !unit) {
     console.warn("[parseAssistantContent] missing required fields", { crop, quantity, unit });
@@ -94,12 +119,12 @@ export function parseAssistantContent(raw: string): ParseResult {
     crop,
     quantity,
     unit,
-    quality: mapQuality(payload?.quality),
+    quality: mapQuality(norm.quality),
     harvest_date: date,
-    parcel_id: typeof payload?.parcel_id === "string" ? payload.parcel_id : undefined,
-    parcel_name: typeof payload?.parcel_name === "string" ? payload.parcel_name : undefined,
-    notes: typeof payload?.notes === "string" ? payload.notes : undefined,
-    costs: sanitizeCosts(payload?.costs),
+    parcel_id: typeof norm.parcel_id === "string" ? norm.parcel_id : undefined,
+    parcel_name: typeof norm.parcel_name === "string" ? norm.parcel_name : undefined,
+    notes: typeof norm.notes === "string" ? norm.notes : undefined,
+    costs: sanitizeCosts(norm.costs),
   };
 
   // Strip ALL blocks from visible text
