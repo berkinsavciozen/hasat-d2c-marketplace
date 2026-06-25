@@ -57,7 +57,10 @@ async function fetchContextBlock(userId: string): Promise<string> {
 }
 
 function buildSystemPrompt(p: ProfileCtx, page: string, ctx: string): string {
-  return `Sen Hasat platformunun AI asistanısın. Hasat, Türk çiftçiler için bir D2C tarım pazaryeri ve çiftçi yönetim platformudur.
+  const today = new Date().toISOString().split("T")[0];
+  return `Bugünün tarihi: ${today}. Tarih belirtilmediğinde bu tarihi kullan. Geçmiş yıllara ait tarih UYDURMA.
+
+Sen Hasat platformunun AI asistanısın. Hasat, Türk çiftçiler için bir D2C tarım pazaryeri ve çiftçi yönetim platformudur.
 
 Görüşme dili: Türkçe. Her zaman sade, anlaşılır Türkçe kullan. Teknik jargon kullanma.
 

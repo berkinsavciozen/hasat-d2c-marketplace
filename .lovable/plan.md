@@ -1,56 +1,24 @@
-# Fix journal entry AI flow
+## Fix AI hallucinating dates for journal entries
 
-The system prompt is in `src/components/hasat/ai-chat/useAIChat.ts` (`buildSystemPrompt`, line 59), not in the edge function. The edge function is a transparent SSE proxy. I'll update the prompt at its real source and harden the parser.
+Inject today's server date into both AI system prompts and add client-side validation as a safety net.
 
-## 1. `src/components/hasat/ai-chat/useAIChat.ts`
+### 1. `supabase/functions/ai-chat-stream/index.ts`
+- Compute `const today = new Date().toISOString().split('T')[0]` before building the system prompt.
+- Prepend to system prompt: `Bugünün tarihi: ${today}. Tarih belirtilmediğinde bu tarihi kullan.`
+- Redeploy edge function.
 
-Replace the single-line journal instruction at line 68 with the spec'd block:
+### 2. `supabase/functions/whatsapp-ai-webhook/index.ts`
+- Already computes `today`. Add the same explicit instruction line near the top of the system prompt: `Bugünün tarihi: ${today}. Tarih belirtilmediğinde bu tarihi kullan.`
+- Redeploy edge function.
 
-```
-Çiftçi günlük kaydı eklemek isterse:
+### 3. `src/components/hasat/ai-chat/parseJournalEntry.ts`
+- `todayISO()` already exists and is the fallback when `harvest_date` is missing/unparseable — keep as-is.
+- After computing `date`, add validation: parse the year; if `< 2024` or `> currentYear + 1`, log `console.warn("AI returned suspicious date, defaulting to today:", date)` and replace with `todayISO()`.
 
-Gerekli bilgileri topla (ürün, miktar, birim, tarih, parsel). Eksik bilgi varsa sor.
+### Constraints
+- No DB, no UI changes.
+- Only the three files above.
 
-Tüm bilgiler hazır olduğunda, cevabının SONUNA şu formatı AYNEN ekle:
-[JOURNAL_ENTRY]{"crop":"...","quantity":5,"unit":"kg","harvest_date":"YYYY-MM-DD","parcel_name":"...","quality":"A","notes":"..."}[/JOURNAL_ENTRY]
-
-ÖNEMLİ: Kaydın oluşturulduğunu SÖYLEME. "Kaydettim", "oluşturdum", "başarıyla ekledim" gibi ifadeler kullanma.
-
-Bunun yerine şunu söyle: bilgileri özetleyen kısa bir cümle + "Aşağıdaki kartı onaylarsanız kaydedeceğim."
-
-Zorunlu alanlar: crop (text), quantity (sayı), unit ("g" veya "kg" veya "L"), harvest_date (YYYY-MM-DD). Opsiyonel: parcel_name, quality ("A" veya "B" veya "C", yoksa "A"), notes.
-```
-
-No other part of the prompt changes. Edge function (`ai-chat-stream`) is not touched — it just proxies.
-
-## 2. `src/components/hasat/ai-chat/parseJournalEntry.ts`
-
-After `JSON.parse(inner)`, insert a normalization step that builds a clean payload before required-field validation:
-
-- `harvest_date` ← `payload.harvest_date ?? payload.date`
-- `parcel_name` ← `payload.parcel_name ?? payload.parcel ?? payload.field`
-- `notes` ← `payload.notes ?? payload.note`
-- `crop`, `quality` passthrough
-- `status` discarded
-- `quantity` / `unit`:
-  - if `payload.quantity` is a number → use as-is with `payload.unit`
-  - if `payload.quantity` is a string like `"5g"`, `"5 kg"`, `"2.5 L"` → split numeric + unit suffix
-  - else fall back to `payload.amount`, parsed the same way (`/^(\d+(?:[.,]\d+)?)\s*(g|gr|kg|kilo|l|lt|litre)$/i`); comma decimals normalized to dot
-  - unit then passed through existing `mapUnit`
-
-Existing required-field validation, `mapQuality`, `normalizeDate`, `sanitizeCosts`, and the `BLOCK_RE_G` strip stay unchanged.
-
-## 3. Regex check
-
-`/\[JOURNAL_ENTRY\]([\s\S]*?)\[\/JOURNAL_ENTRY\]/` matches the spec'd block byte-for-byte; no change needed. The visible-raw-block bug is explained entirely by required-field failure (`amount`/`date`/`field` schema), which the normalization above fixes — on failure the parser currently returns `visibleText: raw`, leaving the block in the bubble.
-
-## Out of scope
-
-- No DB / RLS / other edge function changes
-- `JournalEntryCard` UI unchanged
-- `whatsapp-ai-webhook` prompt not touched (separate channel, not in bug scope)
-- No change to `ai-chat-stream/index.ts`
-
-## Verification
-
-Send "Kuzey parselinden 5 gram safran hasat ettim, kalite A" in the in-app chat → AI replies with summary + "Aşağıdaki kartı onaylarsanız kaydedeceğim.", no raw `[JOURNAL_ENTRY]` text visible, `JournalEntryCard` renders with crop=safran, quantity=5, unit=g, quality=A, today's date, parcel=Kuzey, Kaydet/İptal buttons functional.
+### Verification
+- Send "12 gram safran hasat ettim" in chat → card pre-fills with 2026-06-25.
+- AI prose no longer mentions a 2024/2025 date.

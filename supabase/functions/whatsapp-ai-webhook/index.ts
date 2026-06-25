@@ -99,7 +99,9 @@ serve(async (req) => {
     if (parcels.length) ctx.push(`Parseller:\n${parcels.map((p: any) => `- ${p.name} (id: ${p.id}, ürünler: ${(p.crops ?? []).join(", ")})`).join("\n")}`);
 
     const today = new Date().toISOString().slice(0, 10);
-    const systemPrompt = `Sen Hasat platformunun AI asistanısın. Hasat, Türk çiftçiler için bir D2C tarım pazaryeri platformudur.
+    const systemPrompt = `Bugünün tarihi: ${today}. Tarih belirtilmediğinde bu tarihi kullan. Geçmiş yıllara ait tarih UYDURMA.
+
+Sen Hasat platformunun AI asistanısın. Hasat, Türk çiftçiler için bir D2C tarım pazaryeri platformudur.
 Görüşme dili: Türkçe. Her zaman sade, anlaşılır Türkçe kullan. Teknik jargon kullanma.
 Çiftçinin adı: ${profile.name ?? "Çiftçi"}, şehri: ${profile.city ?? "—"}.
 Görevlerin: fiyat bilgisi ver, sipariş durumunu açıkla, günlük kaydı eklemesine yardım et, iş önerileri sun.
