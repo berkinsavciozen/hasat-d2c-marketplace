@@ -515,11 +515,55 @@ export type Database = {
           },
         ]
       }
+      offer_messages: {
+        Row: {
+          created_at: string
+          id: string
+          note: string | null
+          offer_id: string
+          price: number | null
+          quantity: number | null
+          sender_id: string
+          sender_role: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          note?: string | null
+          offer_id: string
+          price?: number | null
+          quantity?: number | null
+          sender_id: string
+          sender_role: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          note?: string | null
+          offer_id?: string
+          price?: number | null
+          quantity?: number | null
+          sender_id?: string
+          sender_role?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "offer_messages_offer_id_fkey"
+            columns: ["offer_id"]
+            isOneToOne: false
+            referencedRelation: "offers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       offers: {
         Row: {
+          ball_side: string
           buyer_id: string
           counter_offer: Json | null
           created_at: string
+          current_price: number | null
+          current_quantity: number | null
           delivery: Database["public"]["Enums"]["delivery_type"]
           delivery_date: string | null
           farmer_id: string
@@ -527,15 +571,19 @@ export type Database = {
           listing_id: string
           negotiation_history: Json
           note: string | null
+          payment_status: string
           price_per_unit: number
           quantity: number
           status: Database["public"]["Enums"]["offer_status"]
           updated_at: string
         }
         Insert: {
+          ball_side?: string
           buyer_id: string
           counter_offer?: Json | null
           created_at?: string
+          current_price?: number | null
+          current_quantity?: number | null
           delivery?: Database["public"]["Enums"]["delivery_type"]
           delivery_date?: string | null
           farmer_id: string
@@ -543,15 +591,19 @@ export type Database = {
           listing_id: string
           negotiation_history?: Json
           note?: string | null
+          payment_status?: string
           price_per_unit: number
           quantity: number
           status?: Database["public"]["Enums"]["offer_status"]
           updated_at?: string
         }
         Update: {
+          ball_side?: string
           buyer_id?: string
           counter_offer?: Json | null
           created_at?: string
+          current_price?: number | null
+          current_quantity?: number | null
           delivery?: Database["public"]["Enums"]["delivery_type"]
           delivery_date?: string | null
           farmer_id?: string
@@ -559,6 +611,7 @@ export type Database = {
           listing_id?: string
           negotiation_history?: Json
           note?: string | null
+          payment_status?: string
           price_per_unit?: number
           quantity?: number
           status?: Database["public"]["Enums"]["offer_status"]
