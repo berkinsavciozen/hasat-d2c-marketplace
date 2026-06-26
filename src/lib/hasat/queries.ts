@@ -403,14 +403,16 @@ function dbToOffer(r: any, side: "farmer" | "buyer"): Offer {
     .filter((h: any) => Number.isFinite(h.quantity) && Number.isFinite(h.pricePerUnit));
   const partyName =
     side === "farmer" ? (r.buyer?.name ?? "Alıcı") : (r.farmer?.name ?? "Üretici");
+  const liveQty = Number(r.current_quantity ?? r.quantity);
+  const livePrice = Number(r.current_price ?? r.price_per_unit);
   return {
     id: r.id,
     buyerName: partyName,
     buyerType: ((r.buyer?.buyer_type as BuyerType) ?? "restoran") as BuyerType,
     crop: r.listing?.crop ?? "—",
     unit: (r.listing?.unit ?? "kg") as Offer["unit"],
-    quantity: Number(r.quantity),
-    pricePerUnit: Number(r.price_per_unit),
+    quantity: liveQty,
+    pricePerUnit: livePrice,
     createdAt: r.created_at,
     status: r.status,
     note: r.note ?? undefined,
@@ -435,6 +437,11 @@ function dbToOffer(r: any, side: "farmer" | "buyer"): Offer {
         : undefined,
     history,
     producerId: r.farmer_id,
+    buyerId: r.buyer_id,
+    ballSide: (r.ball_side === "buyer" ? "buyer" : "farmer"),
+    currentQuantity: liveQty,
+    currentPrice: livePrice,
+    paymentStatus: (r.payment_status ?? "unpaid") as "unpaid" | "pending" | "paid",
   };
 }
 
