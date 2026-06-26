@@ -106,6 +106,14 @@ export interface Offer {
   /** Full negotiation history, oldest first. The "live" offer fields are the latest proposal. */
   history?: NegotiationSnapshot[];
   producerId?: string;
+  buyerId?: string;
+  /** Whose turn it is to respond to the latest offer / counter. */
+  ballSide?: BallSide;
+  /** Latest negotiated quantity (mirrors `quantity`, kept for clarity). */
+  currentQuantity?: number;
+  /** Latest negotiated unit price (mirrors `pricePerUnit`, kept for clarity). */
+  currentPrice?: number;
+  paymentStatus?: PaymentStatus;
 }
 
 export interface PriceAlert {
