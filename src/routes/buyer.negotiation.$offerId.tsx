@@ -49,8 +49,8 @@ function Negotiation() {
   const accept = async () => {
     try {
       await updateStatus.mutateAsync({ id: offer.id, status: "accepted" });
-      toast.success("Teklif kabul edildi · Sipariş oluşturuldu");
-      navigate({ to: "/buyer/orders" });
+      toast.success("Teklif kabul edildi. Ödemeyi tamamlayın.");
+      navigate({ to: "/buyer/pay/$offerId", params: { offerId: offer.id } });
     } catch (e: any) {
       toast.error(e.message ?? "İşlem başarısız");
     }
