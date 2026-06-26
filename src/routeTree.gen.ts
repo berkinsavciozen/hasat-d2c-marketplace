@@ -39,6 +39,7 @@ import { Route as FarmerJournalNewRouteImport } from './routes/farmer.journal.ne
 import { Route as FarmerJournalEntryIdRouteImport } from './routes/farmer.journal.$entryId'
 import { Route as BuyerSubscriptionProducerIdRouteImport } from './routes/buyer.subscription.$producerId'
 import { Route as BuyerProducerIdRouteImport } from './routes/buyer.producer.$id'
+import { Route as BuyerPayOfferIdRouteImport } from './routes/buyer.pay.$offerId'
 import { Route as BuyerOrdersOrderIdRouteImport } from './routes/buyer.orders.$orderId'
 import { Route as BuyerOfferListingIdRouteImport } from './routes/buyer.offer.$listingId'
 import { Route as BuyerNegotiationOfferIdRouteImport } from './routes/buyer.negotiation.$offerId'
@@ -195,6 +196,11 @@ const BuyerProducerIdRoute = BuyerProducerIdRouteImport.update({
   path: '/producer/$id',
   getParentRoute: () => BuyerRoute,
 } as any)
+const BuyerPayOfferIdRoute = BuyerPayOfferIdRouteImport.update({
+  id: '/pay/$offerId',
+  path: '/pay/$offerId',
+  getParentRoute: () => BuyerRoute,
+} as any)
 const BuyerOrdersOrderIdRoute = BuyerOrdersOrderIdRouteImport.update({
   id: '/$orderId',
   path: '/$orderId',
@@ -244,6 +250,7 @@ export interface FileRoutesByFullPath {
   '/buyer/negotiation/$offerId': typeof BuyerNegotiationOfferIdRoute
   '/buyer/offer/$listingId': typeof BuyerOfferListingIdRoute
   '/buyer/orders/$orderId': typeof BuyerOrdersOrderIdRoute
+  '/buyer/pay/$offerId': typeof BuyerPayOfferIdRoute
   '/buyer/producer/$id': typeof BuyerProducerIdRoute
   '/buyer/subscription/$producerId': typeof BuyerSubscriptionProducerIdRoute
   '/farmer/journal/$entryId': typeof FarmerJournalEntryIdRoute
@@ -279,6 +286,7 @@ export interface FileRoutesByTo {
   '/buyer/negotiation/$offerId': typeof BuyerNegotiationOfferIdRoute
   '/buyer/offer/$listingId': typeof BuyerOfferListingIdRoute
   '/buyer/orders/$orderId': typeof BuyerOrdersOrderIdRoute
+  '/buyer/pay/$offerId': typeof BuyerPayOfferIdRoute
   '/buyer/producer/$id': typeof BuyerProducerIdRoute
   '/buyer/subscription/$producerId': typeof BuyerSubscriptionProducerIdRoute
   '/farmer/journal/$entryId': typeof FarmerJournalEntryIdRoute
@@ -316,6 +324,7 @@ export interface FileRoutesById {
   '/buyer/negotiation/$offerId': typeof BuyerNegotiationOfferIdRoute
   '/buyer/offer/$listingId': typeof BuyerOfferListingIdRoute
   '/buyer/orders/$orderId': typeof BuyerOrdersOrderIdRoute
+  '/buyer/pay/$offerId': typeof BuyerPayOfferIdRoute
   '/buyer/producer/$id': typeof BuyerProducerIdRoute
   '/buyer/subscription/$producerId': typeof BuyerSubscriptionProducerIdRoute
   '/farmer/journal/$entryId': typeof FarmerJournalEntryIdRoute
@@ -354,6 +363,7 @@ export interface FileRouteTypes {
     | '/buyer/negotiation/$offerId'
     | '/buyer/offer/$listingId'
     | '/buyer/orders/$orderId'
+    | '/buyer/pay/$offerId'
     | '/buyer/producer/$id'
     | '/buyer/subscription/$producerId'
     | '/farmer/journal/$entryId'
@@ -389,6 +399,7 @@ export interface FileRouteTypes {
     | '/buyer/negotiation/$offerId'
     | '/buyer/offer/$listingId'
     | '/buyer/orders/$orderId'
+    | '/buyer/pay/$offerId'
     | '/buyer/producer/$id'
     | '/buyer/subscription/$producerId'
     | '/farmer/journal/$entryId'
@@ -425,6 +436,7 @@ export interface FileRouteTypes {
     | '/buyer/negotiation/$offerId'
     | '/buyer/offer/$listingId'
     | '/buyer/orders/$orderId'
+    | '/buyer/pay/$offerId'
     | '/buyer/producer/$id'
     | '/buyer/subscription/$producerId'
     | '/farmer/journal/$entryId'
@@ -656,6 +668,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof BuyerProducerIdRouteImport
       parentRoute: typeof BuyerRoute
     }
+    '/buyer/pay/$offerId': {
+      id: '/buyer/pay/$offerId'
+      path: '/pay/$offerId'
+      fullPath: '/buyer/pay/$offerId'
+      preLoaderRoute: typeof BuyerPayOfferIdRouteImport
+      parentRoute: typeof BuyerRoute
+    }
     '/buyer/orders/$orderId': {
       id: '/buyer/orders/$orderId'
       path: '/$orderId'
@@ -709,6 +728,7 @@ interface BuyerRouteChildren {
   BuyerSubscriptionsRoute: typeof BuyerSubscriptionsRoute
   BuyerNegotiationOfferIdRoute: typeof BuyerNegotiationOfferIdRoute
   BuyerOfferListingIdRoute: typeof BuyerOfferListingIdRoute
+  BuyerPayOfferIdRoute: typeof BuyerPayOfferIdRoute
   BuyerProducerIdRoute: typeof BuyerProducerIdRoute
   BuyerSubscriptionProducerIdRoute: typeof BuyerSubscriptionProducerIdRoute
 }
@@ -723,6 +743,7 @@ const BuyerRouteChildren: BuyerRouteChildren = {
   BuyerSubscriptionsRoute: BuyerSubscriptionsRoute,
   BuyerNegotiationOfferIdRoute: BuyerNegotiationOfferIdRoute,
   BuyerOfferListingIdRoute: BuyerOfferListingIdRoute,
+  BuyerPayOfferIdRoute: BuyerPayOfferIdRoute,
   BuyerProducerIdRoute: BuyerProducerIdRoute,
   BuyerSubscriptionProducerIdRoute: BuyerSubscriptionProducerIdRoute,
 }
