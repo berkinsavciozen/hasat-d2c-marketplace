@@ -19,7 +19,6 @@ import { Route as FarmerStorefrontRouteImport } from './routes/farmer.storefront
 import { Route as FarmerSettingsRouteImport } from './routes/farmer.settings'
 import { Route as FarmerPricesRouteImport } from './routes/farmer.prices'
 import { Route as FarmerPremiumRouteImport } from './routes/farmer.premium'
-import { Route as FarmerOffersRouteImport } from './routes/farmer.offers'
 import { Route as FarmerJournalRouteImport } from './routes/farmer.journal'
 import { Route as FarmerHomeRouteImport } from './routes/farmer.home'
 import { Route as FarmerCommunityRouteImport } from './routes/farmer.community'
@@ -43,7 +42,6 @@ import { Route as BuyerPayOfferIdRouteImport } from './routes/buyer.pay.$offerId
 import { Route as BuyerOrdersOrderIdRouteImport } from './routes/buyer.orders.$orderId'
 import { Route as BuyerOfferListingIdRouteImport } from './routes/buyer.offer.$listingId'
 import { Route as BuyerNegotiationOfferIdRouteImport } from './routes/buyer.negotiation.$offerId'
-import { Route as FarmerOrdersOfferIdCounterRouteImport } from './routes/farmer.orders.$offerId.counter'
 
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
@@ -93,11 +91,6 @@ const FarmerPricesRoute = FarmerPricesRouteImport.update({
 const FarmerPremiumRoute = FarmerPremiumRouteImport.update({
   id: '/premium',
   path: '/premium',
-  getParentRoute: () => FarmerRoute,
-} as any)
-const FarmerOffersRoute = FarmerOffersRouteImport.update({
-  id: '/offers',
-  path: '/offers',
   getParentRoute: () => FarmerRoute,
 } as any)
 const FarmerJournalRoute = FarmerJournalRouteImport.update({
@@ -216,12 +209,6 @@ const BuyerNegotiationOfferIdRoute = BuyerNegotiationOfferIdRouteImport.update({
   path: '/negotiation/$offerId',
   getParentRoute: () => BuyerRoute,
 } as any)
-const FarmerOrdersOfferIdCounterRoute =
-  FarmerOrdersOfferIdCounterRouteImport.update({
-    id: '/orders/$offerId/counter',
-    path: '/orders/$offerId/counter',
-    getParentRoute: () => FarmerRoute,
-  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -240,7 +227,6 @@ export interface FileRoutesByFullPath {
   '/farmer/community': typeof FarmerCommunityRoute
   '/farmer/home': typeof FarmerHomeRoute
   '/farmer/journal': typeof FarmerJournalRouteWithChildren
-  '/farmer/offers': typeof FarmerOffersRoute
   '/farmer/premium': typeof FarmerPremiumRoute
   '/farmer/prices': typeof FarmerPricesRoute
   '/farmer/settings': typeof FarmerSettingsRouteWithChildren
@@ -258,7 +244,6 @@ export interface FileRoutesByFullPath {
   '/farmer/settings/notifs': typeof FarmerSettingsNotifsRoute
   '/farmer/journal/': typeof FarmerJournalIndexRoute
   '/farmer/orders/': typeof FarmerOrdersIndexRoute
-  '/farmer/orders/$offerId/counter': typeof FarmerOrdersOfferIdCounterRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -276,7 +261,6 @@ export interface FileRoutesByTo {
   '/farmer/billing': typeof FarmerBillingRoute
   '/farmer/community': typeof FarmerCommunityRoute
   '/farmer/home': typeof FarmerHomeRoute
-  '/farmer/offers': typeof FarmerOffersRoute
   '/farmer/premium': typeof FarmerPremiumRoute
   '/farmer/prices': typeof FarmerPricesRoute
   '/farmer/settings': typeof FarmerSettingsRouteWithChildren
@@ -294,7 +278,6 @@ export interface FileRoutesByTo {
   '/farmer/settings/notifs': typeof FarmerSettingsNotifsRoute
   '/farmer/journal': typeof FarmerJournalIndexRoute
   '/farmer/orders': typeof FarmerOrdersIndexRoute
-  '/farmer/orders/$offerId/counter': typeof FarmerOrdersOfferIdCounterRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -314,7 +297,6 @@ export interface FileRoutesById {
   '/farmer/community': typeof FarmerCommunityRoute
   '/farmer/home': typeof FarmerHomeRoute
   '/farmer/journal': typeof FarmerJournalRouteWithChildren
-  '/farmer/offers': typeof FarmerOffersRoute
   '/farmer/premium': typeof FarmerPremiumRoute
   '/farmer/prices': typeof FarmerPricesRoute
   '/farmer/settings': typeof FarmerSettingsRouteWithChildren
@@ -332,7 +314,6 @@ export interface FileRoutesById {
   '/farmer/settings/notifs': typeof FarmerSettingsNotifsRoute
   '/farmer/journal/': typeof FarmerJournalIndexRoute
   '/farmer/orders/': typeof FarmerOrdersIndexRoute
-  '/farmer/orders/$offerId/counter': typeof FarmerOrdersOfferIdCounterRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -353,7 +334,6 @@ export interface FileRouteTypes {
     | '/farmer/community'
     | '/farmer/home'
     | '/farmer/journal'
-    | '/farmer/offers'
     | '/farmer/premium'
     | '/farmer/prices'
     | '/farmer/settings'
@@ -371,7 +351,6 @@ export interface FileRouteTypes {
     | '/farmer/settings/notifs'
     | '/farmer/journal/'
     | '/farmer/orders/'
-    | '/farmer/orders/$offerId/counter'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -389,7 +368,6 @@ export interface FileRouteTypes {
     | '/farmer/billing'
     | '/farmer/community'
     | '/farmer/home'
-    | '/farmer/offers'
     | '/farmer/premium'
     | '/farmer/prices'
     | '/farmer/settings'
@@ -407,7 +385,6 @@ export interface FileRouteTypes {
     | '/farmer/settings/notifs'
     | '/farmer/journal'
     | '/farmer/orders'
-    | '/farmer/orders/$offerId/counter'
   id:
     | '__root__'
     | '/'
@@ -426,7 +403,6 @@ export interface FileRouteTypes {
     | '/farmer/community'
     | '/farmer/home'
     | '/farmer/journal'
-    | '/farmer/offers'
     | '/farmer/premium'
     | '/farmer/prices'
     | '/farmer/settings'
@@ -444,7 +420,6 @@ export interface FileRouteTypes {
     | '/farmer/settings/notifs'
     | '/farmer/journal/'
     | '/farmer/orders/'
-    | '/farmer/orders/$offerId/counter'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -526,13 +501,6 @@ declare module '@tanstack/react-router' {
       path: '/premium'
       fullPath: '/farmer/premium'
       preLoaderRoute: typeof FarmerPremiumRouteImport
-      parentRoute: typeof FarmerRoute
-    }
-    '/farmer/offers': {
-      id: '/farmer/offers'
-      path: '/offers'
-      fullPath: '/farmer/offers'
-      preLoaderRoute: typeof FarmerOffersRouteImport
       parentRoute: typeof FarmerRoute
     }
     '/farmer/journal': {
@@ -696,13 +664,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof BuyerNegotiationOfferIdRouteImport
       parentRoute: typeof BuyerRoute
     }
-    '/farmer/orders/$offerId/counter': {
-      id: '/farmer/orders/$offerId/counter'
-      path: '/orders/$offerId/counter'
-      fullPath: '/farmer/orders/$offerId/counter'
-      preLoaderRoute: typeof FarmerOrdersOfferIdCounterRouteImport
-      parentRoute: typeof FarmerRoute
-    }
   }
 }
 
@@ -784,13 +745,11 @@ interface FarmerRouteChildren {
   FarmerCommunityRoute: typeof FarmerCommunityRoute
   FarmerHomeRoute: typeof FarmerHomeRoute
   FarmerJournalRoute: typeof FarmerJournalRouteWithChildren
-  FarmerOffersRoute: typeof FarmerOffersRoute
   FarmerPremiumRoute: typeof FarmerPremiumRoute
   FarmerPricesRoute: typeof FarmerPricesRoute
   FarmerSettingsRoute: typeof FarmerSettingsRouteWithChildren
   FarmerStorefrontRoute: typeof FarmerStorefrontRoute
   FarmerOrdersIndexRoute: typeof FarmerOrdersIndexRoute
-  FarmerOrdersOfferIdCounterRoute: typeof FarmerOrdersOfferIdCounterRoute
 }
 
 const FarmerRouteChildren: FarmerRouteChildren = {
@@ -799,13 +758,11 @@ const FarmerRouteChildren: FarmerRouteChildren = {
   FarmerCommunityRoute: FarmerCommunityRoute,
   FarmerHomeRoute: FarmerHomeRoute,
   FarmerJournalRoute: FarmerJournalRouteWithChildren,
-  FarmerOffersRoute: FarmerOffersRoute,
   FarmerPremiumRoute: FarmerPremiumRoute,
   FarmerPricesRoute: FarmerPricesRoute,
   FarmerSettingsRoute: FarmerSettingsRouteWithChildren,
   FarmerStorefrontRoute: FarmerStorefrontRoute,
   FarmerOrdersIndexRoute: FarmerOrdersIndexRoute,
-  FarmerOrdersOfferIdCounterRoute: FarmerOrdersOfferIdCounterRoute,
 }
 
 const FarmerRouteWithChildren =
