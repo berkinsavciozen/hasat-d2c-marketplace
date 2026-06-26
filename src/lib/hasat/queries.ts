@@ -742,52 +742,19 @@ export function useUpdateOfferStatus() {
   const qc = useQueryClient();
   const userId = useAuthUserId();
   return useMutation({
-    mutationFn: async ({ id, status }: { id: string; status: OfferStatusUpdate }) => {
-      // capture previous status for rollback
-      const { data: prev, error: ePrev } = await supabase
-        .from("offers").select("status").eq("id", id).single();
-      if (ePrev) throw ePrev;
-      const prevStatus = prev?.status ?? "pending";
-
-      const { data: offerRow, error: e1 } = await supabase
-        .from("offers").update({ status }).eq("id", id).select("*").single();
-      if (e1) throw e1;
-
+    mutationFn: async ({ id, status, reason }: { id: string; status: OfferStatusUpdate; reason?: string }) => {
+      const patch: any = { status };
       if (status === "accepted") {
-        try {
-          const { data: order, error: e2 } = await supabase.from("orders").insert({
-            offer_id: offerRow.id,
-            buyer_id: offerRow.buyer_id,
-            farmer_id: offerRow.farmer_id,
-            status: "preparing",
-            order_ref: "",
-          } as any).select("id").single();
-          if (e2) throw e2;
-          const { error: e3 } = await supabase.from("order_timeline").insert({
-            order_id: order.id,
-            step: "submitted",
-            label: "Sipariş Alındı",
-            completed_at: new Date().toISOString(),
-          });
-          if (e3) throw e3;
-        } catch (err) {
-          // roll back the offer status
-          await supabase.from("offers").update({ status: prevStatus }).eq("id", id);
-          throw err;
-        }
+        // Farmer accepted -> waiting for buyer's payment.
+        patch.ball_side = "buyer";
+        patch.payment_status = "unpaid";
       }
-      // Best-effort SMS to buyer on accepted/counter
-      if (status === "accepted" || status === "counter") {
-        const msg =
-          status === "accepted"
-            ? "Hasat: Teklifiniz kabul edildi."
-            : "Hasat: Karşı teklif geldi.";
-        supabase.functions
-          .invoke("send-sms", {
-            body: { userId: offerRow.buyer_id, message: msg, event: "new_offer" },
-          })
-          .catch((e) => console.warn("[send-sms] offer_status failed", e));
+      if (status === "rejected" && reason) {
+        patch.note = reason;
       }
+      const { data: offerRow, error: e1 } = await supabase
+        .from("offers").update(patch).eq("id", id).select("*").single();
+      if (e1) throw e1;
       return offerRow;
     },
     onSuccess: () => {
@@ -798,8 +765,6 @@ export function useUpdateOfferStatus() {
     },
   });
 }
-
-
 
 export interface OfferCounterPatch {
   quantity: number;
@@ -814,7 +779,7 @@ export function useCounterOffer() {
   const userId = useAuthUserId();
   return useMutation({
     mutationFn: async ({ id, patch, original, by }: { id: string; patch: OfferCounterPatch; original?: OfferCounterPatch; by: "buyer" | "farmer" }) => {
-      // Read current row to capture the snapshot we're about to overwrite, plus the existing history.
+      if (!userId) throw new Error("Oturum bulunamadı");
       const { data: current, error: readErr } = await supabase
         .from("offers")
         .select("quantity, price_per_unit, delivery, delivery_date, note, negotiation_history")
@@ -836,9 +801,14 @@ export function useCounterOffer() {
         : [];
       const nextHistory = [...prevHistory, prevSnapshot];
 
+      const otherSide = by === "farmer" ? "buyer" : "farmer";
+
       const { error } = await supabase.from("offers").update({
         quantity: patch.quantity,
         price_per_unit: patch.pricePerUnit,
+        current_quantity: patch.quantity,
+        current_price: patch.pricePerUnit,
+        ball_side: otherSide,
         delivery: deliveryToDb(patch.delivery),
         delivery_date: patch.deliveryDate || null,
         note: patch.note ?? null,
@@ -847,10 +817,93 @@ export function useCounterOffer() {
         negotiation_history: nextHistory,
       } as any).eq("id", id);
       if (error) throw error;
+
+      // Append to offer_messages thread (best effort)
+      await supabase.from("offer_messages").insert({
+        offer_id: id,
+        sender_role: by,
+        sender_id: userId,
+        price: patch.pricePerUnit,
+        quantity: patch.quantity,
+        note: patch.note ?? null,
+      });
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["farmerOffers", userId] });
       qc.invalidateQueries({ queryKey: ["buyerOffers", userId] });
+      qc.invalidateQueries({ queryKey: ["offerMessages"] });
+    },
+  });
+}
+
+// Buyer simulates payment for an accepted offer.
+// Sets payment_status=paid, status='active', creates an order row + initial timeline.
+export function useSimulatePayment() {
+  const qc = useQueryClient();
+  const userId = useAuthUserId();
+  return useMutation({
+    mutationFn: async (offerId: string) => {
+      if (!userId) throw new Error("Oturum bulunamadı");
+      const { data: offerRow, error: e1 } = await supabase
+        .from("offers")
+        .update({ payment_status: "paid", status: "active" } as any)
+        .eq("id", offerId)
+        .select("*")
+        .single();
+      if (e1) throw e1;
+
+      // Idempotent: only create the order if not already there.
+      const { data: existing } = await supabase
+        .from("orders").select("id").eq("offer_id", offerId).maybeSingle();
+      if (!existing) {
+        const { data: order, error: e2 } = await supabase.from("orders").insert({
+          offer_id: offerRow.id,
+          buyer_id: offerRow.buyer_id,
+          farmer_id: offerRow.farmer_id,
+          status: "preparing",
+          order_ref: "",
+        } as any).select("id").single();
+        if (e2) throw e2;
+        await supabase.from("order_timeline").insert({
+          order_id: order.id,
+          step: "submitted",
+          label: "Sipariş Alındı",
+          completed_at: new Date().toISOString(),
+        });
+      }
+      return offerRow;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["farmerOffers", userId] });
+      qc.invalidateQueries({ queryKey: ["buyerOffers", userId] });
+      qc.invalidateQueries({ queryKey: ["farmerOrders", userId] });
+      qc.invalidateQueries({ queryKey: ["buyerOrders", userId] });
+    },
+  });
+}
+
+// Read negotiation thread for an offer
+export function useOfferMessages(offerId: string | null | undefined) {
+  return useQuery({
+    queryKey: ["offerMessages", offerId],
+    enabled: !!offerId,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("offer_messages")
+        .select("*")
+        .eq("offer_id", offerId!)
+        .order("created_at", { ascending: true });
+      if (error) throw error;
+      return (data ?? []).map((r: any) => ({
+        id: r.id,
+        offerId: r.offer_id,
+        senderRole: r.sender_role as "farmer" | "buyer",
+        senderId: r.sender_id,
+        price: r.price != null ? Number(r.price) : null,
+        quantity: r.quantity != null ? Number(r.quantity) : null,
+        note: r.note ?? null,
+        createdAt: r.created_at,
+      }));
     },
   });
 }
