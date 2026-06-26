@@ -61,6 +61,19 @@ export interface PricePoint {
 
 export type BuyerType = "restoran" | "otel" | "market" | "ihracatci";
 export type OfferStatus = "pending" | "accepted" | "counter" | "active" | "completed" | "rejected";
+export type BallSide = "farmer" | "buyer";
+export type PaymentStatus = "unpaid" | "pending" | "paid";
+
+export interface OfferMessage {
+  id: string;
+  offerId: string;
+  senderRole: BallSide;
+  senderId: string;
+  price: number | null;
+  quantity: number | null;
+  note: string | null;
+  createdAt: string;
+}
 
 export interface OfferSnapshot {
   quantity: number;
