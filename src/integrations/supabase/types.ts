@@ -902,6 +902,10 @@ export type Database = {
     Functions: {
       can_send_ai_message: { Args: { _user_id: string }; Returns: boolean }
       get_my_role: { Args: never; Returns: string }
+      get_my_role_for_offer: {
+        Args: { offer_row: Database["public"]["Tables"]["offers"]["Row"] }
+        Returns: string
+      }
       increment_ai_usage: { Args: { _user_id: string }; Returns: number }
     }
     Enums: {
