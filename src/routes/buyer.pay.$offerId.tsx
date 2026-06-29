@@ -31,7 +31,7 @@ function PayPage() {
     return (
       <div className="p-8 text-center text-hmuted">
         Bu teklif şu anda ödemeye uygun değil.
-        <button onClick={() => navigate({ to: "/buyer/orders" })} className="block mt-4 mx-auto text-saffron underline">Siparişlerime dön</button>
+        <button onClick={() => navigate({ to: "/buyer/orders", search: { tab: "offers" } })} className="block mt-4 mx-auto text-saffron underline">Siparişlerime dön</button>
       </div>
     );
   }
