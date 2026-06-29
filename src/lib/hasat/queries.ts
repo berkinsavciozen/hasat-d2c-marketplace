@@ -883,6 +883,81 @@ export function useSimulatePayment() {
   });
 }
 
+// Withdraw the most recent counter-offer message.
+// Only the sender of that message may call this. Deletes the message,
+// reverts current_price/quantity to the prior message's values (or to the
+// offer's original price_per_unit/quantity if no messages remain),
+// reverts status to 'pending' and ball_side to the withdrawer's role.
+export function useWithdrawCounter() {
+  const qc = useQueryClient();
+  const userId = useAuthUserId();
+  return useMutation({
+    mutationFn: async (offerId: string) => {
+      if (!userId) throw new Error("Oturum bulunamadı");
+
+      // Read offer (originals + history)
+      const { data: offerRow, error: oErr } = await supabase
+        .from("offers")
+        .select("price_per_unit, quantity, negotiation_history")
+        .eq("id", offerId)
+        .single();
+      if (oErr) throw oErr;
+
+      // Get the latest message and verify ownership
+      const { data: msgs, error: mErr } = await supabase
+        .from("offer_messages")
+        .select("id, sender_id, sender_role, price, quantity")
+        .eq("offer_id", offerId)
+        .order("created_at", { ascending: false })
+        .limit(1);
+      if (mErr) throw mErr;
+      const last = msgs?.[0];
+      if (!last) throw new Error("Geri çekilecek karşı teklif bulunamadı");
+      if (last.sender_id !== userId) throw new Error("Yalnızca son teklifi gönderen geri çekebilir");
+
+      const myRole = last.sender_role as "farmer" | "buyer";
+
+      // Delete the last message
+      const { error: dErr } = await supabase.from("offer_messages").delete().eq("id", last.id);
+      if (dErr) throw dErr;
+
+      // Determine reverted values from remaining messages
+      const { data: remaining } = await supabase
+        .from("offer_messages")
+        .select("price, quantity")
+        .eq("offer_id", offerId)
+        .order("created_at", { ascending: false })
+        .limit(1);
+
+      const prev = remaining?.[0];
+      const origPrice = Number(offerRow.price_per_unit);
+      const origQty = Number(offerRow.quantity);
+      const revertPrice = prev?.price != null ? Number(prev.price) : origPrice;
+      const revertQty = prev?.quantity != null ? Number(prev.quantity) : origQty;
+
+      // Trim negotiation_history (pop the last snapshot we appended for this message)
+      const prevHistory = Array.isArray((offerRow as any).negotiation_history)
+        ? (offerRow as any).negotiation_history
+        : [];
+      const nextHistory = prevHistory.slice(0, -1);
+
+      const { error: uErr } = await supabase.from("offers").update({
+        current_price: revertPrice,
+        current_quantity: revertQty,
+        status: "pending",
+        ball_side: myRole,
+        negotiation_history: nextHistory,
+      } as any).eq("id", offerId);
+      if (uErr) throw uErr;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["farmerOffers", userId] });
+      qc.invalidateQueries({ queryKey: ["buyerOffers", userId] });
+      qc.invalidateQueries({ queryKey: ["offerMessages"] });
+    },
+  });
+}
+
 // Read negotiation thread for an offer
 export function useOfferMessages(offerId: string | null | undefined) {
   return useQuery({
