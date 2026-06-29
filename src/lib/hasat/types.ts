@@ -156,6 +156,7 @@ export interface Order {
   code: string;
   producerId: string;
   producerName: string;
+  producerPhone?: string;
   crop: string;
   quantity: number;
   unit: "g" | "kg" | "L";

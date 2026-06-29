@@ -2,6 +2,7 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import { FarmerHeader } from "./farmer";
 import { useFarmerOffers, useUpdateOfferStatus, useFarmerOrders, useCounterOffer } from "@/lib/hasat/queries";
+import { WaitingBanner } from "@/components/hasat/WaitingBanner";
 import { LoadingDots } from "@/components/hasat/LoadingDots";
 import { formatTRY } from "@/lib/hasat/format";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
@@ -159,9 +160,7 @@ function OfferCard({ offer }: { offer: Offer }) {
           </button>
         </div>
       ) : (
-        <div className="mt-3 rounded-lg bg-muted/40 p-3 text-xs text-hmuted">
-          Karşı teklifiniz iletildi, alıcı yanıtı bekleniyor.
-        </div>
+        <WaitingBanner offer={offer} viewer="farmer" />
       )}
 
       {/* Accept modal */}

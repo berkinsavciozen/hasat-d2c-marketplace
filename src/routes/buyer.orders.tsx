@@ -1,5 +1,5 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { BuyerHeader } from "@/components/hasat/BuyerHeader";
 import { LoadingDots } from "@/components/hasat/LoadingDots";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
@@ -9,9 +9,13 @@ import { toast } from "sonner";
 import type { Order, Offer } from "@/lib/hasat/types";
 import { NegotiationThread } from "@/components/hasat/NegotiationThread";
 import { statusVisual, statusStyle, canAccept } from "@/lib/hasat/offer-status";
+import { WaitingBanner } from "@/components/hasat/WaitingBanner";
 
 export const Route = createFileRoute("/buyer/orders")({
   head: () => ({ meta: [{ title: "Siparişlerim — Hasat" }] }),
+  validateSearch: (s: Record<string, unknown>) => ({
+    tab: s.tab === "active" || s.tab === "done" || s.tab === "offers" ? (s.tab as "offers" | "active" | "done") : undefined,
+  }),
   component: OrdersList,
 });
 
@@ -23,12 +27,43 @@ const ORDER_STATUS_LABEL: Record<Order["status"], { label: string; bg: string; f
   delivered: { label: "Teslim Edildi", bg: "color-mix(in oklab, var(--hmuted) 18%, transparent)", fg: "var(--hmuted)" },
 };
 
+function formatTRDate(iso: string): string {
+  if (!iso) return "—";
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return "—";
+  return d.toLocaleDateString("tr-TR", { day: "numeric", month: "long", year: "numeric" });
+}
+
+function estimatedDelivery(o: Order): string {
+  if (o.deliveryDate) return formatTRDate(o.deliveryDate);
+  const base = new Date(o.createdAt);
+  base.setDate(base.getDate() + 3);
+  return formatTRDate(base.toISOString());
+}
+
+function formatPhone(phone?: string): string | null {
+  if (!phone) return null;
+  const d = phone.replace(/\D/g, "");
+  // 905XXXXXXXXX -> +90 5XX XXX XX XX
+  if (d.length === 12 && d.startsWith("90")) {
+    return `+90 ${d.slice(2, 5)} ${d.slice(5, 8)} ${d.slice(8, 10)} ${d.slice(10, 12)}`;
+  }
+  return phone;
+}
+
 function OrdersList() {
   const navigate = useNavigate();
+  const search = Route.useSearch();
   const { data: orders = [], isLoading: ordersLoading } = useBuyerOrders();
   const { data: offers = [], isLoading: offersLoading } = useBuyerOffers();
   const updateStatus = useUpdateOfferStatus();
-  const [tab, setTab] = useState("offers");
+  const [tab, setTab] = useState<string>(search.tab ?? "offers");
+
+  // Honor ?tab=… on mount and when it changes
+  useEffect(() => {
+    if (search.tab && search.tab !== tab) setTab(search.tab);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [search.tab]);
 
   const pendingOffers = offers.filter((o) =>
     o.status === "pending" ||
@@ -56,11 +91,56 @@ function OrdersList() {
     }
   };
 
-  const renderOrders = (list: Order[]) =>
+  const renderActiveOrders = (list: Order[]) =>
     ordersLoading ? (
       <LoadingDots />
     ) : list.length === 0 ? (
-      <div className="rounded-2xl border border-dashed p-8 text-center text-hmuted">Henüz sipariş yok.</div>
+      <div className="rounded-2xl border border-dashed p-8 text-center text-hmuted">Henüz aktif sipariş yok.</div>
+    ) : (
+      <div className="space-y-3">
+        {list.map((o) => {
+          const s = ORDER_STATUS_LABEL[o.status];
+          const phone = formatPhone(o.producerPhone);
+          return (
+            <div key={o.id} className="rounded-2xl bg-card border p-4">
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <div className="font-mono text-xs text-hmuted">{o.code}</div>
+                  <div className="font-medium mt-1 truncate">{o.crop}</div>
+                  <div className="text-xs text-hmuted">{o.quantity} {o.unit}</div>
+                </div>
+                <span className="shrink-0 rounded-full px-2.5 py-0.5 text-[11px]" style={{ background: s.bg, color: s.fg }}>{s.label}</span>
+              </div>
+              <div className="mt-3 grid grid-cols-2 gap-2 text-xs">
+                <div>
+                  <div className="text-hmuted">Üretici</div>
+                  <div className="font-medium">{o.producerName}</div>
+                  {phone && (
+                    <a href={`tel:${o.producerPhone}`} className="mt-0.5 inline-block font-mono text-saffron hover:underline">{phone}</a>
+                  )}
+                </div>
+                <div>
+                  <div className="text-hmuted">Tahmini teslim</div>
+                  <div className="font-medium">{estimatedDelivery(o)}</div>
+                </div>
+              </div>
+              <div className="mt-3 flex items-center justify-between border-t pt-3 text-xs">
+                <button onClick={() => navigate({ to: "/buyer/orders/$orderId", params: { orderId: o.id } })} className="text-saffron underline">
+                  Sipariş detayları →
+                </button>
+                <span className="font-mono" style={{ color: "var(--gold)" }}>{formatTRY(o.total)}</span>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    );
+
+  const renderDoneOrders = (list: Order[]) =>
+    ordersLoading ? (
+      <LoadingDots />
+    ) : list.length === 0 ? (
+      <div className="rounded-2xl border border-dashed p-8 text-center text-hmuted">Henüz tamamlanmış sipariş yok.</div>
     ) : (
       <div className="space-y-3">
         {list.map((o) => {
@@ -118,8 +198,8 @@ function OrdersList() {
             <TabsTrigger value="done">Tamamlanan ({done.length})</TabsTrigger>
           </TabsList>
           <TabsContent value="offers" className="mt-4">{renderOffers()}</TabsContent>
-          <TabsContent value="active" className="mt-4">{renderOrders(active)}</TabsContent>
-          <TabsContent value="done" className="mt-4">{renderOrders(done)}</TabsContent>
+          <TabsContent value="active" className="mt-4">{renderActiveOrders(active)}</TabsContent>
+          <TabsContent value="done" className="mt-4">{renderDoneOrders(done)}</TabsContent>
         </Tabs>
       </div>
     </>
@@ -183,9 +263,7 @@ function OfferCard({ offer, onAccept, onReject, onCounter, onPay, pending }: {
           </button>
         </div>
       ) : (
-        <div className="mt-3 rounded-lg bg-muted/40 p-3 text-xs text-hmuted">
-          Yanıtınız iletildi, çiftçi yanıtı bekleniyor.
-        </div>
+        <WaitingBanner offer={offer} viewer="buyer" />
       )}
     </div>
   );
