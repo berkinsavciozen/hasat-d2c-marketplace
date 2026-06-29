@@ -44,7 +44,7 @@ function PayPage() {
     try {
       await pay.mutateAsync(offer.id);
       toast.success("Ödeme alındı. Sipariş aktif.");
-      navigate({ to: "/buyer/orders" });
+      navigate({ to: "/buyer/orders", search: { tab: "active" } });
     } catch (e: any) {
       toast.error(e.message ?? "Ödeme başarısız");
     }
