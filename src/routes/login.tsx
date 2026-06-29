@@ -145,14 +145,17 @@ function LoginPage() {
       const profileRole = (profile.role === "buyer" ? "buyer" : "farmer") as "farmer" | "buyer";
       setRole(profileRole);
 
+      // Normalize phone to 905XXXXXXXXX (no '+') to match DB unique constraint and webhook lookup
+      const normalizedPhone = "90" + phoneDigits;
+
       if (!profile.name || profile.name.trim() === "") {
-        updateUser({ id: data.user.id, phone: data.user.phone ? "+" + data.user.phone : "+90 " + formattedPhone });
+        updateUser({ id: data.user.id, phone: normalizedPhone });
         navigate({ to: profileRole === "buyer" ? "/onboarding/buyer" : "/onboarding/farmer" });
       } else {
         updateUser({
           id: data.user.id,
           name: profile.name,
-          phone: profile.phone ?? "+90 " + formattedPhone,
+          phone: (profile.phone ?? normalizedPhone).replace(/^\+/, ""),
           city: profile.city ?? "",
           premium: !!profile.premium,
         });
