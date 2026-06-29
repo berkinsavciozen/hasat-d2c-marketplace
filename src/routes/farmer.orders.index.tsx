@@ -160,9 +160,7 @@ function OfferCard({ offer }: { offer: Offer }) {
           </button>
         </div>
       ) : (
-        <div className="mt-3 rounded-lg bg-muted/40 p-3 text-xs text-hmuted">
-          Karşı teklifiniz iletildi, alıcı yanıtı bekleniyor.
-        </div>
+        <WaitingBanner offer={offer} viewer="farmer" />
       )}
 
       {/* Accept modal */}
