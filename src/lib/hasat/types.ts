@@ -143,7 +143,7 @@ export interface Producer {
   nextHarvest: { date: string; estimatedQty: string; pricePerUnit: number; unit: string };
 }
 
-export type OrderStatus = "sent" | "accepted" | "preparing" | "shipped" | "delivered";
+export type OrderStatus = "sent" | "accepted" | "preparing" | "shipped" | "delivered" | "completed";
 
 export interface OrderTimelineStep {
   key: OrderStatus;
