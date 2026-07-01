@@ -71,8 +71,8 @@ function OrdersList() {
     o.status === "counter" ||
     (o.status === "accepted" && o.paymentStatus !== "paid")
   );
-  const active = orders.filter((o) => o.status !== "delivered");
-  const done = orders.filter((o) => o.status === "delivered");
+  const active = orders.filter((o) => o.status !== "delivered" && o.status !== "completed");
+  const done = orders.filter((o) => o.status === "delivered" || o.status === "completed");
 
   const accept = async (offer: Offer) => {
     try {
