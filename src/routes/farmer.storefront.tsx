@@ -182,6 +182,12 @@ function ListingSheet({ open, editing, onClose }: { open: boolean; editing: List
   const pending = createListing.isPending || updateListing.isPending;
 
   const save = async () => {
+    if (unit === "g" && price > 500) {
+      const ok = window.confirm(
+        `₺${price}/g olarak kaydedilecek. Kilogram fiyatını yanlışlıkla girmiş olabilirsiniz. Devam etmek istiyor musunuz?`
+      );
+      if (!ok) return;
+    }
     try {
       if (editing) {
         await updateListing.mutateAsync({ id: editing.id, patch: { crop, quantity, unit, pricePerUnit: price, minOrder, quality }, photoFile });
