@@ -73,7 +73,7 @@ function Discover() {
           <h2 className="font-serif text-lg mb-3">Kategoriler</h2>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
             {CATS.map((c) => {
-              const n = listings.filter((l) => l.crop === c.l).length;
+              const n = listings.filter((l) => l.crop.toLowerCase() === c.l.toLowerCase()).length;
               return (
                 <button key={c.l} onClick={() => setQuery(c.l)} className="rounded-2xl bg-card border p-4 text-left hover:border-saffron transition">
                   <div className="text-3xl mb-1">{c.e}</div>
