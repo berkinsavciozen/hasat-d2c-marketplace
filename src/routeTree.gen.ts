@@ -13,6 +13,7 @@ import { Route as LoginRouteImport } from './routes/login'
 import { Route as FarmerRouteImport } from './routes/farmer'
 import { Route as BuyerRouteImport } from './routes/buyer'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as SSlugRouteImport } from './routes/s.$slug'
 import { Route as OnboardingFarmerRouteImport } from './routes/onboarding.farmer'
 import { Route as OnboardingBuyerRouteImport } from './routes/onboarding.buyer'
 import { Route as FarmerStorefrontRouteImport } from './routes/farmer.storefront'
@@ -61,6 +62,11 @@ const BuyerRoute = BuyerRouteImport.update({
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SSlugRoute = SSlugRouteImport.update({
+  id: '/s/$slug',
+  path: '/s/$slug',
   getParentRoute: () => rootRouteImport,
 } as any)
 const OnboardingFarmerRoute = OnboardingFarmerRouteImport.update({
@@ -233,6 +239,7 @@ export interface FileRoutesByFullPath {
   '/farmer/storefront': typeof FarmerStorefrontRoute
   '/onboarding/buyer': typeof OnboardingBuyerRoute
   '/onboarding/farmer': typeof OnboardingFarmerRoute
+  '/s/$slug': typeof SSlugRoute
   '/buyer/negotiation/$offerId': typeof BuyerNegotiationOfferIdRoute
   '/buyer/offer/$listingId': typeof BuyerOfferListingIdRoute
   '/buyer/orders/$orderId': typeof BuyerOrdersOrderIdRoute
@@ -267,6 +274,7 @@ export interface FileRoutesByTo {
   '/farmer/storefront': typeof FarmerStorefrontRoute
   '/onboarding/buyer': typeof OnboardingBuyerRoute
   '/onboarding/farmer': typeof OnboardingFarmerRoute
+  '/s/$slug': typeof SSlugRoute
   '/buyer/negotiation/$offerId': typeof BuyerNegotiationOfferIdRoute
   '/buyer/offer/$listingId': typeof BuyerOfferListingIdRoute
   '/buyer/orders/$orderId': typeof BuyerOrdersOrderIdRoute
@@ -303,6 +311,7 @@ export interface FileRoutesById {
   '/farmer/storefront': typeof FarmerStorefrontRoute
   '/onboarding/buyer': typeof OnboardingBuyerRoute
   '/onboarding/farmer': typeof OnboardingFarmerRoute
+  '/s/$slug': typeof SSlugRoute
   '/buyer/negotiation/$offerId': typeof BuyerNegotiationOfferIdRoute
   '/buyer/offer/$listingId': typeof BuyerOfferListingIdRoute
   '/buyer/orders/$orderId': typeof BuyerOrdersOrderIdRoute
@@ -340,6 +349,7 @@ export interface FileRouteTypes {
     | '/farmer/storefront'
     | '/onboarding/buyer'
     | '/onboarding/farmer'
+    | '/s/$slug'
     | '/buyer/negotiation/$offerId'
     | '/buyer/offer/$listingId'
     | '/buyer/orders/$orderId'
@@ -374,6 +384,7 @@ export interface FileRouteTypes {
     | '/farmer/storefront'
     | '/onboarding/buyer'
     | '/onboarding/farmer'
+    | '/s/$slug'
     | '/buyer/negotiation/$offerId'
     | '/buyer/offer/$listingId'
     | '/buyer/orders/$orderId'
@@ -409,6 +420,7 @@ export interface FileRouteTypes {
     | '/farmer/storefront'
     | '/onboarding/buyer'
     | '/onboarding/farmer'
+    | '/s/$slug'
     | '/buyer/negotiation/$offerId'
     | '/buyer/offer/$listingId'
     | '/buyer/orders/$orderId'
@@ -429,6 +441,7 @@ export interface RootRouteChildren {
   LoginRoute: typeof LoginRoute
   OnboardingBuyerRoute: typeof OnboardingBuyerRoute
   OnboardingFarmerRoute: typeof OnboardingFarmerRoute
+  SSlugRoute: typeof SSlugRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -459,6 +472,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/s/$slug': {
+      id: '/s/$slug'
+      path: '/s/$slug'
+      fullPath: '/s/$slug'
+      preLoaderRoute: typeof SSlugRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/onboarding/farmer': {
@@ -775,6 +795,7 @@ const rootRouteChildren: RootRouteChildren = {
   LoginRoute: LoginRoute,
   OnboardingBuyerRoute: OnboardingBuyerRoute,
   OnboardingFarmerRoute: OnboardingFarmerRoute,
+  SSlugRoute: SSlugRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

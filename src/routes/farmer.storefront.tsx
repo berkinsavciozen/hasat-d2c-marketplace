@@ -163,7 +163,7 @@ function ListingSheet({ open, editing, onClose }: { open: boolean; editing: List
   const [price, setPrice] = useState(editing?.pricePerUnit ?? 350);
   const [minOrder, setMinOrder] = useState(editing?.minOrder ?? 10);
   const [quality, setQuality] = useState<"A" | "B" | "C">(editing?.quality ?? "A");
-  const [desc, setDesc] = useState("");
+  const [desc, setDesc] = useState(editing?.description ?? "");
   const [photoFile, setPhotoFile] = useState<File | null>(null);
 
   const editingId = editing?.id;
@@ -171,10 +171,11 @@ function ListingSheet({ open, editing, onClose }: { open: boolean; editing: List
     if (editing) {
       setCrop(editing.crop); setQuantity(editing.quantity); setUnit(editing.unit);
       setPrice(editing.pricePerUnit); setMinOrder(editing.minOrder); setQuality(editing.quality);
+      setDesc(editing.description ?? "");
     } else {
       setCrop("Safran"); setQuantity(100); setUnit("g"); setPrice(350); setMinOrder(10); setQuality("A");
+      setDesc("");
     }
-    setDesc("");
     setPhotoFile(null);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [editingId]);
@@ -190,7 +191,7 @@ function ListingSheet({ open, editing, onClose }: { open: boolean; editing: List
     }
     try {
       if (editing) {
-        await updateListing.mutateAsync({ id: editing.id, patch: { crop, quantity, unit, pricePerUnit: price, minOrder, quality }, photoFile });
+        await updateListing.mutateAsync({ id: editing.id, patch: { crop, quantity, unit, pricePerUnit: price, minOrder, quality, description: desc || undefined }, photoFile });
         toast.success("Ürün güncellendi");
       } else {
         await createListing.mutateAsync({ crop, quantity, unit, pricePerUnit: price, minOrder, quality, description: desc || undefined, photoFile });

@@ -166,6 +166,7 @@ function Prices() {
 
 function unitFor(crop: string) {
   if (crop === "Zeytinyağı") return "L";
+  // price_points reference data is always per kg regardless of listing sell unit
   return "kg";
 }
 

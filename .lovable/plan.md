@@ -1,40 +1,65 @@
-## Bug fixes (5 targeted)
+## B1 — Public storefront route `/s/:slug`
+Create `src/routes/s.$slug.tsx`. Since profiles table has no `slug` column, resolve the slug as either the farmer's profile UUID or a slug derived from `full_name` (kebab-cased, lowercase, ascii-folded). The route:
+- Queries `profiles` for a farmer where `id = slug` OR generated slug of `full_name` matches.
+- Queries active `listings` for that farmer.
+- Renders a lightweight public page: farmer name, city, trust badges, and listing cards. Each card links to `/buyer/offer/:listingId` (existing flow) if the visitor is logged in, else to `/login`.
+- Provides `notFoundComponent`.
 
-### B11 — Listing price/unit consistency
-- **Storefront form** (`src/routes/farmer.storefront.tsx`): in `ListingSheet.save()`, if `unit === 'g'` and `price > 500`, show a `toast` warning + `window.confirm("₺{price}/g doğru mu? Kilogram fiyatı girmediğinizden emin olun.")`; abort if not confirmed. Purely client-side validation, no DB writes.
-- **Displays** — audit that unit shown always uses the listing's `unit` field (no hardcoded `/g` or `/kg`):
-  - `buyer.discover.tsx` — already uses `l.unit` ✓ (no change).
-  - `buyer.offer.$listingId.tsx` — verify all price/unit strings use `listing.unit`; patch any hardcoded literal.
-  - `farmer.prices.tsx` — remove `unitFor()` inference (Safran='g' is misleading for `price_points` values that are kg-level). Since `price_points` has no unit column, default to `"kg"` for all crops so display matches stored magnitudes. No auto-conversion of stored numbers.
+Also add a "Vitrin linkini kopyala" button on `farmer.storefront.tsx` header that copies `${origin}/s/${profile.id}` — small addition so the farmer can share.
 
-### B12 — Buyer name shows as "Alıcı"
-Root cause: RLS on `profiles` blocks farmers from reading buyer rows (mirror policy for buyers exists, farmer side missing). Join returns null → `dbToOffer` falls back to "Alıcı".
-- **Migration**: add SELECT policy on `profiles`:
-  ```
-  Farmers read related buyer profiles
-    role = 'buyer' AND get_my_role() = 'farmer'
-    AND EXISTS (offers|orders|harvest_subscriptions where buyer_id = profiles.id AND farmer_id = auth.uid())
-  ```
-- No client change needed; existing joins in `useFarmerOffers`/`useFarmerOrders` already select `buyer:profiles(name)`.
+## B2 — Edit listing
+Verified: `ListingCard` already receives `onEdit` and opens `ListingSheet` with `editing={l}`. Actual bug is the `ListingSheet` initializes state from `editing?.*` only once and the `useEffect([editingId])` covers it — but the `description` and photos are missing when editing. Fix:
+- Prefill `desc` from `editing?.description` when opening for edit.
+- Include `description` in the `updateListing` patch call.
+- Verify `useUpdateListing` accepts `description` in the patch; extend it if not.
 
-### B15 — Turkish date input
-- `src/routes/buyer.offer.$listingId.tsx` line 135: add `lang="tr"` to the `<Input type="date" …>`. No component swap.
+## B4 — Quantity stepper respects `min_order_quantity`
+`src/routes/buyer.offer.$listingId.tsx`:
+- Initialize `qty` with `listing.minOrder`.
+- Pass `min={listing.minOrder}` to `<Stepper>` (already done for `min`, but manual typing bypasses it) — clamp on input change inside Stepper via `Math.max(min, ...)`. Stepper currently does `onChange={(n) => setQty(Math.max(listing.minOrder, Math.min(listing.quantity, n)))}` outside; but the internal number input calls `onChange(Number(e.target.value) || 0)` without clamping. Add clamping in `Stepper.tsx` when `min` is provided: `onChange(Math.max(min, Number(e.target.value) || 0))`.
+- Add a submit-time guard: if `qty < listing.minOrder`, toast error and abort.
 
-### B16 — Mask seller phone in buyer Aktif tab
-- `src/routes/buyer.orders.tsx` `formatPhone()`: return masked form `+90 5** *** ** {last2}{last2}`, e.g. `+90 5** *** ** 11`. Also change the `<a href="tel:{raw}">` to use the masked string as label and either drop the `tel:` link or keep raw href but display masked text (per bug: mask what's visible). Keep raw only in href.
+## B5 — Buyer "Tamamlanan" tab count
+Current: `orders.filter(o => o.status === "delivered")`. Check DB-side status: `useBuyerOrders` may map or filter statuses. Ensure `dbToOrder` doesn't overwrite `delivered`. If mapping is fine, also treat `completed` status as done in case DB uses that label. Confirm by reading `useBuyerOrders`; update filter to `["delivered","completed"].includes(o.status)`.
 
-### B19 — Category counts on Keşfet
-- `src/routes/buyer.discover.tsx`:
-  - Case-insensitive match: `listings.filter(l => l.crop.toLowerCase() === c.l.toLowerCase()).length`.
-  - Same normalization for the category-click filter so "safran" listings appear when clicking "Safran".
-  - Search filter (`filtered`) already lowercases query ✓.
+## B6 — Accept offer creates active order
+In `useUpdateOfferStatus` (queries.ts, line ~742), when `status === "accepted"`:
+- After updating the offer, upsert a row in `orders` (idempotent via `.select("id").eq("offer_id", id).maybeSingle()` then insert if missing) with `status = 'active'`, `offer_id`, `buyer_id`, `farmer_id`, `order_ref: ""`.
+- Insert an `order_timeline` "submitted" row.
+- Keep `useSimulatePayment` behavior but make it also idempotent (already is) and just update timeline / no duplicate insert.
+- Invalidate `farmerOrders` / `buyerOrders`.
 
-### Verification
-- Typecheck.
-- Refresh Discover: "Safran" count = 1, listing visible.
-- Farmer Teklifler tab: buyer name = "Zeynep Kaya".
-- Buyer Aktif: phone masked.
-- Buyer Teklif Ver: date input renders dd.mm.yyyy (tr locale).
-- Farmer Storefront: entering 850 with unit=g triggers confirm.
+## B11 — Prices unit display
+`src/routes/farmer.prices.tsx`: replace `unitFor(crop)` so it always returns `"kg"` for `price_points` display (except keep `"L"` for `Zeytinyağı` since that is per-litre reference). Do NOT touch `buyer.offer` or `buyer.discover`.
 
-No changes to business logic, offer state machine, or unrelated files.
+## B13 — Farmer analytics real data
+Rewrite `src/routes/farmer.analytics.tsx`:
+- Use existing hooks `useFarmerListings()` and `useFarmerOrders()` (or add a thin `useFarmerOrders` if missing — check queries.ts; there is already a `farmerOrders` query key).
+- Compute: total orders count, total revenue (sum of paid/active orders' offer totals), top product (by revenue).
+- Show 3 stat cards + top product row.
+- Only show "Henüz veri yok" when both listings and orders are empty.
+- Keep `<AIBox page="analytics" />` at top.
+
+## B15 — Custom date picker (dd.mm.yyyy)
+`src/routes/buyer.offer.$listingId.tsx`: replace native `<Input type="date">` with a shadcn Popover + `Calendar` (react-day-picker, already in project):
+- Trigger: `Button` variant outline showing `date ? format(date, "dd.MM.yyyy") : "Tarih seçin"` with a CalendarIcon.
+- Content: `<Calendar mode="single" selected={date} onSelect={setDate} locale={tr} className="p-3 pointer-events-auto" />`.
+- Store as `Date` internally; on submit serialize via `format(date, "yyyy-MM-dd")` for DB.
+- Import `tr` from `date-fns/locale`; `format` from `date-fns` (already used elsewhere).
+
+## B18 — Subscriptions empty state
+`src/routes/buyer.subscriptions.tsx`: update empty-state text to
+"Henüz aboneliğiniz yok. Keşfet sayfasından üretici bulun ve düzenli teslimat isteyin."
+and add a `<Link to="/buyer/discover">` styled button "Keşfet'e Git".
+
+## Verification
+After edits: run typecheck/build implicitly; manually verify:
+- `/s/<uuid>` renders storefront.
+- Editing an existing listing prefills description.
+- Buyer offer form rejects qty below min.
+- Delivered orders appear in Tamamlanan tab.
+- Accepting an offer creates an active order row.
+- `farmer.prices` shows `/kg` for Safran.
+- Analytics shows real numbers with test data.
+- Date picker shows dd.mm.yyyy.
+- Subscriptions CTA navigates to discover.

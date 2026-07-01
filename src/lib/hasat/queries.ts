@@ -371,6 +371,7 @@ export function dbToListing(r: any): Listing {
     status: r.status,
     photos: r.photo_urls ?? [],
     producerId: r.farmer_id,
+    description: r.description ?? undefined,
   };
 }
 
@@ -617,6 +618,7 @@ export function useUpdateListing() {
       if (patch.minOrder !== undefined) dbPatch.min_order = patch.minOrder;
       if (patch.quality !== undefined) dbPatch.quality = patch.quality;
       if (patch.status !== undefined) dbPatch.status = patch.status;
+      if (patch.description !== undefined) dbPatch.description = patch.description;
       if (photoFile && userId) {
         const url = await uploadListingPhoto(userId, id, photoFile);
         dbPatch.photo_urls = [url];
@@ -756,6 +758,29 @@ export function useUpdateOfferStatus() {
       const { data: offerRow, error: e1 } = await supabase
         .from("offers").update(patch).eq("id", id).select("*").single();
       if (e1) throw e1;
+
+      // On acceptance, ensure an order row exists (idempotent) so the
+      // farmer's Siparişler view immediately reflects the accepted deal.
+      if (status === "accepted") {
+        const { data: existing } = await supabase
+          .from("orders").select("id").eq("offer_id", id).maybeSingle();
+        if (!existing) {
+          const { data: order, error: oErr } = await supabase.from("orders").insert({
+            offer_id: offerRow.id,
+            buyer_id: offerRow.buyer_id,
+            farmer_id: offerRow.farmer_id,
+            status: "preparing",
+            order_ref: "",
+          } as any).select("id").single();
+          if (oErr) throw oErr;
+          await supabase.from("order_timeline").insert({
+            order_id: order.id,
+            step: "submitted",
+            label: "Sipariş Alındı",
+            completed_at: new Date().toISOString(),
+          });
+        }
+      }
       return offerRow;
     },
     onSuccess: () => {

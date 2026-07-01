@@ -25,6 +25,7 @@ const ORDER_STATUS_LABEL: Record<Order["status"], { label: string; bg: string; f
   preparing: { label: "Hazırlanıyor", bg: "color-mix(in oklab, var(--gold) 22%, transparent)", fg: "var(--gold)" },
   shipped: { label: "Kargoda", bg: "color-mix(in oklab, var(--lav) 25%, transparent)", fg: "var(--lav)" },
   delivered: { label: "Teslim Edildi", bg: "color-mix(in oklab, var(--hmuted) 18%, transparent)", fg: "var(--hmuted)" },
+  completed: { label: "Tamamlandı", bg: "color-mix(in oklab, var(--hmuted) 18%, transparent)", fg: "var(--hmuted)" },
 };
 
 function formatTRDate(iso: string): string {
@@ -71,8 +72,8 @@ function OrdersList() {
     o.status === "counter" ||
     (o.status === "accepted" && o.paymentStatus !== "paid")
   );
-  const active = orders.filter((o) => o.status !== "delivered");
-  const done = orders.filter((o) => o.status === "delivered");
+  const active = orders.filter((o) => o.status !== "delivered" && o.status !== "completed");
+  const done = orders.filter((o) => o.status === "delivered" || o.status === "completed");
 
   const accept = async (offer: Offer) => {
     try {
