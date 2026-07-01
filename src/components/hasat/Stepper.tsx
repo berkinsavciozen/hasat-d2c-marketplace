@@ -23,7 +23,8 @@ export function Stepper({ value, onChange, step = 1, min = 0, unit, units, onUni
       <input
         type="number"
         value={value}
-        onChange={(e) => onChange(Number(e.target.value) || 0)}
+        min={min}
+        onChange={(e) => onChange(Math.max(min, Number(e.target.value) || 0))}
         className="flex-1 bg-transparent text-center font-mono text-xl outline-none"
       />
       <button
