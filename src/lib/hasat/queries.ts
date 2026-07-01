@@ -618,6 +618,7 @@ export function useUpdateListing() {
       if (patch.minOrder !== undefined) dbPatch.min_order = patch.minOrder;
       if (patch.quality !== undefined) dbPatch.quality = patch.quality;
       if (patch.status !== undefined) dbPatch.status = patch.status;
+      if (patch.description !== undefined) dbPatch.description = patch.description;
       if (photoFile && userId) {
         const url = await uploadListingPhoto(userId, id, photoFile);
         dbPatch.photo_urls = [url];
