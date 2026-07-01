@@ -1,13 +1,18 @@
 import { createFileRoute, Link, useNavigate, notFound } from "@tanstack/react-router";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Calendar as CalendarIcon } from "lucide-react";
 import { useEffect, useState } from "react";
+import { format } from "date-fns";
+import { tr } from "date-fns/locale";
 import { Stepper } from "@/components/hasat/Stepper";
 import { Textarea } from "@/components/ui/textarea";
-import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { LoadingDots } from "@/components/hasat/LoadingDots";
 import { formatTRY } from "@/lib/hasat/format";
 import { useHasat } from "@/lib/hasat/store";
 import { useListing } from "@/lib/hasat/queries";
+import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/buyer/offer/$listingId")({
   head: () => ({ meta: [{ title: "Teklif Ver — Hasat" }] }),
