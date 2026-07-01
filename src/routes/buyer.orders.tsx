@@ -44,11 +44,12 @@ function estimatedDelivery(o: Order): string {
 function formatPhone(phone?: string): string | null {
   if (!phone) return null;
   const d = phone.replace(/\D/g, "");
-  // 905XXXXXXXXX -> +90 5XX XXX XX XX
+  // Mask all but last 2 digits (KVKK): +90 5** *** ** 11
   if (d.length === 12 && d.startsWith("90")) {
-    return `+90 ${d.slice(2, 5)} ${d.slice(5, 8)} ${d.slice(8, 10)} ${d.slice(10, 12)}`;
+    return `+90 5** *** ** ${d.slice(10, 12)}`;
   }
-  return phone;
+  if (d.length >= 4) return `*** *** ${d.slice(-2)}`;
+  return "***";
 }
 
 function OrdersList() {
@@ -116,7 +117,7 @@ function OrdersList() {
                   <div className="text-hmuted">Üretici</div>
                   <div className="font-medium">{o.producerName}</div>
                   {phone && (
-                    <a href={`tel:${o.producerPhone}`} className="mt-0.5 inline-block font-mono text-saffron hover:underline">{phone}</a>
+                    <div className="mt-0.5 font-mono text-hmuted">{phone}</div>
                   )}
                 </div>
                 <div>

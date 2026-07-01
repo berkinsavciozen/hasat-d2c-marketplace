@@ -132,7 +132,7 @@ function MakeOffer() {
 
         <div>
           <label className="text-xs text-hmuted mb-2 block">Teslim Tarihi</label>
-          <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
+          <Input type="date" lang="tr" value={date} onChange={(e) => setDate(e.target.value)} />
         </div>
 
         <div>

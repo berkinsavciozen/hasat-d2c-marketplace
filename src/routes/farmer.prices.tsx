@@ -165,7 +165,6 @@ function Prices() {
 }
 
 function unitFor(crop: string) {
-  if (crop === "Safran") return "g";
   if (crop === "Zeytinyağı") return "L";
   return "kg";
 }
