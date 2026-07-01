@@ -142,7 +142,28 @@ function MakeOffer() {
 
         <div>
           <label className="text-xs text-hmuted mb-2 block">Teslim Tarihi</label>
-          <Input type="date" lang="tr" value={date} onChange={(e) => setDate(e.target.value)} />
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button
+                variant="outline"
+                className={cn("w-full justify-start text-left font-normal", !date && "text-muted-foreground")}
+              >
+                <CalendarIcon className="mr-2 h-4 w-4" />
+                {date ? format(new Date(date), "dd.MM.yyyy", { locale: tr }) : <span>Tarih seçin</span>}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0" align="start">
+              <Calendar
+                mode="single"
+                selected={date ? new Date(date) : undefined}
+                onSelect={(d) => setDate(d ? format(d, "yyyy-MM-dd") : "")}
+                locale={tr}
+                disabled={(d) => d < new Date(new Date().setHours(0, 0, 0, 0))}
+                initialFocus
+                className={cn("p-3 pointer-events-auto")}
+              />
+            </PopoverContent>
+          </Popover>
         </div>
 
         <div>
