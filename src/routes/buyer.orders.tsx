@@ -117,7 +117,7 @@ function OrdersList() {
                   <div className="text-hmuted">Üretici</div>
                   <div className="font-medium">{o.producerName}</div>
                   {phone && (
-                    <a href={`tel:${o.producerPhone}`} className="mt-0.5 inline-block font-mono text-saffron hover:underline">{phone}</a>
+                    <div className="mt-0.5 font-mono text-hmuted">{phone}</div>
                   )}
                 </div>
                 <div>
