@@ -371,6 +371,7 @@ export function dbToListing(r: any): Listing {
     status: r.status,
     photos: r.photo_urls ?? [],
     producerId: r.farmer_id,
+    description: r.description ?? undefined,
   };
 }
 
