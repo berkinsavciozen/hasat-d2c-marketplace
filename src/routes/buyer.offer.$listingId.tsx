@@ -46,8 +46,13 @@ function MakeOffer() {
 
   const total = qty * price;
   const negotiated = price !== listing.pricePerUnit;
+  const belowMin = qty < listing.minOrder;
 
   const submit = () => {
+    if (belowMin) {
+      import("sonner").then(({ toast }) => toast.error(`Minimum ${listing.minOrder} ${listing.unit} sipariş vermelisiniz`));
+      return;
+    }
     setPendingOffer({
       listingId,
       producerId: listing.producerId ?? "",
