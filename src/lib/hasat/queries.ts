@@ -758,6 +758,29 @@ export function useUpdateOfferStatus() {
       const { data: offerRow, error: e1 } = await supabase
         .from("offers").update(patch).eq("id", id).select("*").single();
       if (e1) throw e1;
+
+      // On acceptance, ensure an order row exists (idempotent) so the
+      // farmer's Siparişler view immediately reflects the accepted deal.
+      if (status === "accepted") {
+        const { data: existing } = await supabase
+          .from("orders").select("id").eq("offer_id", id).maybeSingle();
+        if (!existing) {
+          const { data: order, error: oErr } = await supabase.from("orders").insert({
+            offer_id: offerRow.id,
+            buyer_id: offerRow.buyer_id,
+            farmer_id: offerRow.farmer_id,
+            status: "preparing",
+            order_ref: "",
+          } as any).select("id").single();
+          if (oErr) throw oErr;
+          await supabase.from("order_timeline").insert({
+            order_id: order.id,
+            step: "submitted",
+            label: "Sipariş Alındı",
+            completed_at: new Date().toISOString(),
+          });
+        }
+      }
       return offerRow;
     },
     onSuccess: () => {
