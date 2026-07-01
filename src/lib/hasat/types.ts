@@ -48,6 +48,7 @@ export interface Listing {
   status: "active" | "sold" | "expired";
   photos?: string[];
   producerId?: string;
+  description?: string;
 }
 
 export interface PricePoint {
