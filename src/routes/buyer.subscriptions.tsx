@@ -47,7 +47,10 @@ function Subscriptions() {
         ) : subs.length === 0 ? (
           <div className="rounded-2xl border border-dashed p-10 text-center text-hmuted">
             <div className="text-4xl mb-2">🌾</div>
-            Henüz aboneliğiniz yok.
+            <div className="mb-4">Henüz aboneliğiniz yok. Keşfet sayfasından üretici bulun ve düzenli teslimat isteyin.</div>
+            <Link to="/buyer/discover" className="inline-block rounded-full bg-saffron px-4 py-2 text-sm font-medium text-white">
+              Keşfet'e Git
+            </Link>
           </div>
         ) : (
           subs.map((s) => {
