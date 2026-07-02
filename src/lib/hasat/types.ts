@@ -116,6 +116,10 @@ export interface Offer {
   /** Latest negotiated unit price (mirrors `pricePerUnit`, kept for clarity). */
   currentPrice?: number;
   paymentStatus?: PaymentStatus;
+  /** Farmer IBAN (visible to buyer when payment is pending). */
+  farmerIban?: string;
+  /** Farmer bank account holder name. */
+  farmerBankAccountName?: string;
 }
 
 export interface PriceAlert {
