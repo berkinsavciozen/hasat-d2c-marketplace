@@ -92,7 +92,7 @@ function Storefront() {
           <AlertDialogHeader>
             <AlertDialogTitle>Bu ilanı kaldırmak istediğinizden emin misiniz?</AlertDialogTitle>
             <AlertDialogDescription>
-              {confirmDelete?.crop} ilanınız vitrinden kaldırılacak. Bu işlem geri alınamaz.
+              {formatCrop(confirmDelete?.crop)} ilanınız vitrinden kaldırılacak. Bu işlem geri alınamaz.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
