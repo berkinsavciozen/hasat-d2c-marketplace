@@ -15,6 +15,7 @@ import {
   cropChipColor,
 } from "@/lib/hasat/journal-meta";
 import { toast } from "sonner";
+import { formatCrop } from "@/lib/hasat/format";
 import { AIBox } from "@/components/hasat/AIBox";
 
 export const Route = createFileRoute("/farmer/journal/")({
