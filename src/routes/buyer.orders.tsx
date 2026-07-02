@@ -162,14 +162,21 @@ function OrdersList() {
       <div className="space-y-3">
         {list.map((o) => {
           const s = ORDER_STATUS_LABEL[o.status];
+          const slug = farmerSlugOf(o.producerName, o.producerId);
           return (
-            <button key={o.id} onClick={() => navigate({ to: "/buyer/orders/$orderId", params: { orderId: o.id } })}
-              className="w-full text-left rounded-2xl bg-card border p-4 hover:border-saffron transition">
+            <div key={o.id} role="button" tabIndex={0}
+              onClick={() => navigate({ to: "/buyer/orders/$orderId", params: { orderId: o.id } })}
+              onKeyDown={(e) => { if (e.key === "Enter") navigate({ to: "/buyer/orders/$orderId", params: { orderId: o.id } }); }}
+              className="w-full text-left rounded-2xl bg-card border p-4 hover:border-saffron transition cursor-pointer">
               <div className="flex items-start justify-between">
                 <div>
                   <div className="font-mono text-xs text-hmuted">{o.code}</div>
                   <div className="font-medium mt-1">{o.crop}</div>
-                  <div className="text-xs text-hmuted">{o.producerName}</div>
+                  <div className="text-xs text-hmuted">
+                    {slug
+                      ? <Link to="/s/$slug" params={{ slug }} onClick={(e) => e.stopPropagation()} className="hover:underline">{o.producerName}</Link>
+                      : o.producerName}
+                  </div>
                 </div>
                 <span className="rounded-full px-2.5 py-0.5 text-[11px]" style={{ background: s.bg, color: s.fg }}>{s.label}</span>
               </div>
@@ -177,7 +184,7 @@ function OrdersList() {
                 <span className="text-hmuted">{o.quantity} {o.unit} · {o.delivery}</span>
                 <span className="font-mono" style={{ color: "var(--gold)" }}>{formatTRY(o.total)}</span>
               </div>
-            </button>
+            </div>
           );
         })}
       </div>
