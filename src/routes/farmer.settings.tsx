@@ -112,6 +112,18 @@ function Settings() {
           <button onClick={saveProfile}
             className="rounded-lg px-4 py-2 text-sm font-medium"
             style={{ background: "var(--saffron)", color: "var(--hwhite)" }}>Kaydet</button>
+
+          <div className="mt-4 border-t pt-4">
+            <button
+              onClick={() => copyVitrinLink(profile ?? undefined)}
+              className="rounded-lg border border-border px-4 py-2 text-sm font-medium hover:bg-muted"
+            >
+              Vitrin Linkini Kopyala
+            </button>
+            <div className="mt-2 truncate font-mono text-[11px] text-hmuted">
+              {vitrinUrl(profile ?? undefined)}
+            </div>
+          </div>
         </Section>
 
         <Section title="AI Asistan">
