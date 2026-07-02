@@ -1,7 +1,7 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { FarmerHeader } from "./farmer";
-import { useFarmerListings, useCreateListing, useUpdateListing, useDeleteListing } from "@/lib/hasat/queries";
+import { useFarmerListings, useCreateListing, useUpdateListing, useDeleteListing, useParcels } from "@/lib/hasat/queries";
 import { LoadingDots } from "@/components/hasat/LoadingDots";
 import { formatTRY, formatCrop } from "@/lib/hasat/format";
 import { Stepper } from "@/components/hasat/Stepper";
@@ -11,10 +11,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
-import { Plus, Pencil, Trash2 } from "lucide-react";
+import { Plus, Pencil, Trash2, ImagePlus } from "lucide-react";
 import { toast } from "sonner";
 import type { Listing } from "@/lib/hasat/types";
 import { AIBox } from "@/components/hasat/AIBox";
+import { PhotoUploader } from "@/components/hasat/PhotoUploader";
 
 export const Route = createFileRoute("/farmer/storefront")({
   head: () => ({ meta: [{ title: "Vitrin — Hasat" }] }),
@@ -26,6 +27,7 @@ const CROPS = ["Safran", "Lavanta", "Tıbbi Bitkiler", "Fındık", "Zeytinyağı
 
 function Storefront() {
   const { data: listings = [], isLoading } = useFarmerListings();
+  const { data: parcels = [] } = useParcels();
   const deleteListing = useDeleteListing();
   const [sheet, setSheet] = useState<{ open: boolean; editing?: Listing | null }>({ open: false });
   const [confirmDelete, setConfirmDelete] = useState<Listing | null>(null);
@@ -74,6 +76,42 @@ function Storefront() {
             )}
           </TabsContent>
         </Tabs>
+
+        <section className="mt-8">
+          <div className="mb-3 flex items-center justify-between">
+            <h2 className="font-serif text-lg">Tarlalarım</h2>
+            <Link to="/farmer/settings" className="text-xs text-saffron underline">Düzenle</Link>
+          </div>
+          {parcels.length === 0 ? (
+            <div className="rounded-2xl border border-dashed p-6 text-center text-sm text-hmuted">
+              Henüz parsel eklenmemiş. Ayarlar'dan ekleyin.
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {parcels.map((p) => (
+                <div key={p.id} className="rounded-2xl border bg-card p-4">
+                  <div className="flex items-baseline justify-between gap-2">
+                    <div className="font-medium">{p.name}</div>
+                    <div className="text-xs text-hmuted">{p.area} dönüm · {p.location.label}</div>
+                  </div>
+                  {p.photos && p.photos.length > 0 ? (
+                    <div className="mt-3 flex gap-2 overflow-x-auto snap-x snap-mandatory pb-1">
+                      {p.photos.map((u, i) => (
+                        <img key={`${p.id}-${i}`} src={u} alt={p.name}
+                          className="h-28 w-40 shrink-0 snap-start rounded-lg object-cover" />
+                      ))}
+                    </div>
+                  ) : (
+                    <Link to="/farmer/settings"
+                      className="mt-3 flex items-center justify-center gap-2 rounded-lg border border-dashed py-4 text-xs text-hmuted hover:bg-muted/50">
+                      <ImagePlus className="h-4 w-4" /> Fotoğraf ekle
+                    </Link>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </section>
       </div>
 
       {active.length > 0 && (
@@ -164,7 +202,8 @@ function ListingSheet({ open, editing, onClose }: { open: boolean; editing: List
   const [minOrder, setMinOrder] = useState(editing?.minOrder ?? 10);
   const [quality, setQuality] = useState<"A" | "B" | "C">(editing?.quality ?? "A");
   const [desc, setDesc] = useState(editing?.description ?? "");
-  const [photoFile, setPhotoFile] = useState<File | null>(null);
+  const [existingPhotos, setExistingPhotos] = useState<string[]>(editing?.photos ?? []);
+  const [photoFiles, setPhotoFiles] = useState<File[]>([]);
 
   const editingId = editing?.id;
   useEffect(() => {
@@ -172,11 +211,13 @@ function ListingSheet({ open, editing, onClose }: { open: boolean; editing: List
       setCrop(editing.crop); setQuantity(editing.quantity); setUnit(editing.unit);
       setPrice(editing.pricePerUnit); setMinOrder(editing.minOrder); setQuality(editing.quality);
       setDesc(editing.description ?? "");
+      setExistingPhotos(editing.photos ?? []);
     } else {
       setCrop("Safran"); setQuantity(100); setUnit("g"); setPrice(350); setMinOrder(10); setQuality("A");
       setDesc("");
+      setExistingPhotos([]);
     }
-    setPhotoFile(null);
+    setPhotoFiles([]);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [editingId]);
 
@@ -191,10 +232,10 @@ function ListingSheet({ open, editing, onClose }: { open: boolean; editing: List
     }
     try {
       if (editing) {
-        await updateListing.mutateAsync({ id: editing.id, patch: { crop, quantity, unit, pricePerUnit: price, minOrder, quality, description: desc || undefined }, photoFile });
+        await updateListing.mutateAsync({ id: editing.id, patch: { crop, quantity, unit, pricePerUnit: price, minOrder, quality, description: desc || undefined }, photoFiles, existingPhotos });
         toast.success("Ürün güncellendi");
       } else {
-        await createListing.mutateAsync({ crop, quantity, unit, pricePerUnit: price, minOrder, quality, description: desc || undefined, photoFile });
+        await createListing.mutateAsync({ crop, quantity, unit, pricePerUnit: price, minOrder, quality, description: desc || undefined, photoFiles });
         toast.success("Ürün yayınlandı");
       }
       onClose();
@@ -245,14 +286,13 @@ function ListingSheet({ open, editing, onClose }: { open: boolean; editing: List
             <Textarea value={desc} onChange={(e) => setDesc(e.target.value)} rows={3} placeholder="Ürününüzü tanıtın..." />
           </div>
           <div>
-            <div className="mb-1.5 text-xs font-medium text-hmuted">Fotoğraf (opsiyonel)</div>
-            <Input type="file" accept="image/*" onChange={(e) => setPhotoFile(e.target.files?.[0] ?? null)} />
-            {photoFile && (
-              <img src={URL.createObjectURL(photoFile)} alt="preview" className="mt-2 h-24 w-24 rounded-lg object-cover" />
-            )}
-            {!photoFile && editing?.photos?.[0] && (
-              <img src={editing.photos[0]} alt="current" className="mt-2 h-24 w-24 rounded-lg object-cover opacity-70" />
-            )}
+            <div className="mb-1.5 text-xs font-medium text-hmuted">Fotoğraflar (en fazla 3)</div>
+            <PhotoUploader
+              value={existingPhotos}
+              files={photoFiles}
+              onChange={(v, f) => { setExistingPhotos(v); setPhotoFiles(f); }}
+              max={3}
+            />
           </div>
           <button onClick={save} disabled={pending} className="w-full rounded-xl bg-saffron py-3 text-sm font-medium text-white disabled:opacity-50">
             {pending ? "Kaydediliyor…" : "Yayınla ✓"}

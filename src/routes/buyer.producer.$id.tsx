@@ -4,6 +4,7 @@ import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Tooltip } from "recha
 import { TrustBadge } from "@/components/hasat/TrustBadge";
 import { formatTRY } from "@/lib/hasat/format";
 import { useHasat } from "@/lib/hasat/store";
+import { useParcelsByFarmer } from "@/lib/hasat/queries";
 
 export const Route = createFileRoute("/buyer/producer/$id")({
   head: () => ({ meta: [{ title: "Üretici — Hasat" }] }),
@@ -15,7 +16,9 @@ function ProducerProfile() {
   const { id } = Route.useParams();
   const navigate = useNavigate();
   const producer = useHasat((s) => s.producers.find((p) => p.id === id));
+  const { data: parcels = [] } = useParcelsByFarmer(producer?.id ?? null);
   if (!producer) throw notFound();
+  const parcelsWithPhotos = parcels.filter((p) => (p.photos ?? []).length > 0);
 
   const allBadges = ["organik", "iso", "cografi", "hasat", "premium"] as const;
   return (
@@ -77,22 +80,53 @@ function ProducerProfile() {
           <h2 className="font-serif text-lg mb-3">Aktif Ürünler</h2>
           <div className="grid gap-3 md:grid-cols-2">
             {producer.listings.filter((l) => l.status === "active").map((l) => (
-              <div key={l.id} className="rounded-2xl bg-card border p-4">
-                <div className="flex items-start justify-between">
-                  <div>
-                    <div className="font-medium">{l.crop.includes("Safran") ? "🌸" : l.crop.includes("Lavanta") ? "💜" : "🌿"} {l.crop}</div>
-                    <div className="text-xs text-hmuted mt-1">{l.quantity} {l.unit} · Min {l.minOrder} {l.unit} · Kalite {l.quality}</div>
+              <div key={l.id} className="rounded-2xl bg-card border overflow-hidden">
+                {l.photos && l.photos.length > 0 && (
+                  <div className="flex gap-1 overflow-x-auto snap-x snap-mandatory">
+                    {l.photos.map((u, i) => (
+                      <img key={i} src={u} alt={l.crop}
+                        className="h-40 w-full min-w-full snap-start object-cover" />
+                    ))}
                   </div>
-                  <div style={{ fontFamily: "Courier New, monospace", color: "var(--saffron)" }} className="text-sm">
-                    {formatTRY(l.pricePerUnit)}<span className="text-xs text-hmuted">/{l.unit}</span>
+                )}
+                <div className="p-4">
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <div className="font-medium">{l.crop.includes("Safran") ? "🌸" : l.crop.includes("Lavanta") ? "💜" : "🌿"} {l.crop}</div>
+                      <div className="text-xs text-hmuted mt-1">{l.quantity} {l.unit} · Min {l.minOrder} {l.unit} · Kalite {l.quality}</div>
+                    </div>
+                    <div style={{ fontFamily: "Courier New, monospace", color: "var(--saffron)" }} className="text-sm">
+                      {formatTRY(l.pricePerUnit)}<span className="text-xs text-hmuted">/{l.unit}</span>
+                    </div>
                   </div>
+                  <button onClick={() => navigate({ to: "/buyer/offer/$listingId", params: { listingId: l.id } })}
+                    className="mt-3 w-full rounded-xl bg-saffron py-2 text-sm text-white">Teklif Ver →</button>
                 </div>
-                <button onClick={() => navigate({ to: "/buyer/offer/$listingId", params: { listingId: l.id } })}
-                  className="mt-3 w-full rounded-xl bg-saffron py-2 text-sm text-white">Teklif Ver →</button>
               </div>
             ))}
           </div>
         </div>
+
+        {parcelsWithPhotos.length > 0 && (
+          <div>
+            <h2 className="font-serif text-lg mb-3">Tarlalarım</h2>
+            <div className="grid gap-3 md:grid-cols-2">
+              {parcelsWithPhotos.map((p) => (
+                <div key={p.id} className="rounded-2xl bg-card border overflow-hidden">
+                  <div className="grid grid-cols-2 gap-0.5">
+                    {(p.photos ?? []).slice(0, 4).map((u, i) => (
+                      <img key={i} src={u} alt={p.name} className="h-28 w-full object-cover" />
+                    ))}
+                  </div>
+                  <div className="p-3">
+                    <div className="text-sm font-medium">{p.name}</div>
+                    <div className="text-xs text-hmuted">{p.area} dönüm{p.location.label ? ` · ${p.location.label}` : ""}</div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         <div>
           <h2 className="font-serif text-lg mb-3">Alıcı Yorumları</h2>

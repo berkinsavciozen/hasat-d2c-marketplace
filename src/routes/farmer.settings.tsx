@@ -11,6 +11,7 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { TierBadge } from "@/components/hasat/TierBadge";
 import { UpgradeModal } from "@/components/hasat/UpgradeModal";
+import { PhotoUploader } from "@/components/hasat/PhotoUploader";
 
 export const Route = createFileRoute("/farmer/settings")({ component: Settings });
 
@@ -37,6 +38,8 @@ function Settings() {
   const [editing, setEditing] = useState<string | null>(null);
   const [pName, setPName] = useState("");
   const [pArea, setPArea] = useState(0);
+  const [pPhotos, setPPhotos] = useState<string[]>([]);
+  const [pPhotoFiles, setPPhotoFiles] = useState<File[]>([]);
 
   useEffect(() => {
     if (!profile) return;
@@ -56,12 +59,13 @@ function Settings() {
     const p = parcels.find((x) => x.id === id);
     if (!p) return;
     setEditing(id); setPName(p.name); setPArea(p.area);
+    setPPhotos(p.photos ?? []); setPPhotoFiles([]);
   };
 
   const saveParcel = async () => {
     if (!editing) return;
     try {
-      await updateParcel.mutateAsync({ id: editing, patch: { name: pName, area: pArea } });
+      await updateParcel.mutateAsync({ id: editing, patch: { name: pName, area: pArea }, existingPhotos: pPhotos, photoFiles: pPhotoFiles });
       setEditing(null);
       toast.success("Parsel güncellendi");
     } catch (e) { toast.error((e as Error).message); }
@@ -272,7 +276,7 @@ function Settings() {
       </div>
 
       <Sheet open={!!editing} onOpenChange={(o) => !o && setEditing(null)}>
-        <SheetContent side="bottom" className="rounded-t-2xl">
+        <SheetContent side="bottom" className="rounded-t-2xl max-h-[92vh] overflow-y-auto">
           <SheetHeader><SheetTitle>Parseli Düzenle</SheetTitle></SheetHeader>
           <div className="mt-4 space-y-3">
             <div>
@@ -282,6 +286,17 @@ function Settings() {
             <div>
               <label className="text-xs text-muted-foreground">Alan (dönüm)</label>
               <Input type="number" value={pArea} onChange={(e) => setPArea(Number(e.target.value))} className="mt-1" />
+            </div>
+            <div>
+              <label className="text-xs text-muted-foreground">Fotoğraflar (en fazla 5)</label>
+              <div className="mt-1">
+                <PhotoUploader
+                  value={pPhotos}
+                  files={pPhotoFiles}
+                  onChange={(v, f) => { setPPhotos(v); setPPhotoFiles(f); }}
+                  max={5}
+                />
+              </div>
             </div>
             <button onClick={saveParcel}
               className="w-full rounded-xl py-2.5 text-sm font-medium"

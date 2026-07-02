@@ -25,6 +25,7 @@ export function dbToParcel(r: any): Parcel {
     area: Number(r.area),
     crops: r.crops ?? [],
     location: { lat: Number(r.lat ?? 0), lng: Number(r.lng ?? 0), label: r.location_label ?? "" },
+    photos: r.parcel_photo_urls ?? [],
   };
 }
 
@@ -80,11 +81,23 @@ export function useParcels() {
   });
 }
 
+async function uploadParcelPhotos(userId: string, parcelId: string, files: File[]): Promise<string[]> {
+  const out: string[] = [];
+  for (const file of files) {
+    const path = `${userId}/${parcelId}/${Date.now()}-${file.name}`;
+    const up = await supabase.storage.from("parcel-photos").upload(path, file, { upsert: false });
+    if (up.error) throw up.error;
+    const { data } = supabase.storage.from("parcel-photos").getPublicUrl(path);
+    out.push(data.publicUrl);
+  }
+  return out;
+}
+
 export function useCreateParcel() {
   const qc = useQueryClient();
   const userId = useAuthUserId();
   return useMutation({
-    mutationFn: async (p: Omit<Parcel, "id">) => {
+    mutationFn: async (p: Omit<Parcel, "id"> & { photoFiles?: File[] }) => {
       if (!userId) throw new Error("Oturum bulunamadı");
       const farm_id = await ensureFarm(userId);
       const { data, error } = await supabase.from("parcels").insert({
@@ -98,7 +111,14 @@ export function useCreateParcel() {
         lng: p.location.lng,
       }).select("*").single();
       if (error) throw error;
-      return dbToParcel(data);
+      let row = data;
+      if (p.photoFiles && p.photoFiles.length > 0) {
+        const urls = await uploadParcelPhotos(userId, data.id, p.photoFiles.slice(0, 5));
+        const upd = await supabase.from("parcels").update({ parcel_photo_urls: urls }).eq("id", data.id).select("*").single();
+        if (upd.error) throw upd.error;
+        row = upd.data;
+      }
+      return dbToParcel(row);
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["parcels", userId] }),
   });
@@ -108,7 +128,7 @@ export function useUpdateParcel() {
   const qc = useQueryClient();
   const userId = useAuthUserId();
   return useMutation({
-    mutationFn: async ({ id, patch }: { id: string; patch: Partial<Parcel> }) => {
+    mutationFn: async ({ id, patch, photoFiles, existingPhotos }: { id: string; patch: Partial<Parcel>; photoFiles?: File[]; existingPhotos?: string[] }) => {
       const dbPatch: any = {};
       if (patch.name !== undefined) dbPatch.name = patch.name;
       if (patch.area !== undefined) dbPatch.area = patch.area;
@@ -116,6 +136,13 @@ export function useUpdateParcel() {
       if (patch.location?.label !== undefined) dbPatch.location_label = patch.location.label;
       if (patch.location?.lat !== undefined) dbPatch.lat = patch.location.lat;
       if (patch.location?.lng !== undefined) dbPatch.lng = patch.location.lng;
+      if (existingPhotos !== undefined || (photoFiles && photoFiles.length > 0)) {
+        const kept = existingPhotos ?? [];
+        const uploaded = userId && photoFiles && photoFiles.length > 0
+          ? await uploadParcelPhotos(userId, id, photoFiles)
+          : [];
+        dbPatch.parcel_photo_urls = [...kept, ...uploaded].slice(0, 5);
+      }
       const { error } = await supabase.from("parcels").update(dbPatch).eq("id", id);
       if (error) throw error;
     },
@@ -132,6 +159,21 @@ export function useDeleteParcel() {
       if (error) throw error;
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["parcels", userId] }),
+  });
+}
+
+export function useParcelsByFarmer(farmerId: string | null | undefined) {
+  return useQuery({
+    queryKey: ["parcelsByFarmer", farmerId],
+    enabled: !!farmerId,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("parcels").select("*")
+        .eq("farmer_id", farmerId!)
+        .order("created_at", { ascending: true });
+      if (error) throw error;
+      return (data ?? []).map(dbToParcel);
+    },
   });
 }
 
@@ -562,19 +604,23 @@ export interface ListingInput {
   harvestEntryId?: string | null;
 }
 
-async function uploadListingPhoto(userId: string, listingId: string, file: File): Promise<string> {
-  const path = `${userId}/${listingId}/${Date.now()}-${file.name}`;
-  const up = await supabase.storage.from("harvest-photos").upload(path, file, { upsert: false });
-  if (up.error) throw up.error;
-  const { data } = supabase.storage.from("harvest-photos").getPublicUrl(path);
-  return data.publicUrl;
+async function uploadListingPhotos(userId: string, listingId: string, files: File[]): Promise<string[]> {
+  const out: string[] = [];
+  for (const file of files) {
+    const path = `${userId}/${listingId}/${Date.now()}-${file.name}`;
+    const up = await supabase.storage.from("listing-photos").upload(path, file, { upsert: false });
+    if (up.error) throw up.error;
+    const { data } = supabase.storage.from("listing-photos").getPublicUrl(path);
+    out.push(data.publicUrl);
+  }
+  return out;
 }
 
 export function useCreateListing() {
   const qc = useQueryClient();
   const userId = useAuthUserId();
   return useMutation({
-    mutationFn: async (l: ListingInput & { photoFile?: File | null }) => {
+    mutationFn: async (l: ListingInput & { photoFiles?: File[] }) => {
       if (!userId) throw new Error("Oturum bulunamadı");
       const { data, error } = await supabase.from("listings").insert({
         farmer_id: userId,
@@ -590,9 +636,9 @@ export function useCreateListing() {
       }).select("*").single();
       if (error) throw error;
       let row = data;
-      if (l.photoFile) {
-        const url = await uploadListingPhoto(userId, data.id, l.photoFile);
-        const upd = await supabase.from("listings").update({ photo_urls: [url] }).eq("id", data.id).select("*").single();
+      if (l.photoFiles && l.photoFiles.length > 0) {
+        const urls = await uploadListingPhotos(userId, data.id, l.photoFiles.slice(0, 3));
+        const upd = await supabase.from("listings").update({ photo_urls: urls }).eq("id", data.id).select("*").single();
         if (upd.error) throw upd.error;
         row = upd.data;
       }
@@ -609,7 +655,7 @@ export function useUpdateListing() {
   const qc = useQueryClient();
   const userId = useAuthUserId();
   return useMutation({
-    mutationFn: async ({ id, patch, photoFile }: { id: string; patch: Partial<Listing>; photoFile?: File | null }) => {
+    mutationFn: async ({ id, patch, photoFiles, existingPhotos }: { id: string; patch: Partial<Listing>; photoFiles?: File[]; existingPhotos?: string[] }) => {
       const dbPatch: any = {};
       if (patch.crop !== undefined) dbPatch.crop = patch.crop;
       if (patch.quantity !== undefined) dbPatch.quantity = patch.quantity;
@@ -619,9 +665,12 @@ export function useUpdateListing() {
       if (patch.quality !== undefined) dbPatch.quality = patch.quality;
       if (patch.status !== undefined) dbPatch.status = patch.status;
       if (patch.description !== undefined) dbPatch.description = patch.description;
-      if (photoFile && userId) {
-        const url = await uploadListingPhoto(userId, id, photoFile);
-        dbPatch.photo_urls = [url];
+      if (existingPhotos !== undefined || (photoFiles && photoFiles.length > 0)) {
+        const kept = existingPhotos ?? [];
+        const uploaded = userId && photoFiles && photoFiles.length > 0
+          ? await uploadListingPhotos(userId, id, photoFiles)
+          : [];
+        dbPatch.photo_urls = [...kept, ...uploaded].slice(0, 3);
       }
       const { error } = await supabase.from("listings").update(dbPatch).eq("id", id);
       if (error) throw error;
