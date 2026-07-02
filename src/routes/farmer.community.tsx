@@ -7,7 +7,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/co
 import { Heart, MessageCircle, Plus, Search } from "lucide-react";
 import { useCommunityPosts, useCommunityReplies, useCreatePost, useCreateReply, type CommunityPostRow } from "@/lib/hasat/queries";
 import { LoadingDots } from "@/components/hasat/LoadingDots";
-import { farmerStorefrontPath } from "@/lib/hasat/vitrin";
+import { slugifyFarmer } from "@/lib/hasat/vitrin";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/farmer/community")({
