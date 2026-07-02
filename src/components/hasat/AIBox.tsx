@@ -20,19 +20,12 @@ interface AIBoxResponse {
 
 async function fetchInsights(page: AIBoxPage): Promise<AIBoxResponse> {
   const { data: { session } } = await supabase.auth.getSession();
-  const token = session?.access_token;
-  if (!token) throw new Error("no_token");
-  const res = await fetch(`${SUPABASE_URL}/functions/v1/ai-box-insights`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "Authorization": `Bearer ${token}`,
-      "apikey": SUPABASE_KEY,
-    },
-    body: JSON.stringify({ page_type: page }),
+  if (!session?.access_token) throw new Error("no_token");
+  const { data, error } = await supabase.functions.invoke("ai-box-insights", {
+    body: { page_type: page },
   });
-  if (!res.ok) throw new Error("http_" + res.status);
-  return await res.json();
+  if (error) throw error;
+  return data as AIBoxResponse;
 }
 
 function openChatWithPrefill(insight: string) {
