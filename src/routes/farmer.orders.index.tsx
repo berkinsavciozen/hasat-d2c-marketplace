@@ -4,7 +4,7 @@ import { FarmerHeader } from "./farmer";
 import { useFarmerOffers, useUpdateOfferStatus, useFarmerOrders, useCounterOffer } from "@/lib/hasat/queries";
 import { WaitingBanner } from "@/components/hasat/WaitingBanner";
 import { LoadingDots } from "@/components/hasat/LoadingDots";
-import { formatTRY } from "@/lib/hasat/format";
+import { formatTRY, formatCrop } from "@/lib/hasat/format";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -122,7 +122,7 @@ function OfferCard({ offer }: { offer: Offer }) {
               {BUYER_TYPE_EMOJI[offer.buyerType]} {BUYER_TYPE_LABEL[offer.buyerType]}
             </span>
           </div>
-          <div className="mt-1 text-sm text-hmuted">{offer.crop} · {offer.quantity} {offer.unit}</div>
+          <div className="mt-1 text-sm text-hmuted">{formatCrop(offer.crop)} · {offer.quantity} {offer.unit}</div>
           <div className="mt-1.5 flex items-baseline gap-2 flex-wrap">
             <span className="font-mono text-lg font-semibold">{formatTRY(total)}</span>
             <span className="text-xs text-hmuted">({formatTRY(offer.pricePerUnit)}/{offer.unit})</span>
@@ -168,7 +168,7 @@ function OfferCard({ offer }: { offer: Offer }) {
         <DialogContent>
           <DialogHeader><DialogTitle>Teklifi Kabul Et</DialogTitle></DialogHeader>
           <p className="text-sm text-hmuted">
-            <b>{offer.buyerName}</b> teklifini kabul ediyorsunuz: {offer.quantity} {offer.unit} {offer.crop} @ {formatTRY(offer.pricePerUnit)}/{offer.unit}.
+            <b>{offer.buyerName}</b> teklifini kabul ediyorsunuz: {offer.quantity} {offer.unit} {formatCrop(offer.crop)} @ {formatTRY(offer.pricePerUnit)}/{offer.unit}.
             <br />Toplam: <b className="font-mono">{formatTRY(total)}</b>. Onaylar mısınız?
           </p>
           <DialogFooter>
@@ -274,7 +274,7 @@ function OrderCard({ order, muted }: { order: Order; muted?: boolean }) {
         <div className="flex-1 min-w-0">
           <div className="font-mono text-xs text-hmuted">{order.code}</div>
           <div className="mt-1 font-medium truncate">{order.producerName}</div>
-          <div className="text-xs text-hmuted">{order.crop} · {order.quantity} {order.unit}</div>
+          <div className="text-xs text-hmuted">{formatCrop(order.crop)} · {order.quantity} {order.unit}</div>
           <div className="mt-1.5 font-mono text-lg font-semibold">{formatTRY(order.total)}</div>
         </div>
         <div className="flex flex-col items-end gap-1.5 shrink-0">

@@ -17,3 +17,20 @@ export function formatDelta(pct: number): string {
   const sign = pct > 0 ? "+" : "";
   return `${sign}${pct.toFixed(1)}%`;
 }
+
+/**
+ * Convert a crop slug (e.g. "safran_soğanı") to a display label ("Safran Soğanı").
+ * Uses Turkish-aware casing so "i" → "İ" correctly.
+ */
+export function formatCrop(slug: string | null | undefined): string {
+  if (!slug) return "—";
+  return String(slug)
+    .split("_")
+    .map((w) => {
+      const s = w.trim();
+      if (!s) return "";
+      return s.charAt(0).toLocaleUpperCase("tr-TR") + s.slice(1).toLocaleLowerCase("tr-TR");
+    })
+    .filter(Boolean)
+    .join(" ");
+}

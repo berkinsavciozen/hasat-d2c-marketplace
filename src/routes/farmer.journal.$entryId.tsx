@@ -5,6 +5,7 @@ import { useEntry, useEntries, useDeleteEntry } from "@/lib/hasat/queries";
 import { ProgressDots } from "@/components/hasat/ProgressDots";
 import { toast } from "sonner";
 import { formatTRY, formatDelta } from "@/lib/hasat/format";
+import { formatCrop } from "@/lib/hasat/format";
 import { AIInsightBanner } from "@/components/hasat/AIInsightBanner";
 import { BarChart, Bar, XAxis, ResponsiveContainer, Cell } from "recharts";
 import {
@@ -58,7 +59,7 @@ function EntryDetail() {
         <button onClick={() => navigate({ to: "/farmer/journal" })} className="grid h-9 w-9 place-items-center rounded-full bg-white/10">
           <ArrowLeft className="h-4 w-4" />
         </button>
-        <h1 className="flex-1 font-serif text-xl">{year} {entry.crop} Hasatı</h1>
+        <h1 className="flex-1 font-serif text-xl">{year} {formatCrop(entry.crop)} Hasatı</h1>
         <button className="grid h-9 w-9 place-items-center rounded-full bg-white/10">
           <Pencil className="h-4 w-4" />
         </button>
@@ -138,7 +139,7 @@ function EntryDetail() {
         </div>
 
         <AIInsightBanner>
-          {entry.crop} verimi {prev ? (yoy > 0 ? "geçen yıla göre arttı 📈" : "geçen yıla göre düştü 📉") : "ilk yıl kaydı"}.
+          {formatCrop(entry.crop)} verimi {prev ? (yoy > 0 ? "geçen yıla göre arttı 📈" : "geçen yıla göre düştü 📉") : "ilk yıl kaydı"}.
           Mevcut D2C fiyatıyla bu hasadı vitrinde listelemen önerilir.
         </AIInsightBanner>
 

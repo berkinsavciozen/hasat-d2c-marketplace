@@ -7,7 +7,7 @@ import { AIInsightBanner } from "@/components/hasat/AIInsightBanner";
 import { TrustBadge } from "@/components/hasat/TrustBadge";
 import { Sparkline } from "@/components/hasat/Sparkline";
 import { Stepper } from "@/components/hasat/Stepper";
-import { formatTRY, formatDelta } from "@/lib/hasat/format";
+import { formatTRY, formatDelta, formatCrop } from "@/lib/hasat/format";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Bell, TrendingUp, TrendingDown } from "lucide-react";
@@ -72,7 +72,7 @@ function Prices() {
                   onClick={() => setSelectedCrop(p.crop)}
                   className={`shrink-0 snap-start rounded-full px-3 py-1.5 text-xs font-medium ${active ? "bg-saffron text-white" : "bg-white/10 text-hwhite/80"}`}
                 >
-                  {CROP_EMOJI[p.crop] ?? "🌾"} {p.crop}
+                  {CROP_EMOJI[p.crop] ?? "🌾"} {formatCrop(p.crop)}
                 </button>
               );
             })}
@@ -121,7 +121,7 @@ function Prices() {
           >
             <span className="text-xl">{CROP_EMOJI[p.crop] ?? "🌾"}</span>
             <div className="flex-1">
-              <div className="text-sm font-medium">{p.crop}</div>
+              <div className="text-sm font-medium">{formatCrop(p.crop)}</div>
               <div className="font-mono text-xs text-hmuted">{formatTRY(p.d2c)}/{unitFor(p.crop)}</div>
             </div>
             <Sparkline data={[p.d2c * 0.95, p.d2c * 0.97, p.d2c * 0.99, p.d2c, p.d2c * 1.01, p.d2c * 1.0, p.d2c * (1 + p.delta7d / 100)]} color="var(--gold)" width={70} height={28} />
@@ -130,7 +130,7 @@ function Prices() {
         ))}
 
         <AIInsightBanner>
-          {selected.crop} fiyatı 7 günde {formatDelta(selected.delta7d)} değişti — vitrindeki listenizi güncellemek ister misiniz?
+          {formatCrop(selected.crop)} fiyatı 7 günde {formatDelta(selected.delta7d)} değişti — vitrindeki listenizi güncellemek ister misiniz?
         </AIInsightBanner>
 
         {alertsLoading ? (
@@ -143,7 +143,7 @@ function Prices() {
             <div className="flex flex-wrap gap-1.5">
               {priceAlerts.map((a) => (
                 <span key={a.id} className="inline-flex items-center gap-1 rounded-full bg-saffron/10 border border-saffron/30 px-2.5 py-1 text-[11px] text-saffron">
-                  {a.crop} {a.condition === "above" ? "≥" : "≤"} {formatTRY(a.target)}
+                  {formatCrop(a.crop)} {a.condition === "above" ? "≥" : "≤"} {formatTRY(a.target)}
                   <button onClick={() => deleteAlert.mutate(a.id)} className="ml-1 text-saffron/70 hover:text-saffron" aria-label="Alarmı kaldır">×</button>
                 </span>
               ))}
@@ -204,7 +204,7 @@ function PriceAlarmSheet({ open, onOpenChange, crops, defaultCrop, defaultPrice 
             <div className="mb-1.5 text-xs font-medium text-hmuted">Ürün</div>
             <Select value={crop} onValueChange={setCrop}>
               <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>{crops.map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent>
+              <SelectContent>{crops.map((c) => <SelectItem key={c} value={c}>{formatCrop(c)}</SelectItem>)}</SelectContent>
             </Select>
           </div>
           <div>

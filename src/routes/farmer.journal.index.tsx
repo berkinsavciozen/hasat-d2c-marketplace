@@ -15,6 +15,7 @@ import {
   cropChipColor,
 } from "@/lib/hasat/journal-meta";
 import { toast } from "sonner";
+import { formatCrop } from "@/lib/hasat/format";
 import { AIBox } from "@/components/hasat/AIBox";
 
 export const Route = createFileRoute("/farmer/journal/")({
@@ -265,16 +266,28 @@ function Journal() {
                                   className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium"
                                   style={{ background: chip.bg, color: chip.fg }}
                                 >
-                                  {parcel?.name ?? "—"}
+                                  {formatCrop(parcel?.name ?? "—")}
                                 </span>
                                 <span className="text-xs text-dark/80">
                                   <span className="mr-1">{wt.emoji}</span>{wt.label}
                                 </span>
+                                {meta.tags
+                                  .filter((t) => t.key !== "work" && t.key !== "category")
+                                  .map((t, i) => (
+                                    <span
+                                      key={`${t.key}-${i}`}
+                                      className="inline-flex items-center rounded-full border px-1.5 py-0.5 text-[10px] font-medium text-hmuted"
+                                      style={{ borderColor: "var(--border)", background: "var(--background)" }}
+                                    >
+                                      {t.key === "health" ? `health: ${t.value}` : `${t.key}: ${t.value}`}
+                                    </span>
+                                  ))}
                               </div>
                               {meta.text && (
                                 <p className="mt-1.5 text-sm text-dark/70 truncate">{meta.text}</p>
                               )}
                             </div>
+
                             {/* Health */}
                             <div className="shrink-0 pt-2">
                               <HealthDots value={meta.health} />
