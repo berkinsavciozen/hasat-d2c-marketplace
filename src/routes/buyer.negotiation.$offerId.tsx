@@ -75,7 +75,14 @@ function Negotiation() {
         </button>
         <div>
           <h1 className="font-serif text-xl">Müzakere</h1>
-          <div className="text-xs opacity-70">{offer.crop} · {offer.buyerName}</div>
+          <div className="text-xs opacity-70">
+            {offer.crop} · {(() => {
+              const slug = offer.buyerName ? (slugifyFarmer(offer.buyerName) || offer.producerId) : offer.producerId;
+              return slug
+                ? <Link to="/s/$slug" params={{ slug }} className="underline hover:text-saffron">{offer.buyerName}</Link>
+                : offer.buyerName;
+            })()}
+          </div>
         </div>
       </div>
 
