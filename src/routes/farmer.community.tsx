@@ -32,12 +32,9 @@ function relTime(iso: string) {
 function AuthorName({ post, className }: { post: Pick<CommunityPostRow, "authorId" | "authorName" | "authorRole">; className?: string }) {
   const name = post.authorName ?? "Üretici";
   if (post.authorRole === "farmer") {
+    const slug = post.authorName ? slugifyFarmer(post.authorName) || post.authorId : post.authorId;
     return (
-      <Link
-        to="/s/$slug"
-        params={{ slug: farmerStorefrontPath({ id: post.authorId, name: post.authorName }).replace("/s/", "") }}
-        className={`hover:underline ${className ?? ""}`}
-      >
+      <Link to="/s/$slug" params={{ slug }} className={`hover:underline ${className ?? ""}`}>
         {name}
       </Link>
     );
