@@ -139,7 +139,7 @@ function EntryDetail() {
         </div>
 
         <AIInsightBanner>
-          {entry.crop} verimi {prev ? (yoy > 0 ? "geçen yıla göre arttı 📈" : "geçen yıla göre düştü 📉") : "ilk yıl kaydı"}.
+          {formatCrop(entry.crop)} verimi {prev ? (yoy > 0 ? "geçen yıla göre arttı 📈" : "geçen yıla göre düştü 📉") : "ilk yıl kaydı"}.
           Mevcut D2C fiyatıyla bu hasadı vitrinde listelemen önerilir.
         </AIInsightBanner>
 
