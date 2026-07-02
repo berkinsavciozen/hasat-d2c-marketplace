@@ -829,6 +829,44 @@ export type Database = {
           },
         ]
       }
+      price_feed: {
+        Row: {
+          crop_name: string
+          id: string
+          price_per_kg: number
+          recorded_at: string
+          recorded_by: string | null
+          source: string | null
+          unit: string
+        }
+        Insert: {
+          crop_name: string
+          id?: string
+          price_per_kg: number
+          recorded_at?: string
+          recorded_by?: string | null
+          source?: string | null
+          unit?: string
+        }
+        Update: {
+          crop_name?: string
+          id?: string
+          price_per_kg?: number
+          recorded_at?: string
+          recorded_by?: string | null
+          source?: string | null
+          unit?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "price_feed_recorded_by_fkey"
+            columns: ["recorded_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       price_points: {
         Row: {
           created_at: string
