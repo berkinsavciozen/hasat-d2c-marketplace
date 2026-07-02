@@ -204,7 +204,7 @@ function PriceAlarmSheet({ open, onOpenChange, crops, defaultCrop, defaultPrice 
             <div className="mb-1.5 text-xs font-medium text-hmuted">Ürün</div>
             <Select value={crop} onValueChange={setCrop}>
               <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>{crops.map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent>
+              <SelectContent>{crops.map((c) => <SelectItem key={c} value={c}>{formatCrop(c)}</SelectItem>)}</SelectContent>
             </Select>
           </div>
           <div>
