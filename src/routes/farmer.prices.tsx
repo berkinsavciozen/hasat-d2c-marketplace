@@ -121,7 +121,7 @@ function Prices() {
           >
             <span className="text-xl">{CROP_EMOJI[p.crop] ?? "🌾"}</span>
             <div className="flex-1">
-              <div className="text-sm font-medium">{p.crop}</div>
+              <div className="text-sm font-medium">{formatCrop(p.crop)}</div>
               <div className="font-mono text-xs text-hmuted">{formatTRY(p.d2c)}/{unitFor(p.crop)}</div>
             </div>
             <Sparkline data={[p.d2c * 0.95, p.d2c * 0.97, p.d2c * 0.99, p.d2c, p.d2c * 1.01, p.d2c * 1.0, p.d2c * (1 + p.delta7d / 100)]} color="var(--gold)" width={70} height={28} />
