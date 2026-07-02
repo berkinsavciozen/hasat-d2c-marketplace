@@ -2,7 +2,7 @@ import { toast } from "sonner";
 
 const PUBLIC_BASE = "https://hasat.lovable.app";
 
-function slugify(input: string): string {
+export function slugifyFarmer(input: string): string {
   return input
     .toLocaleLowerCase("tr-TR")
     .replace(/ğ/g, "g").replace(/ü/g, "u").replace(/ş/g, "s")
@@ -11,10 +11,16 @@ function slugify(input: string): string {
     .replace(/(^-|-$)/g, "");
 }
 
+/** Path (not full URL) to the public storefront for a farmer profile. */
+export function farmerStorefrontPath(profile: { id: string; name?: string | null } | null | undefined): string {
+  if (!profile) return `/s/`;
+  const slug = profile.name ? slugifyFarmer(profile.name) : "";
+  return `/s/${slug || profile.id}`;
+}
+
 export function vitrinUrl(profile: { id: string; name?: string | null } | null | undefined): string {
   if (!profile) return `${PUBLIC_BASE}/s/`;
-  const slug = profile.name ? slugify(profile.name) : "";
-  return `${PUBLIC_BASE}/s/${slug || profile.id}`;
+  return `${PUBLIC_BASE}${farmerStorefrontPath(profile)}`;
 }
 
 export async function copyVitrinLink(profile: { id: string; name?: string | null } | null | undefined) {

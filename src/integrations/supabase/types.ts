@@ -183,6 +183,7 @@ export type Database = {
           created_at: string
           id: string
           likes_count: number
+          parent_id: string | null
         }
         Insert: {
           author_id: string
@@ -192,6 +193,7 @@ export type Database = {
           created_at?: string
           id?: string
           likes_count?: number
+          parent_id?: string | null
         }
         Update: {
           author_id?: string
@@ -201,6 +203,7 @@ export type Database = {
           created_at?: string
           id?: string
           likes_count?: number
+          parent_id?: string | null
         }
         Relationships: [
           {
@@ -208,6 +211,13 @@ export type Database = {
             columns: ["author_id"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "community_posts_parent_id_fkey"
+            columns: ["parent_id"]
+            isOneToOne: false
+            referencedRelation: "community_posts"
             referencedColumns: ["id"]
           },
         ]

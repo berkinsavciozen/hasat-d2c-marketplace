@@ -1,10 +1,11 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { Search, X } from "lucide-react";
 import { useState } from "react";
 import { BuyerHeader } from "@/components/hasat/BuyerHeader";
 import { LoadingDots } from "@/components/hasat/LoadingDots";
 import { formatTRY, formatCrop } from "@/lib/hasat/format";
 import { useActiveListings } from "@/lib/hasat/queries";
+import { slugifyFarmer } from "@/lib/hasat/vitrin";
 
 export const Route = createFileRoute("/buyer/discover")({
   head: () => ({ meta: [{ title: "Keşfet — Hasat" }] }),
@@ -101,11 +102,16 @@ function Discover() {
             )
           ) : (
             <div className="grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
-              {filtered.map((l) => (
-                <button
+              {filtered.map((l) => {
+                const farmerSlug = l.farmerName ? (slugifyFarmer(l.farmerName) || (l.producerId ?? "")) : (l.producerId ?? "");
+                return (
+                <div
                   key={l.id}
+                  role="button"
+                  tabIndex={0}
                   onClick={() => navigate({ to: "/buyer/offer/$listingId", params: { listingId: l.id } })}
-                  className="text-left rounded-2xl bg-card border overflow-hidden hover:border-saffron transition"
+                  onKeyDown={(e) => { if (e.key === "Enter") navigate({ to: "/buyer/offer/$listingId", params: { listingId: l.id } }); }}
+                  className="text-left rounded-2xl bg-card border overflow-hidden hover:border-saffron transition cursor-pointer"
                 >
                   <div className="h-28 relative overflow-hidden" style={
                     l.photos && l.photos[0]
@@ -121,7 +127,19 @@ function Discover() {
                     </div>
                     <div className="absolute bottom-2 left-3 right-3 text-white">
                       <div className="font-serif text-base leading-tight line-clamp-2">{CROP_EMOJI[l.crop] ?? "🌾"} {formatCrop(l.crop)}</div>
-                      <div className="text-[11px] opacity-80 truncate">{l.farmerName} {l.farmerCity ? `· ${l.farmerCity}` : ""}</div>
+                      <div className="text-[11px] opacity-80 truncate">
+                        {farmerSlug ? (
+                          <Link
+                            to="/s/$slug"
+                            params={{ slug: farmerSlug }}
+                            onClick={(e) => e.stopPropagation()}
+                            className="underline hover:text-saffron"
+                          >
+                            {l.farmerName}
+                          </Link>
+                        ) : l.farmerName}
+                        {l.farmerCity ? ` · ${l.farmerCity}` : ""}
+                      </div>
                     </div>
                   </div>
                   <div className="p-4">
@@ -133,8 +151,8 @@ function Discover() {
                       <span className="shrink-0 rounded-full bg-saffron px-3 py-1.5 text-xs text-white">Teklif Ver →</span>
                     </div>
                   </div>
-                </button>
-              ))}
+                </div>
+              );})}
             </div>
           )}
         </div>

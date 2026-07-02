@@ -1389,11 +1389,14 @@ export interface CommunityPostRow {
   authorId: string;
   authorName: string | null;
   authorCity: string | null;
+  authorRole: string | null;
   content: string;
   category: string;
   likesCount: number;
   commentsCount: number;
   createdAt: string;
+  parentId: string | null;
+  replyCount: number;
 }
 
 function dbToPost(r: any): CommunityPostRow {
@@ -1402,11 +1405,14 @@ function dbToPost(r: any): CommunityPostRow {
     authorId: r.author_id,
     authorName: r.author?.name ?? null,
     authorCity: r.author?.city ?? null,
+    authorRole: r.author?.role ?? null,
     content: r.content,
     category: r.category,
     likesCount: r.likes_count ?? 0,
     commentsCount: r.comments_count ?? 0,
     createdAt: r.created_at,
+    parentId: r.parent_id ?? null,
+    replyCount: 0,
   };
 }
 
@@ -1417,10 +1423,40 @@ export function useCommunityPosts(categoryFilter?: string) {
     queryFn: async () => {
       let q = supabase
         .from("community_posts")
-        .select("*, author:profiles!community_posts_author_id_fkey(id,name,city)")
+        .select("*, author:profiles!community_posts_author_id_fkey(id,name,city,role)")
+        .is("parent_id", null)
         .order("created_at", { ascending: false });
       if (filter) q = q.eq("category", filter);
       const { data, error } = await q;
+      if (error) throw error;
+      const posts = (data ?? []).map(dbToPost);
+      const ids = posts.map((p) => p.id);
+      if (ids.length > 0) {
+        const { data: replies } = await supabase
+          .from("community_posts")
+          .select("parent_id")
+          .in("parent_id", ids);
+        const counts = new Map<string, number>();
+        for (const row of (replies ?? []) as Array<{ parent_id: string | null }>) {
+          if (row.parent_id) counts.set(row.parent_id, (counts.get(row.parent_id) ?? 0) + 1);
+        }
+        for (const p of posts) p.replyCount = counts.get(p.id) ?? 0;
+      }
+      return posts;
+    },
+  });
+}
+
+export function useCommunityReplies(postId: string | null | undefined) {
+  return useQuery({
+    queryKey: ["communityReplies", postId],
+    enabled: !!postId,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("community_posts")
+        .select("*, author:profiles!community_posts_author_id_fkey(id,name,city,role)")
+        .eq("parent_id", postId!)
+        .order("created_at", { ascending: true });
       if (error) throw error;
       return (data ?? []).map(dbToPost);
     },
@@ -1444,6 +1480,48 @@ export function useCreatePost() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ["communityPosts"] }),
   });
 }
+
+export function useCreateReply() {
+  const qc = useQueryClient();
+  const userId = useAuthUserId();
+  return useMutation({
+    mutationFn: async (input: { postId: string; content: string; parentAuthorId?: string | null }) => {
+      if (!userId) throw new Error("Oturum bulunamadı");
+      const { data: parent } = await supabase
+        .from("community_posts")
+        .select("category")
+        .eq("id", input.postId)
+        .maybeSingle();
+      const { data, error } = await supabase.from("community_posts").insert({
+        author_id: userId,
+        content: input.content,
+        category: parent?.category ?? "Diğer",
+        parent_id: input.postId,
+      }).select("*, author:profiles!community_posts_author_id_fkey(id,name,city,role)").single();
+      if (error) throw error;
+      // Best-effort notification to parent author (skip self-reply).
+      if (input.parentAuthorId && input.parentAuthorId !== userId) {
+        const { data: me } = await supabase.from("profiles").select("name").eq("id", userId).maybeSingle();
+        const who = me?.name ?? "Bir üretici";
+        try {
+          await supabase.from("notifications").insert({
+            user_id: input.parentAuthorId,
+            type: "reply",
+            title: "Yeni yanıt",
+            body: `${who} gönderine yanıt verdi`,
+            related_id: data.id,
+          });
+        } catch { /* notifications table optional — ignore */ }
+      }
+      return data;
+    },
+    onSuccess: (_data, vars) => {
+      qc.invalidateQueries({ queryKey: ["communityReplies", vars.postId] });
+      qc.invalidateQueries({ queryKey: ["communityPosts"] });
+    },
+  });
+}
+
 
 // =====================================================================
 // REALTIME SYNC (6A)

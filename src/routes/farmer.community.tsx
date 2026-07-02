@@ -1,12 +1,13 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState } from "react";
 import { FarmerHeader } from "./farmer";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { Heart, MessageCircle, Plus, Search } from "lucide-react";
-import { useCommunityPosts, useCreatePost } from "@/lib/hasat/queries";
+import { useCommunityPosts, useCommunityReplies, useCreatePost, useCreateReply, type CommunityPostRow } from "@/lib/hasat/queries";
 import { LoadingDots } from "@/components/hasat/LoadingDots";
+import { slugifyFarmer } from "@/lib/hasat/vitrin";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/farmer/community")({
@@ -28,12 +29,88 @@ function relTime(iso: string) {
   return new Date(iso).toLocaleDateString("tr-TR");
 }
 
+function AuthorName({ post, className }: { post: Pick<CommunityPostRow, "authorId" | "authorName" | "authorRole">; className?: string }) {
+  const name = post.authorName ?? "Üretici";
+  if (post.authorRole === "farmer") {
+    const slug = post.authorName ? slugifyFarmer(post.authorName) || post.authorId : post.authorId;
+    return (
+      <Link to="/s/$slug" params={{ slug }} className={`hover:underline ${className ?? ""}`}>
+        {name}
+      </Link>
+    );
+  }
+  return <span className={className}>{name}</span>;
+}
+
+function ReplyThread({ post }: { post: CommunityPostRow }) {
+  const { data: replies = [], isLoading } = useCommunityReplies(post.id);
+  const [draft, setDraft] = useState("");
+  const createReply = useCreateReply();
+
+  const submit = async () => {
+    if (!draft.trim()) return;
+    try {
+      await createReply.mutateAsync({ postId: post.id, content: draft.trim(), parentAuthorId: post.authorId });
+      setDraft("");
+    } catch (e: any) {
+      toast.error(e?.message ?? "Yanıtlanamadı");
+    }
+  };
+
+  return (
+    <div className="mt-3 border-t pt-3 space-y-3">
+      {isLoading ? (
+        <div className="text-xs text-hmuted">Yükleniyor…</div>
+      ) : replies.length === 0 ? (
+        <div className="text-xs text-hmuted italic">Henüz yorum yok</div>
+      ) : (
+        <ul className="space-y-2">
+          {replies.map((r) => {
+            const rname = r.authorName ?? "Üretici";
+            return (
+              <li key={r.id} className="flex gap-2 text-xs">
+                <div className="grid h-7 w-7 shrink-0 place-items-center rounded-full text-[11px] font-bold"
+                  style={{ background: "var(--muted)" }}>{rname[0]}</div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2">
+                    <AuthorName post={r} className="font-medium" />
+                    <span className="text-[10px] text-hmuted">{relTime(r.createdAt)}</span>
+                  </div>
+                  <div className="whitespace-pre-wrap break-words">{r.content}</div>
+                </div>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+      <div className="flex gap-2" onClick={(e) => e.stopPropagation()}>
+        <Input
+          value={draft}
+          onChange={(e) => setDraft(e.target.value)}
+          onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); void submit(); } }}
+          placeholder="Yanıt yaz…"
+          className="text-xs h-9"
+        />
+        <button
+          onClick={submit}
+          disabled={!draft.trim() || createReply.isPending}
+          className="rounded-lg px-3 text-xs font-medium disabled:opacity-40"
+          style={{ background: "var(--saffron)", color: "var(--hwhite)" }}
+        >
+          {createReply.isPending ? "…" : "Yanıtla"}
+        </button>
+      </div>
+    </div>
+  );
+}
+
 function Community() {
   const [q, setQ] = useState("");
   const [cat, setCat] = useState("Tümü");
   const [draft, setDraft] = useState("");
   const [open, setOpen] = useState(false);
   const [likedIds, setLikedIds] = useState<Record<string, boolean>>({});
+  const [expandedId, setExpandedId] = useState<string | null>(null);
 
   const { data: posts = [], isLoading } = useCommunityPosts(cat);
   const createPost = useCreatePost();
@@ -90,25 +167,31 @@ function Community() {
             {filtered.map((p) => {
               const liked = !!likedIds[p.id];
               const name = p.authorName ?? "Üretici";
+              const expanded = expandedId === p.id;
               return (
-                <div key={p.id} className="rounded-xl border border-border bg-card p-4">
+                <div
+                  key={p.id}
+                  className="rounded-xl border border-border bg-card p-4 cursor-pointer"
+                  onClick={() => setExpandedId(expanded ? null : p.id)}
+                >
                   <div className="flex items-center gap-3 mb-2">
                     <div className="grid h-9 w-9 place-items-center rounded-full text-sm font-bold"
                       style={{ background: "var(--saffron)", color: "var(--hwhite)" }}>{name[0]}</div>
-                    <div className="flex-1">
-                      <div className="text-sm font-medium">{name}</div>
+                    <div className="flex-1" onClick={(e) => e.stopPropagation()}>
+                      <div className="text-sm font-medium"><AuthorName post={p} /></div>
                       <div className="text-[11px] text-muted-foreground">{p.authorCity ?? "—"} · {relTime(p.createdAt)}</div>
                     </div>
                     <span className="text-[10px] px-2 py-0.5 rounded-full" style={{ background: "var(--muted)" }}>{p.category}</span>
                   </div>
                   <p className="text-sm mb-3 whitespace-pre-wrap">{p.content}</p>
                   <div className="flex items-center gap-4 text-xs text-muted-foreground">
-                    <button onClick={() => toggleLike(p.id)} className="flex items-center gap-1">
+                    <button onClick={(e) => { e.stopPropagation(); toggleLike(p.id); }} className="flex items-center gap-1">
                       <Heart className="h-4 w-4" fill={liked ? "var(--hred)" : "none"} color={liked ? "var(--hred)" : "currentColor"} />
                       {p.likesCount + (liked ? 1 : 0)}
                     </button>
-                    <button className="flex items-center gap-1"><MessageCircle className="h-4 w-4" />{p.commentsCount}</button>
+                    <span className="flex items-center gap-1"><MessageCircle className="h-4 w-4" />{p.replyCount} yorum</span>
                   </div>
+                  {expanded && <ReplyThread post={p} />}
                 </div>
               );
             })}
