@@ -369,9 +369,9 @@ export function useUpdateProfile() {
   const qc = useQueryClient();
   const userId = useAuthUserId();
   return useMutation({
-    mutationFn: async (patch: { name?: string; city?: string }) => {
+    mutationFn: async (patch: { name?: string; city?: string; iban?: string | null; bank_account_name?: string | null }) => {
       if (!userId) throw new Error("Oturum bulunamadı");
-      const { error } = await supabase.from("profiles").update(patch).eq("id", userId);
+      const { error } = await supabase.from("profiles").update(patch as any).eq("id", userId);
       if (error) throw error;
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["profile", userId] }),
