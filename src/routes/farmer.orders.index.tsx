@@ -1,7 +1,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import { FarmerHeader } from "./farmer";
-import { useFarmerOffers, useUpdateOfferStatus, useFarmerOrders, useCounterOffer } from "@/lib/hasat/queries";
+import { useFarmerOffers, useUpdateOfferStatus, useFarmerOrders, useCounterOffer, useConfirmTransferReceived } from "@/lib/hasat/queries";
 import { WaitingBanner } from "@/components/hasat/WaitingBanner";
 import { LoadingDots } from "@/components/hasat/LoadingDots";
 import { formatTRY, formatCrop } from "@/lib/hasat/format";
