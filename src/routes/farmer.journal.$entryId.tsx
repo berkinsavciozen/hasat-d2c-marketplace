@@ -59,7 +59,7 @@ function EntryDetail() {
         <button onClick={() => navigate({ to: "/farmer/journal" })} className="grid h-9 w-9 place-items-center rounded-full bg-white/10">
           <ArrowLeft className="h-4 w-4" />
         </button>
-        <h1 className="flex-1 font-serif text-xl">{year} {entry.crop} Hasatı</h1>
+        <h1 className="flex-1 font-serif text-xl">{year} {formatCrop(entry.crop)} Hasatı</h1>
         <button className="grid h-9 w-9 place-items-center rounded-full bg-white/10">
           <Pencil className="h-4 w-4" />
         </button>
