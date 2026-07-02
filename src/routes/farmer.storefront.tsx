@@ -127,13 +127,13 @@ function ListingCard({ listing, muted, onEdit, onRemove }: { listing: Listing; m
     <div className={`rounded-2xl border bg-card p-4 ${muted ? "opacity-60" : ""}`}>
       <div className="flex items-start gap-3">
         {photo ? (
-          <img src={photo} alt={listing.crop} className="h-12 w-12 rounded-xl object-cover" />
+          <img src={photo} alt={formatCrop(listing.crop)} className="h-12 w-12 rounded-xl object-cover" />
         ) : (
           <div className="grid h-12 w-12 place-items-center rounded-xl bg-cream text-2xl">{CROP_EMOJI[listing.crop] ?? "🌾"}</div>
         )}
         <div className="flex-1">
           <div className="flex items-center gap-2">
-            <div className="font-medium">{listing.crop}</div>
+            <div className="font-medium">{formatCrop(listing.crop)}</div>
             <span className="rounded-full px-2 py-0.5 text-[10px] font-medium text-white" style={{ background: statusColor }}>{statusLabel}</span>
           </div>
           <div className="mt-0.5 text-xs text-hmuted">{listing.quantity} {listing.unit} • Min. {listing.minOrder} {listing.unit}</div>
