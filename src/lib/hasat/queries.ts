@@ -1658,3 +1658,56 @@ export function usePricePoints() {
     },
   });
 }
+
+// ---- price feed (community-contributed market prices) ----
+export interface PriceFeedEntry {
+  id: string;
+  cropName: string;
+  price: number;
+  unit: string;
+  source: string | null;
+  recordedAt: string;
+  recordedBy: string | null;
+}
+
+export function usePriceFeed() {
+  return useQuery({
+    queryKey: ["priceFeed"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("price_feed" as any)
+        .select("id, crop_name, price_per_kg, unit, source, recorded_at, recorded_by")
+        .order("recorded_at", { ascending: false })
+        .limit(500);
+      if (error) throw error;
+      return ((data ?? []) as any[]).map((r): PriceFeedEntry => ({
+        id: r.id,
+        cropName: r.crop_name,
+        price: Number(r.price_per_kg),
+        unit: r.unit ?? "kg",
+        source: r.source ?? null,
+        recordedAt: r.recorded_at,
+        recordedBy: r.recorded_by ?? null,
+      }));
+    },
+  });
+}
+
+export function useCreatePriceFeedEntry() {
+  const qc = useQueryClient();
+  const userId = useAuthUserId();
+  return useMutation({
+    mutationFn: async (input: { cropName: string; price: number; unit: string; source?: string }) => {
+      if (!userId) throw new Error("Oturum bulunamadı");
+      const { error } = await supabase.from("price_feed" as any).insert({
+        crop_name: input.cropName.trim(),
+        price_per_kg: input.price,
+        unit: input.unit,
+        source: input.source?.trim() || null,
+        recorded_by: userId,
+      } as any);
+      if (error) throw error;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["priceFeed"] }),
+  });
+}
