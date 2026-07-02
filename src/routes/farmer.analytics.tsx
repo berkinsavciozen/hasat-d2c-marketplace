@@ -53,7 +53,7 @@ function Analytics() {
               <div className="rounded-xl border bg-card p-4">
                 <div className="text-xs text-hmuted mb-1">En Çok Ciro Getiren Ürün</div>
                 <div className="flex items-baseline justify-between">
-                  <div className="font-serif text-lg">{top[0]}</div>
+                  <div className="font-serif text-lg">{formatCrop(top[0])}</div>
                   <div className="font-mono text-saffron">{formatTRY(top[1])}</div>
                 </div>
               </div>
