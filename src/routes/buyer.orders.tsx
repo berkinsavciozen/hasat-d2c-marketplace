@@ -100,14 +100,15 @@ function OrdersList() {
       <div className="space-y-3">
         {list.map((o) => {
           const s = ORDER_STATUS_LABEL[o.status];
-          const phone = formatPhone(o.producerPhone);
+          const phone = formatPhoneFull(o.producerPhone);
+          const rawPhone = o.producerPhone?.replace(/\D/g, "");
           return (
             <div key={o.id} className="rounded-2xl bg-card border p-4">
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
                   <div className="font-mono text-xs text-hmuted">{o.code}</div>
                   <div className="font-medium mt-1 truncate">{o.crop}</div>
-                  <div className="text-xs text-hmuted">{o.quantity} {o.unit}</div>
+                  <div className="text-xs text-hmuted">{o.quantity} {o.unit} · {formatTRY(o.total)}</div>
                 </div>
                 <span className="shrink-0 rounded-full px-2.5 py-0.5 text-[11px]" style={{ background: s.bg, color: s.fg }}>{s.label}</span>
               </div>
@@ -116,7 +117,7 @@ function OrdersList() {
                   <div className="text-hmuted">Üretici</div>
                   <div className="font-medium">{o.producerName}</div>
                   {phone && (
-                    <div className="mt-0.5 font-mono text-hmuted">{phone}</div>
+                    <a href={`tel:+${rawPhone}`} className="mt-0.5 block font-mono text-saffron underline">{phone}</a>
                   )}
                 </div>
                 <div>
