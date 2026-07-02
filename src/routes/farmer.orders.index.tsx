@@ -168,7 +168,7 @@ function OfferCard({ offer }: { offer: Offer }) {
         <DialogContent>
           <DialogHeader><DialogTitle>Teklifi Kabul Et</DialogTitle></DialogHeader>
           <p className="text-sm text-hmuted">
-            <b>{offer.buyerName}</b> teklifini kabul ediyorsunuz: {offer.quantity} {offer.unit} {offer.crop} @ {formatTRY(offer.pricePerUnit)}/{offer.unit}.
+            <b>{offer.buyerName}</b> teklifini kabul ediyorsunuz: {offer.quantity} {offer.unit} {formatCrop(offer.crop)} @ {formatTRY(offer.pricePerUnit)}/{offer.unit}.
             <br />Toplam: <b className="font-mono">{formatTRY(total)}</b>. Onaylar mısınız?
           </p>
           <DialogFooter>
