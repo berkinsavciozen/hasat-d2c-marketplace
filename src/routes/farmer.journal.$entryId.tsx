@@ -5,6 +5,7 @@ import { useEntry, useEntries, useDeleteEntry } from "@/lib/hasat/queries";
 import { ProgressDots } from "@/components/hasat/ProgressDots";
 import { toast } from "sonner";
 import { formatTRY, formatDelta } from "@/lib/hasat/format";
+import { formatCrop } from "@/lib/hasat/format";
 import { AIInsightBanner } from "@/components/hasat/AIInsightBanner";
 import { BarChart, Bar, XAxis, ResponsiveContainer, Cell } from "recharts";
 import {
