@@ -1,0 +1,1 @@
+ALTER TABLE public.parcels ADD COLUMN IF NOT EXISTS parcel_photo_urls text[] NOT NULL DEFAULT '{}';

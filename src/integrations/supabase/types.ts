@@ -743,6 +743,7 @@ export type Database = {
           lng: number | null
           location_label: string | null
           name: string
+          parcel_photo_urls: string[]
         }
         Insert: {
           area: number
@@ -755,6 +756,7 @@ export type Database = {
           lng?: number | null
           location_label?: string | null
           name: string
+          parcel_photo_urls?: string[]
         }
         Update: {
           area?: number
@@ -767,6 +769,7 @@ export type Database = {
           lng?: number | null
           location_label?: string | null
           name?: string
+          parcel_photo_urls?: string[]
         }
         Relationships: [
           {
