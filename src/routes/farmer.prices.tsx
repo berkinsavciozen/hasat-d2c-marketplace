@@ -143,7 +143,7 @@ function Prices() {
             <div className="flex flex-wrap gap-1.5">
               {priceAlerts.map((a) => (
                 <span key={a.id} className="inline-flex items-center gap-1 rounded-full bg-saffron/10 border border-saffron/30 px-2.5 py-1 text-[11px] text-saffron">
-                  {a.crop} {a.condition === "above" ? "≥" : "≤"} {formatTRY(a.target)}
+                  {formatCrop(a.crop)} {a.condition === "above" ? "≥" : "≤"} {formatTRY(a.target)}
                   <button onClick={() => deleteAlert.mutate(a.id)} className="ml-1 text-saffron/70 hover:text-saffron" aria-label="Alarmı kaldır">×</button>
                 </span>
               ))}
