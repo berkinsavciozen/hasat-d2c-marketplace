@@ -103,7 +103,7 @@ function Discover() {
           ) : (
             <div className="grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
               {filtered.map((l) => {
-                const farmerSlug = l.farmerName ? (slugifyFarmer(l.farmerName) || l.producerId ?? "") : (l.producerId ?? "");
+                const farmerSlug = l.farmerName ? (slugifyFarmer(l.farmerName) || (l.producerId ?? "")) : (l.producerId ?? "");
                 return (
                 <div
                   key={l.id}
