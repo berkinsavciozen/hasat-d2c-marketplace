@@ -3,7 +3,7 @@ import { FarmerHeader } from "./farmer";
 import { AIBox } from "@/components/hasat/AIBox";
 import { useFarmerListings, useFarmerOrders } from "@/lib/hasat/queries";
 import { LoadingDots } from "@/components/hasat/LoadingDots";
-import { formatTRY } from "@/lib/hasat/format";
+import { formatTRY, formatCrop } from "@/lib/hasat/format";
 
 export const Route = createFileRoute("/farmer/analytics")({
   head: () => ({ meta: [{ title: "Analitik | Hasat" }] }),
