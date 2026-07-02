@@ -3,7 +3,7 @@ import { Search, X } from "lucide-react";
 import { useState } from "react";
 import { BuyerHeader } from "@/components/hasat/BuyerHeader";
 import { LoadingDots } from "@/components/hasat/LoadingDots";
-import { formatTRY } from "@/lib/hasat/format";
+import { formatTRY, formatCrop } from "@/lib/hasat/format";
 import { useActiveListings } from "@/lib/hasat/queries";
 
 export const Route = createFileRoute("/buyer/discover")({
@@ -113,14 +113,14 @@ function Discover() {
                       : { background: `repeating-linear-gradient(45deg, color-mix(in oklab, var(--saffron) 30%, var(--dark)) 0 12px, color-mix(in oklab, var(--saffron) 20%, var(--dark)) 12px 24px)` }
                   }>
                     {l.photos && l.photos[0] && (
-                      <img src={l.photos[0]} alt={l.crop} className="absolute inset-0 h-full w-full object-cover" />
+                      <img src={l.photos[0]} alt={formatCrop(l.crop)} className="absolute inset-0 h-full w-full object-cover" />
                     )}
                     <div className="absolute inset-0" style={{ background: "linear-gradient(180deg, transparent 40%, rgba(0,0,0,0.55))" }} />
                     <div className="absolute top-2 left-2 inline-flex items-center gap-1 rounded-full bg-saffron text-white text-[10px] font-bold px-2 py-0.5">
                       Kalite {l.quality}
                     </div>
                     <div className="absolute bottom-2 left-3 right-3 text-white">
-                      <div className="font-serif text-base leading-tight line-clamp-2">{CROP_EMOJI[l.crop] ?? "🌾"} {l.crop}</div>
+                      <div className="font-serif text-base leading-tight line-clamp-2">{CROP_EMOJI[l.crop] ?? "🌾"} {formatCrop(l.crop)}</div>
                       <div className="text-[11px] opacity-80 truncate">{l.farmerName} {l.farmerCity ? `· ${l.farmerCity}` : ""}</div>
                     </div>
                   </div>
