@@ -3,7 +3,6 @@ import { useEffect, useState } from "react";
 import { FarmerHeader } from "./farmer";
 import { useFarmerListings, useCreateListing, useUpdateListing, useDeleteListing, useParcels, useProfile } from "@/lib/hasat/queries";
 import { vitrinUrl, copyVitrinLink } from "@/lib/hasat/vitrin";
-import { Link2 } from "lucide-react";
 import { LoadingDots } from "@/components/hasat/LoadingDots";
 import { formatTRY, formatCrop } from "@/lib/hasat/format";
 import { Stepper } from "@/components/hasat/Stepper";
@@ -28,11 +27,13 @@ const CROP_EMOJI: Record<string, string> = { Safran: "🌸", Lavanta: "💜", "T
 const CROPS = ["Safran", "Lavanta", "Tıbbi Bitkiler", "Fındık", "Zeytinyağı"];
 
 function Storefront() {
+  const { data: profile } = useProfile();
   const { data: listings = [], isLoading } = useFarmerListings();
   const { data: parcels = [] } = useParcels();
   const deleteListing = useDeleteListing();
   const [sheet, setSheet] = useState<{ open: boolean; editing?: Listing | null }>({ open: false });
   const [confirmDelete, setConfirmDelete] = useState<Listing | null>(null);
+  const vUrl = vitrinUrl(profile ?? undefined);
 
   const active = listings.filter((l) => l.status === "active");
   const history = listings.filter((l) => l.status !== "active");
@@ -42,7 +43,17 @@ function Storefront() {
       <FarmerHeader title="Vitrin" subtitle="Aktif listelemeleriniz" />
       <div className="px-4 md:px-8 py-5 pb-32 md:pb-5">
         <AIBox page="storefront" />
-        <Tabs defaultValue="active">
+        <div className="mt-3 rounded-xl border bg-card p-3">
+          <button
+            onClick={() => copyVitrinLink(profile ?? undefined)}
+            className="w-full rounded-lg px-3 py-2 text-sm font-medium"
+            style={{ background: "var(--saffron)", color: "var(--hwhite)" }}
+          >
+            Vitrin Linkini Kopyala
+          </button>
+          <div className="mt-2 truncate font-mono text-[11px] text-hmuted">{vUrl}</div>
+        </div>
+        <Tabs defaultValue="active" className="mt-4">
           <TabsList className="grid w-full grid-cols-2">
             <TabsTrigger value="active">Ürünlerim</TabsTrigger>
             <TabsTrigger value="history">Geçmiş</TabsTrigger>
