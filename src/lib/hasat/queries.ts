@@ -326,6 +326,8 @@ export interface ProfileRow {
   role: string | null;
   phone: string | null;
   tier: "free" | "premium" | null;
+  iban: string | null;
+  bank_account_name: string | null;
 }
 
 export function useProfile() {
@@ -335,7 +337,7 @@ export function useProfile() {
     enabled: !!userId,
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("profiles").select("id, name, city, role, phone, tier")
+        .from("profiles").select("id, name, city, role, phone, tier, iban, bank_account_name")
         .eq("id", userId!).maybeSingle();
       if (error) throw error;
       return (data ?? null) as ProfileRow | null;
