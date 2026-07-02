@@ -1,56 +1,88 @@
-# Fix: Infinite Spinner on Buyer Pay Page
+# P16-E: Dynamic Price Feed
 
-## Root cause
+Replace the static Fiyatlar page with a live `price_feed` table that farmers can contribute to.
 
-`src/routes/buyer.pay.$offerId.tsx` gates rendering with:
+## 1. Database
 
-```ts
-if (isPending || isFetching || !offers) return <LoadingDots />
+New migration:
+
+```sql
+CREATE TABLE public.price_feed (
+  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+  crop_name text NOT NULL,
+  price_per_kg numeric NOT NULL,   -- generic price value; real unit is in `unit`
+  unit text NOT NULL DEFAULT 'kg',
+  source text,
+  recorded_at timestamptz NOT NULL DEFAULT now(),
+  recorded_by uuid REFERENCES public.profiles(id)
+);
+
+GRANT SELECT ON public.price_feed TO anon, authenticated;
+GRANT INSERT ON public.price_feed TO authenticated;
+GRANT ALL ON public.price_feed TO service_role;
+
+ALTER TABLE public.price_feed ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Public read price feed"
+  ON public.price_feed FOR SELECT
+  TO anon, authenticated USING (true);
+
+CREATE POLICY "Farmers can insert price feed"
+  ON public.price_feed FOR INSERT
+  TO authenticated
+  WITH CHECK (
+    recorded_by = auth.uid()
+    AND EXISTS (SELECT 1 FROM public.profiles p WHERE p.id = auth.uid() AND p.role = 'farmer')
+  );
+
+CREATE INDEX idx_price_feed_crop_recorded ON public.price_feed (LOWER(TRIM(crop_name)), recorded_at DESC);
 ```
 
-Two problems:
+No UPDATE/DELETE policies.
 
-1. **No `isError` handling.** `useBuyerOffers()` runs a join
-   `profiles!offers_farmer_id_fkey(id,name,city,iban,bank_account_name)`.
-   If that select throws (e.g. `iban` / `bank_account_name` column not
-   yet present, RLS rejects the join, or PostgREST parse error), the
-   hook enters error state — `data` stays `undefined`, so `!offers` is
-   true forever → infinite spinner. No further network request is made.
-2. **`isFetching` in gate.** Any background refetch flips `isFetching`
-   back to true and re-shows the spinner over already-loaded data.
+## 2. Data layer (`src/lib/hasat/queries.ts`)
 
-The order summary and the IBAN both come from the same query, so a bank
-join failure kills the whole page.
+- `usePriceFeed()` — SELECT all, ORDER BY recorded_at DESC, limit ~500. Group client-side by `LOWER(TRIM(crop_name))`.
+- `useCreatePriceFeedEntry()` — INSERT `{ crop_name, price_per_kg, unit, source, recorded_by: user.id }`, invalidate `['price_feed']`.
+- `useLatestPriceByCrop()` helper (derived from usePriceFeed) → `Map<normalizedCrop, latestEntry>` for AI nudges.
 
-## Fix
+## 3. Fiyatlar page (`src/routes/farmer.prices.tsx`)
 
-Scope: `src/routes/buyer.pay.$offerId.tsx` only. No query/schema changes.
+Replace the current static `usePricePoints()` implementation:
 
-1. Pull `isError`, `error`, `refetch` from `useBuyerOffers()`.
-2. Change the loading gate to `isPending` only (drop `isFetching`).
-3. Add an 8-second timeout via `useEffect` + `setTimeout` while
-   `isPending` is true; on fire, set `timedOut = true`.
-4. Render an error card ("Sayfa yüklenemedi — geri dön") with a Back
-   button and a Retry button (`refetch()`) when `isError || timedOut`.
-5. Make IBAN rendering fully null-safe: if `offer.farmerIban` is
-   missing OR the earlier lookup threw, keep showing the Sipariş
-   Özeti card and render the existing "Çiftçi henüz IBAN eklememiş"
-   warning inside the payment card (already implemented — just make
-   sure it isn't gated behind the failing query). Wrap the IBAN block
-   in a small `try { ... } catch {}` around `formatIbanDisplay` /
-   clipboard access so a malformed string can't crash render.
-6. Keep the existing "Ödemeyi Tamamla (Test)" simulate button intact.
+- Fetch via `usePriceFeed()`.
+- Group by crop, show one card per crop: crop name (via `formatCrop`), latest `price_per_kg` + `unit`, `source`, "X saat önce" (relative time).
+- Under each card: recharts `LineChart` of last 14 entries for that crop, `width=120 height=40`, single `<Line>`, `dot={false}`, no axes/grid/tooltip.
+- Empty state: "Fiyat verisi bekleniyor" placeholder (replaces the current empty branch).
+- Sticky "Fiyat Güncelle" button (farmer only — hide for buyer role via `useHasat` user check).
+- Keep existing price-alert section unchanged.
 
-## Verification
+Buyer side: no dedicated buyer prices route exists today; skip.
 
-- Run `bunx tsgo --noEmit` (project's typecheck) after the edit.
-- Manually confirm in preview: page renders order summary even when
-  farmer has no IBAN, and shows the timeout/error card instead of
-  spinning forever when the underlying query fails.
+## 4. Fiyat Güncelle sheet
+
+New component inline in `farmer.prices.tsx` (or `src/components/hasat/PriceUpdateSheet.tsx`):
+
+- Crop selector: `<Select>` populated from distinct crops in the farmer's listings + a free-text "Diğer…" fallback input.
+- Price input: numeric.
+- Unit selector: `kg | g | adet | litre`.
+- Source: text input, placeholder "İstanbul Hali, TMO, Manuel...".
+- Submit → `useCreatePriceFeedEntry`, toast "Fiyat güncellendi", close sheet.
+
+## 5. AI nudge on farmer storefront/home
+
+- In `src/routes/farmer.storefront.tsx` (listing cards) and `src/routes/farmer.home.tsx` (active listings list):
+  - Look up latest `price_feed` entry for the listing's crop (normalized match).
+  - If `|listing.price - latest.price| / latest.price > 0.2`, render a small amber alert under the card: `Piyasa fiyatının %X üzerindesiniz` / `…altındasınız`.
+  - No entry → no alert.
+
+## 6. Verify
+
+`tsgo` typecheck after implementation.
 
 ## Technical notes
 
-- File touched: `src/routes/buyer.pay.$offerId.tsx`.
-- No changes to `useBuyerOffers`, no new hook, no schema migration.
-- `refetch` from `useQuery` clears error state; reset `timedOut` in the
-  retry handler.
+- Normalize crop name with `LOWER(TRIM(...))` on both write and grouping/matching.
+- `price_per_kg` is a generic numeric value; the real unit lives in `unit`.
+- Sparkline is intentionally axis-less; if a crop has <2 points, render a dash placeholder instead of the chart.
+- `src/lib/hasat/types.ts`: add a `PriceFeedEntry` type; keep the legacy `PricePoint` type until unused, then remove.
