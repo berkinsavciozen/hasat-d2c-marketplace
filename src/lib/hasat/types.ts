@@ -64,7 +64,7 @@ export interface PricePoint {
 export type BuyerType = "restoran" | "otel" | "market" | "ihracatci";
 export type OfferStatus = "pending" | "accepted" | "counter" | "active" | "completed" | "rejected";
 export type BallSide = "farmer" | "buyer";
-export type PaymentStatus = "unpaid" | "pending" | "paid";
+export type PaymentStatus = "unpaid" | "pending" | "pending_transfer" | "paid";
 
 export interface OfferMessage {
   id: string;
@@ -116,6 +116,10 @@ export interface Offer {
   /** Latest negotiated unit price (mirrors `pricePerUnit`, kept for clarity). */
   currentPrice?: number;
   paymentStatus?: PaymentStatus;
+  /** Farmer IBAN (visible to buyer when payment is pending). */
+  farmerIban?: string;
+  /** Farmer bank account holder name. */
+  farmerBankAccountName?: string;
 }
 
 export interface PriceAlert {

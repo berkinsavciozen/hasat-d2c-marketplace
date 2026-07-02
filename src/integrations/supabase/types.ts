@@ -864,8 +864,10 @@ export type Database = {
       }
       profiles: {
         Row: {
+          bank_account_name: string | null
           city: string | null
           created_at: string
+          iban: string | null
           id: string
           name: string | null
           phone: string | null
@@ -875,8 +877,10 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          bank_account_name?: string | null
           city?: string | null
           created_at?: string
+          iban?: string | null
           id: string
           name?: string | null
           phone?: string | null
@@ -886,8 +890,10 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          bank_account_name?: string | null
           city?: string | null
           created_at?: string
+          iban?: string | null
           id?: string
           name?: string | null
           phone?: string | null

@@ -326,6 +326,8 @@ export interface ProfileRow {
   role: string | null;
   phone: string | null;
   tier: "free" | "premium" | null;
+  iban: string | null;
+  bank_account_name: string | null;
 }
 
 export function useProfile() {
@@ -335,7 +337,7 @@ export function useProfile() {
     enabled: !!userId,
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("profiles").select("id, name, city, role, phone, tier")
+        .from("profiles").select("id, name, city, role, phone, tier, iban, bank_account_name")
         .eq("id", userId!).maybeSingle();
       if (error) throw error;
       return (data ?? null) as ProfileRow | null;
@@ -367,9 +369,9 @@ export function useUpdateProfile() {
   const qc = useQueryClient();
   const userId = useAuthUserId();
   return useMutation({
-    mutationFn: async (patch: { name?: string; city?: string }) => {
+    mutationFn: async (patch: { name?: string; city?: string; iban?: string | null; bank_account_name?: string | null }) => {
       if (!userId) throw new Error("Oturum bulunamadı");
-      const { error } = await supabase.from("profiles").update(patch).eq("id", userId);
+      const { error } = await supabase.from("profiles").update(patch as any).eq("id", userId);
       if (error) throw error;
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["profile", userId] }),
@@ -484,7 +486,9 @@ function dbToOffer(r: any, side: "farmer" | "buyer"): Offer {
     ballSide: (r.ball_side === "buyer" ? "buyer" : "farmer"),
     currentQuantity: liveQty,
     currentPrice: livePrice,
-    paymentStatus: (r.payment_status ?? "unpaid") as "unpaid" | "pending" | "paid",
+    paymentStatus: (r.payment_status ?? "unpaid") as "unpaid" | "pending" | "pending_transfer" | "paid",
+    farmerIban: r.farmer?.iban ?? undefined,
+    farmerBankAccountName: r.farmer?.bank_account_name ?? undefined,
   };
 }
 
@@ -725,7 +729,7 @@ export function useBuyerOffers() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("offers")
-        .select("*, farmer:profiles!offers_farmer_id_fkey(id,name,city), listing:listings(crop,unit)")
+        .select("*, farmer:profiles!offers_farmer_id_fkey(id,name,city,iban,bank_account_name), listing:listings(crop,unit)")
         .eq("buyer_id", userId!)
         .order("created_at", { ascending: false });
       if (error) throw error;
@@ -953,6 +957,79 @@ export function useSimulatePayment() {
       qc.invalidateQueries({ queryKey: ["buyerOffers", userId] });
       qc.invalidateQueries({ queryKey: ["farmerOrders", userId] });
       qc.invalidateQueries({ queryKey: ["buyerOrders", userId] });
+    },
+  });
+}
+
+// Buyer marks an IBAN transfer as sent. Offer moves to payment_status='pending_transfer'.
+// Farmer will later confirm receipt with useConfirmTransferReceived.
+export function useMarkTransferSent() {
+  const qc = useQueryClient();
+  const userId = useAuthUserId();
+  return useMutation({
+    mutationFn: async (offerId: string) => {
+      if (!userId) throw new Error("Oturum bulunamadı");
+      const { data, error } = await supabase
+        .from("offers")
+        .update({ payment_status: "pending_transfer" } as any)
+        .eq("id", offerId)
+        .eq("buyer_id", userId)
+        .eq("status", "accepted")
+        .select("id")
+        .single();
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["farmerOffers"] });
+      qc.invalidateQueries({ queryKey: ["buyerOffers", userId] });
+    },
+  });
+}
+
+// Farmer confirms havale receipt. Marks payment_status=paid and creates the order
+// (idempotently, mirroring useSimulatePayment). Only the farmer on the offer may call this.
+export function useConfirmTransferReceived() {
+  const qc = useQueryClient();
+  const userId = useAuthUserId();
+  return useMutation({
+    mutationFn: async (offerId: string) => {
+      if (!userId) throw new Error("Oturum bulunamadı");
+      const { data: offerRow, error: e1 } = await supabase
+        .from("offers")
+        .update({ payment_status: "paid" } as any)
+        .eq("id", offerId)
+        .eq("farmer_id", userId)
+        .eq("payment_status", "pending_transfer")
+        .select("*")
+        .single();
+      if (e1) throw e1;
+
+      const { data: existing } = await supabase
+        .from("orders").select("id").eq("offer_id", offerId).maybeSingle();
+      if (!existing) {
+        const { data: order, error: e2 } = await supabase.from("orders").insert({
+          offer_id: offerRow.id,
+          buyer_id: offerRow.buyer_id,
+          farmer_id: offerRow.farmer_id,
+          status: "preparing",
+          order_ref: "",
+        } as any).select("id").single();
+        if (e2) throw e2;
+        await supabase.from("order_timeline").insert({
+          order_id: order.id,
+          step: "submitted",
+          label: "Sipariş Alındı",
+          completed_at: new Date().toISOString(),
+        });
+      }
+      return offerRow;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["farmerOffers", userId] });
+      qc.invalidateQueries({ queryKey: ["buyerOffers"] });
+      qc.invalidateQueries({ queryKey: ["farmerOrders", userId] });
+      qc.invalidateQueries({ queryKey: ["buyerOrders"] });
     },
   });
 }

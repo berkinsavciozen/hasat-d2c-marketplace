@@ -1,7 +1,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import { FarmerHeader } from "./farmer";
-import { useFarmerOffers, useUpdateOfferStatus, useFarmerOrders, useCounterOffer } from "@/lib/hasat/queries";
+import { useFarmerOffers, useUpdateOfferStatus, useFarmerOrders, useCounterOffer, useConfirmTransferReceived } from "@/lib/hasat/queries";
 import { WaitingBanner } from "@/components/hasat/WaitingBanner";
 import { LoadingDots } from "@/components/hasat/LoadingDots";
 import { formatTRY, formatCrop } from "@/lib/hasat/format";
@@ -85,6 +85,7 @@ function Empty({ msg }: { msg: string }) {
 function OfferCard({ offer }: { offer: Offer }) {
   const updateStatus = useUpdateOfferStatus();
   const counterMut = useCounterOffer();
+  const confirmTransfer = useConfirmTransferReceived();
   const navigate = useNavigate();
   const [acceptOpen, setAcceptOpen] = useState(false);
   const [rejectOpen, setRejectOpen] = useState(false);
@@ -95,6 +96,7 @@ function OfferCard({ offer }: { offer: Offer }) {
   const s = statusStyle(visual);
   const myTurn = canAccept(offer, "farmer");
   const isPendingPayment = offer.status === "accepted" && offer.paymentStatus !== "paid";
+  const isTransferPending = offer.status === "accepted" && offer.paymentStatus === "pending_transfer";
   const isTerminal = offer.status === "rejected" || offer.status === "completed";
 
   const onAccept = async () => {
@@ -109,6 +111,12 @@ function OfferCard({ offer }: { offer: Offer }) {
       await updateStatus.mutateAsync({ id: offer.id, status: "rejected", reason });
       toast("Teklif reddedildi");
       setRejectOpen(false);
+    } catch (e: any) { toast.error(e.message ?? "İşlem başarısız"); }
+  };
+  const onConfirmTransfer = async () => {
+    try {
+      await confirmTransfer.mutateAsync(offer.id);
+      toast.success("Ödeme onaylandı. Sipariş aktif.");
     } catch (e: any) { toast.error(e.message ?? "İşlem başarısız"); }
   };
 
@@ -143,7 +151,22 @@ function OfferCard({ offer }: { offer: Offer }) {
         />
       </div>
 
-      {isPendingPayment ? (
+      {isTransferPending ? (
+        <div className="mt-3 rounded-lg p-3"
+          style={{ background: "color-mix(in oklab, var(--gold) 15%, transparent)", border: "1px solid color-mix(in oklab, var(--gold) 40%, transparent)" }}>
+          <div className="text-sm font-medium" style={{ color: "var(--gold)" }}>💰 Alıcı havaleyi tamamladığını bildirdi</div>
+          <div className="mt-1 text-xs text-hmuted">
+            Hesabınıza <b className="font-mono">{formatTRY(total)}</b> ulaştığında onaylayın. Onaydan sonra sipariş aktif olur.
+          </div>
+          <button
+            onClick={onConfirmTransfer}
+            disabled={confirmTransfer.isPending}
+            className="mt-2.5 w-full rounded-lg py-2.5 text-sm font-medium text-white disabled:opacity-50"
+            style={{ background: "var(--sage)" }}>
+            {confirmTransfer.isPending ? "Onaylanıyor…" : "✅ Ödemeyi Onayladım"}
+          </button>
+        </div>
+      ) : isPendingPayment ? (
         <div className="mt-3 rounded-lg bg-muted/40 p-3 text-xs text-hmuted">
           Alıcı ödemeyi henüz tamamlamadı.
         </div>

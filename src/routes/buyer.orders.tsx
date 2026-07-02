@@ -219,6 +219,7 @@ function OfferCard({ offer, onAccept, onReject, onCounter, onPay, pending }: {
   const s = statusStyle(visual);
   const myTurn = canAccept(offer, "buyer");
   const isPendingPayment = offer.status === "accepted" && offer.paymentStatus !== "paid";
+  const isTransferPending = offer.status === "accepted" && offer.paymentStatus === "pending_transfer";
   const total = offer.quantity * offer.pricePerUnit;
 
   return (
@@ -243,7 +244,12 @@ function OfferCard({ offer, onAccept, onReject, onCounter, onPay, pending }: {
         />
       </div>
 
-      {isPendingPayment ? (
+      {isTransferPending ? (
+        <div className="mt-4 rounded-lg p-3 text-center text-xs"
+          style={{ background: "color-mix(in oklab, var(--gold) 15%, transparent)", color: "var(--gold)" }}>
+          ⏳ Havale bildirildi — üretici onayı bekleniyor
+        </div>
+      ) : isPendingPayment ? (
         <div className="mt-4">
           <button onClick={onPay} className="w-full rounded-lg py-2.5 text-sm font-medium text-white"
             style={{ background: "var(--saffron)" }}>

@@ -36,6 +36,8 @@ function Settings() {
 
   const [name, setName] = useState("");
   const [city, setCity] = useState("");
+  const [iban, setIban] = useState("");
+  const [bankAccountName, setBankAccountName] = useState("");
   const [editing, setEditing] = useState<string | null>(null);
   const [pName, setPName] = useState("");
   const [pArea, setPArea] = useState(0);
@@ -46,12 +48,29 @@ function Settings() {
     if (!profile) return;
     setName(profile.name ?? "");
     setCity(profile.city ?? "");
-  }, [profile?.name, profile?.city]);
+    setIban(profile.iban ?? "");
+    setBankAccountName(profile.bank_account_name ?? "");
+  }, [profile?.name, profile?.city, profile?.iban, profile?.bank_account_name]);
 
   const saveProfile = async () => {
     try {
       await updateProfile.mutateAsync({ name, city });
       toast.success("Profil güncellendi");
+    } catch (e) { toast.error((e as Error).message); }
+  };
+
+  const saveBank = async () => {
+    const cleaned = iban.replace(/\s+/g, "").toUpperCase();
+    if (cleaned && !/^TR\d{24}$/.test(cleaned)) {
+      toast.error("Geçerli bir TR IBAN girin (TR + 24 rakam)");
+      return;
+    }
+    try {
+      await updateProfile.mutateAsync({
+        iban: cleaned || null,
+        bank_account_name: bankAccountName.trim() || null,
+      });
+      toast.success("Banka bilgileri güncellendi");
     } catch (e) { toast.error((e as Error).message); }
   };
 
@@ -125,6 +144,34 @@ function Settings() {
             </div>
           </div>
         </Section>
+
+        <Section title="Banka Bilgileri">
+          <p className="mb-3 text-xs text-hmuted">
+            Alıcılar, teklifiniz kabul edildiğinde bu IBAN'a havale yaparak ödeme yapar.
+          </p>
+          <label className="text-xs text-muted-foreground">IBAN</label>
+          <Input
+            value={iban}
+            onChange={(e) => setIban(e.target.value)}
+            placeholder="TR00 0000 0000 0000 0000 0000 00"
+            className="mt-1 mb-3 font-mono"
+          />
+          <label className="text-xs text-muted-foreground">Hesap Sahibi Adı</label>
+          <Input
+            value={bankAccountName}
+            onChange={(e) => setBankAccountName(e.target.value)}
+            placeholder="Ad Soyad"
+            className="mt-1 mb-3"
+          />
+          <button onClick={saveBank}
+            disabled={updateProfile.isPending}
+            className="rounded-lg px-4 py-2 text-sm font-medium disabled:opacity-50"
+            style={{ background: "var(--saffron)", color: "var(--hwhite)" }}>
+            {updateProfile.isPending ? "Kaydediliyor…" : "Kaydet"}
+          </button>
+        </Section>
+
+
 
         <Section title="AI Asistan">
           {(() => {
