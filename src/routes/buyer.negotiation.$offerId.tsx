@@ -1,4 +1,5 @@
-import { createFileRoute, useNavigate, useRouter, notFound } from "@tanstack/react-router";
+import { createFileRoute, useNavigate, useRouter, notFound, Link } from "@tanstack/react-router";
+import { slugifyFarmer } from "@/lib/hasat/vitrin";
 import { useState } from "react";
 import { ArrowLeft } from "lucide-react";
 import { useBuyerOffers, useUpdateOfferStatus, useCounterOffer } from "@/lib/hasat/queries";
