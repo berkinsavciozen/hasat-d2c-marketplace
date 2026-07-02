@@ -188,20 +188,46 @@ function Settings() {
               {certs.length === 0 && (
                 <div className="text-xs text-muted-foreground">Sertifika eklenmemiş</div>
               )}
-              {certs.map((c) => (
+              {certs.map((c) => {
+                const expiryBadge = (() => {
+                  if (!c.expires_at) return null;
+                  const now = Date.now();
+                  const exp = new Date(c.expires_at).getTime();
+                  if (isNaN(exp)) return null;
+                  const days = Math.floor((exp - now) / 86400000);
+                  if (days < 0) {
+                    return (
+                      <span className="rounded-full px-2 py-0.5 text-[10px] font-medium bg-hred/15 text-hred">
+                        Süresi Geçti
+                      </span>
+                    );
+                  }
+                  if (days <= 30) {
+                    return (
+                      <span className="rounded-full px-2 py-0.5 text-[10px] font-medium" style={{ background: "color-mix(in oklab, var(--gold) 20%, transparent)", color: "var(--gold)" }}>
+                        Yakında Sona Eriyor
+                      </span>
+                    );
+                  }
+                  return null;
+                })();
+                return (
                 <div key={c.id} className="flex items-center justify-between rounded-lg border border-border px-3 py-2">
-                  <button
-                    onClick={async () => {
-                      if (!c.document_url) return;
-                      try {
-                        const url = await getCertificationSignedUrl(c.document_url);
-                        window.open(url, "_blank");
-                      } catch (e) { toast.error((e as Error).message); }
-                    }}
-                    className="px-2 py-1 text-xs rounded-full hover:opacity-80"
-                    style={{ background: "color-mix(in oklab, var(--sage) 30%, transparent)" }}>
-                    ✓ {c.type}
-                  </button>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={async () => {
+                        if (!c.document_url) return;
+                        try {
+                          const url = await getCertificationSignedUrl(c.document_url);
+                          window.open(url, "_blank");
+                        } catch (e) { toast.error((e as Error).message); }
+                      }}
+                      className="px-2 py-1 text-xs rounded-full hover:opacity-80"
+                      style={{ background: "color-mix(in oklab, var(--sage) 30%, transparent)" }}>
+                      ✓ {c.type}
+                    </button>
+                    {expiryBadge}
+                  </div>
                   <div className="flex items-center gap-2">
                     <div className="text-[11px] text-muted-foreground text-right">
                       <div>Doğrulandı: {fmtDate(c.verified_at)}</div>
@@ -219,7 +245,8 @@ function Settings() {
                     </button>
                   </div>
                 </div>
-              ))}
+                );
+              })}
               <button onClick={() => setCertSheet(true)}
                 className="mt-2 self-start rounded-lg px-3 py-1.5 text-xs font-medium border border-border hover:bg-muted">
                 + Sertifika Ekle
