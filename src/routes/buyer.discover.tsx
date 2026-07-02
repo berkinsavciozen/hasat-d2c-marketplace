@@ -150,8 +150,8 @@ function Discover() {
                       <span className="shrink-0 rounded-full bg-saffron px-3 py-1.5 text-xs text-white">Teklif Ver →</span>
                     </div>
                   </div>
-                </button>
-              ))}
+                </div>
+              );})}
             </div>
           )}
         </div>
