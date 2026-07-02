@@ -17,6 +17,7 @@ import { toast } from "sonner";
 import type { Listing } from "@/lib/hasat/types";
 import { AIBox } from "@/components/hasat/AIBox";
 import { PhotoUploader } from "@/components/hasat/PhotoUploader";
+import { MarketDeviationAlert } from "@/components/hasat/MarketDeviationAlert";
 
 export const Route = createFileRoute("/farmer/storefront")({
   head: () => ({ meta: [{ title: "Vitrin — Hasat" }] }),
@@ -194,6 +195,7 @@ function ListingCard({ listing, muted, onEdit, onRemove }: { listing: Listing; m
           </div>
         </div>
       </div>
+      <MarketDeviationAlert crop={listing.crop} pricePerUnit={listing.pricePerUnit} unit={listing.unit} />
       {!muted && (
         <div className="mt-3 flex gap-2">
           <button onClick={onEdit} className="flex flex-1 items-center justify-center gap-1.5 rounded-lg border py-2 text-xs font-medium hover:bg-cream"><Pencil className="h-3.5 w-3.5" /> Düzenle</button>
