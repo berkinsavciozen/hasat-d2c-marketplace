@@ -124,7 +124,14 @@ function OrdersList() {
               <div className="mt-3 grid grid-cols-2 gap-2 text-xs">
                 <div>
                   <div className="text-hmuted">Üretici</div>
-                  <div className="font-medium">{o.producerName}</div>
+                  <div className="font-medium">
+                    {(() => {
+                      const slug = farmerSlugOf(o.producerName, o.producerId);
+                      return slug
+                        ? <Link to="/s/$slug" params={{ slug }} className="hover:underline">{o.producerName}</Link>
+                        : o.producerName;
+                    })()}
+                  </div>
                   {phone && (
                     <a href={`tel:+${rawPhone}`} className="mt-0.5 block font-mono text-saffron underline">{phone}</a>
                   )}
