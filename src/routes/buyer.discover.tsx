@@ -1,10 +1,11 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { Search, X } from "lucide-react";
 import { useState } from "react";
 import { BuyerHeader } from "@/components/hasat/BuyerHeader";
 import { LoadingDots } from "@/components/hasat/LoadingDots";
 import { formatTRY, formatCrop } from "@/lib/hasat/format";
 import { useActiveListings } from "@/lib/hasat/queries";
+import { slugifyFarmer } from "@/lib/hasat/vitrin";
 
 export const Route = createFileRoute("/buyer/discover")({
   head: () => ({ meta: [{ title: "Keşfet — Hasat" }] }),
