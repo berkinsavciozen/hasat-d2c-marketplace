@@ -415,7 +415,7 @@ function dbToOffer(r: any, side: "farmer" | "buyer"): Offer {
     quantity: liveQty,
     pricePerUnit: livePrice,
     createdAt: r.created_at,
-    status: r.status,
+    status: (r.status === "pending_farmer" || r.status === "pending_buyer") ? "pending" : r.status,
     note: r.note ?? undefined,
     delivery: deliveryLabel(r.delivery),
     deliveryDate: r.delivery_date ?? undefined,
@@ -969,7 +969,7 @@ export function useWithdrawCounter() {
       const { error: uErr } = await supabase.from("offers").update({
         current_price: revertPrice,
         current_quantity: revertQty,
-        status: "pending",
+        status: (`pending_${myRole}` as any),
         ball_side: myRole,
         negotiation_history: nextHistory,
       } as any).eq("id", offerId);
