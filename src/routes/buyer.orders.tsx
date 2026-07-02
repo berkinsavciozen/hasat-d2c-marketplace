@@ -42,15 +42,13 @@ function estimatedDelivery(o: Order): string {
   return formatTRDate(base.toISOString());
 }
 
-function formatPhone(phone?: string): string | null {
+function formatPhoneFull(phone?: string): string | null {
   if (!phone) return null;
   const d = phone.replace(/\D/g, "");
-  // Mask all but last 2 digits (KVKK): +90 5** *** ** 11
   if (d.length === 12 && d.startsWith("90")) {
-    return `+90 5** *** ** ${d.slice(10, 12)}`;
+    return `+90 ${d.slice(2, 5)} ${d.slice(5, 8)} ${d.slice(8, 10)} ${d.slice(10, 12)}`;
   }
-  if (d.length >= 4) return `*** *** ${d.slice(-2)}`;
-  return "***";
+  return phone;
 }
 
 function OrdersList() {
@@ -102,14 +100,15 @@ function OrdersList() {
       <div className="space-y-3">
         {list.map((o) => {
           const s = ORDER_STATUS_LABEL[o.status];
-          const phone = formatPhone(o.producerPhone);
+          const phone = formatPhoneFull(o.producerPhone);
+          const rawPhone = o.producerPhone?.replace(/\D/g, "");
           return (
             <div key={o.id} className="rounded-2xl bg-card border p-4">
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
                   <div className="font-mono text-xs text-hmuted">{o.code}</div>
                   <div className="font-medium mt-1 truncate">{o.crop}</div>
-                  <div className="text-xs text-hmuted">{o.quantity} {o.unit}</div>
+                  <div className="text-xs text-hmuted">{o.quantity} {o.unit} · {formatTRY(o.total)}</div>
                 </div>
                 <span className="shrink-0 rounded-full px-2.5 py-0.5 text-[11px]" style={{ background: s.bg, color: s.fg }}>{s.label}</span>
               </div>
@@ -118,7 +117,7 @@ function OrdersList() {
                   <div className="text-hmuted">Üretici</div>
                   <div className="font-medium">{o.producerName}</div>
                   {phone && (
-                    <div className="mt-0.5 font-mono text-hmuted">{phone}</div>
+                    <a href={`tel:+${rawPhone}`} className="mt-0.5 block font-mono text-saffron underline">{phone}</a>
                   )}
                 </div>
                 <div>

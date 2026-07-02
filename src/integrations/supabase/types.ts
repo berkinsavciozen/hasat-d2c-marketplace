@@ -931,6 +931,8 @@ export type Database = {
         | "rejected"
         | "counter"
         | "completed"
+        | "pending_farmer"
+        | "pending_buyer"
       order_status:
         | "preparing"
         | "shipped"
@@ -1088,7 +1090,15 @@ export const Constants = {
       delivery_type: ["kargo-buyer", "kargo-seller", "elden"],
       listing_status: ["active", "sold", "expired"],
       notif_channel: ["whatsapp", "push", "sms"],
-      offer_status: ["pending", "accepted", "rejected", "counter", "completed"],
+      offer_status: [
+        "pending",
+        "accepted",
+        "rejected",
+        "counter",
+        "completed",
+        "pending_farmer",
+        "pending_buyer",
+      ],
       order_status: [
         "preparing",
         "shipped",
