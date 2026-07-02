@@ -912,7 +912,7 @@ export function useCounterOffer() {
 }
 
 // Buyer simulates payment for an accepted offer.
-// Sets payment_status=paid, status='active', creates an order row + initial timeline.
+// Sets payment_status=paid (offer status stays 'accepted'), creates an order row + initial timeline.
 export function useSimulatePayment() {
   const qc = useQueryClient();
   const userId = useAuthUserId();
@@ -921,7 +921,7 @@ export function useSimulatePayment() {
       if (!userId) throw new Error("Oturum bulunamadı");
       const { data: offerRow, error: e1 } = await supabase
         .from("offers")
-        .update({ payment_status: "paid", status: "active" } as any)
+        .update({ payment_status: "paid", status: "accepted" } as any)
         .eq("id", offerId)
         .select("*")
         .single();

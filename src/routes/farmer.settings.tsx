@@ -12,6 +12,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { TierBadge } from "@/components/hasat/TierBadge";
 import { UpgradeModal } from "@/components/hasat/UpgradeModal";
 import { PhotoUploader } from "@/components/hasat/PhotoUploader";
+import { vitrinUrl, copyVitrinLink } from "@/lib/hasat/vitrin";
 
 export const Route = createFileRoute("/farmer/settings")({ component: Settings });
 
@@ -111,6 +112,18 @@ function Settings() {
           <button onClick={saveProfile}
             className="rounded-lg px-4 py-2 text-sm font-medium"
             style={{ background: "var(--saffron)", color: "var(--hwhite)" }}>Kaydet</button>
+
+          <div className="mt-4 border-t pt-4">
+            <button
+              onClick={() => copyVitrinLink(profile ?? undefined)}
+              className="rounded-lg border border-border px-4 py-2 text-sm font-medium hover:bg-muted"
+            >
+              Vitrin Linkini Kopyala
+            </button>
+            <div className="mt-2 truncate font-mono text-[11px] text-hmuted">
+              {vitrinUrl(profile ?? undefined)}
+            </div>
+          </div>
         </Section>
 
         <Section title="AI Asistan">

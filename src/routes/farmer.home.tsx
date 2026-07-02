@@ -3,7 +3,7 @@ import { useHasat } from "@/lib/hasat/store";
 import { useFarmerListings, useEntries } from "@/lib/hasat/queries";
 import { AIBox } from "@/components/hasat/AIBox";
 import { FarmerHeader } from "./farmer";
-import { formatTRY } from "@/lib/hasat/format";
+import { formatTRY, formatCrop } from "@/lib/hasat/format";
 import { BookOpen, LineChart, Store, Users2 } from "lucide-react";
 
 export const Route = createFileRoute("/farmer/home")({
@@ -89,7 +89,7 @@ function Home() {
                 <ul className="mt-3 space-y-2">
                   {listings.map((l) => (
                     <li key={l.id} className="flex items-center justify-between rounded-lg bg-background/60 px-3 py-2 text-sm">
-                      <span>🌾 {l.crop} · {l.quantity}{l.unit}</span>
+                      <span>🌾 {formatCrop(l.crop)} · {l.quantity}{l.unit}</span>
                       <span className="font-mono">{formatTRY(l.pricePerUnit)}/{l.unit}</span>
                     </li>
                   ))}

@@ -1,10 +1,12 @@
 import { createFileRoute, Link, notFound } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
+import { useEffect, useState } from "react";
 import { ArrowLeft } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { dbToListing, dbToParcel } from "@/lib/hasat/queries";
 import { LoadingDots } from "@/components/hasat/LoadingDots";
 import { formatTRY } from "@/lib/hasat/format";
+import { formatCrop } from "@/lib/hasat/format";
 import { TrustBadge } from "@/components/hasat/TrustBadge";
 import type { Listing, Parcel } from "@/lib/hasat/types";
 
@@ -32,6 +34,8 @@ function slugify(input: string): string {
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
+type Cert = { id: string; type: string; verified_at: string | null; expires_at: string | null };
+
 function useStorefront(slug: string) {
   return useQuery({
     queryKey: ["publicStorefront", slug],
@@ -44,50 +48,66 @@ function useStorefront(slug: string) {
         profile = data ?? null;
       }
       if (!profile) {
-        // Fallback: try to find by slugified name.
         const { data } = await supabase
           .from("profiles").select("id, name, city").eq("role", "farmer");
         const match = (data ?? []).find((p) => p.name && slugify(p.name) === slug);
         profile = match ?? null;
       }
       if (!profile) return null;
-      const [{ data: lRows }, { data: pRows }] = await Promise.all([
+      const [{ data: lRows }, { data: pRows }, { data: cRows }] = await Promise.all([
         supabase.from("listings").select("*")
           .eq("farmer_id", profile.id).eq("status", "active")
           .order("created_at", { ascending: false }),
         supabase.from("parcels").select("*")
           .eq("farmer_id", profile.id)
           .order("created_at", { ascending: true }),
+        supabase.from("certifications")
+          .select("id, type, verified_at, expires_at")
+          .eq("farmer_id", profile.id),
       ]);
       return {
         profile,
         listings: (lRows ?? []).map(dbToListing),
         parcels: (pRows ?? []).map(dbToParcel),
+        certs: (cRows ?? []) as Cert[],
       };
     },
   });
 }
 
+function useIsLoggedIn() {
+  const [loggedIn, setLoggedIn] = useState<boolean | null>(null);
+  useEffect(() => {
+    let mounted = true;
+    supabase.auth.getUser().then(({ data }) => {
+      if (mounted) setLoggedIn(!!data.user);
+    });
+    const { data: sub } = supabase.auth.onAuthStateChange((_e, session) => {
+      setLoggedIn(!!session?.user);
+    });
+    return () => { mounted = false; sub.subscription.unsubscribe(); };
+  }, []);
+  return loggedIn;
+}
+
 function PublicStorefront() {
   const { slug } = Route.useParams();
-  const { data, isLoading, error } = useStorefront(slug);
+  const { data, isLoading } = useStorefront(slug);
+  const loggedIn = useIsLoggedIn();
 
   if (isLoading) return <div className="p-8"><LoadingDots /></div>;
-  if (error) {
-    return (
-      <div className="p-8 text-center space-y-3">
-        <div className="text-hmuted">Vitrini görmek için giriş yapmalısınız.</div>
-        <Link to="/login" className="inline-block rounded-full bg-saffron px-4 py-2 text-sm text-white">Giriş Yap</Link>
-      </div>
-    );
-  }
   if (!data) throw notFound();
 
-  const { profile, listings, parcels } = data;
+  const { profile, listings, parcels, certs } = data;
   const parcelsWithPhotos = parcels.filter((p: Parcel) => (p.photos ?? []).length > 0);
+  const activeCerts = certs.filter((c) => {
+    if (!c.expires_at) return true;
+    const t = new Date(c.expires_at).getTime();
+    return isNaN(t) || t >= Date.now();
+  });
 
   return (
-    <div>
+    <div className="pb-24">
       <div className="px-4 pt-5 pb-6 md:px-8" style={{ background: "var(--dark)", color: "var(--hwhite)" }}>
         <Link to="/buyer/discover" className="inline-grid h-9 w-9 place-items-center rounded-full bg-white/10">
           <ArrowLeft className="h-4 w-4" />
@@ -100,6 +120,21 @@ function PublicStorefront() {
       </div>
 
       <div className="p-4 md:p-8 space-y-6">
+        {activeCerts.length > 0 && (
+          <section className="space-y-2">
+            <h2 className="text-xs font-medium uppercase tracking-wider text-hmuted">Sertifikalar</h2>
+            <div className="flex flex-wrap gap-2">
+              {activeCerts.map((c) => (
+                <span key={c.id}
+                  className="rounded-full px-3 py-1 text-xs font-medium"
+                  style={{ background: "color-mix(in oklab, var(--sage) 30%, transparent)" }}>
+                  ✓ {c.type}
+                </span>
+              ))}
+            </div>
+          </section>
+        )}
+
         <section className="space-y-3">
           <h2 className="text-xs font-medium uppercase tracking-wider text-hmuted">Aktif Ürünler</h2>
           {listings.length === 0 ? (
@@ -114,13 +149,13 @@ function PublicStorefront() {
               >
                 <div className="grid h-14 w-14 place-items-center rounded-xl bg-cream text-2xl overflow-hidden">
                   {l.photos?.[0] ? (
-                    <img src={l.photos[0]} alt={l.crop} className="h-14 w-14 object-cover" />
+                    <img src={l.photos[0]} alt={formatCrop(l.crop)} className="h-14 w-14 object-cover" />
                   ) : (
                     CROP_EMOJI[l.crop] ?? "🌾"
                   )}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <div className="font-medium">{l.crop}</div>
+                  <div className="font-medium">{formatCrop(l.crop)}</div>
                   <div className="text-xs text-hmuted">
                     {l.quantity} {l.unit} · Min {l.minOrder} {l.unit} · Kalite {l.quality}
                   </div>
@@ -156,6 +191,19 @@ function PublicStorefront() {
           </section>
         )}
       </div>
+
+      {loggedIn === false && (
+        <div className="fixed inset-x-0 bottom-0 z-40 border-t bg-card/95 backdrop-blur px-4 py-3 md:px-8">
+          <Link
+            to="/login"
+            search={{ role: "buyer" } as any}
+            className="block w-full rounded-full py-3 text-center text-sm font-semibold"
+            style={{ background: "var(--saffron)", color: "var(--hwhite)" }}
+          >
+            Teklif göndermek için giriş yapın
+          </Link>
+        </div>
+      )}
     </div>
   );
 }
