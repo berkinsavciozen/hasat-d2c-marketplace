@@ -22,7 +22,7 @@ export const WORK_TYPES: { key: WorkTypeKey; label: string; emoji: string }[] = 
 export const WORK_TYPE_MAP: Record<WorkTypeKey, { label: string; emoji: string }> =
   Object.fromEntries(WORK_TYPES.map((w) => [w.key, { label: w.label, emoji: w.emoji }])) as any;
 
-const META_RE = /^\[work:([a-z]+)\](?:\[health:([1-5])\])?\s*/;
+const TAG_RE = /\[([a-zA-Z_]+):([^\]]+)\]/g;
 
 export function encodeNotes(meta: { work: WorkTypeKey; health?: number; text: string }): string {
   const h = meta.health ? `[health:${meta.health}]` : "";
@@ -33,13 +33,24 @@ export function parseNotes(notes: string | null | undefined): {
   work: WorkTypeKey;
   health?: number;
   text: string;
+  tags: { key: string; value: string }[];
 } {
-  if (!notes) return { work: "gozlem", text: "" };
-  const m = notes.match(META_RE);
-  if (!m) return { work: "gozlem", text: notes };
-  const work = (WORK_TYPE_MAP[m[1] as WorkTypeKey] ? m[1] : "gozlem") as WorkTypeKey;
-  const health = m[2] ? Number(m[2]) : undefined;
-  return { work, health, text: notes.replace(META_RE, "") };
+  if (!notes) return { work: "gozlem", text: "", tags: [] };
+  const tags: { key: string; value: string }[] = [];
+  const text = notes
+    .replace(TAG_RE, (_, k: string, v: string) => {
+      tags.push({ key: k.toLowerCase(), value: v.trim() });
+      return "";
+    })
+    .replace(/\s+/g, " ")
+    .trim();
+  const workTag = tags.find((t) => t.key === "work" || t.key === "category");
+  const work = (workTag && WORK_TYPE_MAP[workTag.value as WorkTypeKey]
+    ? (workTag.value as WorkTypeKey)
+    : "gozlem") as WorkTypeKey;
+  const healthTag = tags.find((t) => t.key === "health");
+  const health = healthTag && /^[1-5]$/.test(healthTag.value) ? Number(healthTag.value) : undefined;
+  return { work, health, text, tags };
 }
 
 export function healthToQuality(h: number): "A" | "B" | "C" {
