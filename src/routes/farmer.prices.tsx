@@ -130,7 +130,7 @@ function Prices() {
         ))}
 
         <AIInsightBanner>
-          {selected.crop} fiyatı 7 günde {formatDelta(selected.delta7d)} değişti — vitrindeki listenizi güncellemek ister misiniz?
+          {formatCrop(selected.crop)} fiyatı 7 günde {formatDelta(selected.delta7d)} değişti — vitrindeki listenizi güncellemek ister misiniz?
         </AIInsightBanner>
 
         {alertsLoading ? (
