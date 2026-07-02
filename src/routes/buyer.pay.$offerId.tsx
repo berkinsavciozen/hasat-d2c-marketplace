@@ -1,6 +1,6 @@
 import { createFileRoute, useNavigate, useRouter } from "@tanstack/react-router";
 import { ArrowLeft, Copy, Check } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useBuyerOffers, useSimulatePayment, useMarkTransferSent } from "@/lib/hasat/queries";
 import { LoadingDots } from "@/components/hasat/LoadingDots";
 import { formatTRY } from "@/lib/hasat/format";
@@ -12,20 +12,57 @@ export const Route = createFileRoute("/buyer/pay/$offerId")({
 });
 
 function formatIbanDisplay(iban: string): string {
-  const c = iban.replace(/\s+/g, "").toUpperCase();
-  return c.replace(/(.{4})/g, "$1 ").trim();
+  try {
+    const c = iban.replace(/\s+/g, "").toUpperCase();
+    return c.replace(/(.{4})/g, "$1 ").trim();
+  } catch {
+    return iban ?? "";
+  }
 }
 
 function PayPage() {
   const { offerId } = Route.useParams();
   const navigate = useNavigate();
   const router = useRouter();
-  const { data: offers, isPending, isFetching } = useBuyerOffers();
+  const { data: offers, isPending, isError, error, refetch } = useBuyerOffers();
   const pay = useSimulatePayment();
   const markTransfer = useMarkTransferSent();
   const [copied, setCopied] = useState(false);
+  const [timedOut, setTimedOut] = useState(false);
 
-  if (isPending || isFetching || !offers) return <div className="p-8"><LoadingDots /></div>;
+  useEffect(() => {
+    if (!isPending) return;
+    const t = setTimeout(() => setTimedOut(true), 8000);
+    return () => clearTimeout(t);
+  }, [isPending]);
+
+  if (isError || timedOut) {
+    return (
+      <div className="p-8 text-center text-hmuted space-y-3">
+        <div>Sayfa yüklenemedi.</div>
+        {error instanceof Error && (
+          <div className="text-xs opacity-70">{error.message}</div>
+        )}
+        <div className="flex justify-center gap-2 pt-2">
+          <button
+            onClick={() => router.history.back()}
+            className="rounded-lg border px-4 py-2 text-sm"
+          >
+            Geri
+          </button>
+          <button
+            onClick={() => { setTimedOut(false); refetch(); }}
+            className="rounded-lg px-4 py-2 text-sm text-white"
+            style={{ background: "var(--saffron)" }}
+          >
+            Tekrar Dene
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (isPending || !offers) return <div className="p-8"><LoadingDots /></div>;
   const offer = offers.find((o) => o.id === offerId);
   if (!offer) {
     return (
