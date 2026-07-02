@@ -274,7 +274,7 @@ function OrderCard({ order, muted }: { order: Order; muted?: boolean }) {
         <div className="flex-1 min-w-0">
           <div className="font-mono text-xs text-hmuted">{order.code}</div>
           <div className="mt-1 font-medium truncate">{order.producerName}</div>
-          <div className="text-xs text-hmuted">{order.crop} · {order.quantity} {order.unit}</div>
+          <div className="text-xs text-hmuted">{formatCrop(order.crop)} · {order.quantity} {order.unit}</div>
           <div className="mt-1.5 font-mono text-lg font-semibold">{formatTRY(order.total)}</div>
         </div>
         <div className="flex flex-col items-end gap-1.5 shrink-0">
