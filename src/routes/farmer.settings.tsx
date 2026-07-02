@@ -12,6 +12,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { TierBadge } from "@/components/hasat/TierBadge";
 import { UpgradeModal } from "@/components/hasat/UpgradeModal";
 import { PhotoUploader } from "@/components/hasat/PhotoUploader";
+import { vitrinUrl, copyVitrinLink } from "@/lib/hasat/vitrin";
 
 export const Route = createFileRoute("/farmer/settings")({ component: Settings });
 
