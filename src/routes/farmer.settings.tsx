@@ -36,6 +36,8 @@ function Settings() {
 
   const [name, setName] = useState("");
   const [city, setCity] = useState("");
+  const [iban, setIban] = useState("");
+  const [bankAccountName, setBankAccountName] = useState("");
   const [editing, setEditing] = useState<string | null>(null);
   const [pName, setPName] = useState("");
   const [pArea, setPArea] = useState(0);
@@ -46,12 +48,29 @@ function Settings() {
     if (!profile) return;
     setName(profile.name ?? "");
     setCity(profile.city ?? "");
-  }, [profile?.name, profile?.city]);
+    setIban(profile.iban ?? "");
+    setBankAccountName(profile.bank_account_name ?? "");
+  }, [profile?.name, profile?.city, profile?.iban, profile?.bank_account_name]);
 
   const saveProfile = async () => {
     try {
       await updateProfile.mutateAsync({ name, city });
       toast.success("Profil güncellendi");
+    } catch (e) { toast.error((e as Error).message); }
+  };
+
+  const saveBank = async () => {
+    const cleaned = iban.replace(/\s+/g, "").toUpperCase();
+    if (cleaned && !/^TR\d{24}$/.test(cleaned)) {
+      toast.error("Geçerli bir TR IBAN girin (TR + 24 rakam)");
+      return;
+    }
+    try {
+      await updateProfile.mutateAsync({
+        iban: cleaned || null,
+        bank_account_name: bankAccountName.trim() || null,
+      });
+      toast.success("Banka bilgileri güncellendi");
     } catch (e) { toast.error((e as Error).message); }
   };
 
