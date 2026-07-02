@@ -145,6 +145,34 @@ function Settings() {
           </div>
         </Section>
 
+        <Section title="Banka Bilgileri">
+          <p className="mb-3 text-xs text-hmuted">
+            Alıcılar, teklifiniz kabul edildiğinde bu IBAN'a havale yaparak ödeme yapar.
+          </p>
+          <label className="text-xs text-muted-foreground">IBAN</label>
+          <Input
+            value={iban}
+            onChange={(e) => setIban(e.target.value)}
+            placeholder="TR00 0000 0000 0000 0000 0000 00"
+            className="mt-1 mb-3 font-mono"
+          />
+          <label className="text-xs text-muted-foreground">Hesap Sahibi Adı</label>
+          <Input
+            value={bankAccountName}
+            onChange={(e) => setBankAccountName(e.target.value)}
+            placeholder="Ad Soyad"
+            className="mt-1 mb-3"
+          />
+          <button onClick={saveBank}
+            disabled={updateProfile.isPending}
+            className="rounded-lg px-4 py-2 text-sm font-medium disabled:opacity-50"
+            style={{ background: "var(--saffron)", color: "var(--hwhite)" }}>
+            {updateProfile.isPending ? "Kaydediliyor…" : "Kaydet"}
+          </button>
+        </Section>
+
+
+
         <Section title="AI Asistan">
           {(() => {
             const isPremium = profile?.tier === "premium";
