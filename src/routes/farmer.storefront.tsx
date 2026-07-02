@@ -1,7 +1,9 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { FarmerHeader } from "./farmer";
-import { useFarmerListings, useCreateListing, useUpdateListing, useDeleteListing, useParcels } from "@/lib/hasat/queries";
+import { useFarmerListings, useCreateListing, useUpdateListing, useDeleteListing, useParcels, useProfile } from "@/lib/hasat/queries";
+import { vitrinUrl, copyVitrinLink } from "@/lib/hasat/vitrin";
+import { Link2 } from "lucide-react";
 import { LoadingDots } from "@/components/hasat/LoadingDots";
 import { formatTRY, formatCrop } from "@/lib/hasat/format";
 import { Stepper } from "@/components/hasat/Stepper";
