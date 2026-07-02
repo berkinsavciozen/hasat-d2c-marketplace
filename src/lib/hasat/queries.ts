@@ -961,6 +961,79 @@ export function useSimulatePayment() {
   });
 }
 
+// Buyer marks an IBAN transfer as sent. Offer moves to payment_status='pending_transfer'.
+// Farmer will later confirm receipt with useConfirmTransferReceived.
+export function useMarkTransferSent() {
+  const qc = useQueryClient();
+  const userId = useAuthUserId();
+  return useMutation({
+    mutationFn: async (offerId: string) => {
+      if (!userId) throw new Error("Oturum bulunamadı");
+      const { data, error } = await supabase
+        .from("offers")
+        .update({ payment_status: "pending_transfer" } as any)
+        .eq("id", offerId)
+        .eq("buyer_id", userId)
+        .eq("status", "accepted")
+        .select("id")
+        .single();
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["farmerOffers"] });
+      qc.invalidateQueries({ queryKey: ["buyerOffers", userId] });
+    },
+  });
+}
+
+// Farmer confirms havale receipt. Marks payment_status=paid and creates the order
+// (idempotently, mirroring useSimulatePayment). Only the farmer on the offer may call this.
+export function useConfirmTransferReceived() {
+  const qc = useQueryClient();
+  const userId = useAuthUserId();
+  return useMutation({
+    mutationFn: async (offerId: string) => {
+      if (!userId) throw new Error("Oturum bulunamadı");
+      const { data: offerRow, error: e1 } = await supabase
+        .from("offers")
+        .update({ payment_status: "paid" } as any)
+        .eq("id", offerId)
+        .eq("farmer_id", userId)
+        .eq("payment_status", "pending_transfer")
+        .select("*")
+        .single();
+      if (e1) throw e1;
+
+      const { data: existing } = await supabase
+        .from("orders").select("id").eq("offer_id", offerId).maybeSingle();
+      if (!existing) {
+        const { data: order, error: e2 } = await supabase.from("orders").insert({
+          offer_id: offerRow.id,
+          buyer_id: offerRow.buyer_id,
+          farmer_id: offerRow.farmer_id,
+          status: "preparing",
+          order_ref: "",
+        } as any).select("id").single();
+        if (e2) throw e2;
+        await supabase.from("order_timeline").insert({
+          order_id: order.id,
+          step: "submitted",
+          label: "Sipariş Alındı",
+          completed_at: new Date().toISOString(),
+        });
+      }
+      return offerRow;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["farmerOffers", userId] });
+      qc.invalidateQueries({ queryKey: ["buyerOffers"] });
+      qc.invalidateQueries({ queryKey: ["farmerOrders", userId] });
+      qc.invalidateQueries({ queryKey: ["buyerOrders"] });
+    },
+  });
+}
+
 // Withdraw the most recent counter-offer message.
 // Only the sender of that message may call this. Deletes the message,
 // reverts current_price/quantity to the prior message's values (or to the
