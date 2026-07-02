@@ -122,7 +122,7 @@ function OfferCard({ offer }: { offer: Offer }) {
               {BUYER_TYPE_EMOJI[offer.buyerType]} {BUYER_TYPE_LABEL[offer.buyerType]}
             </span>
           </div>
-          <div className="mt-1 text-sm text-hmuted">{offer.crop} · {offer.quantity} {offer.unit}</div>
+          <div className="mt-1 text-sm text-hmuted">{formatCrop(offer.crop)} · {offer.quantity} {offer.unit}</div>
           <div className="mt-1.5 flex items-baseline gap-2 flex-wrap">
             <span className="font-mono text-lg font-semibold">{formatTRY(total)}</span>
             <span className="text-xs text-hmuted">({formatTRY(offer.pricePerUnit)}/{offer.unit})</span>
