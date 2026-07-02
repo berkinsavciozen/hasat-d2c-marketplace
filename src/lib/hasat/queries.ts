@@ -486,7 +486,9 @@ function dbToOffer(r: any, side: "farmer" | "buyer"): Offer {
     ballSide: (r.ball_side === "buyer" ? "buyer" : "farmer"),
     currentQuantity: liveQty,
     currentPrice: livePrice,
-    paymentStatus: (r.payment_status ?? "unpaid") as "unpaid" | "pending" | "paid",
+    paymentStatus: (r.payment_status ?? "unpaid") as "unpaid" | "pending" | "pending_transfer" | "paid",
+    farmerIban: r.farmer?.iban ?? undefined,
+    farmerBankAccountName: r.farmer?.bank_account_name ?? undefined,
   };
 }
 
