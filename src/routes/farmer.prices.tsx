@@ -7,7 +7,7 @@ import { AIInsightBanner } from "@/components/hasat/AIInsightBanner";
 import { TrustBadge } from "@/components/hasat/TrustBadge";
 import { Sparkline } from "@/components/hasat/Sparkline";
 import { Stepper } from "@/components/hasat/Stepper";
-import { formatTRY, formatDelta } from "@/lib/hasat/format";
+import { formatTRY, formatDelta, formatCrop } from "@/lib/hasat/format";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Bell, TrendingUp, TrendingDown } from "lucide-react";
