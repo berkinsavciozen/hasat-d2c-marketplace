@@ -1,4 +1,4 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useState, useEffect } from "react";
 import { BuyerHeader } from "@/components/hasat/BuyerHeader";
 import { LoadingDots } from "@/components/hasat/LoadingDots";
@@ -10,6 +10,15 @@ import type { Order, Offer } from "@/lib/hasat/types";
 import { NegotiationThread } from "@/components/hasat/NegotiationThread";
 import { statusVisual, statusStyle, canAccept } from "@/lib/hasat/offer-status";
 import { WaitingBanner } from "@/components/hasat/WaitingBanner";
+import { slugifyFarmer } from "@/lib/hasat/vitrin";
+
+function farmerSlugOf(name: string | null | undefined, id: string | undefined): string | null {
+  if (name) {
+    const s = slugifyFarmer(name);
+    if (s) return s;
+  }
+  return id ?? null;
+}
 
 export const Route = createFileRoute("/buyer/orders")({
   head: () => ({ meta: [{ title: "Siparişlerim — Hasat" }] }),
