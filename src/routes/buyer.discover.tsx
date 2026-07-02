@@ -107,9 +107,14 @@ function Discover() {
                   onClick={() => navigate({ to: "/buyer/offer/$listingId", params: { listingId: l.id } })}
                   className="text-left rounded-2xl bg-card border overflow-hidden hover:border-saffron transition"
                 >
-                  <div className="h-28 relative" style={{
-                    background: `repeating-linear-gradient(45deg, color-mix(in oklab, var(--saffron) 30%, var(--dark)) 0 12px, color-mix(in oklab, var(--saffron) 20%, var(--dark)) 12px 24px)`,
-                  }}>
+                  <div className="h-28 relative overflow-hidden" style={
+                    l.photos && l.photos[0]
+                      ? undefined
+                      : { background: `repeating-linear-gradient(45deg, color-mix(in oklab, var(--saffron) 30%, var(--dark)) 0 12px, color-mix(in oklab, var(--saffron) 20%, var(--dark)) 12px 24px)` }
+                  }>
+                    {l.photos && l.photos[0] && (
+                      <img src={l.photos[0]} alt={l.crop} className="absolute inset-0 h-full w-full object-cover" />
+                    )}
                     <div className="absolute inset-0" style={{ background: "linear-gradient(180deg, transparent 40%, rgba(0,0,0,0.55))" }} />
                     <div className="absolute top-2 left-2 inline-flex items-center gap-1 rounded-full bg-saffron text-white text-[10px] font-bold px-2 py-0.5">
                       Kalite {l.quality}

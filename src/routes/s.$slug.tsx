@@ -2,11 +2,11 @@ import { createFileRoute, Link, notFound } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { ArrowLeft } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { dbToListing } from "@/lib/hasat/queries";
+import { dbToListing, dbToParcel } from "@/lib/hasat/queries";
 import { LoadingDots } from "@/components/hasat/LoadingDots";
 import { formatTRY } from "@/lib/hasat/format";
 import { TrustBadge } from "@/components/hasat/TrustBadge";
-import type { Listing } from "@/lib/hasat/types";
+import type { Listing, Parcel } from "@/lib/hasat/types";
 
 export const Route = createFileRoute("/s/$slug")({
   head: () => ({ meta: [{ title: "Vitrin | Hasat" }] }),
@@ -15,6 +15,7 @@ export const Route = createFileRoute("/s/$slug")({
     <div className="p-8 text-center text-hmuted">Vitrin bulunamadı.</div>
   ),
 });
+
 
 const CROP_EMOJI: Record<string, string> = {
   Safran: "🌸", Lavanta: "💜", "Tıbbi Bitkiler": "🌿", Fındık: "🌰", Zeytinyağı: "🫒",
@@ -50,11 +51,19 @@ function useStorefront(slug: string) {
         profile = match ?? null;
       }
       if (!profile) return null;
-      const { data: rows } = await supabase
-        .from("listings").select("*")
-        .eq("farmer_id", profile.id).eq("status", "active")
-        .order("created_at", { ascending: false });
-      return { profile, listings: (rows ?? []).map(dbToListing) };
+      const [{ data: lRows }, { data: pRows }] = await Promise.all([
+        supabase.from("listings").select("*")
+          .eq("farmer_id", profile.id).eq("status", "active")
+          .order("created_at", { ascending: false }),
+        supabase.from("parcels").select("*")
+          .eq("farmer_id", profile.id)
+          .order("created_at", { ascending: true }),
+      ]);
+      return {
+        profile,
+        listings: (lRows ?? []).map(dbToListing),
+        parcels: (pRows ?? []).map(dbToParcel),
+      };
     },
   });
 }
@@ -74,7 +83,8 @@ function PublicStorefront() {
   }
   if (!data) throw notFound();
 
-  const { profile, listings } = data;
+  const { profile, listings, parcels } = data;
+  const parcelsWithPhotos = parcels.filter((p: Parcel) => (p.photos ?? []).length > 0);
 
   return (
     <div>
@@ -89,38 +99,61 @@ function PublicStorefront() {
         </div>
       </div>
 
-      <div className="p-4 md:p-8 space-y-3">
-        <h2 className="text-xs font-medium uppercase tracking-wider text-hmuted">Aktif Ürünler</h2>
-        {listings.length === 0 ? (
-          <div className="rounded-2xl border border-dashed p-10 text-center text-hmuted">
-            Bu üreticinin şu anda aktif ürünü yok.
-          </div>
-        ) : (
-          listings.map((l: Listing) => (
-            <Link
-              key={l.id}
-              to="/buyer/offer/$listingId"
-              params={{ listingId: l.id }}
-              className="flex items-center gap-3 rounded-2xl border bg-card p-4 hover:border-saffron/40"
-            >
-              <div className="grid h-14 w-14 place-items-center rounded-xl bg-cream text-2xl">
-                {l.photos?.[0] ? (
-                  <img src={l.photos[0]} alt={l.crop} className="h-14 w-14 rounded-xl object-cover" />
-                ) : (
-                  CROP_EMOJI[l.crop] ?? "🌾"
-                )}
-              </div>
-              <div className="flex-1 min-w-0">
-                <div className="font-medium">{l.crop}</div>
-                <div className="text-xs text-hmuted">
-                  {l.quantity} {l.unit} · Min {l.minOrder} {l.unit} · Kalite {l.quality}
+      <div className="p-4 md:p-8 space-y-6">
+        <section className="space-y-3">
+          <h2 className="text-xs font-medium uppercase tracking-wider text-hmuted">Aktif Ürünler</h2>
+          {listings.length === 0 ? (
+            <div className="rounded-2xl border border-dashed p-10 text-center text-hmuted">
+              Bu üreticinin şu anda aktif ürünü yok.
+            </div>
+          ) : (
+            listings.map((l: Listing) => (
+              <div
+                key={l.id}
+                className="flex items-center gap-3 rounded-2xl border bg-card p-4"
+              >
+                <div className="grid h-14 w-14 place-items-center rounded-xl bg-cream text-2xl overflow-hidden">
+                  {l.photos?.[0] ? (
+                    <img src={l.photos[0]} alt={l.crop} className="h-14 w-14 object-cover" />
+                  ) : (
+                    CROP_EMOJI[l.crop] ?? "🌾"
+                  )}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="font-medium">{l.crop}</div>
+                  <div className="text-xs text-hmuted">
+                    {l.quantity} {l.unit} · Min {l.minOrder} {l.unit} · Kalite {l.quality}
+                  </div>
+                </div>
+                <div className="font-mono text-sm text-saffron whitespace-nowrap">
+                  {formatTRY(l.pricePerUnit)}/{l.unit}
                 </div>
               </div>
-              <div className="font-mono text-sm text-saffron whitespace-nowrap">
-                {formatTRY(l.pricePerUnit)}/{l.unit}
-              </div>
-            </Link>
-          ))
+            ))
+          )}
+        </section>
+
+        {parcelsWithPhotos.length > 0 && (
+          <section className="space-y-3">
+            <h2 className="text-xs font-medium uppercase tracking-wider text-hmuted">Tarlalarım</h2>
+            <div className="grid gap-3 sm:grid-cols-2">
+              {parcelsWithPhotos.map((p) => (
+                <div key={p.id} className="rounded-2xl border bg-card overflow-hidden">
+                  <div className="grid grid-cols-2 gap-0.5">
+                    {(p.photos ?? []).slice(0, 4).map((u, i) => (
+                      <img key={i} src={u} alt={p.name} className="h-28 w-full object-cover" />
+                    ))}
+                  </div>
+                  <div className="p-3">
+                    <div className="text-sm font-medium">{p.name}</div>
+                    <div className="text-xs text-hmuted">
+                      {p.area} dönüm{p.location.label ? ` · ${p.location.label}` : ""}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </section>
         )}
       </div>
     </div>

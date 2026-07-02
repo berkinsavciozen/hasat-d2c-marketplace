@@ -21,6 +21,7 @@ export interface Parcel {
   area: number;
   crops: string[];
   location: { lat: number; lng: number; label: string };
+  photos?: string[];
 }
 
 export interface HarvestEntry {
