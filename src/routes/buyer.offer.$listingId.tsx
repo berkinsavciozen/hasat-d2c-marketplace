@@ -31,6 +31,7 @@ function MakeOffer() {
   const navigate = useNavigate();
   const setPendingOffer = useHasat((s) => s.setPendingOffer);
   const { data: listing, isLoading } = useListing(listingId);
+  const { data: stock } = useListingStock(listingId);
 
   const [qty, setQty] = useState(0);
   const [price, setPrice] = useState(0);
