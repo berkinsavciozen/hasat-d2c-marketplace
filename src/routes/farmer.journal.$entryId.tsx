@@ -178,3 +178,73 @@ function EntryDetail() {
     </>
   );
 }
+
+function BatchLinkSection({ entryId, entryCrop }: { entryId: string; entryCrop: string }) {
+  const { data: links = [] } = useHarvestListingLinks(entryId);
+  const { data: listings = [] } = useFarmerListings();
+  const link = useLinkHarvestToListing();
+  const unlink = useUnlinkHarvestFromListing();
+  const [selected, setSelected] = useState<string>("");
+
+  const linkedIds = new Set(links.map((l) => l.listingId));
+  const candidates = listings.filter(
+    (l) => l.status === "active" && !linkedIds.has(l.id) &&
+      (l.crop.toLowerCase().trim() === entryCrop.toLowerCase().trim())
+  );
+
+  return (
+    <div className="rounded-2xl border p-4">
+      <div className="font-medium">Bu hasatı bir ürüne bağla</div>
+      <div className="text-xs text-hmuted mt-0.5">Bağlanan hasatlar ürün partisinin izlenebilir stok toplamını oluşturur.</div>
+
+      {links.length > 0 && (
+        <ul className="mt-3 space-y-2">
+          {links.map((l) => (
+            <li key={l.listingId} className="flex items-center gap-2 rounded-lg border px-3 py-2 text-sm">
+              <span className="flex-1">{formatCrop(l.crop)}</span>
+              <Link to="/batch/$listingId" params={{ listingId: l.listingId }} className="text-xs text-saffron underline">Parti</Link>
+              <button
+                onClick={async () => {
+                  try { await unlink.mutateAsync({ listingId: l.listingId, entryId }); toast.success("Bağlantı kaldırıldı"); }
+                  catch (e: any) { toast.error(e.message ?? "Kaldırılamadı"); }
+                }}
+                className="text-xs text-hred"
+              >Kaldır</button>
+            </li>
+          ))}
+        </ul>
+      )}
+
+      {candidates.length > 0 ? (
+        <div className="mt-3 flex gap-2">
+          <select
+            value={selected}
+            onChange={(e) => setSelected(e.target.value)}
+            className="flex-1 rounded-lg border bg-input px-3 py-2 text-sm"
+          >
+            <option value="">Ürün seç…</option>
+            {candidates.map((l) => (
+              <option key={l.id} value={l.id}>
+                {formatCrop(l.crop)} · {l.quantity} {l.unit} · ₺{l.pricePerUnit}/{l.unit}
+              </option>
+            ))}
+          </select>
+          <button
+            disabled={!selected || link.isPending}
+            onClick={async () => {
+              if (!selected) return;
+              try { await link.mutateAsync({ listingId: selected, entryId }); setSelected(""); toast.success("Bağlandı"); }
+              catch (e: any) { toast.error(e.message ?? "Bağlanamadı"); }
+            }}
+            className="rounded-lg bg-saffron px-4 py-2 text-sm text-white disabled:opacity-40"
+          >Bağla</button>
+        </div>
+      ) : links.length === 0 ? (
+        <div className="mt-3 text-xs text-hmuted">
+          Aynı üründe aktif ilanınız yok. Önce vitrine bir ilan ekleyin.
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
