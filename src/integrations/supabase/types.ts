@@ -222,6 +222,39 @@ export type Database = {
           },
         ]
       }
+      crop_config: {
+        Row: {
+          category_group: string | null
+          crop: string
+          default_unit: string
+          display_name: string
+          harvest_window_end_month: number | null
+          harvest_window_start_month: number | null
+          lifecycle_steps: Json | null
+          price_benchmark_source: string | null
+        }
+        Insert: {
+          category_group?: string | null
+          crop: string
+          default_unit?: string
+          display_name: string
+          harvest_window_end_month?: number | null
+          harvest_window_start_month?: number | null
+          lifecycle_steps?: Json | null
+          price_benchmark_source?: string | null
+        }
+        Update: {
+          category_group?: string | null
+          crop?: string
+          default_unit?: string
+          display_name?: string
+          harvest_window_end_month?: number | null
+          harvest_window_start_month?: number | null
+          lifecycle_steps?: Json | null
+          price_benchmark_source?: string | null
+        }
+        Relationships: []
+      }
       farms: {
         Row: {
           created_at: string
@@ -797,6 +830,7 @@ export type Database = {
           location_label: string | null
           name: string
           parcel_photo_urls: string[]
+          production_method: string | null
         }
         Insert: {
           area: number
@@ -810,6 +844,7 @@ export type Database = {
           location_label?: string | null
           name: string
           parcel_photo_urls?: string[]
+          production_method?: string | null
         }
         Update: {
           area?: number
@@ -823,6 +858,7 @@ export type Database = {
           location_label?: string | null
           name?: string
           parcel_photo_urls?: string[]
+          production_method?: string | null
         }
         Relationships: [
           {
@@ -890,6 +926,7 @@ export type Database = {
           recorded_at: string
           recorded_by: string | null
           source: string | null
+          source_type: string | null
           unit: string
         }
         Insert: {
@@ -899,6 +936,7 @@ export type Database = {
           recorded_at?: string
           recorded_by?: string | null
           source?: string | null
+          source_type?: string | null
           unit?: string
         }
         Update: {
@@ -908,6 +946,7 @@ export type Database = {
           recorded_at?: string
           recorded_by?: string | null
           source?: string | null
+          source_type?: string | null
           unit?: string
         }
         Relationships: [
