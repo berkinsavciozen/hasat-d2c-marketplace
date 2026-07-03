@@ -8,6 +8,7 @@ import { Slider } from "@/components/ui/slider";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { FileText } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { applyStoredReferral } from "@/lib/hasat/queries";
 import type { CertificationType } from "@/lib/hasat/types";
 
 export const Route = createFileRoute("/onboarding/farmer")({
