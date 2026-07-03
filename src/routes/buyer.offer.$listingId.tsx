@@ -180,10 +180,10 @@ function MakeOffer() {
           <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Üreticiye iletmek istediğiniz bir mesaj..." />
         </div>
 
-        <button onClick={submit} disabled={!date}
+        <button onClick={submit} disabled={!date || (stock ? stock.available <= 0 : false)}
           className="w-full rounded-xl py-3.5 text-sm font-medium disabled:opacity-40"
           style={{ background: "var(--saffron)", color: "var(--hwhite)" }}>
-          Teklif Gönder & Öde →
+          {stock && stock.available <= 0 ? "Tükendi" : "Teklif Gönder & Öde →"}
         </button>
       </div>
     </div>
