@@ -337,7 +337,7 @@ export function useProfile() {
     enabled: !!userId,
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("profiles").select("id, name, city, role, phone, tier, iban, bank_account_name")
+        .from("profiles").select("id, name, city, role, phone, tier, iban, bank_account_name, referral_code")
         .eq("id", userId!).maybeSingle();
       if (error) throw error;
       return (data ?? null) as ProfileRow | null;
