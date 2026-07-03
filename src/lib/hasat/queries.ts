@@ -702,6 +702,141 @@ export function useDeleteListing() {
 }
 
 // =====================================================================
+// LISTING BATCHES (harvest entry links) & STOCK
+// =====================================================================
+export interface ListingStock {
+  base: number;       // sum of linked harvest quantities, or listing.quantity fallback
+  reserved: number;   // accepted offers on this listing
+  available: number;  // base - reserved
+  linkedCount: number;
+  usingFallback: boolean;
+}
+
+export function useListingStock(listingId: string | undefined | null) {
+  return useQuery({
+    queryKey: ["listingStock", listingId],
+    enabled: !!listingId,
+    queryFn: async (): Promise<ListingStock> => {
+      const [links, listingRes, offersRes] = await Promise.all([
+        supabase
+          .from("listing_harvest_entries")
+          .select("harvest_entry_id, harvest_entries(quantity)")
+          .eq("listing_id", listingId!),
+        supabase.from("listings").select("quantity").eq("id", listingId!).maybeSingle(),
+        supabase.from("offers").select("quantity").eq("listing_id", listingId!).eq("status", "accepted"),
+      ]);
+      if (links.error) throw links.error;
+      if (listingRes.error) throw listingRes.error;
+      if (offersRes.error) throw offersRes.error;
+      const batchSum = (links.data ?? []).reduce((s: number, r: any) => s + Number(r.harvest_entries?.quantity ?? 0), 0);
+      const usingFallback = batchSum <= 0;
+      const base = usingFallback ? Number(listingRes.data?.quantity ?? 0) : batchSum;
+      const reserved = (offersRes.data ?? []).reduce((s: number, r: any) => s + Number(r.quantity ?? 0), 0);
+      return {
+        base,
+        reserved,
+        available: Math.max(0, base - reserved),
+        linkedCount: links.data?.length ?? 0,
+        usingFallback,
+      };
+    },
+  });
+}
+
+export function useListingBatchEntries(listingId: string | undefined | null) {
+  return useQuery({
+    queryKey: ["listingBatchEntries", listingId],
+    enabled: !!listingId,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("listing_harvest_entries")
+        .select("harvest_entry_id, harvest_entries(*)")
+        .eq("listing_id", listingId!);
+      if (error) throw error;
+      const entries = (data ?? [])
+        .map((r: any) => r.harvest_entries)
+        .filter(Boolean)
+        .map(dbToEntry)
+        .sort((a, b) => a.date.localeCompare(b.date));
+      return entries;
+    },
+  });
+}
+
+export function useHarvestListingLinks(entryId: string | undefined | null) {
+  return useQuery({
+    queryKey: ["harvestListingLinks", entryId],
+    enabled: !!entryId,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("listing_harvest_entries")
+        .select("listing_id, listings(id, crop, unit, status)")
+        .eq("harvest_entry_id", entryId!);
+      if (error) throw error;
+      return (data ?? []).map((r: any) => ({
+        listingId: r.listing_id as string,
+        crop: r.listings?.crop as string,
+        unit: r.listings?.unit as string,
+        status: r.listings?.status as string,
+      }));
+    },
+  });
+}
+
+export function useLinkHarvestToListing() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ listingId, entryId }: { listingId: string; entryId: string }) => {
+      const { error } = await supabase
+        .from("listing_harvest_entries")
+        .insert({ listing_id: listingId, harvest_entry_id: entryId });
+      if (error) throw error;
+    },
+    onSuccess: (_d, v) => {
+      qc.invalidateQueries({ queryKey: ["listingStock", v.listingId] });
+      qc.invalidateQueries({ queryKey: ["listingBatchEntries", v.listingId] });
+      qc.invalidateQueries({ queryKey: ["harvestListingLinks", v.entryId] });
+    },
+  });
+}
+
+export function useUnlinkHarvestFromListing() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ listingId, entryId }: { listingId: string; entryId: string }) => {
+      const { error } = await supabase
+        .from("listing_harvest_entries")
+        .delete()
+        .eq("listing_id", listingId)
+        .eq("harvest_entry_id", entryId);
+      if (error) throw error;
+    },
+    onSuccess: (_d, v) => {
+      qc.invalidateQueries({ queryKey: ["listingStock", v.listingId] });
+      qc.invalidateQueries({ queryKey: ["listingBatchEntries", v.listingId] });
+      qc.invalidateQueries({ queryKey: ["harvestListingLinks", v.entryId] });
+    },
+  });
+}
+
+export function useListingOrders(listingId: string | undefined | null) {
+  return useQuery({
+    queryKey: ["listingOrders", listingId],
+    enabled: !!listingId,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("orders")
+        .select("id, status, created_at, order_ref, offer:offers!inner(quantity, price_per_unit, listing_id, buyer:profiles!offers_buyer_id_fkey(name))")
+        .eq("offer.listing_id", listingId!)
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      return (data ?? []) as any[];
+    },
+  });
+}
+
+
+// =====================================================================
 // OFFERS
 // =====================================================================
 export function useFarmerOffers() {
