@@ -1,0 +1,87 @@
+import { createFileRoute, Link } from "@tanstack/react-router";
+import { useEffect, useState } from "react";
+import { z } from "zod";
+import { lookupReferralOwner } from "@/lib/hasat/queries";
+
+export const Route = createFileRoute("/join")({
+  head: () => ({
+    meta: [
+      { title: "Hasat'a Katıl — Çiftçi Daveti" },
+      { name: "description", content: "Bir çiftçi seni Hasat'a davet etti. Ürünlerini doğrudan alıcılara sat." },
+      { name: "robots", content: "noindex" },
+    ],
+  }),
+  validateSearch: (search) => z.object({ ref: z.string().optional() }).parse(search),
+  component: JoinPage,
+});
+
+function JoinPage() {
+  const { ref } = Route.useSearch();
+  const [inviter, setInviter] = useState<{ id: string; name: string | null } | null>(null);
+  const [checking, setChecking] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      if (!ref) { setChecking(false); return; }
+      const owner = await lookupReferralOwner(ref);
+      if (cancelled) return;
+      if (owner) {
+        window.localStorage.setItem("hasat_ref", ref.trim().toUpperCase());
+        setInviter(owner);
+      }
+      setChecking(false);
+    })();
+    return () => { cancelled = true; };
+  }, [ref]);
+
+  return (
+    <div className="min-h-screen p-6" style={{ background: "var(--dark)", color: "var(--hwhite)" }}>
+      <div className="mx-auto max-w-md pt-10">
+        <div className="text-center">
+          <div className="text-6xl mb-3">🌸</div>
+          <h1 style={{ fontFamily: "Georgia, serif", fontSize: 34, color: "var(--saffron)" }}>Hasat'a Hoş Geldin</h1>
+          {checking ? (
+            <p className="mt-3 text-sm text-hwhite/60">Davet doğrulanıyor…</p>
+          ) : inviter ? (
+            <p className="mt-3 text-sm text-hwhite/70">
+              <span className="font-medium text-hwhite">{inviter.name ?? "Bir çiftçi"}</span> seni Hasat'a davet etti.
+            </p>
+          ) : ref ? (
+            <p className="mt-3 text-sm text-hred/80">Davet kodu bulunamadı, yine de kayıt olabilirsin.</p>
+          ) : (
+            <p className="mt-3 text-sm text-hwhite/60">Tarlandan doğrudan sofraya.</p>
+          )}
+        </div>
+
+        <div className="mt-8 space-y-3">
+          {[
+            { icon: "📓", title: "Dijital Defter", desc: "Hasatlarını kaydet, kâr/zararını gör" },
+            { icon: "📈", title: "Fiyat Zekası", desc: "Hal, D2C ve ihracat fiyatlarını karşılaştır" },
+            { icon: "🏪", title: "Vitrin", desc: "Ürünlerini doğrudan premium alıcılara sat" },
+          ].map((c) => (
+            <div key={c.title} className="rounded-xl border border-white/10 bg-white/5 p-4 flex items-start gap-3">
+              <div className="text-2xl">{c.icon}</div>
+              <div>
+                <div className="font-medium">{c.title}</div>
+                <div className="text-xs text-hwhite/60 mt-0.5">{c.desc}</div>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        <Link
+          to="/login"
+          search={{ role: "farmer" }}
+          className="mt-8 block w-full rounded-xl py-3 text-center text-sm font-medium"
+          style={{ background: "var(--saffron)", color: "var(--hwhite)" }}
+        >
+          Kayıt Ol / Giriş Yap →
+        </Link>
+        <div className="mt-4 text-center text-xs text-hwhite/50">
+          Devam ederek Hasat Kullanım Şartları'nı kabul edersin.
+        </div>
+      </div>
+    </div>
+  );
+}

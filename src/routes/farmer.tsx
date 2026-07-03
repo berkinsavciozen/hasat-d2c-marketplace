@@ -1,6 +1,6 @@
 import { createFileRoute, Link, Outlet, redirect, useRouterState } from "@tanstack/react-router";
 import { useState } from "react";
-import { BarChart3, BookOpen, Home, LineChart, Store, Users, Settings, Crown, Handshake, MoreHorizontal } from "lucide-react";
+import { BarChart3, BookOpen, Home, LineChart, Store, Users, Settings, Crown, Handshake, MoreHorizontal, Gift } from "lucide-react";
 import { useProfile, useParcels, useRealtimeSync, useAuthUserId, useFarmerOffers } from "@/lib/hasat/queries";
 import { SeasonBanner } from "@/components/hasat/SeasonBanner";
 import { FarmPill } from "@/components/hasat/FarmPill";
@@ -43,11 +43,13 @@ const moreItems = [
   { to: "/farmer/analytics", label: "Analitik", icon: BarChart3 },
   { to: "/farmer/community", label: "Topluluk", icon: Users },
   { to: "/farmer/orders", label: "Teklifler", icon: Handshake },
+  { to: "/farmer/referral", label: "Arkadaşını Davet Et", icon: Gift },
 ] as const;
 
 const sidebarExtras = [
   { to: "/farmer/community", label: "Topluluk", icon: Users },
   { to: "/farmer/orders", label: "Teklifler", icon: Handshake },
+  { to: "/farmer/referral", label: "Arkadaşını Davet Et", icon: Gift },
 ] as const;
 
 

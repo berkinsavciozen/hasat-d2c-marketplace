@@ -328,7 +328,50 @@ export interface ProfileRow {
   tier: "free" | "premium" | null;
   iban: string | null;
   bank_account_name: string | null;
+  referral_code?: string | null;
 }
+
+export function useReferredFarmers() {
+  const userId = useAuthUserId();
+  return useQuery({
+    queryKey: ["referredFarmers", userId],
+    enabled: !!userId,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("id, name, city, created_at")
+        .eq("referred_by", userId!)
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+}
+
+export async function lookupReferralOwner(code: string): Promise<{ id: string; name: string | null } | null> {
+  const clean = code.trim().toUpperCase();
+  if (!clean) return null;
+  const { data, error } = await supabase
+    .from("profiles")
+    .select("id, name")
+    .eq("referral_code", clean)
+    .eq("role", "farmer")
+    .maybeSingle();
+  if (error) return null;
+  return data ?? null;
+}
+
+export async function applyStoredReferral(newProfileId: string) {
+  if (typeof window === "undefined") return;
+  const code = window.localStorage.getItem("hasat_ref");
+  if (!code) return;
+  const owner = await lookupReferralOwner(code);
+  if (owner && owner.id !== newProfileId) {
+    await supabase.from("profiles").update({ referred_by: owner.id }).eq("id", newProfileId);
+  }
+  window.localStorage.removeItem("hasat_ref");
+}
+
 
 export function useProfile() {
   const userId = useAuthUserId();
@@ -337,7 +380,7 @@ export function useProfile() {
     enabled: !!userId,
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("profiles").select("id, name, city, role, phone, tier, iban, bank_account_name")
+        .from("profiles").select("id, name, city, role, phone, tier, iban, bank_account_name, referral_code")
         .eq("id", userId!).maybeSingle();
       if (error) throw error;
       return (data ?? null) as ProfileRow | null;
