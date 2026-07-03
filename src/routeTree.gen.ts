@@ -18,6 +18,7 @@ import { Route as OnboardingFarmerRouteImport } from './routes/onboarding.farmer
 import { Route as OnboardingBuyerRouteImport } from './routes/onboarding.buyer'
 import { Route as FarmerStorefrontRouteImport } from './routes/farmer.storefront'
 import { Route as FarmerSettingsRouteImport } from './routes/farmer.settings'
+import { Route as FarmerReferralRouteImport } from './routes/farmer.referral'
 import { Route as FarmerPricesRouteImport } from './routes/farmer.prices'
 import { Route as FarmerPremiumRouteImport } from './routes/farmer.premium'
 import { Route as FarmerJournalRouteImport } from './routes/farmer.journal'
@@ -88,6 +89,11 @@ const FarmerStorefrontRoute = FarmerStorefrontRouteImport.update({
 const FarmerSettingsRoute = FarmerSettingsRouteImport.update({
   id: '/settings',
   path: '/settings',
+  getParentRoute: () => FarmerRoute,
+} as any)
+const FarmerReferralRoute = FarmerReferralRouteImport.update({
+  id: '/referral',
+  path: '/referral',
   getParentRoute: () => FarmerRoute,
 } as any)
 const FarmerPricesRoute = FarmerPricesRouteImport.update({
@@ -242,6 +248,7 @@ export interface FileRoutesByFullPath {
   '/farmer/journal': typeof FarmerJournalRouteWithChildren
   '/farmer/premium': typeof FarmerPremiumRoute
   '/farmer/prices': typeof FarmerPricesRoute
+  '/farmer/referral': typeof FarmerReferralRoute
   '/farmer/settings': typeof FarmerSettingsRouteWithChildren
   '/farmer/storefront': typeof FarmerStorefrontRoute
   '/onboarding/buyer': typeof OnboardingBuyerRoute
@@ -278,6 +285,7 @@ export interface FileRoutesByTo {
   '/farmer/home': typeof FarmerHomeRoute
   '/farmer/premium': typeof FarmerPremiumRoute
   '/farmer/prices': typeof FarmerPricesRoute
+  '/farmer/referral': typeof FarmerReferralRoute
   '/farmer/settings': typeof FarmerSettingsRouteWithChildren
   '/farmer/storefront': typeof FarmerStorefrontRoute
   '/onboarding/buyer': typeof OnboardingBuyerRoute
@@ -316,6 +324,7 @@ export interface FileRoutesById {
   '/farmer/journal': typeof FarmerJournalRouteWithChildren
   '/farmer/premium': typeof FarmerPremiumRoute
   '/farmer/prices': typeof FarmerPricesRoute
+  '/farmer/referral': typeof FarmerReferralRoute
   '/farmer/settings': typeof FarmerSettingsRouteWithChildren
   '/farmer/storefront': typeof FarmerStorefrontRoute
   '/onboarding/buyer': typeof OnboardingBuyerRoute
@@ -355,6 +364,7 @@ export interface FileRouteTypes {
     | '/farmer/journal'
     | '/farmer/premium'
     | '/farmer/prices'
+    | '/farmer/referral'
     | '/farmer/settings'
     | '/farmer/storefront'
     | '/onboarding/buyer'
@@ -391,6 +401,7 @@ export interface FileRouteTypes {
     | '/farmer/home'
     | '/farmer/premium'
     | '/farmer/prices'
+    | '/farmer/referral'
     | '/farmer/settings'
     | '/farmer/storefront'
     | '/onboarding/buyer'
@@ -428,6 +439,7 @@ export interface FileRouteTypes {
     | '/farmer/journal'
     | '/farmer/premium'
     | '/farmer/prices'
+    | '/farmer/referral'
     | '/farmer/settings'
     | '/farmer/storefront'
     | '/onboarding/buyer'
@@ -520,6 +532,13 @@ declare module '@tanstack/react-router' {
       path: '/settings'
       fullPath: '/farmer/settings'
       preLoaderRoute: typeof FarmerSettingsRouteImport
+      parentRoute: typeof FarmerRoute
+    }
+    '/farmer/referral': {
+      id: '/farmer/referral'
+      path: '/referral'
+      fullPath: '/farmer/referral'
+      preLoaderRoute: typeof FarmerReferralRouteImport
       parentRoute: typeof FarmerRoute
     }
     '/farmer/prices': {
@@ -787,6 +806,7 @@ interface FarmerRouteChildren {
   FarmerJournalRoute: typeof FarmerJournalRouteWithChildren
   FarmerPremiumRoute: typeof FarmerPremiumRoute
   FarmerPricesRoute: typeof FarmerPricesRoute
+  FarmerReferralRoute: typeof FarmerReferralRoute
   FarmerSettingsRoute: typeof FarmerSettingsRouteWithChildren
   FarmerStorefrontRoute: typeof FarmerStorefrontRoute
   FarmerOrdersIndexRoute: typeof FarmerOrdersIndexRoute
@@ -800,6 +820,7 @@ const FarmerRouteChildren: FarmerRouteChildren = {
   FarmerJournalRoute: FarmerJournalRouteWithChildren,
   FarmerPremiumRoute: FarmerPremiumRoute,
   FarmerPricesRoute: FarmerPricesRoute,
+  FarmerReferralRoute: FarmerReferralRoute,
   FarmerSettingsRoute: FarmerSettingsRouteWithChildren,
   FarmerStorefrontRoute: FarmerStorefrontRoute,
   FarmerOrdersIndexRoute: FarmerOrdersIndexRoute,
