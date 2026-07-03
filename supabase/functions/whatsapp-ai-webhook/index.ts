@@ -98,6 +98,20 @@ serve(async (req) => {
     if (pendingOffers.length) ctx.push(`Bekleyen teklifler: ${pendingOffers.length} (en eski: ${pendingOffers[0].created_at?.slice(0, 10)})`);
     if (parcels.length) ctx.push(`Parseller:\n${parcels.map((p: any) => `- ${p.name} (id: ${p.id}, ürünler: ${(p.crops ?? []).join(", ")})`).join("\n")}`);
 
+    // Crop-agnostic: attach crop_config rows for every crop this farmer works with.
+    const cropSet = new Set<string>();
+    for (const h of harvests as any[]) if (h.crop) cropSet.add(String(h.crop).toLocaleLowerCase("tr").trim());
+    for (const l of listings as any[]) if (l.crop) cropSet.add(String(l.crop).toLocaleLowerCase("tr").trim());
+    for (const p of parcels as any[]) for (const c of (p.crops ?? [])) if (c) cropSet.add(String(c).toLocaleLowerCase("tr").trim());
+    if (cropSet.size) {
+      try {
+        const { data: cc } = await sb.from("crop_config")
+          .select("crop, display_name, harvest_window_start_month, harvest_window_end_month, lifecycle_steps, category_group")
+          .in("crop", Array.from(cropSet));
+        if (cc?.length) ctx.push(`Ürün konfigürasyonu:\n${JSON.stringify(cc)}`);
+      } catch (e) { console.error("crop_config fetch:", e); }
+    }
+
     const today = new Date().toISOString().slice(0, 10);
     const systemPrompt = `Bugünün tarihi: ${today}. Tarih belirtilmediğinde bu tarihi kullan. Geçmiş yıllara ait tarih UYDURMA.
 
@@ -105,6 +119,7 @@ Sen Hasat platformunun AI asistanısın. Hasat, Türk çiftçiler için bir D2C 
 Görüşme dili: Türkçe. Her zaman sade, anlaşılır Türkçe kullan. Teknik jargon kullanma.
 Çiftçinin adı: ${profile.name ?? "Çiftçi"}, şehri: ${profile.city ?? "—"}.
 Görevlerin: fiyat bilgisi ver, sipariş durumunu açıkla, günlük kaydı eklemesine yardım et, iş önerileri sun.
+Belirli bir ürün ya da hasat ayı hakkında konuşurken yalnızca aşağıdaki "Ürün konfigürasyonu" bloğundaki bilgilere dayan; kendinden ürün, sezon veya ay uydurma.
 Günlük kaydı eklemek isterse bilgileri topla ve cevabına [JOURNAL_ENTRY]{json}[/JOURNAL_ENTRY] bloğu ekle.
 JSON alanları: crop, quantity (sayı), unit (kg|ton|adet), harvest_date (YYYY-MM-DD, bugün=${today}), quality (A|B|C, varsayılan A), parcel_name (parsel adı) veya parcel_id, notes.
 Kısa ve net cevaplar ver. Maksimum 3 paragraf.

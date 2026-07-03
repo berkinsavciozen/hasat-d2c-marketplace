@@ -5,6 +5,7 @@ import { BuyerHeader } from "@/components/hasat/BuyerHeader";
 import { LoadingDots } from "@/components/hasat/LoadingDots";
 import { formatTRY, formatCrop } from "@/lib/hasat/format";
 import { useActiveListings, useListingStock } from "@/lib/hasat/queries";
+import { CATEGORY_GROUP_META, findCropConfig, useCropConfigMap } from "@/lib/hasat/crop-config";
 import { slugifyFarmer } from "@/lib/hasat/vitrin";
 
 
@@ -14,13 +15,6 @@ export const Route = createFileRoute("/buyer/discover")({
   component: Discover,
 });
 
-const CATS = [
-  { e: "🌸", l: "Safran" },
-  { e: "💜", l: "Lavanta" },
-  { e: "🍃", l: "Tıbbi Bitkiler" },
-  { e: "🫒", l: "Zeytinyağı" },
-];
-
 const SORTS = ["Puan", "Fiyat", "Yakınlık", "En Yeni"];
 
 const CROP_EMOJI: Record<string, string> = { Safran: "🌸", Lavanta: "💜", "Tıbbi Bitkiler": "🌿", Fındık: "🌰", Zeytinyağı: "🫒" };
@@ -28,6 +22,7 @@ const CROP_EMOJI: Record<string, string> = { Safran: "🌸", Lavanta: "💜", "T
 function Discover() {
   const navigate = useNavigate();
   const { data: listings = [], isLoading } = useActiveListings();
+  const { map: cropMap } = useCropConfigMap();
   const [sort, setSort] = useState("Puan");
   const [filters, setFilters] = useState<string[]>([]);
   const [query, setQuery] = useState("");
@@ -75,16 +70,33 @@ function Discover() {
         <div>
           <h2 className="font-serif text-lg mb-3">Kategoriler</h2>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-            {CATS.map((c) => {
-              const n = listings.filter((l) => l.crop.toLowerCase() === c.l.toLowerCase()).length;
-              return (
-                <button key={c.l} onClick={() => setQuery(c.l)} className="rounded-2xl bg-card border p-4 text-left hover:border-saffron transition">
-                  <div className="text-3xl mb-1">{c.e}</div>
-                  <div className="font-medium">{c.l}</div>
-                  <div className="text-xs text-hmuted">{n} ilan</div>
+            {(() => {
+              const buckets = new Map<string, { count: number; sampleCrop: string }>();
+              for (const l of listings) {
+                const cfg = findCropConfig(cropMap, l.crop);
+                const group = cfg?.category_group ?? "diger";
+                const cur = buckets.get(group) ?? { count: 0, sampleCrop: l.crop };
+                cur.count += 1;
+                buckets.set(group, cur);
+              }
+              const rows = Array.from(buckets.entries()).map(([group, v]) => {
+                const meta = CATEGORY_GROUP_META[group];
+                return {
+                  key: group,
+                  label: meta?.label ?? (group === "diger" ? "Diğer" : group),
+                  emoji: meta?.emoji ?? "🌾",
+                  count: v.count,
+                  sampleCrop: v.sampleCrop,
+                };
+              });
+              return rows.map((c) => (
+                <button key={c.key} onClick={() => setQuery(c.sampleCrop)} className="rounded-2xl bg-card border p-4 text-left hover:border-saffron transition">
+                  <div className="text-3xl mb-1">{c.emoji}</div>
+                  <div className="font-medium">{c.label}</div>
+                  <div className="text-xs text-hmuted">{c.count} ilan</div>
                 </button>
-              );
-            })}
+              ));
+            })()}
           </div>
         </div>
 
