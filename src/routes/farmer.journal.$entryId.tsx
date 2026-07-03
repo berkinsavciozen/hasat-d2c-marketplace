@@ -1,7 +1,7 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { ArrowLeft, Pencil, MoreVertical, Trash2 } from "lucide-react";
 import { useState } from "react";
-import { useEntry, useEntries, useDeleteEntry } from "@/lib/hasat/queries";
+import { useEntry, useEntries, useDeleteEntry, useFarmerListings, useHarvestListingLinks, useLinkHarvestToListing, useUnlinkHarvestFromListing } from "@/lib/hasat/queries";
 import { ProgressDots } from "@/components/hasat/ProgressDots";
 import { toast } from "sonner";
 import { formatTRY, formatDelta } from "@/lib/hasat/format";
