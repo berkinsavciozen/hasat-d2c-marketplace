@@ -39,7 +39,7 @@ async function fetchContextBlock(userId: string): Promise<string> {
       .eq("farmer_id", userId).eq("status", "active").limit(10),
     supabase.from("offers").select("id, created_at, status, listing_id")
       .eq("status", "pending").order("created_at", { ascending: true }),
-    supabase.from("parcels").select("id, name").eq("farmer_id", userId),
+    supabase.from("parcels").select("id, name, production_method").eq("farmer_id", userId),
   ]);
 
   const e = entries.data ?? [];
@@ -47,12 +47,27 @@ async function fetchContextBlock(userId: string): Promise<string> {
   const o = offers.data ?? [];
   const p = parcels.data ?? [];
 
+  // Crop-agnostic context: pull crop_config rows for every crop the farmer works with.
+  const cropSet = new Set<string>();
+  for (const x of e as any[]) if (x.crop) cropSet.add(String(x.crop).toLocaleLowerCase("tr-TR").trim());
+  for (const x of l as any[]) if (x.crop) cropSet.add(String(x.crop).toLocaleLowerCase("tr-TR").trim());
+  let cropConfigs: any[] = [];
+  if (cropSet.size > 0) {
+    const { data: cc } = await supabase.from("crop_config" as any)
+      .select("crop, display_name, harvest_window_start_month, harvest_window_end_month, lifecycle_steps, category_group")
+      .in("crop", Array.from(cropSet));
+    cropConfigs = (cc ?? []) as any[];
+  }
+
   const lines: string[] = [];
   lines.push("=== Çiftçi Verileri ===");
-  lines.push(`Parseller: ${p.length ? p.map((x: any) => `${x.name} (${x.id})`).join(", ") : "yok"}`);
+  lines.push(`Parseller: ${p.length ? p.map((x: any) => `${x.name} (${x.id}, ${x.production_method ?? "outdoor"})`).join(", ") : "yok"}`);
   lines.push(`Son hasatlar (${e.length}): ${e.map((x: any) => `${x.crop} ${x.quantity}${x.unit} kalite:${x.quality} ${x.harvest_date}`).join(" | ") || "yok"}`);
   lines.push(`Aktif ilanlar (${l.length}): ${l.map((x: any) => `${x.crop} ${x.quantity}${x.unit} @ ${x.price_per_unit}TL`).join(" | ") || "yok"}`);
   lines.push(`Bekleyen teklifler: ${o.length}${o.length ? ` (en eski: ${o[0].created_at})` : ""}`);
+  if (cropConfigs.length) {
+    lines.push(`Ürün konfigürasyonu (crop_config):\n${cropConfigs.map((c: any) => `- ${c.display_name}: hasat ayları ${c.harvest_window_start_month ?? "?"}-${c.harvest_window_end_month ?? "?"}, kategori ${c.category_group ?? "-"}, yaşam döngüsü ${JSON.stringify(c.lifecycle_steps ?? [])}`).join("\n")}`);
+  }
   return lines.join("\n");
 }
 
