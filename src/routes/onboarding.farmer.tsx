@@ -83,6 +83,9 @@ function Onboarding() {
       });
       if (pErr) throw pErr;
 
+      await applyStoredReferral(user.id).catch(() => {});
+
+
       if (!skip && certs.length > 0) {
         const validCerts = certs.filter((c): c is CertificationType =>
           ["organik", "iso", "cografi"].includes(c),
