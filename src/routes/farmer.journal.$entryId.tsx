@@ -143,6 +143,8 @@ function EntryDetail() {
           Mevcut D2C fiyatıyla bu hasadı vitrinde listelemen önerilir.
         </AIInsightBanner>
 
+        <BatchLinkSection entryId={entry.id} entryCrop={entry.crop} />
+
         {/* Storefront shortcut */}
         <div className="rounded-2xl border p-4 flex items-center justify-between" style={{ background: "color-mix(in oklab, var(--saffron) 12%, var(--card))" }}>
           <div>
