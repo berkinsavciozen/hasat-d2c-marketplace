@@ -4,8 +4,10 @@ import { useState } from "react";
 import { BuyerHeader } from "@/components/hasat/BuyerHeader";
 import { LoadingDots } from "@/components/hasat/LoadingDots";
 import { formatTRY, formatCrop } from "@/lib/hasat/format";
-import { useActiveListings } from "@/lib/hasat/queries";
+import { useActiveListings, useListingStock } from "@/lib/hasat/queries";
 import { slugifyFarmer } from "@/lib/hasat/vitrin";
+import { StockBadge } from "@/components/hasat/StockBadge";
+
 
 export const Route = createFileRoute("/buyer/discover")({
   head: () => ({ meta: [{ title: "Keşfet — Hasat" }] }),
