@@ -18,6 +18,7 @@ import type { Listing } from "@/lib/hasat/types";
 import { AIBox } from "@/components/hasat/AIBox";
 import { PhotoUploader } from "@/components/hasat/PhotoUploader";
 import { MarketDeviationAlert } from "@/components/hasat/MarketDeviationAlert";
+import { StockBadge } from "@/components/hasat/StockBadge";
 
 export const Route = createFileRoute("/farmer/storefront")({
   head: () => ({ meta: [{ title: "Vitrin — Hasat" }] }),
