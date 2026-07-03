@@ -368,6 +368,39 @@ export type Database = {
           },
         ]
       }
+      listing_harvest_entries: {
+        Row: {
+          created_at: string
+          harvest_entry_id: string
+          listing_id: string
+        }
+        Insert: {
+          created_at?: string
+          harvest_entry_id: string
+          listing_id: string
+        }
+        Update: {
+          created_at?: string
+          harvest_entry_id?: string
+          listing_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "listing_harvest_entries_harvest_entry_id_fkey"
+            columns: ["harvest_entry_id"]
+            isOneToOne: false
+            referencedRelation: "harvest_entries"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "listing_harvest_entries_listing_id_fkey"
+            columns: ["listing_id"]
+            isOneToOne: false
+            referencedRelation: "listings"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       listings: {
         Row: {
           created_at: string
@@ -377,6 +410,7 @@ export type Database = {
           harvest_entry_id: string | null
           id: string
           min_order: number
+          parcel_id: string | null
           photo_urls: string[] | null
           price_per_unit: number
           quality: Database["public"]["Enums"]["quality_grade"]
@@ -393,6 +427,7 @@ export type Database = {
           harvest_entry_id?: string | null
           id?: string
           min_order?: number
+          parcel_id?: string | null
           photo_urls?: string[] | null
           price_per_unit: number
           quality?: Database["public"]["Enums"]["quality_grade"]
@@ -409,6 +444,7 @@ export type Database = {
           harvest_entry_id?: string | null
           id?: string
           min_order?: number
+          parcel_id?: string | null
           photo_urls?: string[] | null
           price_per_unit?: number
           quality?: Database["public"]["Enums"]["quality_grade"]
@@ -430,6 +466,13 @@ export type Database = {
             columns: ["harvest_entry_id"]
             isOneToOne: false
             referencedRelation: "harvest_entries"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "listings_parcel_id_fkey"
+            columns: ["parcel_id"]
+            isOneToOne: false
+            referencedRelation: "parcels"
             referencedColumns: ["id"]
           },
         ]

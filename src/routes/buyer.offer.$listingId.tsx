@@ -11,7 +11,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { LoadingDots } from "@/components/hasat/LoadingDots";
 import { formatTRY } from "@/lib/hasat/format";
 import { useHasat } from "@/lib/hasat/store";
-import { useListing } from "@/lib/hasat/queries";
+import { useListing, useListingStock } from "@/lib/hasat/queries";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/buyer/offer/$listingId")({
@@ -31,6 +31,7 @@ function MakeOffer() {
   const navigate = useNavigate();
   const setPendingOffer = useHasat((s) => s.setPendingOffer);
   const { data: listing, isLoading } = useListing(listingId);
+  const { data: stock } = useListingStock(listingId);
 
   const [qty, setQty] = useState(0);
   const [price, setPrice] = useState(0);
@@ -88,12 +89,20 @@ function MakeOffer() {
           <div className="text-xs text-hmuted">{listing.farmerName} {listing.farmerCity ? `· ${listing.farmerCity}` : ""}</div>
           <div className="font-serif text-lg mt-1">{listing.crop}</div>
           <div className="mt-3 flex items-baseline justify-between">
-            <div className="text-xs text-hmuted">Mevcut: {listing.quantity} {listing.unit} · Min {listing.minOrder} {listing.unit}</div>
+            <div className="text-xs text-hmuted">
+              Mevcut: {stock ? stock.available : listing.quantity} {listing.unit} · Min {listing.minOrder} {listing.unit}
+            </div>
             <div style={{ fontFamily: "Courier New, monospace", color: "var(--saffron)" }} className="text-base">
               {formatTRY(listing.pricePerUnit)}<span className="text-xs text-hmuted">/{listing.unit}</span>
             </div>
           </div>
+          {stock && stock.available <= 0 && (
+            <div className="mt-3 rounded-lg px-3 py-2 text-xs" style={{ background: "color-mix(in oklab, var(--hred) 15%, transparent)", color: "var(--hred)" }}>
+              Bu ilan tükendi — şu anda teklif alınamıyor.
+            </div>
+          )}
         </div>
+
 
         <div>
           <label className="text-xs text-hmuted mb-2 block">Miktar</label>
@@ -171,10 +180,10 @@ function MakeOffer() {
           <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Üreticiye iletmek istediğiniz bir mesaj..." />
         </div>
 
-        <button onClick={submit} disabled={!date}
+        <button onClick={submit} disabled={!date || (stock ? stock.available <= 0 : false)}
           className="w-full rounded-xl py-3.5 text-sm font-medium disabled:opacity-40"
           style={{ background: "var(--saffron)", color: "var(--hwhite)" }}>
-          Teklif Gönder & Öde →
+          {stock && stock.available <= 0 ? "Tükendi" : "Teklif Gönder & Öde →"}
         </button>
       </div>
     </div>

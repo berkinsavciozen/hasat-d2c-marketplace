@@ -18,6 +18,7 @@ import type { Listing } from "@/lib/hasat/types";
 import { AIBox } from "@/components/hasat/AIBox";
 import { PhotoUploader } from "@/components/hasat/PhotoUploader";
 import { MarketDeviationAlert } from "@/components/hasat/MarketDeviationAlert";
+import { StockBadge } from "@/components/hasat/StockBadge";
 
 export const Route = createFileRoute("/farmer/storefront")({
   head: () => ({ meta: [{ title: "Vitrin — Hasat" }] }),
@@ -184,9 +185,10 @@ function ListingCard({ listing, muted, onEdit, onRemove }: { listing: Listing; m
           <div className="grid h-12 w-12 place-items-center rounded-xl bg-cream text-2xl">{CROP_EMOJI[listing.crop] ?? "🌾"}</div>
         )}
         <div className="flex-1">
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
             <div className="font-medium">{formatCrop(listing.crop)}</div>
             <span className="rounded-full px-2 py-0.5 text-[10px] font-medium text-white" style={{ background: statusColor }}>{statusLabel}</span>
+            <StockBadge listingId={listing.id} unit={listing.unit} />
           </div>
           <div className="mt-0.5 text-xs text-hmuted">{listing.quantity} {listing.unit} • Min. {listing.minOrder} {listing.unit}</div>
           <div className="mt-1.5 flex items-center gap-2">
@@ -198,6 +200,9 @@ function ListingCard({ listing, muted, onEdit, onRemove }: { listing: Listing; m
       <MarketDeviationAlert crop={listing.crop} pricePerUnit={listing.pricePerUnit} unit={listing.unit} />
       {!muted && (
         <div className="mt-3 flex gap-2">
+          <Link to="/batch/$listingId" params={{ listingId: listing.id }} className="flex flex-1 items-center justify-center gap-1.5 rounded-lg border py-2 text-xs font-medium hover:bg-cream">
+            📦 Parti
+          </Link>
           <button onClick={onEdit} className="flex flex-1 items-center justify-center gap-1.5 rounded-lg border py-2 text-xs font-medium hover:bg-cream"><Pencil className="h-3.5 w-3.5" /> Düzenle</button>
           <button onClick={onRemove} className="flex flex-1 items-center justify-center gap-1.5 rounded-lg border border-hred/30 py-2 text-xs font-medium text-hred hover:bg-hred/5"><Trash2 className="h-3.5 w-3.5" /> Kaldır</button>
         </div>
