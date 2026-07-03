@@ -275,7 +275,31 @@ serve(async (req) => {
     return json({ insights: [], urgency: null, empty: true });
   }
 
+  // Crop-agnostic: fetch crop_config for every crop referenced by this user so the
+  // prompt has real harvest windows / lifecycle steps / category groups instead of
+  // hardcoded 'safran' or Turkish month names.
+  let cropConfigs: any[] = [];
+  try {
+    const [listingCrops, entryCrops] = await Promise.all([
+      supa.from("listings").select("crop").eq("farmer_id", userId),
+      supa.from("harvest_entries").select("crop").eq("farmer_id", userId),
+    ]);
+    const set = new Set<string>();
+    for (const r of ((listingCrops.data ?? []) as any[])) if (r.crop) set.add(String(r.crop).toLocaleLowerCase("tr").trim());
+    for (const r of ((entryCrops.data ?? []) as any[])) if (r.crop) set.add(String(r.crop).toLocaleLowerCase("tr").trim());
+    if (set.size) {
+      const { data: cc } = await supa
+        .from("crop_config")
+        .select("crop, display_name, harvest_window_start_month, harvest_window_end_month, lifecycle_steps, category_group")
+        .in("crop", Array.from(set));
+      cropConfigs = (cc ?? []) as any[];
+    }
+  } catch (e) {
+    console.error("[ai-box-insights] crop_config fetch error", e);
+  }
+
   const goal = PAGE_GOALS[pageType] ?? "";
+  const currentMonth = new Date().getUTCMonth() + 1;
   const systemPrompt = `Sen Hasat platformunun AI analiz motorusun. Türk çiftçilere kısa, öz, uygulanabilir Türkçe içgörüler üretiyorsun.
 Cevabını JSON formatında döndür: { "insights": ["...", "...", "..."], "urgency": "..." veya null }
 
@@ -284,7 +308,11 @@ insights: 2-3 kısa cümle. Her biri bağımsız bir gözlem veya öneri. Gereks
 urgency: Acil aksiyon gerektiren bir durum varsa tek cümle. Yoksa null.
 
 Çiftçiye doğrudan hitap et (sen). Sade Türkçe, jargon yok. Maksimum 20 kelime per insight.
+ÖNEMLİ: Belirli bir ürüne (safran, lavanta vb.) ya da aya (Ekim, Kasım vb.) referans veriyorsan yalnızca aşağıdaki crop_config verisine dayanarak yap; kendinden ay veya sezon uydurma.
+Şu anki ay: ${currentMonth}.
+
 Sayfa bağlamı: ${pageType}. Amaç: ${goal}
+crop_config: ${JSON.stringify(cropConfigs)}
 Veri: ${JSON.stringify(ctx)}`;
 
   try {
