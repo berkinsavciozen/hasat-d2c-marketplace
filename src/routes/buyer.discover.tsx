@@ -104,58 +104,11 @@ function Discover() {
             )
           ) : (
             <div className="grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
-              {filtered.map((l) => {
-                const farmerSlug = l.farmerName ? (slugifyFarmer(l.farmerName) || (l.producerId ?? "")) : (l.producerId ?? "");
-                return (
-                <div
-                  key={l.id}
-                  role="button"
-                  tabIndex={0}
-                  onClick={() => navigate({ to: "/buyer/offer/$listingId", params: { listingId: l.id } })}
-                  onKeyDown={(e) => { if (e.key === "Enter") navigate({ to: "/buyer/offer/$listingId", params: { listingId: l.id } }); }}
-                  className="text-left rounded-2xl bg-card border overflow-hidden hover:border-saffron transition cursor-pointer"
-                >
-                  <div className="h-28 relative overflow-hidden" style={
-                    l.photos && l.photos[0]
-                      ? undefined
-                      : { background: `repeating-linear-gradient(45deg, color-mix(in oklab, var(--saffron) 30%, var(--dark)) 0 12px, color-mix(in oklab, var(--saffron) 20%, var(--dark)) 12px 24px)` }
-                  }>
-                    {l.photos && l.photos[0] && (
-                      <img src={l.photos[0]} alt={formatCrop(l.crop)} className="absolute inset-0 h-full w-full object-cover" />
-                    )}
-                    <div className="absolute inset-0" style={{ background: "linear-gradient(180deg, transparent 40%, rgba(0,0,0,0.55))" }} />
-                    <div className="absolute top-2 left-2 inline-flex items-center gap-1 rounded-full bg-saffron text-white text-[10px] font-bold px-2 py-0.5">
-                      Kalite {l.quality}
-                    </div>
-                    <div className="absolute bottom-2 left-3 right-3 text-white">
-                      <div className="font-serif text-base leading-tight line-clamp-2">{CROP_EMOJI[l.crop] ?? "🌾"} {formatCrop(l.crop)}</div>
-                      <div className="text-[11px] opacity-80 truncate">
-                        {farmerSlug ? (
-                          <Link
-                            to="/s/$slug"
-                            params={{ slug: farmerSlug }}
-                            onClick={(e) => e.stopPropagation()}
-                            className="underline hover:text-saffron"
-                          >
-                            {l.farmerName}
-                          </Link>
-                        ) : l.farmerName}
-                        {l.farmerCity ? ` · ${l.farmerCity}` : ""}
-                      </div>
-                    </div>
-                  </div>
-                  <div className="p-4">
-                    <div className="text-xs text-hmuted">Mevcut {l.quantity} {l.unit} · Min {l.minOrder} {l.unit}</div>
-                    <div className="mt-3 flex items-center justify-between gap-2">
-                      <div style={{ fontFamily: "Courier New, monospace", color: "var(--saffron)" }} className="text-base truncate min-w-0">
-                        {formatTRY(l.pricePerUnit)}<span className="text-xs text-hmuted">/{l.unit}</span>
-                      </div>
-                      <span className="shrink-0 rounded-full bg-saffron px-3 py-1.5 text-xs text-white">Teklif Ver →</span>
-                    </div>
-                  </div>
-                </div>
-              );})}
+              {filtered.map((l) => (
+                <ListingCard key={l.id} listing={l} onOpen={() => navigate({ to: "/buyer/offer/$listingId", params: { listingId: l.id } })} />
+              ))}
             </div>
+
           )}
         </div>
       </div>
