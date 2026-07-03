@@ -89,12 +89,20 @@ function MakeOffer() {
           <div className="text-xs text-hmuted">{listing.farmerName} {listing.farmerCity ? `· ${listing.farmerCity}` : ""}</div>
           <div className="font-serif text-lg mt-1">{listing.crop}</div>
           <div className="mt-3 flex items-baseline justify-between">
-            <div className="text-xs text-hmuted">Mevcut: {listing.quantity} {listing.unit} · Min {listing.minOrder} {listing.unit}</div>
+            <div className="text-xs text-hmuted">
+              Mevcut: {stock ? stock.available : listing.quantity} {listing.unit} · Min {listing.minOrder} {listing.unit}
+            </div>
             <div style={{ fontFamily: "Courier New, monospace", color: "var(--saffron)" }} className="text-base">
               {formatTRY(listing.pricePerUnit)}<span className="text-xs text-hmuted">/{listing.unit}</span>
             </div>
           </div>
+          {stock && stock.available <= 0 && (
+            <div className="mt-3 rounded-lg px-3 py-2 text-xs" style={{ background: "color-mix(in oklab, var(--hred) 15%, transparent)", color: "var(--hred)" }}>
+              Bu ilan tükendi — şu anda teklif alınamıyor.
+            </div>
+          )}
         </div>
+
 
         <div>
           <label className="text-xs text-hmuted mb-2 block">Miktar</label>
