@@ -15,13 +15,6 @@ export const Route = createFileRoute("/buyer/discover")({
   component: Discover,
 });
 
-const CATS = [
-  { e: "🌸", l: "Safran" },
-  { e: "💜", l: "Lavanta" },
-  { e: "🍃", l: "Tıbbi Bitkiler" },
-  { e: "🫒", l: "Zeytinyağı" },
-];
-
 const SORTS = ["Puan", "Fiyat", "Yakınlık", "En Yeni"];
 
 const CROP_EMOJI: Record<string, string> = { Safran: "🌸", Lavanta: "💜", "Tıbbi Bitkiler": "🌿", Fındık: "🌰", Zeytinyağı: "🫒" };
@@ -29,6 +22,7 @@ const CROP_EMOJI: Record<string, string> = { Safran: "🌸", Lavanta: "💜", "T
 function Discover() {
   const navigate = useNavigate();
   const { data: listings = [], isLoading } = useActiveListings();
+  const { map: cropMap } = useCropConfigMap();
   const [sort, setSort] = useState("Puan");
   const [filters, setFilters] = useState<string[]>([]);
   const [query, setQuery] = useState("");
