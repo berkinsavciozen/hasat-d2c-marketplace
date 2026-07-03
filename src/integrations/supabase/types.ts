@@ -963,6 +963,8 @@ export type Database = {
           name: string | null
           phone: string | null
           premium: boolean
+          referral_code: string | null
+          referred_by: string | null
           role: Database["public"]["Enums"]["user_role"]
           tier: Database["public"]["Enums"]["user_tier"]
           updated_at: string
@@ -976,6 +978,8 @@ export type Database = {
           name?: string | null
           phone?: string | null
           premium?: boolean
+          referral_code?: string | null
+          referred_by?: string | null
           role: Database["public"]["Enums"]["user_role"]
           tier?: Database["public"]["Enums"]["user_tier"]
           updated_at?: string
@@ -989,11 +993,21 @@ export type Database = {
           name?: string | null
           phone?: string | null
           premium?: boolean
+          referral_code?: string | null
+          referred_by?: string | null
           role?: Database["public"]["Enums"]["user_role"]
           tier?: Database["public"]["Enums"]["user_tier"]
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "profiles_referred_by_fkey"
+            columns: ["referred_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {
