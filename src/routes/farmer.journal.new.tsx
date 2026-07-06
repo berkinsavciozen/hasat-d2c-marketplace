@@ -4,6 +4,7 @@ import { ArrowLeft, Camera, X } from "lucide-react";
 import { useParcels, useCreateEntry } from "@/lib/hasat/queries";
 import {
   WORK_TYPES,
+  WORK_TO_STEP_KEY,
   type WorkTypeKey,
   encodeNotes,
   healthToQuality,
