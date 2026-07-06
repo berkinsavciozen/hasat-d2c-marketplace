@@ -319,6 +319,7 @@ function ListingSheet({ open, editing, onClose }: { open: boolean; editing: List
               max={3}
             />
           </div>
+          <BuyerPreview listingId={editing?.id} crop={crop} />
           <button onClick={save} disabled={pending} className="w-full rounded-xl bg-saffron py-3 text-sm font-medium text-white disabled:opacity-50">
             {pending ? "Kaydediliyor…" : "Yayınla ✓"}
           </button>
