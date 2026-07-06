@@ -328,3 +328,39 @@ function ListingSheet({ open, editing, onClose }: { open: boolean; editing: List
     </Sheet>
   );
 }
+
+function BuyerPreview({ listingId, crop }: { listingId: string | undefined; crop: string }) {
+  const { map } = useCropConfigMap();
+  const cfg = findCropConfig(map, crop);
+  const { data: entries = [] } = useListingBatchEntries(listingId ?? null);
+  const cov = computeCoverage(cfg, entries);
+
+  return (
+    <div className="rounded-xl border border-dashed p-3 space-y-2 bg-cream/40">
+      <div className="flex items-center gap-2 text-xs font-medium">
+        <Eye className="h-3.5 w-3.5" /> Alıcı bunu görecek
+      </div>
+      {listingId ? (
+        <div className="flex items-center gap-2">
+          <CoverageBadge listingId={listingId} crop={crop} />
+          <span className="text-[11px] text-hmuted">{entries.length} bağlı hasat kaydı</span>
+        </div>
+      ) : (
+        <div className="text-[11px] text-hmuted">
+          Yayınladıktan sonra Günlük'ten hasat kayıtlarını bağlayarak izlenebilirliği güçlendirebilirsiniz.
+        </div>
+      )}
+      {cov.missingSteps.length > 0 && (
+        <div className="text-[11px] text-hmuted">
+          <div className="font-medium mb-0.5">Öneriler (zorunlu değil):</div>
+          <ul className="list-disc pl-4 space-y-0.5">
+            {cov.missingSteps.map((s) => (
+              <li key={s.key}>{s.label} kaydı ekleyin</li>
+            ))}
+          </ul>
+        </div>
+      )}
+    </div>
+  );
+}
+
