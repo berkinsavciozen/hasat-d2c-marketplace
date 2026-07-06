@@ -4,6 +4,7 @@ import { ArrowLeft, Camera, X } from "lucide-react";
 import { useParcels, useCreateEntry } from "@/lib/hasat/queries";
 import {
   WORK_TYPES,
+  WORK_TO_STEP_KEY,
   type WorkTypeKey,
   encodeNotes,
   healthToQuality,
@@ -56,6 +57,7 @@ function NewEntry() {
         notes: encodeNotes({ work, health, text: notes }),
         costs: { ...ZERO_COSTS },
         pricePerUnit: 0,
+        step_key: WORK_TO_STEP_KEY[work] ?? null,
       });
       toast.success("Kayıt eklendi ✓");
       navigate({ to: "/farmer/journal" });

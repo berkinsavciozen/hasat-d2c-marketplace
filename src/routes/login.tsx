@@ -7,7 +7,8 @@ import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/login")({
   head: () => ({ meta: [{ title: "Giriş — Hasat" }] }),
-  validateSearch: (s: Record<string, unknown>) => ({ role: (s.role === "buyer" ? "buyer" : "farmer") as "farmer" | "buyer" }),
+  validateSearch: (s: Record<string, unknown>): { role?: "farmer" | "buyer" } =>
+    s.role === "buyer" ? { role: "buyer" } : s.role === "farmer" ? { role: "farmer" } : {},
   component: LoginPage,
 });
 
@@ -26,7 +27,8 @@ function translateAuthError(e: Error): string {
 function LoginPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const { role } = Route.useSearch();
+  const { role: roleParam } = Route.useSearch();
+  const role: "farmer" | "buyer" = roleParam ?? "farmer";
   const setRole = useHasat((s) => s.setRole);
   const updateUser = useHasat((s) => s.updateUser);
   const [step, setStep] = useState<"phone" | "otp">("phone");

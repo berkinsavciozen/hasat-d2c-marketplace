@@ -22,9 +22,10 @@ function farmerSlugOf(name: string | null | undefined, id: string | undefined): 
 
 export const Route = createFileRoute("/buyer/orders")({
   head: () => ({ meta: [{ title: "Siparişlerim — Hasat" }] }),
-  validateSearch: (s: Record<string, unknown>) => ({
-    tab: s.tab === "active" || s.tab === "done" || s.tab === "offers" ? (s.tab as "offers" | "active" | "done") : undefined,
-  }),
+  validateSearch: (s: Record<string, unknown>): { tab?: "offers" | "active" | "done" } => {
+    const t = s.tab === "active" || s.tab === "done" || s.tab === "offers" ? s.tab : undefined;
+    return t ? { tab: t } : {};
+  },
   component: OrdersList,
 });
 

@@ -36,6 +36,8 @@ export interface HarvestEntry {
   notes: string;
   costs: { labor: number; fertilizer: number; packaging: number; transport: number; other: number };
   pricePerUnit?: number;
+  step_key?: string | null;
+  createdAt?: string;
 }
 
 export interface Listing {
@@ -49,6 +51,7 @@ export interface Listing {
   status: "active" | "sold" | "expired";
   photos?: string[];
   producerId?: string;
+  parcelId?: string | null;
   description?: string;
 }
 

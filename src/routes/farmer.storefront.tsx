@@ -19,6 +19,11 @@ import { AIBox } from "@/components/hasat/AIBox";
 import { PhotoUploader } from "@/components/hasat/PhotoUploader";
 import { MarketDeviationAlert } from "@/components/hasat/MarketDeviationAlert";
 import { StockBadge } from "@/components/hasat/StockBadge";
+import { CoverageBadge } from "@/components/hasat/CoverageBadge";
+import { findCropConfig, useCropConfigMap } from "@/lib/hasat/crop-config";
+import { computeCoverage } from "@/lib/hasat/coverage";
+import { useListingBatchEntries } from "@/lib/hasat/queries";
+import { Eye } from "lucide-react";
 
 export const Route = createFileRoute("/farmer/storefront")({
   head: () => ({ meta: [{ title: "Vitrin — Hasat" }] }),
@@ -314,6 +319,7 @@ function ListingSheet({ open, editing, onClose }: { open: boolean; editing: List
               max={3}
             />
           </div>
+          <BuyerPreview listingId={editing?.id} crop={crop} />
           <button onClick={save} disabled={pending} className="w-full rounded-xl bg-saffron py-3 text-sm font-medium text-white disabled:opacity-50">
             {pending ? "Kaydediliyor…" : "Yayınla ✓"}
           </button>
@@ -322,3 +328,39 @@ function ListingSheet({ open, editing, onClose }: { open: boolean; editing: List
     </Sheet>
   );
 }
+
+function BuyerPreview({ listingId, crop }: { listingId: string | undefined; crop: string }) {
+  const { map } = useCropConfigMap();
+  const cfg = findCropConfig(map, crop);
+  const { data: entries = [] } = useListingBatchEntries(listingId ?? null);
+  const cov = computeCoverage(cfg, entries);
+
+  return (
+    <div className="rounded-xl border border-dashed p-3 space-y-2 bg-cream/40">
+      <div className="flex items-center gap-2 text-xs font-medium">
+        <Eye className="h-3.5 w-3.5" /> Alıcı bunu görecek
+      </div>
+      {listingId ? (
+        <div className="flex items-center gap-2">
+          <CoverageBadge listingId={listingId} crop={crop} />
+          <span className="text-[11px] text-hmuted">{entries.length} bağlı hasat kaydı</span>
+        </div>
+      ) : (
+        <div className="text-[11px] text-hmuted">
+          Yayınladıktan sonra Günlük'ten hasat kayıtlarını bağlayarak izlenebilirliği güçlendirebilirsiniz.
+        </div>
+      )}
+      {cov.missingSteps.length > 0 && (
+        <div className="text-[11px] text-hmuted">
+          <div className="font-medium mb-0.5">Öneriler (zorunlu değil):</div>
+          <ul className="list-disc pl-4 space-y-0.5">
+            {cov.missingSteps.map((s) => (
+              <li key={s.key}>{s.label} kaydı ekleyin</li>
+            ))}
+          </ul>
+        </div>
+      )}
+    </div>
+  );
+}
+

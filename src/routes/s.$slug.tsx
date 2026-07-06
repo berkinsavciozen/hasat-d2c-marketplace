@@ -8,6 +8,7 @@ import { LoadingDots } from "@/components/hasat/LoadingDots";
 import { formatTRY } from "@/lib/hasat/format";
 import { formatCrop } from "@/lib/hasat/format";
 import { TrustBadge } from "@/components/hasat/TrustBadge";
+import { CoverageBadge } from "@/components/hasat/CoverageBadge";
 import type { Listing, Parcel } from "@/lib/hasat/types";
 
 export const Route = createFileRoute("/s/$slug")({
@@ -159,6 +160,7 @@ function PublicStorefront() {
                   <div className="text-xs text-hmuted">
                     {l.quantity} {l.unit} · Min {l.minOrder} {l.unit} · Kalite {l.quality}
                   </div>
+                  <div className="mt-1"><CoverageBadge listingId={l.id} crop={l.crop} compact /></div>
                 </div>
                 <div className="font-mono text-sm text-saffron whitespace-nowrap">
                   {formatTRY(l.pricePerUnit)}/{l.unit}
