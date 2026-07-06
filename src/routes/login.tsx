@@ -29,6 +29,7 @@ function LoginPage() {
   const queryClient = useQueryClient();
   const { role: roleParam } = Route.useSearch();
   const role: "farmer" | "buyer" = roleParam ?? "farmer";
+  const setRole = useHasat((s) => s.setRole);
   const updateUser = useHasat((s) => s.updateUser);
   const [step, setStep] = useState<"phone" | "otp">("phone");
   const [phone, setPhone] = useState("");
