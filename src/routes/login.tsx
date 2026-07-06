@@ -7,7 +7,8 @@ import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/login")({
   head: () => ({ meta: [{ title: "Giriş — Hasat" }] }),
-  validateSearch: (s: Record<string, unknown>) => ({ role: (s.role === "buyer" ? "buyer" : "farmer") as "farmer" | "buyer" }),
+  validateSearch: (s: Record<string, unknown>): { role?: "farmer" | "buyer" } =>
+    s.role === "buyer" ? { role: "buyer" } : s.role === "farmer" ? { role: "farmer" } : {},
   component: LoginPage,
 });
 
