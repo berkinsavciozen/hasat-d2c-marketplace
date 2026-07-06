@@ -11,7 +11,8 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { LoadingDots } from "@/components/hasat/LoadingDots";
 import { formatTRY } from "@/lib/hasat/format";
 import { useHasat } from "@/lib/hasat/store";
-import { useListing, useListingStock } from "@/lib/hasat/queries";
+import { useListing, useListingStock, useListingProvenanceEntries } from "@/lib/hasat/queries";
+import { ProvenanceTimeline } from "@/components/hasat/ProvenanceTimeline";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/buyer/offer/$listingId")({
@@ -32,6 +33,8 @@ function MakeOffer() {
   const setPendingOffer = useHasat((s) => s.setPendingOffer);
   const { data: listing, isLoading } = useListing(listingId);
   const { data: stock } = useListingStock(listingId);
+  const { data: provenance = [] } = useListingProvenanceEntries(listingId);
+
 
   const [qty, setQty] = useState(0);
   const [price, setPrice] = useState(0);
@@ -102,6 +105,13 @@ function MakeOffer() {
             </div>
           )}
         </div>
+
+        <div className="rounded-2xl bg-card border p-4">
+          <h2 className="font-serif text-lg mb-3">Ürün Geçmişi</h2>
+          <ProvenanceTimeline crop={listing.crop} entries={provenance} />
+        </div>
+
+
 
 
         <div>

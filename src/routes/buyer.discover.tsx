@@ -3,6 +3,7 @@ import { Search, X } from "lucide-react";
 import { useState } from "react";
 import { BuyerHeader } from "@/components/hasat/BuyerHeader";
 import { LoadingDots } from "@/components/hasat/LoadingDots";
+import { CoverageBadge } from "@/components/hasat/CoverageBadge";
 import { formatTRY, formatCrop } from "@/lib/hasat/format";
 import { useActiveListings, useListingStock } from "@/lib/hasat/queries";
 import { CATEGORY_GROUP_META, findCropConfig, useCropConfigMap } from "@/lib/hasat/crop-config";
@@ -172,8 +173,11 @@ function ListingCard({ listing: l, onOpen }: { listing: ListingRow; onOpen: () =
         </div>
       </div>
       <div className="p-4">
-        <div className="text-xs text-hmuted">
-          {stock ? `Mevcut ${stock.available} ${l.unit}` : `Mevcut ${l.quantity} ${l.unit}`} · Min {l.minOrder} {l.unit}
+        <div className="flex items-center justify-between gap-2">
+          <div className="text-xs text-hmuted">
+            {stock ? `Mevcut ${stock.available} ${l.unit}` : `Mevcut ${l.quantity} ${l.unit}`} · Min {l.minOrder} {l.unit}
+          </div>
+          <CoverageBadge listingId={l.id} crop={l.crop} compact />
         </div>
         <div className="mt-3 flex items-center justify-between gap-2">
           <div style={{ fontFamily: "Courier New, monospace", color: "var(--saffron)" }} className="text-base truncate min-w-0">

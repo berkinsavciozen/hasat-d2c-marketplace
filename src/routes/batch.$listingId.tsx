@@ -2,6 +2,10 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { ArrowLeft, Package, Sprout } from "lucide-react";
 import { useAuthUserId, useListing, useListingStock, useListingBatchEntries, useListingOrders, useUnlinkHarvestFromListing } from "@/lib/hasat/queries";
 import { LoadingDots } from "@/components/hasat/LoadingDots";
+import { ProvenanceTimeline } from "@/components/hasat/ProvenanceTimeline";
+import { CoverageBadge } from "@/components/hasat/CoverageBadge";
+import { findCropConfig, useCropConfigMap } from "@/lib/hasat/crop-config";
+import { labelForStepKey } from "@/lib/hasat/coverage";
 import { formatCrop, formatTRY } from "@/lib/hasat/format";
 import { toast } from "sonner";
 
@@ -30,6 +34,8 @@ function BatchPage() {
   }
 
   const isOwner = !!userId && userId === listing.producerId;
+  const { map: cropMap } = useCropConfigMap();
+  const cfg = findCropConfig(cropMap, listing.crop);
 
   return (
     <>
@@ -41,6 +47,7 @@ function BatchPage() {
           <h1 className="font-serif text-xl">{formatCrop(listing.crop)} · Parti</h1>
           <div className="text-xs text-hwhite/60">{listing.farmerName} {listing.farmerCity ? `· ${listing.farmerCity}` : ""}</div>
         </div>
+        <CoverageBadge listingId={listing.id} crop={listing.crop} compact />
       </div>
 
       <div className="p-4 md:p-8 space-y-4 max-w-3xl mx-auto">
@@ -65,37 +72,53 @@ function BatchPage() {
           </div>
         )}
 
-        {/* Linked entries */}
-        <div className="rounded-2xl bg-card border p-4">
-          <h2 className="font-serif text-lg flex items-center gap-2"><Sprout className="h-5 w-5" /> Hasat Kayıtları</h2>
-          {entries.length === 0 ? (
-            <div className="mt-3 text-sm text-hmuted">Henüz bağlı hasat kaydı yok.</div>
-          ) : (
-            <ul className="mt-3 divide-y">
-              {entries.map((e) => (
-                <li key={e.id} className="py-3 flex items-start gap-3">
-                  <div className="flex-1">
-                    <div className="text-sm font-medium">{new Date(e.date).toLocaleDateString("tr-TR")} · {e.quantity} {e.unit} · Kalite {e.quality}</div>
-                    {isOwner && e.notes ? <div className="text-xs text-hmuted mt-0.5">{e.notes}</div> : null}
-                    {!isOwner && <div className="text-xs text-hmuted mt-0.5">Detaylar üreticiye özeldir.</div>}
-                  </div>
-                  {isOwner && (
-                    <button
-                      onClick={async () => {
-                        try { await unlink.mutateAsync({ listingId, entryId: e.id }); toast.success("Bağlantı kaldırıldı"); }
-                        catch (err: any) { toast.error(err.message ?? "Kaldırılamadı"); }
-                      }}
-                      className="text-[11px] text-hred underline"
-                    >Kaldır</button>
-                  )}
-                </li>
-              ))}
-            </ul>
-          )}
-          {isOwner && (
+        {/* Buyer-facing timeline (public, no costs, no notes) */}
+        {!isOwner && (
+          <div className="rounded-2xl bg-card border p-4">
+            <h2 className="font-serif text-lg mb-3">Ürün Geçmişi</h2>
+            <ProvenanceTimeline crop={listing.crop} entries={entries} />
+          </div>
+        )}
+
+        {/* Owner: linked entries with management */}
+        {isOwner && (
+          <div className="rounded-2xl bg-card border p-4">
+            <h2 className="font-serif text-lg flex items-center gap-2"><Sprout className="h-5 w-5" /> Hasat Kayıtları</h2>
+            {entries.length === 0 ? (
+              <div className="mt-3 text-sm text-hmuted">Henüz bağlı hasat kaydı yok.</div>
+            ) : (
+              <ul className="mt-3 divide-y">
+                {entries.map((e) => {
+                  const backdated = e.createdAt && new Date(e.createdAt).toISOString().slice(0, 10) !== e.date;
+                  return (
+                    <li key={e.id} className="py-3 flex items-start gap-3">
+                      <div className="flex-1">
+                        <div className="text-sm font-medium">
+                          {labelForStepKey(cfg, e.step_key)} · {new Date(e.date).toLocaleDateString("tr-TR")}
+                        </div>
+                        <div className="text-xs text-hmuted mt-0.5">
+                          {e.quantity} {e.unit} · Kalite {e.quality}
+                          {backdated && e.createdAt ? ` · kayıt ${new Date(e.createdAt).toLocaleDateString("tr-TR")}` : ""}
+                        </div>
+                        {e.notes ? <div className="text-xs text-hmuted mt-0.5">{e.notes}</div> : null}
+                      </div>
+                      <button
+                        onClick={async () => {
+                          try { await unlink.mutateAsync({ listingId, entryId: e.id }); toast.success("Bağlantı kaldırıldı"); }
+                          catch (err: any) { toast.error(err.message ?? "Kaldırılamadı"); }
+                        }}
+                        className="text-[11px] text-hred underline"
+                      >Kaldır</button>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
             <Link to="/farmer/journal" className="mt-3 inline-block text-xs text-saffron underline">Günlükten hasat bağla →</Link>
-          )}
-        </div>
+          </div>
+        )}
+
+
 
         {/* Related orders / sales */}
         <div className="rounded-2xl bg-card border p-4">

@@ -294,6 +294,7 @@ export type Database = {
           photo_urls: string[] | null
           quality: Database["public"]["Enums"]["quality_grade"]
           quantity: number
+          step_key: string | null
           unit: Database["public"]["Enums"]["unit_type"]
           updated_at: string
         }
@@ -309,6 +310,7 @@ export type Database = {
           photo_urls?: string[] | null
           quality?: Database["public"]["Enums"]["quality_grade"]
           quantity: number
+          step_key?: string | null
           unit?: Database["public"]["Enums"]["unit_type"]
           updated_at?: string
         }
@@ -324,6 +326,7 @@ export type Database = {
           photo_urls?: string[] | null
           quality?: Database["public"]["Enums"]["quality_grade"]
           quantity?: number
+          step_key?: string | null
           unit?: Database["public"]["Enums"]["unit_type"]
           updated_at?: string
         }

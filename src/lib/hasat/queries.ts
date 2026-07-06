@@ -42,6 +42,8 @@ export function dbToEntry(r: any): HarvestEntry {
     notes: r.notes ?? "",
     photos: r.photo_urls ?? [],
     costs,
+    step_key: r.step_key ?? null,
+    createdAt: r.created_at ?? undefined,
   };
 }
 
@@ -224,6 +226,7 @@ export function useCreateEntry() {
         costs: e.costs as any,
         harvest_date: e.date,
         photo_urls: [],
+        step_key: e.step_key ?? null,
       }).select("*").single();
       if (error) throw error;
       return dbToEntry(data);
@@ -458,6 +461,7 @@ export function dbToListing(r: any): Listing {
     status: r.status,
     photos: r.photo_urls ?? [],
     producerId: r.farmer_id,
+    parcelId: r.parcel_id ?? null,
     description: r.description ?? undefined,
   };
 }
@@ -877,6 +881,35 @@ export function useListingOrders(listingId: string | undefined | null) {
     },
   });
 }
+
+/**
+ * Harvest entries linked to a listing, for buyer-facing "Ürün Geçmişi"
+ * timeline and coverage badges. Reads through listing_harvest_entries (public)
+ * and harvest_entries (public read of linked entries only).
+ */
+export function useListingProvenanceEntries(listingId: string | undefined | null) {
+  return useQuery({
+    queryKey: ["listingProvenance", listingId],
+    enabled: !!listingId,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("listing_harvest_entries")
+        .select("harvest_entries(id, parcel_id, harvest_date, crop, quantity, unit, quality, notes, photo_urls, costs, step_key, created_at)")
+        .eq("listing_id", listingId!);
+      if (error) throw error;
+      const entries = (data ?? [])
+        .map((r: any) => r.harvest_entries)
+        .filter(Boolean)
+        .map(dbToEntry)
+        .sort((a, b) => a.date.localeCompare(b.date));
+      return entries;
+    },
+  });
+}
+
+
+
+
 
 
 // =====================================================================

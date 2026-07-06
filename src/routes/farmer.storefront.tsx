@@ -19,6 +19,11 @@ import { AIBox } from "@/components/hasat/AIBox";
 import { PhotoUploader } from "@/components/hasat/PhotoUploader";
 import { MarketDeviationAlert } from "@/components/hasat/MarketDeviationAlert";
 import { StockBadge } from "@/components/hasat/StockBadge";
+import { CoverageBadge } from "@/components/hasat/CoverageBadge";
+import { findCropConfig, useCropConfigMap } from "@/lib/hasat/crop-config";
+import { computeCoverage } from "@/lib/hasat/coverage";
+import { useListingBatchEntries } from "@/lib/hasat/queries";
+import { Eye } from "lucide-react";
 
 export const Route = createFileRoute("/farmer/storefront")({
   head: () => ({ meta: [{ title: "Vitrin — Hasat" }] }),
