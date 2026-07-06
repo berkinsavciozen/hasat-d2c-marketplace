@@ -27,8 +27,8 @@ function translateAuthError(e: Error): string {
 function LoginPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const { role } = Route.useSearch();
-  const setRole = useHasat((s) => s.setRole);
+  const { role: roleParam } = Route.useSearch();
+  const role: "farmer" | "buyer" = roleParam ?? "farmer";
   const updateUser = useHasat((s) => s.updateUser);
   const [step, setStep] = useState<"phone" | "otp">("phone");
   const [phone, setPhone] = useState("");
