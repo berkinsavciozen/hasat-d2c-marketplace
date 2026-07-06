@@ -22,6 +22,16 @@ export const WORK_TYPES: { key: WorkTypeKey; label: string; emoji: string }[] = 
 export const WORK_TYPE_MAP: Record<WorkTypeKey, { label: string; emoji: string }> =
   Object.fromEntries(WORK_TYPES.map((w) => [w.key, { label: w.label, emoji: w.emoji }])) as any;
 
+/** Maps journal work-type → crop_config lifecycle step_key for coverage tracking. */
+export const WORK_TO_STEP_KEY: Record<WorkTypeKey, string | null> = {
+  sulama: "care",
+  gubreleme: "care",
+  budama: "pruning",
+  ilaclama: "care",
+  hasat: "harvest",
+  gozlem: null,
+};
+
 const TAG_RE = /\[([a-zA-Z_]+):([^\]]+)\]/g;
 
 export function encodeNotes(meta: { work: WorkTypeKey; health?: number; text: string }): string {
