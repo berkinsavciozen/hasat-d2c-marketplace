@@ -2,7 +2,7 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { FarmerHeader } from "./farmer";
 import { useHasat } from "@/lib/hasat/store";
-import { useParcels, useUpdateParcel, useDeleteParcel, useCertifications, useProfile, useUpdateProfile, useUploadCertification, useDeleteCertification, getCertificationSignedUrl, useAIUsageThisMonth, CERT_TYPES, type CertType } from "@/lib/hasat/queries";
+import { useParcels, useCreateParcel, useUpdateParcel, useDeleteParcel, useCertifications, useProfile, useUpdateProfile, useUploadCertification, useDeleteCertification, getCertificationSignedUrl, useAIUsageThisMonth, CERT_TYPES, type CertType } from "@/lib/hasat/queries";
 import { ProgressDots } from "@/components/hasat/ProgressDots";
 import { Input } from "@/components/ui/input";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
@@ -23,6 +23,7 @@ function Settings() {
   const { data: parcels = [], isLoading: parcelsLoading } = useParcels();
   const { data: certs = [], isLoading: certsLoading } = useCertifications();
   const updateParcel = useUpdateParcel();
+  const createParcel = useCreateParcel();
   const deleteParcel = useDeleteParcel();
   const uploadCert = useUploadCertification();
   const deleteCert = useDeleteCertification();
@@ -43,6 +44,35 @@ function Settings() {
   const [pArea, setPArea] = useState(0);
   const [pPhotos, setPPhotos] = useState<string[]>([]);
   const [pPhotoFiles, setPPhotoFiles] = useState<File[]>([]);
+
+  // New parcel sheet state
+  const [newParcelOpen, setNewParcelOpen] = useState(false);
+  const [nName, setNName] = useState("");
+  const [nCity, setNCity] = useState("");
+  const [nArea, setNArea] = useState(0);
+  const [nCrops, setNCrops] = useState<string[]>([]);
+  const [nPhotoFiles, setNPhotoFiles] = useState<File[]>([]);
+  const CROPS = ["Safran", "Lavanta", "Tıbbi Bitkiler", "Fındık", "Zeytin", "Diğer"];
+
+  const resetNewParcel = () => {
+    setNName(""); setNCity(""); setNArea(0); setNCrops([]); setNPhotoFiles([]);
+  };
+
+  const addParcel = async () => {
+    if (!nName.trim()) { toast.error("Parsel adı girin"); return; }
+    try {
+      await createParcel.mutateAsync({
+        name: nName.trim(),
+        area: nArea,
+        crops: nCrops,
+        location: { label: nCity, lat: 0, lng: 0 },
+        photoFiles: nPhotoFiles,
+      });
+      toast.success("Parsel eklendi");
+      setNewParcelOpen(false);
+      resetNewParcel();
+    } catch (e) { toast.error((e as Error).message); }
+  };
 
   useEffect(() => {
     if (!profile) return;
@@ -240,6 +270,10 @@ function Settings() {
                 </div>
               ))}
               {parcels.length === 0 && <div className="text-xs text-muted-foreground py-4 text-center">Henüz parsel yok</div>}
+              <button onClick={() => setNewParcelOpen(true)}
+                className="mt-2 self-start rounded-lg px-3 py-1.5 text-xs font-medium border border-border hover:bg-muted">
+                + Parsel Ekle
+              </button>
             </div>
           )}
         </Section>
@@ -398,6 +432,67 @@ function Settings() {
               className="w-full rounded-xl py-2.5 text-sm font-medium disabled:opacity-50"
               style={{ background: "var(--saffron)", color: "var(--hwhite)" }}>
               {uploadCert.isPending ? "Yükleniyor…" : "Yükle"}
+            </button>
+          </div>
+        </SheetContent>
+      </Sheet>
+      <Sheet open={newParcelOpen} onOpenChange={(o) => { if (!o) { setNewParcelOpen(false); resetNewParcel(); } }}>
+        <SheetContent side="bottom" className="rounded-t-2xl max-h-[92vh] overflow-y-auto">
+          <SheetHeader><SheetTitle>Yeni Parsel</SheetTitle></SheetHeader>
+          <div className="mt-4 space-y-3">
+            <div>
+              <label className="text-xs text-muted-foreground">Parsel Adı</label>
+              <Input value={nName} onChange={(e) => setNName(e.target.value)} placeholder="Ana Parsel" className="mt-1" />
+            </div>
+            <div>
+              <label className="text-xs text-muted-foreground">Şehir / İlçe</label>
+              <Input value={nCity} onChange={(e) => setNCity(e.target.value)} placeholder="Karabük / Safranbolu" className="mt-1" />
+            </div>
+            <div>
+              <label className="text-xs text-muted-foreground">Alan (dönüm)</label>
+              <Input type="number" value={nArea} onChange={(e) => setNArea(Number(e.target.value))} className="mt-1" />
+            </div>
+            <div>
+              <label className="text-xs text-muted-foreground">Ana Ürünler</label>
+              <div className="mt-2 flex flex-wrap gap-2">
+                {CROPS.map((c) => {
+                  const on = nCrops.includes(c);
+                  return (
+                    <button
+                      key={c}
+                      type="button"
+                      onClick={() => setNCrops(on ? nCrops.filter((x) => x !== c) : [...nCrops, c])}
+                      className="rounded-full border px-3 py-1.5 text-xs transition"
+                      style={{
+                        background: on ? "var(--saffron)" : "transparent",
+                        color: on ? "var(--hwhite)" : undefined,
+                        borderColor: on ? "var(--saffron)" : undefined,
+                      }}
+                    >
+                      {c}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+            <div>
+              <label className="text-xs text-muted-foreground">Fotoğraflar (en fazla 5)</label>
+              <div className="mt-1">
+                <PhotoUploader
+                  value={[]}
+                  files={nPhotoFiles}
+                  onChange={(_v, f) => setNPhotoFiles(f)}
+                  max={5}
+                />
+              </div>
+            </div>
+            <button
+              onClick={addParcel}
+              disabled={createParcel.isPending}
+              className="w-full rounded-xl py-2.5 text-sm font-medium disabled:opacity-50"
+              style={{ background: "var(--saffron)", color: "var(--hwhite)" }}
+            >
+              {createParcel.isPending ? "Kaydediliyor…" : "Kaydet"}
             </button>
           </div>
         </SheetContent>

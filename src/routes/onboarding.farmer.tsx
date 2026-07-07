@@ -72,12 +72,13 @@ function Onboarding() {
         navigate({ to: "/login", search: { role: "farmer" } });
         return;
       }
-      const profileName = skip ? "Çiftçi" : name;
+      const profileName = name.trim() || "Çiftçi";
+      const cityValue = city || null;
       const { error: pErr } = await supabase.from("profiles").upsert({
         id: user.id,
         role: "farmer",
         name: profileName,
-        city: skip ? null : city,
+        city: cityValue,
         phone: user.phone ? "+" + user.phone : null,
         premium: false,
       });
@@ -85,6 +86,28 @@ function Onboarding() {
 
       await applyStoredReferral(user.id).catch(() => {});
 
+      // Persist crops + land from step 2 as the farmer's first parcel.
+      if (crops.length > 0 || land > 0) {
+        try {
+          const { data: existingFarm } = await supabase
+            .from("farms").select("id").eq("farmer_id", user.id).maybeSingle();
+          const farmId = existingFarm?.id ?? (await supabase
+            .from("farms").insert({ farmer_id: user.id }).select("id").single()).data?.id;
+          if (farmId) {
+            await supabase.from("parcels").insert({
+              farmer_id: user.id,
+              farm_id: farmId,
+              name: city ? `${city} — Ana Parsel` : "Ana Parsel",
+              area: land,
+              crops,
+              location_label: city || "",
+              is_primary: true,
+            });
+          }
+        } catch (err) {
+          console.warn("Parcel create failed", err);
+        }
+      }
 
       if (!skip && certs.length > 0) {
         const validCerts = certs.filter((c): c is CertificationType =>
@@ -102,7 +125,10 @@ function Onboarding() {
         id: user.id,
         name: profileName,
         premium: false,
-        ...(skip ? {} : { city, crops, landSize: land, certs }),
+        city,
+        crops,
+        landSize: land,
+        ...(skip ? {} : { certs }),
       });
       navigate({ to: "/farmer/home" });
     } catch (e) {
