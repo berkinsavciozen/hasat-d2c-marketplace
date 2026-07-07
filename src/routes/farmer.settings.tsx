@@ -45,6 +45,35 @@ function Settings() {
   const [pPhotos, setPPhotos] = useState<string[]>([]);
   const [pPhotoFiles, setPPhotoFiles] = useState<File[]>([]);
 
+  // New parcel sheet state
+  const [newParcelOpen, setNewParcelOpen] = useState(false);
+  const [nName, setNName] = useState("");
+  const [nCity, setNCity] = useState("");
+  const [nArea, setNArea] = useState(0);
+  const [nCrops, setNCrops] = useState<string[]>([]);
+  const [nPhotoFiles, setNPhotoFiles] = useState<File[]>([]);
+  const CROPS = ["Safran", "Lavanta", "Tıbbi Bitkiler", "Fındık", "Zeytin", "Diğer"];
+
+  const resetNewParcel = () => {
+    setNName(""); setNCity(""); setNArea(0); setNCrops([]); setNPhotoFiles([]);
+  };
+
+  const addParcel = async () => {
+    if (!nName.trim()) { toast.error("Parsel adı girin"); return; }
+    try {
+      await createParcel.mutateAsync({
+        name: nName.trim(),
+        area: nArea,
+        crops: nCrops,
+        location: { label: nCity, lat: 0, lng: 0 },
+        photoFiles: nPhotoFiles,
+      });
+      toast.success("Parsel eklendi");
+      setNewParcelOpen(false);
+      resetNewParcel();
+    } catch (e) { toast.error((e as Error).message); }
+  };
+
   useEffect(() => {
     if (!profile) return;
     setName(profile.name ?? "");
