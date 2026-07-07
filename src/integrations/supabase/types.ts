@@ -404,6 +404,36 @@ export type Database = {
           },
         ]
       }
+      indoor_interest_leads: {
+        Row: {
+          city: string | null
+          created_at: string
+          id: string
+          interest_type: string | null
+          name: string
+          note: string | null
+          phone: string
+        }
+        Insert: {
+          city?: string | null
+          created_at?: string
+          id?: string
+          interest_type?: string | null
+          name: string
+          note?: string | null
+          phone: string
+        }
+        Update: {
+          city?: string | null
+          created_at?: string
+          id?: string
+          interest_type?: string | null
+          name?: string
+          note?: string | null
+          phone?: string
+        }
+        Relationships: []
+      }
       listing_harvest_entries: {
         Row: {
           created_at: string
