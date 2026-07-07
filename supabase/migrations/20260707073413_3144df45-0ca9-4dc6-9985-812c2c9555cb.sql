@@ -1,0 +1,1 @@
+ALTER TABLE public.parcels ADD COLUMN IF NOT EXISTS is_primary boolean DEFAULT false;

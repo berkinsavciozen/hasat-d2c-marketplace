@@ -828,6 +828,7 @@ export type Database = {
           farm_id: string
           farmer_id: string
           id: string
+          is_primary: boolean | null
           lat: number | null
           lng: number | null
           location_label: string | null
@@ -842,6 +843,7 @@ export type Database = {
           farm_id: string
           farmer_id: string
           id?: string
+          is_primary?: boolean | null
           lat?: number | null
           lng?: number | null
           location_label?: string | null
@@ -856,6 +858,7 @@ export type Database = {
           farm_id?: string
           farmer_id?: string
           id?: string
+          is_primary?: boolean | null
           lat?: number | null
           lng?: number | null
           location_label?: string | null
