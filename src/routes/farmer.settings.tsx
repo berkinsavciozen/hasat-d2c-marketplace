@@ -270,6 +270,10 @@ function Settings() {
                 </div>
               ))}
               {parcels.length === 0 && <div className="text-xs text-muted-foreground py-4 text-center">Henüz parsel yok</div>}
+              <button onClick={() => setNewParcelOpen(true)}
+                className="mt-2 self-start rounded-lg px-3 py-1.5 text-xs font-medium border border-border hover:bg-muted">
+                + Parsel Ekle
+              </button>
             </div>
           )}
         </Section>
