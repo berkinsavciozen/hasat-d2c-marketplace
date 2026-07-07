@@ -23,6 +23,7 @@ function Settings() {
   const { data: parcels = [], isLoading: parcelsLoading } = useParcels();
   const { data: certs = [], isLoading: certsLoading } = useCertifications();
   const updateParcel = useUpdateParcel();
+  const createParcel = useCreateParcel();
   const deleteParcel = useDeleteParcel();
   const uploadCert = useUploadCertification();
   const deleteCert = useDeleteCertification();
