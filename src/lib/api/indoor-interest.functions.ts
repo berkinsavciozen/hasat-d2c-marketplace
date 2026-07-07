@@ -1,5 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
+import { createClient } from "@supabase/supabase-js";
 import { z } from "zod";
+import type { Database } from "@/integrations/supabase/types";
 
 const InterestType = z.enum(["danışmanlık", "ortaklık", "diğer"]);
 
@@ -19,11 +21,19 @@ const InputSchema = z.object({
 export const submitIndoorInterest = createServerFn({ method: "POST" })
   .inputValidator((raw: unknown) => InputSchema.parse(raw))
   .handler(async ({ data }) => {
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const url = process.env.SUPABASE_URL;
+    const key = process.env.SUPABASE_PUBLISHABLE_KEY;
+    if (!url || !key) {
+      console.error("[indoor-interest] missing SUPABASE_URL or SUPABASE_PUBLISHABLE_KEY");
+      throw new Error("Sunucu yapılandırma hatası. Lütfen daha sonra tekrar deneyin.");
+    }
+    const client = createClient<Database>(url, key, {
+      auth: { storage: undefined, persistSession: false, autoRefreshToken: false },
+    });
 
     const cleanPhone = data.phone.replace(/[^\d+]/g, "");
 
-    const { error } = await supabaseAdmin.from("indoor_interest_leads").insert({
+    const { error } = await client.from("indoor_interest_leads").insert({
       name: data.name,
       phone: cleanPhone,
       city: data.city ?? null,
