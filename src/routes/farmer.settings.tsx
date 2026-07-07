@@ -436,6 +436,67 @@ function Settings() {
           </div>
         </SheetContent>
       </Sheet>
+      <Sheet open={newParcelOpen} onOpenChange={(o) => { if (!o) { setNewParcelOpen(false); resetNewParcel(); } }}>
+        <SheetContent side="bottom" className="rounded-t-2xl max-h-[92vh] overflow-y-auto">
+          <SheetHeader><SheetTitle>Yeni Parsel</SheetTitle></SheetHeader>
+          <div className="mt-4 space-y-3">
+            <div>
+              <label className="text-xs text-muted-foreground">Parsel Adı</label>
+              <Input value={nName} onChange={(e) => setNName(e.target.value)} placeholder="Ana Parsel" className="mt-1" />
+            </div>
+            <div>
+              <label className="text-xs text-muted-foreground">Şehir / İlçe</label>
+              <Input value={nCity} onChange={(e) => setNCity(e.target.value)} placeholder="Karabük / Safranbolu" className="mt-1" />
+            </div>
+            <div>
+              <label className="text-xs text-muted-foreground">Alan (dönüm)</label>
+              <Input type="number" value={nArea} onChange={(e) => setNArea(Number(e.target.value))} className="mt-1" />
+            </div>
+            <div>
+              <label className="text-xs text-muted-foreground">Ana Ürünler</label>
+              <div className="mt-2 flex flex-wrap gap-2">
+                {CROPS.map((c) => {
+                  const on = nCrops.includes(c);
+                  return (
+                    <button
+                      key={c}
+                      type="button"
+                      onClick={() => setNCrops(on ? nCrops.filter((x) => x !== c) : [...nCrops, c])}
+                      className="rounded-full border px-3 py-1.5 text-xs transition"
+                      style={{
+                        background: on ? "var(--saffron)" : "transparent",
+                        color: on ? "var(--hwhite)" : undefined,
+                        borderColor: on ? "var(--saffron)" : undefined,
+                      }}
+                    >
+                      {c}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+            <div>
+              <label className="text-xs text-muted-foreground">Fotoğraflar (en fazla 5)</label>
+              <div className="mt-1">
+                <PhotoUploader
+                  value={[]}
+                  files={nPhotoFiles}
+                  onChange={(_v, f) => setNPhotoFiles(f)}
+                  max={5}
+                />
+              </div>
+            </div>
+            <button
+              onClick={addParcel}
+              disabled={createParcel.isPending}
+              className="w-full rounded-xl py-2.5 text-sm font-medium disabled:opacity-50"
+              style={{ background: "var(--saffron)", color: "var(--hwhite)" }}
+            >
+              {createParcel.isPending ? "Kaydediliyor…" : "Kaydet"}
+            </button>
+          </div>
+        </SheetContent>
+      </Sheet>
       <UpgradeModal open={upgradeOpen} onOpenChange={setUpgradeOpen} />
     </>
   );
