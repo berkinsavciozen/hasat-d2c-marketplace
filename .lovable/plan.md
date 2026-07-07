@@ -1,88 +1,74 @@
-# P16-E: Dynamic Price Feed
 
-Replace the static Fiyatlar page with a live `price_feed` table that farmers can contribute to.
+## P17 — Marketing landing page + indoor interest capture
 
-## 1. Database
+Replace the minimal `/` with a complete Turkish marketing page. Preserve brand tokens (`--dark`, `--saffron`, `--gold`, `--hwhite`), 🌸 mark, font-serif headings, and existing role → `/login?role=…` CTA behavior.
 
-New migration:
+### 1. Auth-aware redirect (fix stale-cache bug)
 
-```sql
-CREATE TABLE public.price_feed (
-  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
-  crop_name text NOT NULL,
-  price_per_kg numeric NOT NULL,   -- generic price value; real unit is in `unit`
-  unit text NOT NULL DEFAULT 'kg',
-  source text,
-  recorded_at timestamptz NOT NULL DEFAULT now(),
-  recorded_by uuid REFERENCES public.profiles(id)
-);
+Rework `src/routes/index.tsx`:
+- Add a `checking` state (default true).
+- On mount: call `supabase.auth.getSession()`. If session exists, fetch `profiles.role, name` (same shape as `login.tsx`).
+  - No session → set `checking=false`, render landing.
+  - Session + no `profile.name` → `navigate({ to: "/onboarding/{role}" })`.
+  - Session + `profile.name` → `navigate({ to: role === "buyer" ? "/buyer/discover" : "/farmer/home" })`.
+- While `checking` is true, render a minimal centered 🌸 splash on `--dark` (no landing flash).
+- Drop the Zustand-only redirect; keep `setRole/updateUser` sync via existing `AuthBootstrap` in `__root.tsx`.
 
-GRANT SELECT ON public.price_feed TO anon, authenticated;
-GRANT INSERT ON public.price_feed TO authenticated;
-GRANT ALL ON public.price_feed TO service_role;
+### 2. Landing page sections (single route file, componentized locally)
 
-ALTER TABLE public.price_feed ENABLE ROW LEVEL SECURITY;
+Order and content exactly as spec:
+1. **Hero** — "Tarladan sofraya, aracısız." + subhead + two role CTAs (large, primary).
+2. **Problem** — 2 cards (Çiftçi / Alıcı), 3 bullet pain points each.
+3. **Çiftçiyim** — "Ürününü Türkiye'ye aç" + 6 feature cards (vitrin, günlük, izlenebilirlik, pazarlık, stok, referral) in 2-col grid (1-col mobile). Placeholders = clean lucide icon tiles on token-tinted backgrounds; no fake screenshots.
+4. **Alıcıyım** — "Güvenilir üreticiyi bul, doğrudan al" + 5 cards (keşfet, ürün geçmişi w/ anti-sahtecilik emphasis, izlenebilir rozet, teklif, sipariş takibi).
+5. **Nasıl Çalışır** — two 4-step numbered journeys side-by-side (Ahmet/Safranbolu, Zeynep/İstanbul).
+6. **Hasat AI** — `--dark` background, 3 cards each with description + a small chat-bubble example (question + Hasat's reply) styled like WhatsApp thread.
+7. **Güven** — 3 one-liners: %5 komisyon (ilk 3 ay ücretsiz), veri güvenliği, gerçek çiftçi doğrulaması.
+8. **Indoor Farming** (`id="indoor-basvuru"`) — pitch (indoor + kırsal genç kalıcılığı + TKDK genç çiftçi bonusu) + form (Ad, Telefon, Şehir, İlgi Tipi radio, Not) + WhatsApp CTA (`wa.me/...?text=…`).
+9. **Footer** — 🌸 Hasat + tagline + contact (WhatsApp link).
 
-CREATE POLICY "Public read price feed"
-  ON public.price_feed FOR SELECT
-  TO anon, authenticated USING (true);
+Repeats of the two role CTAs at the bottom of Çiftçi/Alıcı sections and above the footer.
 
-CREATE POLICY "Farmers can insert price feed"
-  ON public.price_feed FOR INSERT
-  TO authenticated
-  WITH CHECK (
-    recorded_by = auth.uid()
-    AND EXISTS (SELECT 1 FROM public.profiles p WHERE p.id = auth.uid() AND p.role = 'farmer')
-  );
+### 3. Indoor lead capture — backend
 
-CREATE INDEX idx_price_feed_crop_recorded ON public.price_feed (LOWER(TRIM(crop_name)), recorded_at DESC);
-```
+**Migration** (`indoor_interest_leads`):
+- Columns: `id`, `name`, `phone`, `city`, `interest_type` (check: danışmanlık | ortaklık | diğer), `note`, `created_at`.
+- `GRANT INSERT ON public.indoor_interest_leads TO anon, authenticated;`
+- `GRANT ALL ON public.indoor_interest_leads TO service_role;`
+- Enable RLS. Policies:
+  - INSERT: `TO anon, authenticated USING (true) WITH CHECK (true)` (form is public).
+  - SELECT: none for anon/authenticated (service_role bypasses).
 
-No UPDATE/DELETE policies.
+**Server function** `src/lib/api/indoor-interest.functions.ts` (`createServerFn`, no auth middleware — public form):
+- `inputValidator` with zod: name (1–100, trimmed), phone (digits, 10–15), city (≤80, optional), interest_type enum, note (≤500, optional).
+- Handler:
+  1. Insert row using a server publishable client (respects RLS anon INSERT).
+  2. Fire Twilio SMS to Berkin's number via the existing pattern (env `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_MESSAGING_SERVICE_SID`; Berkin's number stored as a new secret `BERKIN_NOTIFY_PHONE`). Body: `🌱 Yeni indoor başvuru: {name} / {phone} / {city} / {interest_type}`.
+  3. Wrap SMS in try/catch — SMS failure must not block the lead save; log and continue.
+  4. Return `{ ok: true }`.
 
-## 2. Data layer (`src/lib/hasat/queries.ts`)
+**Secret**: `BERKIN_NOTIFY_PHONE` (E.164). If not set at call time, skip SMS silently and log a warning. I'll ask the user to add it after the migration lands.
 
-- `usePriceFeed()` — SELECT all, ORDER BY recorded_at DESC, limit ~500. Group client-side by `LOWER(TRIM(crop_name))`.
-- `useCreatePriceFeedEntry()` — INSERT `{ crop_name, price_per_kg, unit, source, recorded_by: user.id }`, invalidate `['price_feed']`.
-- `useLatestPriceByCrop()` helper (derived from usePriceFeed) → `Map<normalizedCrop, latestEntry>` for AI nudges.
+### 4. Client form wiring
 
-## 3. Fiyatlar page (`src/routes/farmer.prices.tsx`)
+- Local `useMutation` calling `useServerFn(submitIndoorInterest)`.
+- Client-side zod validation + inline errors.
+- On success: toast "Başvurunuz alındı", reset form.
+- WhatsApp CTA button renders alongside form: `https://wa.me/{BERKIN_NUMBER}?text=…` — number is a client-safe constant (put in `src/lib/hasat/constants.ts`); confirm the number with user before hardcoding, otherwise use a placeholder note.
 
-Replace the current static `usePricePoints()` implementation:
+### 5. Cleanup
 
-- Fetch via `usePriceFeed()`.
-- Group by crop, show one card per crop: crop name (via `formatCrop`), latest `price_per_kg` + `unit`, `source`, "X saat önce" (relative time).
-- Under each card: recharts `LineChart` of last 14 entries for that crop, `width=120 height=40`, single `<Line>`, `dot={false}`, no axes/grid/tooltip.
-- Empty state: "Fiyat verisi bekleniyor" placeholder (replaces the current empty branch).
-- Sticky "Fiyat Güncelle" button (farmer only — hide for buyer role via `useHasat` user check).
-- Keep existing price-alert section unchanged.
+- No `/indoor-basvuru` route created (spec explicit); if one already exists, leave it out of scope unless found during exploration.
+- `bunx tsgo --noEmit` must be clean at the end.
 
-Buyer side: no dedicated buyer prices route exists today; skip.
+### Files (planned)
 
-## 4. Fiyat Güncelle sheet
+- edit: `src/routes/index.tsx` (auth-aware redirect + full landing page)
+- new: `src/lib/api/indoor-interest.functions.ts`
+- new: migration for `indoor_interest_leads`
+- edit (if needed): `src/lib/hasat/constants.ts` for Berkin WhatsApp number constant
 
-New component inline in `farmer.prices.tsx` (or `src/components/hasat/PriceUpdateSheet.tsx`):
+### Open questions
 
-- Crop selector: `<Select>` populated from distinct crops in the farmer's listings + a free-text "Diğer…" fallback input.
-- Price input: numeric.
-- Unit selector: `kg | g | adet | litre`.
-- Source: text input, placeholder "İstanbul Hali, TMO, Manuel...".
-- Submit → `useCreatePriceFeedEntry`, toast "Fiyat güncellendi", close sheet.
-
-## 5. AI nudge on farmer storefront/home
-
-- In `src/routes/farmer.storefront.tsx` (listing cards) and `src/routes/farmer.home.tsx` (active listings list):
-  - Look up latest `price_feed` entry for the listing's crop (normalized match).
-  - If `|listing.price - latest.price| / latest.price > 0.2`, render a small amber alert under the card: `Piyasa fiyatının %X üzerindesiniz` / `…altındasınız`.
-  - No entry → no alert.
-
-## 6. Verify
-
-`tsgo` typecheck after implementation.
-
-## Technical notes
-
-- Normalize crop name with `LOWER(TRIM(...))` on both write and grouping/matching.
-- `price_per_kg` is a generic numeric value; the real unit lives in `unit`.
-- Sparkline is intentionally axis-less; if a crop has <2 points, render a dash placeholder instead of the chart.
-- `src/lib/hasat/types.ts`: add a `PriceFeedEntry` type; keep the legacy `PricePoint` type until unused, then remove.
+1. **Berkin's phone number** for both the Twilio SMS notify and the WhatsApp CTA `wa.me` link — please share the E.164 number (e.g. `+9053…`). I'll add the SMS target as a secret (`BERKIN_NOTIFY_PHONE`) and use the same number for the `wa.me` link.
+2. Any existing indoor pitch copy you want reused, or should I write concise Turkish copy from scratch matching the rest of the page's tone?
