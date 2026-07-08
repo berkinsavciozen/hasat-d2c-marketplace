@@ -17,6 +17,7 @@ import {
 import { toast } from "sonner";
 import { formatCrop } from "@/lib/hasat/format";
 import { AIBox } from "@/components/hasat/AIBox";
+import { CropChips } from "@/components/hasat/CropChips";
 
 export const Route = createFileRoute("/farmer/journal/")({
   head: () => ({ meta: [{ title: "Günlük — Hasat" }] }),
@@ -168,16 +169,8 @@ function Journal() {
                 </div>
                 <div>
                   <label className="text-xs text-hmuted">Ürün</label>
-                  <div className="mt-1 flex flex-wrap gap-1.5">
-                    {["Safran", "Lavanta", "Tıbbi Bitkiler", "Fındık", "Zeytin", "Diğer"].map((c) => {
-                      const active = pCrops.includes(c);
-                      return (
-                        <button key={c} type="button" onClick={() => setPCrops(active ? pCrops.filter(x => x !== c) : [...pCrops, c])}
-                          className={`rounded-full px-3 py-1.5 text-xs border ${active ? "bg-saffron text-white border-saffron" : "border-border"}`}>
-                          {c}
-                        </button>
-                      );
-                    })}
+                  <div className="mt-1">
+                    <CropChips value={pCrops} onChange={setPCrops} />
                   </div>
                 </div>
                 <div>
