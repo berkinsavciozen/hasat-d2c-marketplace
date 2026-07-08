@@ -41,7 +41,9 @@ function Storefront() {
   const vUrl = vitrinUrl(profile ?? undefined);
 
   const active = listings.filter((l) => l.status === "active");
-  const history = listings.filter((l) => l.status !== "active");
+  const drafts = listings.filter((l) => l.status === "draft");
+  const archive = listings.filter((l) => l.status === "sold" || l.status === "expired");
+  const parcelName = (id: string | null | undefined) => parcels.find((p) => p.id === id)?.name;
 
   return (
     <>
