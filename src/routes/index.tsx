@@ -848,7 +848,7 @@ function ChatCard({ title, messages }: { title: string; messages: { who: "farmer
             key={i}
             className={`max-w-[86%] rounded-2xl px-3 py-2 text-sm ${m.who === "farmer" ? "ml-auto rounded-tr-sm" : "rounded-tl-sm"}`}
             style={{
-              background: m.who === "farmer" ? "color-mix(in oklab, var(--lp-accent) 22%, var(--lp-white))" : "var(--lp-cream)",
+              background: m.who === "farmer" ? "color-mix(in oklab, var(--lp-accent) 22%, var(--lp-white))" : "var(--lp-white)",
               color: "var(--lp-ink)",
               border: "1px solid var(--lp-line)",
             }}
