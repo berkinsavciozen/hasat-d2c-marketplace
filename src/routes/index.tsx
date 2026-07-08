@@ -772,7 +772,7 @@ function BuyerPersonas() {
       <div className="mx-auto max-w-6xl">
         <div className="text-center mb-10 lp-reveal">
           <div className="text-xs uppercase tracking-widest mb-2" style={{ color: "var(--lp-muted)" }}>Alıcılar</div>
-          <h2 className="font-serif text-3xl md:text-4xl" style={{ color: "var(--lp-ink)" }}>Herkese göre bir yol.</h2>
+          <h2 className="font-serif text-3xl md:text-4xl" style={{ color: "var(--lp-ink)" }}>Herkese göre çözümler.</h2>
         </div>
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
           {personas.map((p, i) => (
