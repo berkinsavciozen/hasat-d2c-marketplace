@@ -1,5 +1,5 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ArrowLeft, Camera, X } from "lucide-react";
 import { useParcels, useCreateEntry } from "@/lib/hasat/queries";
 import {
@@ -34,6 +34,26 @@ function NewEntry() {
   const [unit, setUnit] = useState<"g" | "kg" | "adet">("g");
   const [notes, setNotes] = useState("");
   const [photoName, setPhotoName] = useState<string | null>(null);
+  const [crop, setCrop] = useState<string>("");
+
+  // sync default parcel once loaded
+  if (!parcelId && parcels[0]) setParcelId(parcels[0].id);
+
+  const parcel = parcels.find((p) => p.id === parcelId);
+  const parcelCrops = parcel?.crops ?? [];
+
+  // Keep `crop` in sync with the selected parcel: default to first crop; if
+  // the current selection isn't among this parcel's crops, reset it.
+  useEffect(() => {
+    if (parcelCrops.length === 0) {
+      setCrop("");
+      return;
+    }
+    if (!crop || !parcelCrops.includes(crop)) {
+      setCrop(parcelCrops[0]);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [parcelId, parcelCrops.join("|")]);
 
   // sync default parcel once loaded
   if (!parcelId && parcels[0]) setParcelId(parcels[0].id);
