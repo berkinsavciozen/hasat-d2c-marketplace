@@ -128,6 +128,32 @@ function NewEntry() {
             )}
           </div>
 
+          {parcelCrops.length > 1 && (
+            <div>
+              <label className="text-xs text-hmuted">Ürün</label>
+              <div className="mt-2 -mx-4 md:mx-0 px-4 md:px-0 overflow-x-auto">
+                <div className="flex gap-2 min-w-max md:flex-wrap">
+                  {parcelCrops.map((c) => {
+                    const active = c === crop;
+                    return (
+                      <button
+                        key={c}
+                        type="button"
+                        onClick={() => setCrop(c)}
+                        className={`rounded-full border px-4 py-2 text-sm whitespace-nowrap transition ${
+                          active ? "bg-saffron text-white border-saffron" : "border-border text-dark"
+                        }`}
+                        style={!active ? { background: "var(--cream)" } : undefined}
+                      >
+                        🌾 {c}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+          )}
+
           <div>
             <label className="text-xs text-hmuted">Tarih</label>
             <input
