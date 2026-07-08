@@ -266,7 +266,7 @@ function Hero({ onRole }: { onRole: (r: "farmer" | "buyer") => void }) {
         className="absolute inset-0 -z-10"
         style={{
           background:
-            "linear-gradient(180deg, color-mix(in oklab, var(--lp-primary) 78%, transparent) 0%, color-mix(in oklab, var(--lp-primary) 60%, transparent) 60%, color-mix(in oklab, var(--lp-cream) 92%, transparent) 100%)",
+            "linear-gradient(180deg, color-mix(in oklab, var(--lp-primary) 82%, transparent) 0%, color-mix(in oklab, var(--lp-primary) 68%, transparent) 60%, color-mix(in oklab, var(--lp-primary) 45%, transparent) 100%)",
         }}
         aria-hidden
       />
