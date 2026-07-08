@@ -1115,6 +1115,7 @@ export type Database = {
         | "organik_market"
         | "ihracatci"
         | "diger"
+        | "bireysel"
       delivery_type: "kargo-buyer" | "kargo-seller" | "elden"
       listing_status: "draft" | "active" | "sold" | "expired"
       notif_channel: "whatsapp" | "push" | "sms"
@@ -1279,6 +1280,7 @@ export const Constants = {
         "organik_market",
         "ihracatci",
         "diger",
+        "bireysel",
       ],
       delivery_type: ["kargo-buyer", "kargo-seller", "elden"],
       listing_status: ["draft", "active", "sold", "expired"],
