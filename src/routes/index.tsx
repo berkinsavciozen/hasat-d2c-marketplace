@@ -222,7 +222,7 @@ function Nav({ onRole }: { onRole: (r: "farmer" | "buyer") => void }) {
           <span className="text-lg">🌸</span>
           <span className="font-serif text-lg" style={{ color: "var(--lp-primary)" }}>Hasat</span>
           <span className="hidden sm:inline text-[10px] uppercase tracking-widest ml-2" style={{ color: "var(--lp-muted)" }}>
-            Trust Infrastructure
+            GÜVEN PLATFORMU
           </span>
         </div>
         <div className="flex items-center gap-2">
@@ -772,7 +772,7 @@ function BuyerPersonas() {
       <div className="mx-auto max-w-6xl">
         <div className="text-center mb-10 lp-reveal">
           <div className="text-xs uppercase tracking-widest mb-2" style={{ color: "var(--lp-muted)" }}>Alıcılar</div>
-          <h2 className="font-serif text-3xl md:text-4xl" style={{ color: "var(--lp-ink)" }}>Herkese göre bir yol.</h2>
+          <h2 className="font-serif text-3xl md:text-4xl" style={{ color: "var(--lp-ink)" }}>Herkese göre çözümler.</h2>
         </div>
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
           {personas.map((p, i) => (
@@ -807,7 +807,7 @@ function AISection() {
             <Sparkles className="w-3.5 h-3.5" /> Hasat AI
           </div>
           <h2 className="font-serif text-3xl md:text-4xl" style={{ color: "var(--lp-ink)" }}>
-            Tarlanın yanında bir <span style={{ color: "var(--lp-accent)" }}>uzman</span>.
+            Tarlanda bir <span style={{ color: "var(--lp-accent)" }}>uzman</span>.
           </h2>
           <p className="mt-3 text-sm max-w-xl mx-auto" style={{ color: "var(--lp-muted)" }}>
             Türkçe WhatsApp asistanı. Tarladan yaz — cevap gelsin, ilanın kendiliğinden güncellensin.
