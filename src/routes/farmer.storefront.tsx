@@ -295,8 +295,14 @@ function ListingSheet({ open, editing, onClose }: { open: boolean; editing: List
 
   const pending = createListing.isPending || updateListing.isPending;
 
+  const isDraft = editing?.status === "draft";
+
   const save = async () => {
     if (!crop) { toast.error("Ürün seçin"); return; }
+    if (isDraft) {
+      if (quantity <= 0) { toast.error("Miktar 0'dan büyük olmalı"); return; }
+      if (price <= 0) { toast.error("Fiyat 0'dan büyük olmalı"); return; }
+    }
     if (unit === "g" && price > 500) {
       const ok = window.confirm(
         `₺${price}/g olarak kaydedilecek. Kilogram fiyatını yanlışlıkla girmiş olabilirsiniz. Devam etmek istiyor musunuz?`
@@ -305,8 +311,10 @@ function ListingSheet({ open, editing, onClose }: { open: boolean; editing: List
     }
     try {
       if (editing) {
-        await updateListing.mutateAsync({ id: editing.id, patch: { crop, quantity, unit, pricePerUnit: price, minOrder, quality, description: desc || undefined }, photoFiles, existingPhotos });
-        toast.success("Ürün güncellendi");
+        const patch: Partial<Listing> = { crop, quantity, unit, pricePerUnit: price, minOrder, quality, description: desc || undefined };
+        if (isDraft) patch.status = "active";
+        await updateListing.mutateAsync({ id: editing.id, patch, photoFiles, existingPhotos });
+        toast.success(isDraft ? "Ürün yayınlandı" : "Ürün güncellendi");
       } else {
         await createListing.mutateAsync({ crop, quantity, unit, pricePerUnit: price, minOrder, quality, description: desc || undefined, photoFiles });
         toast.success("Ürün yayınlandı");
@@ -316,6 +324,7 @@ function ListingSheet({ open, editing, onClose }: { open: boolean; editing: List
       toast.error(e.message ?? "Kaydedilemedi");
     }
   };
+
 
   return (
     <Sheet open={open} onOpenChange={(o) => !o && onClose()}>
