@@ -222,7 +222,7 @@ function Nav({ onRole }: { onRole: (r: "farmer" | "buyer") => void }) {
           <span className="text-lg">🌸</span>
           <span className="font-serif text-lg" style={{ color: "var(--lp-primary)" }}>Hasat</span>
           <span className="hidden sm:inline text-[10px] uppercase tracking-widest ml-2" style={{ color: "var(--lp-muted)" }}>
-            Trust Infrastructure
+            GÜVEN PLATFORMU
           </span>
         </div>
         <div className="flex items-center gap-2">
