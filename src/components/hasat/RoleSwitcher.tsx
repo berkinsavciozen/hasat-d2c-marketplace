@@ -25,7 +25,7 @@ export function RoleSwitcher() {
   }
 
   return (
-    <div className="fixed bottom-24 right-3 md:bottom-4 z-[60] flex items-center gap-1 rounded-full border bg-popover/95 px-2 py-1 text-[11px] shadow-lg backdrop-blur">
+    <div className="fixed bottom-24 left-3 md:bottom-4 md:right-4 md:left-auto z-[60] flex items-center gap-1 rounded-full border bg-popover/95 px-2 py-1 text-[11px] shadow-lg backdrop-blur">
       <span className="px-1 text-hmuted">DEV</span>
       <button
         onClick={() => { setRole("farmer"); navigate({ to: "/farmer/home" }); }}
