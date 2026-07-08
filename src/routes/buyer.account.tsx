@@ -11,7 +11,7 @@ export const Route = createFileRoute("/buyer/account")({
 });
 
 const TYPE_LABEL: Record<string, string> = {
-  restoran: "Restoran", otel: "Otel", market: "Organik Market", ihracatci: "İhracatçı", diger: "Diğer",
+  restoran: "Restoran", otel: "Otel", market: "Organik Market", ihracatci: "İhracatçı", bireysel: "Bireysel", diger: "Diğer",
 };
 
 function Account() {
