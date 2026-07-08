@@ -30,6 +30,7 @@ function BuyerOnboarding() {
   const setPremium = useHasat((s) => s.setPremium);
 
   const [step, setStep] = useState(1);
+  const [mode, setMode] = useState<"company" | "individual">("company");
   const [company, setCompany] = useState("");
   const [type, setType] = useState<(typeof TYPES)[number]["id"] | "">("");
   const [interests, setInterests] = useState<string[]>([]);
