@@ -43,7 +43,9 @@ function Account() {
             </div>
             <div className="flex-1">
               <div className="font-serif text-lg">{user?.company?.name ?? user?.name ?? "Alıcı"}</div>
-              <div className="text-xs text-hmuted">{TYPE_LABEL[user?.company?.type ?? "diger"]}</div>
+              <div className="text-xs text-hmuted">
+                {user?.company?.type === "bireysel" ? "👤 Bireysel" : TYPE_LABEL[user?.company?.type ?? "diger"]}
+              </div>
             </div>
             <span className="rounded-full px-2.5 py-1 text-[11px] font-medium"
               style={{ background: user?.premium ? "var(--gold)" : "var(--muted)", color: user?.premium ? "var(--dark)" : "var(--hmuted)" }}>
