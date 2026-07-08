@@ -274,7 +274,7 @@ function Hero({ onRole }: { onRole: (r: "farmer" | "buyer") => void }) {
       <div className="mx-auto max-w-6xl px-4 pt-16 pb-24 md:pt-24 md:pb-28 grid gap-12 md:grid-cols-2 items-center">
         <div className="text-white lp-reveal">
           <div className="inline-flex items-center gap-2 rounded-full px-3 py-1 text-[11px] uppercase tracking-widest"
-            style={{ background: "rgba(255,255,255,0.14)", color: "#EAF1EA" }}>
+            style={{ background: "rgba(255,255,255,0.18)", color: "#FFFFFF" }}>
             <ShieldCheck className="w-3.5 h-3.5" /> Türkiye'nin izlenebilir tarım pazarı
           </div>
           <h1 className="mt-5 font-serif leading-[1.05] text-4xl sm:text-5xl md:text-6xl">
