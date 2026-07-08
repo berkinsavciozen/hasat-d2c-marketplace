@@ -48,7 +48,7 @@ export interface Listing {
   pricePerUnit: number;
   minOrder: number;
   quality: "A" | "B" | "C";
-  status: "active" | "sold" | "expired";
+  status: "draft" | "active" | "sold" | "expired";
   photos?: string[];
   producerId?: string;
   parcelId?: string | null;

@@ -41,7 +41,9 @@ function Storefront() {
   const vUrl = vitrinUrl(profile ?? undefined);
 
   const active = listings.filter((l) => l.status === "active");
-  const history = listings.filter((l) => l.status !== "active");
+  const drafts = listings.filter((l) => l.status === "draft");
+  const archive = listings.filter((l) => l.status === "sold" || l.status === "expired");
+  const parcelName = (id: string | null | undefined) => parcels.find((p) => p.id === id)?.name;
 
   return (
     <>
@@ -59,9 +61,12 @@ function Storefront() {
           <div className="mt-2 truncate font-mono text-[11px] text-hmuted">{vUrl}</div>
         </div>
         <Tabs defaultValue="active" className="mt-4">
-          <TabsList className="grid w-full grid-cols-2">
+          <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="active">Ürünlerim</TabsTrigger>
-            <TabsTrigger value="history">Geçmiş</TabsTrigger>
+            <TabsTrigger value="draft">
+              Taslak{drafts.length > 0 ? ` (${drafts.length})` : ""}
+            </TabsTrigger>
+            <TabsTrigger value="archive">Arşiv</TabsTrigger>
           </TabsList>
 
           <TabsContent value="active" className="mt-4 space-y-3">
@@ -84,16 +89,38 @@ function Storefront() {
             )}
           </TabsContent>
 
-          <TabsContent value="history" className="mt-4 space-y-3">
+          <TabsContent value="draft" className="mt-4 space-y-3">
             {isLoading ? (
               <LoadingDots />
-            ) : history.length === 0 ? (
-              <div className="py-12 text-center text-sm text-hmuted">Geçmiş kayıt yok.</div>
+            ) : drafts.length === 0 ? (
+              <div className="rounded-2xl border border-dashed py-12 px-6 text-center">
+                <div className="mb-3 text-5xl">📝</div>
+                <div className="text-xs text-hmuted">
+                  Henüz taslak yok. Bir parsel oluşturduğunuzda, o parselin her ürünü için otomatik bir taslak ilan hazırlanır.
+                </div>
+              </div>
             ) : (
-              history.map((l) => <ListingCard key={l.id} listing={l} muted />)
+              drafts.map((l) => (
+                <ListingCard key={l.id} listing={l} draft
+                  parcelLabel={parcelName(l.parcelId)}
+                  onEdit={() => setSheet({ open: true, editing: l })}
+                  onRemove={() => setConfirmDelete(l)}
+                />
+              ))
+            )}
+          </TabsContent>
+
+          <TabsContent value="archive" className="mt-4 space-y-3">
+            {isLoading ? (
+              <LoadingDots />
+            ) : archive.length === 0 ? (
+              <div className="py-12 text-center text-sm text-hmuted">Arşivde kayıt yok.</div>
+            ) : (
+              archive.map((l) => <ListingCard key={l.id} listing={l} muted />)
             )}
           </TabsContent>
         </Tabs>
+
 
         <section className="mt-8">
           <div className="mb-3 flex items-center justify-between">
@@ -175,12 +202,20 @@ function Storefront() {
   );
 }
 
-function ListingCard({ listing, muted, onEdit, onRemove }: { listing: Listing; muted?: boolean; onEdit?: () => void; onRemove?: () => void }) {
-  const statusLabel = listing.status === "active" ? "Aktif" : listing.status === "sold" ? "Satıldı" : "Süresi Doldu";
-  const statusColor = listing.status === "active" ? "var(--sage)" : listing.status === "sold" ? "var(--gold)" : "var(--hmuted)";
+function ListingCard({ listing, muted, draft, parcelLabel, onEdit, onRemove }: { listing: Listing; muted?: boolean; draft?: boolean; parcelLabel?: string; onEdit?: () => void; onRemove?: () => void }) {
+  const statusLabel =
+    listing.status === "active" ? "Aktif"
+    : listing.status === "draft" ? "Taslak"
+    : listing.status === "sold" ? "Satıldı"
+    : "Süresi Doldu";
+  const statusColor =
+    listing.status === "active" ? "var(--sage)"
+    : listing.status === "draft" ? "var(--hmuted)"
+    : listing.status === "sold" ? "var(--gold)"
+    : "var(--hmuted)";
   const photo = listing.photos?.[0];
   return (
-    <div className={`rounded-2xl border bg-card p-4 ${muted ? "opacity-60" : ""}`}>
+    <div className={`rounded-2xl border bg-card p-4 ${muted ? "opacity-60" : ""} ${draft ? "border-dashed" : ""}`}>
       <div className="flex items-start gap-3">
         {photo ? (
           <img src={photo} alt={formatCrop(listing.crop)} className="h-12 w-12 rounded-xl object-cover" />
@@ -193,6 +228,9 @@ function ListingCard({ listing, muted, onEdit, onRemove }: { listing: Listing; m
             <span className="rounded-full px-2 py-0.5 text-[10px] font-medium text-white" style={{ background: statusColor }}>{statusLabel}</span>
             <StockBadge listingId={listing.id} unit={listing.unit} />
           </div>
+          {parcelLabel && (
+            <div className="mt-0.5 text-[11px] text-hmuted">📍 {parcelLabel}</div>
+          )}
           <div className="mt-0.5 text-xs text-hmuted">{listing.quantity} {listing.unit} • Min. {listing.minOrder} {listing.unit}</div>
           <div className="mt-1.5 flex items-center gap-2">
             <span className="font-mono text-sm font-semibold">{formatTRY(listing.pricePerUnit)}/{listing.unit}</span>
@@ -200,19 +238,29 @@ function ListingCard({ listing, muted, onEdit, onRemove }: { listing: Listing; m
           </div>
         </div>
       </div>
-      <MarketDeviationAlert crop={listing.crop} pricePerUnit={listing.pricePerUnit} unit={listing.unit} />
+      {!draft && <MarketDeviationAlert crop={listing.crop} pricePerUnit={listing.pricePerUnit} unit={listing.unit} />}
+      {draft && (listing.quantity === 0 || listing.pricePerUnit === 0) && (
+        <div className="mt-2 rounded-lg bg-muted/60 px-2 py-1.5 text-[11px] text-hmuted">
+          Yayınlamadan önce miktar ve fiyatı güncelleyin.
+        </div>
+      )}
       {!muted && (
         <div className="mt-3 flex gap-2">
-          <Link to="/batch/$listingId" params={{ listingId: listing.id }} className="flex flex-1 items-center justify-center gap-1.5 rounded-lg border py-2 text-xs font-medium hover:bg-cream">
-            📦 Parti
-          </Link>
-          <button onClick={onEdit} className="flex flex-1 items-center justify-center gap-1.5 rounded-lg border py-2 text-xs font-medium hover:bg-cream"><Pencil className="h-3.5 w-3.5" /> Düzenle</button>
+          {!draft && (
+            <Link to="/batch/$listingId" params={{ listingId: listing.id }} className="flex flex-1 items-center justify-center gap-1.5 rounded-lg border py-2 text-xs font-medium hover:bg-cream">
+              📦 Parti
+            </Link>
+          )}
+          <button onClick={onEdit} className={`flex flex-1 items-center justify-center gap-1.5 rounded-lg py-2 text-xs font-medium ${draft ? "bg-saffron text-white hover:opacity-90" : "border hover:bg-cream"}`}>
+            {draft ? <>✓ Yayınla</> : <><Pencil className="h-3.5 w-3.5" /> Düzenle</>}
+          </button>
           <button onClick={onRemove} className="flex flex-1 items-center justify-center gap-1.5 rounded-lg border border-hred/30 py-2 text-xs font-medium text-hred hover:bg-hred/5"><Trash2 className="h-3.5 w-3.5" /> Kaldır</button>
         </div>
       )}
     </div>
   );
 }
+
 
 function ListingSheet({ open, editing, onClose }: { open: boolean; editing: Listing | null; onClose: () => void }) {
   const createListing = useCreateListing();
@@ -247,8 +295,14 @@ function ListingSheet({ open, editing, onClose }: { open: boolean; editing: List
 
   const pending = createListing.isPending || updateListing.isPending;
 
+  const isDraft = editing?.status === "draft";
+
   const save = async () => {
     if (!crop) { toast.error("Ürün seçin"); return; }
+    if (isDraft) {
+      if (quantity <= 0) { toast.error("Miktar 0'dan büyük olmalı"); return; }
+      if (price <= 0) { toast.error("Fiyat 0'dan büyük olmalı"); return; }
+    }
     if (unit === "g" && price > 500) {
       const ok = window.confirm(
         `₺${price}/g olarak kaydedilecek. Kilogram fiyatını yanlışlıkla girmiş olabilirsiniz. Devam etmek istiyor musunuz?`
@@ -257,8 +311,10 @@ function ListingSheet({ open, editing, onClose }: { open: boolean; editing: List
     }
     try {
       if (editing) {
-        await updateListing.mutateAsync({ id: editing.id, patch: { crop, quantity, unit, pricePerUnit: price, minOrder, quality, description: desc || undefined }, photoFiles, existingPhotos });
-        toast.success("Ürün güncellendi");
+        const patch: Partial<Listing> = { crop, quantity, unit, pricePerUnit: price, minOrder, quality, description: desc || undefined };
+        if (isDraft) patch.status = "active";
+        await updateListing.mutateAsync({ id: editing.id, patch, photoFiles, existingPhotos });
+        toast.success(isDraft ? "Ürün yayınlandı" : "Ürün güncellendi");
       } else {
         await createListing.mutateAsync({ crop, quantity, unit, pricePerUnit: price, minOrder, quality, description: desc || undefined, photoFiles });
         toast.success("Ürün yayınlandı");
@@ -269,11 +325,12 @@ function ListingSheet({ open, editing, onClose }: { open: boolean; editing: List
     }
   };
 
+
   return (
     <Sheet open={open} onOpenChange={(o) => !o && onClose()}>
       <SheetContent side="bottom" className="rounded-t-2xl max-h-[92vh] overflow-y-auto">
         <SheetHeader>
-          <SheetTitle className="font-serif text-xl">{editing ? "Ürünü Düzenle" : "🏪 Yeni Ürün"}</SheetTitle>
+          <SheetTitle className="font-serif text-xl">{isDraft ? "Taslağı Yayınla" : editing ? "Ürünü Düzenle" : "🏪 Yeni Ürün"}</SheetTitle>
         </SheetHeader>
         <div className="mt-4 space-y-4">
           <div>
