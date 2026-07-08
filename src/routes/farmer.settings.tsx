@@ -13,6 +13,9 @@ import { TierBadge } from "@/components/hasat/TierBadge";
 import { UpgradeModal } from "@/components/hasat/UpgradeModal";
 import { PhotoUploader } from "@/components/hasat/PhotoUploader";
 import { vitrinUrl, copyVitrinLink } from "@/lib/hasat/vitrin";
+import { TR_PROVINCES } from "@/lib/hasat/cities";
+import { CropChips } from "@/components/hasat/CropChips";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 export const Route = createFileRoute("/farmer/settings")({ component: Settings });
 
@@ -48,14 +51,14 @@ function Settings() {
   // New parcel sheet state
   const [newParcelOpen, setNewParcelOpen] = useState(false);
   const [nName, setNName] = useState("");
-  const [nCity, setNCity] = useState("");
+  const [nProvince, setNProvince] = useState("");
+  const [nDistrict, setNDistrict] = useState("");
   const [nArea, setNArea] = useState(0);
   const [nCrops, setNCrops] = useState<string[]>([]);
   const [nPhotoFiles, setNPhotoFiles] = useState<File[]>([]);
-  const CROPS = ["Safran", "Lavanta", "Tıbbi Bitkiler", "Fındık", "Zeytin", "Diğer"];
 
   const resetNewParcel = () => {
-    setNName(""); setNCity(""); setNArea(0); setNCrops([]); setNPhotoFiles([]);
+    setNName(""); setNProvince(""); setNDistrict(""); setNArea(0); setNCrops([]); setNPhotoFiles([]);
   };
 
   const addParcel = async () => {
