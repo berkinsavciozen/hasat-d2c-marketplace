@@ -330,7 +330,7 @@ function ListingSheet({ open, editing, onClose }: { open: boolean; editing: List
     <Sheet open={open} onOpenChange={(o) => !o && onClose()}>
       <SheetContent side="bottom" className="rounded-t-2xl max-h-[92vh] overflow-y-auto">
         <SheetHeader>
-          <SheetTitle className="font-serif text-xl">{editing ? "Ürünü Düzenle" : "🏪 Yeni Ürün"}</SheetTitle>
+          <SheetTitle className="font-serif text-xl">{isDraft ? "Taslağı Yayınla" : editing ? "Ürünü Düzenle" : "🏪 Yeni Ürün"}</SheetTitle>
         </SheetHeader>
         <div className="mt-4 space-y-4">
           <div>
