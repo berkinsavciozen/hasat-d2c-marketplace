@@ -79,7 +79,7 @@ export function JournalEntryCard({ initial }: Props) {
   const [crop, setCrop] = useState(initial.crop);
   const [quantity, setQuantity] = useState<string>(String(initial.quantity));
   const [unit, setUnit] = useState<"g" | "kg" | "L">(initial.unit);
-  const [quality, setQuality] = useState<"A" | "B" | "C">(initial.quality);
+  const [quality, setQuality] = useState<"A" | "B" | "C">(initial.quality ?? "A");
   const [date, setDate] = useState<string>(initial.harvest_date);
   const [parcelId, setParcelId] = useState<string>("");
   const [notes, setNotes] = useState<string>(initial.notes ?? "");

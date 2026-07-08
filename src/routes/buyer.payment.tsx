@@ -2,7 +2,7 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
-import { formatTRY } from "@/lib/hasat/format";
+import { formatTRY, formatCrop } from "@/lib/hasat/format";
 import { useHasat } from "@/lib/hasat/store";
 import { useCreateOffer } from "@/lib/hasat/queries";
 import { toast } from "sonner";
@@ -80,7 +80,7 @@ function Payment() {
       <div className="p-4 md:p-8 max-w-2xl space-y-5">
         <div className="rounded-2xl bg-card border p-4">
           <div className="text-xs text-hmuted">Sipariş Özeti</div>
-          <div className="mt-2 font-medium">{pending!.crop} — {pending!.producerName}</div>
+          <div className="mt-2 font-medium">{formatCrop(pending!.crop)} — {pending!.producerName}</div>
           <div className="text-xs text-hmuted mt-1">{pending!.quantity} {pending!.unit} × {formatTRY(pending!.pricePerUnit)}</div>
           <div className="mt-3 border-t pt-3 space-y-1 text-sm">
             <div className="flex justify-between"><span>Ara Toplam</span><span className="font-mono">{formatTRY(pending!.total)}</span></div>

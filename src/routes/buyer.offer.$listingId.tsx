@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { LoadingDots } from "@/components/hasat/LoadingDots";
-import { formatTRY } from "@/lib/hasat/format";
+import { formatTRY, formatCrop } from "@/lib/hasat/format";
 import { useHasat } from "@/lib/hasat/store";
 import { useListing, useListingStock, useListingProvenanceEntries } from "@/lib/hasat/queries";
 import { ProvenanceTimeline } from "@/components/hasat/ProvenanceTimeline";
@@ -90,7 +90,7 @@ function MakeOffer() {
       <div className="p-4 md:p-8 space-y-5 max-w-2xl">
         <div className="rounded-2xl bg-card border p-4">
           <div className="text-xs text-hmuted">{listing.farmerName} {listing.farmerCity ? `· ${listing.farmerCity}` : ""}</div>
-          <div className="font-serif text-lg mt-1">{listing.crop}</div>
+          <div className="font-serif text-lg mt-1">{formatCrop(listing.crop)}</div>
           <div className="mt-3 flex items-baseline justify-between">
             <div className="text-xs text-hmuted">
               Mevcut: {stock ? stock.available : listing.quantity} {listing.unit} · Min {listing.minOrder} {listing.unit}

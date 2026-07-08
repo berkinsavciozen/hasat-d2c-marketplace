@@ -4,7 +4,7 @@ import { useState } from "react";
 import { ArrowLeft } from "lucide-react";
 import { useBuyerOffers, useUpdateOfferStatus, useCounterOffer } from "@/lib/hasat/queries";
 import { LoadingDots } from "@/components/hasat/LoadingDots";
-import { formatTRY } from "@/lib/hasat/format";
+import { formatTRY, formatCrop } from "@/lib/hasat/format";
 import { Stepper } from "@/components/hasat/Stepper";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Input } from "@/components/ui/input";
@@ -76,7 +76,7 @@ function Negotiation() {
         <div>
           <h1 className="font-serif text-xl">Müzakere</h1>
           <div className="text-xs opacity-70">
-            {offer.crop} · {(() => {
+            {formatCrop(offer.crop)} · {(() => {
               const slug = offer.buyerName ? (slugifyFarmer(offer.buyerName) || offer.producerId) : offer.producerId;
               return slug
                 ? <Link to="/s/$slug" params={{ slug }} className="underline hover:text-saffron">{offer.buyerName}</Link>

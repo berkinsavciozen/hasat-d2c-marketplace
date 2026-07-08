@@ -2,7 +2,7 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useMemo } from "react";
 import { BuyerHeader } from "@/components/hasat/BuyerHeader";
 import { LoadingDots } from "@/components/hasat/LoadingDots";
-import { formatTRY } from "@/lib/hasat/format";
+import { formatTRY, formatCrop } from "@/lib/hasat/format";
 import { useBuyerAnalytics, type BuyerAnalyticsRow } from "@/lib/hasat/queries";
 
 export const Route = createFileRoute("/buyer/reports")({
@@ -145,7 +145,7 @@ function Reports() {
                   <div className="flex items-start justify-between">
                     <div>
                       <div className="font-mono text-xs text-hmuted">{r.order_ref}</div>
-                      <div className="font-medium mt-1 text-dark">{r.offer?.listing?.crop ?? "—"}</div>
+                      <div className="font-medium mt-1 text-dark">{formatCrop(r.offer?.listing?.crop) ?? "—"}</div>
                     </div>
                     <span className="font-mono text-sm" style={{ color: "var(--gold)" }}>
                       {formatTRY(rowTotal(r))}
