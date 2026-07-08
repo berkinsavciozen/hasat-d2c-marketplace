@@ -55,14 +55,9 @@ function NewEntry() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [parcelId, parcelCrops.join("|")]);
 
-  // sync default parcel once loaded
-  if (!parcelId && parcels[0]) setParcelId(parcels[0].id);
-
-  const parcel = parcels.find((p) => p.id === parcelId);
-  const crop = parcel?.crops[0] ?? "Safran";
-
   const save = async () => {
     if (!parcelId) return toast.error("Lütfen bir parsel seçin");
+    if (!crop) return toast.error("Lütfen bir ürün seçin");
     try {
       const submitUnit: "g" | "kg" | "L" = unit === "adet" ? "g" : unit;
       const quantity = qty.trim() ? Number(qty) || 0 : 0;
