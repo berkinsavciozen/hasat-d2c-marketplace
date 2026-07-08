@@ -1031,6 +1031,7 @@ export type Database = {
       profiles: {
         Row: {
           bank_account_name: string | null
+          buyer_type: Database["public"]["Enums"]["company_type"] | null
           city: string | null
           created_at: string
           iban: string | null
@@ -1046,6 +1047,7 @@ export type Database = {
         }
         Insert: {
           bank_account_name?: string | null
+          buyer_type?: Database["public"]["Enums"]["company_type"] | null
           city?: string | null
           created_at?: string
           iban?: string | null
@@ -1061,6 +1063,7 @@ export type Database = {
         }
         Update: {
           bank_account_name?: string | null
+          buyer_type?: Database["public"]["Enums"]["company_type"] | null
           city?: string | null
           created_at?: string
           iban?: string | null
