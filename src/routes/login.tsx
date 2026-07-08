@@ -177,7 +177,7 @@ function LoginPage() {
     <div className="min-h-screen flex flex-col items-center justify-center p-6" style={{ background: "var(--dark)", color: "var(--hwhite)" }}>
       <div className="mb-10 text-center">
         <div className="text-5xl mb-2">🌸</div>
-        <h1 style={{ fontFamily: "Georgia, serif", fontSize: 38, color: titleColor }}>Hasat</h1>
+        <h1 className="font-serif text-4xl" style={{ color: titleColor }}>Hasat</h1>
         <div style={{ fontFamily: "Courier New, monospace", fontSize: 11, color: "var(--hmuted)" }}>هارست</div>
         <div className="mt-2 text-xs text-hwhite/60">{role === "buyer" ? "Alıcı Girişi" : "Çiftçi Girişi"}</div>
       </div>
