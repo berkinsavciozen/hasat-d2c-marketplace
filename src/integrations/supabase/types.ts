@@ -1090,6 +1090,10 @@ export type Database = {
     }
     Functions: {
       can_send_ai_message: { Args: { _user_id: string }; Returns: boolean }
+      create_draft_listings_for_parcel: {
+        Args: { _crops: string[]; _farmer_id: string; _parcel_id: string }
+        Returns: undefined
+      }
       get_my_role: { Args: never; Returns: string }
       get_my_role_for_offer: {
         Args: { offer_row: Database["public"]["Tables"]["offers"]["Row"] }
