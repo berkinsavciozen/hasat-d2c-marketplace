@@ -198,7 +198,7 @@ function BuyerOnboarding() {
           <div className="mt-4">
             <h2 className="font-serif text-2xl mb-1">Son Adım</h2>
             <p className="text-sm text-hwhite/60 mb-6">Adresinizi ekleyin ve denemenizi başlatın.</p>
-            <label className="text-xs text-hwhite/60">Şirket Adresi (opsiyonel)</label>
+            <label className="text-xs text-hwhite/60">{mode === "individual" ? "Adres (opsiyonel)" : "Şirket Adresi (opsiyonel)"}</label>
             <Input value={address} onChange={(e) => setAddress(e.target.value)} placeholder="Beyoğlu, İstanbul"
               className="mt-1 mb-6 bg-white/5 border-white/10 text-hwhite" />
             <div className="rounded-xl p-4 flex items-start gap-3 border"
