@@ -30,6 +30,7 @@ function BuyerOnboarding() {
   const setPremium = useHasat((s) => s.setPremium);
 
   const [step, setStep] = useState(1);
+  const [mode, setMode] = useState<"company" | "individual">("company");
   const [company, setCompany] = useState("");
   const [type, setType] = useState<(typeof TYPES)[number]["id"] | "">("");
   const [interests, setInterests] = useState<string[]>([]);
@@ -75,17 +76,20 @@ function BuyerOnboarding() {
         navigate({ to: "/login", search: { role: "buyer" } });
         return;
       }
+      const isIndividual = mode === "individual";
+      const buyerType = isIndividual ? "bireysel" : ((type || "diger") as (typeof TYPES)[number]["id"]);
+      const dbType =
+        buyerType === "market" ? "organik_market" : buyerType;
+
       const { error: pErr } = await supabase.from("profiles").upsert({
         id: user.id,
         role: "buyer",
         name: company,
         phone: user.phone ? "+" + user.phone : null,
+        buyer_type: dbType,
       });
       if (pErr) throw pErr;
 
-      const buyerType = (type || "diger") as (typeof TYPES)[number]["id"];
-      const dbType =
-        buyerType === "market" ? "organik_market" : buyerType;
       const { error: bErr } = await supabase.from("buyer_profiles").insert({
         user_id: user.id,
         company_name: company,
@@ -117,26 +121,46 @@ function BuyerOnboarding() {
 
         {step === 1 && (
           <div className="mt-4">
-            <h2 className="font-serif text-2xl mb-1">Şirket Bilgileri</h2>
+            <h2 className="font-serif text-2xl mb-1">{mode === "individual" ? "Kişisel Bilgiler" : "Şirket Bilgileri"}</h2>
             <p className="text-sm text-hwhite/60 mb-6">Üreticilerin sizi tanıması için.</p>
-            <label className="text-xs text-hwhite/60">Şirket Adı</label>
-            <Input value={company} onChange={(e) => setCompany(e.target.value)} placeholder="Örn. Mikla Restaurant"
-              className="mt-1 mb-5 bg-white/5 border-white/10 text-hwhite" />
-            <label className="text-xs text-hwhite/60 mb-2 block">İşletme Tipi</label>
-            <div className="grid grid-cols-2 gap-2">
-              {TYPES.map((t) => {
-                const on = type === t.id;
+
+            <div className="mb-5 grid grid-cols-2 gap-1 rounded-xl p-1 border border-white/10 bg-white/5">
+              {(["company", "individual"] as const).map((m) => {
+                const on = mode === m;
                 return (
-                  <button key={t.id} onClick={() => setType(t.id)}
-                    className="rounded-xl p-4 text-left border transition"
-                    style={{ background: on ? "color-mix(in oklab, var(--gold) 18%, var(--dark))" : "rgba(255,255,255,0.05)", borderColor: on ? "var(--gold)" : "rgba(255,255,255,0.1)" }}>
-                    <div className="text-2xl mb-1">{t.icon}</div>
-                    <div className="text-sm font-medium">{t.label}</div>
+                  <button key={m} onClick={() => { setMode(m); if (m === "individual") setType(""); }}
+                    className="rounded-lg py-2 text-sm font-medium transition"
+                    style={{ background: on ? "var(--gold)" : "transparent", color: on ? "var(--dark)" : "var(--hwhite)" }}>
+                    {m === "company" ? "Şirket" : "Bireysel"}
                   </button>
                 );
               })}
             </div>
-            <button onClick={() => setStep(2)} disabled={!company || !type}
+
+            <label className="text-xs text-hwhite/60">{mode === "individual" ? "Adınız Soyadınız" : "Şirket Adı"}</label>
+            <Input value={company} onChange={(e) => setCompany(e.target.value)}
+              placeholder={mode === "individual" ? "Örn. Ayşe Yılmaz" : "Örn. Mikla Restaurant"}
+              className="mt-1 mb-5 bg-white/5 border-white/10 text-hwhite" />
+
+            {mode === "company" && (
+              <>
+                <label className="text-xs text-hwhite/60 mb-2 block">İşletme Tipi</label>
+                <div className="grid grid-cols-2 gap-2">
+                  {TYPES.map((t) => {
+                    const on = type === t.id;
+                    return (
+                      <button key={t.id} onClick={() => setType(t.id)}
+                        className="rounded-xl p-4 text-left border transition"
+                        style={{ background: on ? "color-mix(in oklab, var(--gold) 18%, var(--dark))" : "rgba(255,255,255,0.05)", borderColor: on ? "var(--gold)" : "rgba(255,255,255,0.1)" }}>
+                        <div className="text-2xl mb-1">{t.icon}</div>
+                        <div className="text-sm font-medium">{t.label}</div>
+                      </button>
+                    );
+                  })}
+                </div>
+              </>
+            )}
+            <button onClick={() => setStep(2)} disabled={!company || (mode === "company" && !type)}
               className="mt-8 w-full rounded-xl py-3 text-sm font-medium disabled:opacity-40"
               style={{ background: "var(--gold)", color: "var(--dark)" }}>Devam →</button>
             <div className="mt-4 text-center text-sm text-hwhite/60">
@@ -174,7 +198,7 @@ function BuyerOnboarding() {
           <div className="mt-4">
             <h2 className="font-serif text-2xl mb-1">Son Adım</h2>
             <p className="text-sm text-hwhite/60 mb-6">Adresinizi ekleyin ve denemenizi başlatın.</p>
-            <label className="text-xs text-hwhite/60">Şirket Adresi (opsiyonel)</label>
+            <label className="text-xs text-hwhite/60">{mode === "individual" ? "Adres (opsiyonel)" : "Şirket Adresi (opsiyonel)"}</label>
             <Input value={address} onChange={(e) => setAddress(e.target.value)} placeholder="Beyoğlu, İstanbul"
               className="mt-1 mb-6 bg-white/5 border-white/10 text-hwhite" />
             <div className="rounded-xl p-4 flex items-start gap-3 border"

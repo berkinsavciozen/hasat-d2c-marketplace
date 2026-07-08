@@ -511,7 +511,7 @@ function dbToOffer(r: any, side: "farmer" | "buyer"): Offer {
   return {
     id: r.id,
     buyerName: partyName,
-    buyerType: ((r.buyer?.buyer_type as BuyerType) ?? "restoran") as BuyerType,
+    buyerType: (((raw) => (raw === "organik_market" ? "market" : raw))(r.buyer?.buyer_type) ?? "bireysel") as BuyerType,
     crop: r.listing?.crop ?? "—",
     unit: (r.listing?.unit ?? "kg") as Offer["unit"],
     quantity: liveQty,
@@ -934,7 +934,7 @@ export function useFarmerOffers() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("offers")
-        .select("*, buyer:profiles!offers_buyer_id_fkey(id,name,city), listing:listings(crop,unit)")
+        .select("*, buyer:profiles!offers_buyer_id_fkey(id,name,city,buyer_type), listing:listings(crop,unit)")
         .eq("farmer_id", userId!)
         .order("created_at", { ascending: false });
       if (error) throw error;

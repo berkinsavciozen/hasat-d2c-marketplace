@@ -20,8 +20,8 @@ export const Route = createFileRoute("/farmer/orders/")({
   component: Orders,
 });
 
-const BUYER_TYPE_LABEL: Record<BuyerType, string> = { restoran: "Restoran", otel: "Otel", market: "Market", ihracatci: "İhracatçı" };
-const BUYER_TYPE_EMOJI: Record<BuyerType, string> = { restoran: "🍽️", otel: "🏨", market: "🛒", ihracatci: "✈️" };
+const BUYER_TYPE_LABEL: Record<BuyerType, string> = { restoran: "Restoran", otel: "Otel", market: "Market", ihracatci: "İhracatçı", bireysel: "Bireysel" };
+const BUYER_TYPE_EMOJI: Record<BuyerType, string> = { restoran: "🍽️", otel: "🏨", market: "🛒", ihracatci: "✈️", bireysel: "👤" };
 
 function timeAgo(iso: string) {
   const diff = Date.now() - new Date(iso).getTime();
