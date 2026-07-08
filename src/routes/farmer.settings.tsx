@@ -68,7 +68,7 @@ function Settings() {
         name: nName.trim(),
         area: nArea,
         crops: nCrops,
-        location: { label: nCity, lat: 0, lng: 0 },
+        location: { label: [nProvince, nDistrict.trim()].filter(Boolean).join(" / "), lat: 0, lng: 0 },
         photoFiles: nPhotoFiles,
       });
       toast.success("Parsel eklendi");
