@@ -136,8 +136,8 @@ function Storefront() {
               {parcels.map((p) => (
                 <div key={p.id} className="rounded-2xl border bg-card p-4">
                   <div className="flex items-baseline justify-between gap-2">
-                    <div className="font-medium">{p.name}</div>
-                    <div className="text-xs text-hmuted">{p.area} dönüm · {p.location.label}</div>
+                    <div className="font-medium truncate min-w-0">{p.name}</div>
+                    <div className="text-xs text-hmuted truncate min-w-0 text-right">{p.area} dönüm · {p.location.label}</div>
                   </div>
                   {p.photos && p.photos.length > 0 ? (
                     <div className="mt-3 flex gap-2 overflow-x-auto snap-x snap-mandatory pb-1">
