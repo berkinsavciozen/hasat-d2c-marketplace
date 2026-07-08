@@ -237,7 +237,12 @@ export function useCreateEntry() {
       if (error) throw error;
       return dbToEntry(data);
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["entries", userId] }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["entries", userId] });
+      qc.invalidateQueries({ queryKey: ["farmerListings", userId] });
+      qc.invalidateQueries({ queryKey: ["listingStock"] });
+      qc.invalidateQueries({ queryKey: ["listingBatchEntries"] });
+    },
   });
 }
 
