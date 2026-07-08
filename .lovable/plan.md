@@ -1,74 +1,113 @@
 
-## P17 — Marketing landing page + indoor interest capture
+# Audit: crop lists, city inputs, crop icons
 
-Replace the minimal `/` with a complete Turkish marketing page. Preserve brand tokens (`--dark`, `--saffron`, `--gold`, `--hwhite`), 🌸 mark, font-serif headings, and existing role → `/login?role=…` CTA behavior.
+## 1. Hardcoded crop lists / selectors
 
-### 1. Auth-aware redirect (fix stale-cache bug)
+Every dropdown or chip-picker in the app currently reads from a locally-defined `CROPS` array — none of them read from `crop_config`.
 
-Rework `src/routes/index.tsx`:
-- Add a `checking` state (default true).
-- On mount: call `supabase.auth.getSession()`. If session exists, fetch `profiles.role, name` (same shape as `login.tsx`).
-  - No session → set `checking=false`, render landing.
-  - Session + no `profile.name` → `navigate({ to: "/onboarding/{role}" })`.
-  - Session + `profile.name` → `navigate({ to: role === "buyer" ? "/buyer/discover" : "/farmer/home" })`.
-- While `checking` is true, render a minimal centered 🌸 splash on `--dark` (no landing flash).
-- Drop the Zustand-only redirect; keep `setRole/updateUser` sync via existing `AuthBootstrap` in `__root.tsx`.
+| File | Line(s) | Current value | Used for |
+|---|---|---|---|
+| `src/routes/onboarding.farmer.tsx` | 31 | `["Safran","Lavanta","Tıbbi Bitkiler","Fındık","Zeytin","Diğer"]` | Onboarding step 2 "Ana Ürünler" chips |
+| `src/routes/onboarding.buyer.tsx` | 23 | same 6-item list | Buyer onboarding "İlgilendiğiniz Ürünler" chips |
+| `src/routes/farmer.settings.tsx` | 55 | same 6-item list | "Ana Ürünler" chips in the "+ Parsel Ekle" sheet |
+| `src/routes/farmer.storefront.tsx` | 34 | `["Safran","Lavanta","Tıbbi Bitkiler","Fındık","Zeytinyağı"]` | "+ Yeni Ürün" listing-create dialog `<Select>` |
+| `src/routes/farmer.journal.index.tsx` | 172 | inline `["Safran","Lavanta","Tıbbi Bitkiler","Fındık","Zeytin","Diğer"]` | Inline "+ Parsel" sheet on Journal page |
+| `src/routes/farmer.journal.index.tsx` | 85, 117 | default `pCrops = ["Safran"]` | Default value for new-parcel form |
+| `src/routes/farmer.community.tsx` | 18 | `["Tümü","Safran","Pazar","Hava","Hastalık","Diğer"]` | Community post category filter (mixes crop + topic — **not** the same taxonomy, leave alone) |
 
-### 2. Landing page sections (single route file, componentized locally)
+`src/routes/farmer.journal.new.tsx` already does it right — it drives the crop chip selector from `parcel.crops`, which reflects whatever was saved during parcel creation.
 
-Order and content exactly as spec:
-1. **Hero** — "Tarladan sofraya, aracısız." + subhead + two role CTAs (large, primary).
-2. **Problem** — 2 cards (Çiftçi / Alıcı), 3 bullet pain points each.
-3. **Çiftçiyim** — "Ürününü Türkiye'ye aç" + 6 feature cards (vitrin, günlük, izlenebilirlik, pazarlık, stok, referral) in 2-col grid (1-col mobile). Placeholders = clean lucide icon tiles on token-tinted backgrounds; no fake screenshots.
-4. **Alıcıyım** — "Güvenilir üreticiyi bul, doğrudan al" + 5 cards (keşfet, ürün geçmişi w/ anti-sahtecilik emphasis, izlenebilir rozet, teklif, sipariş takibi).
-5. **Nasıl Çalışır** — two 4-step numbered journeys side-by-side (Ahmet/Safranbolu, Zeynep/İstanbul).
-6. **Hasat AI** — `--dark` background, 3 cards each with description + a small chat-bubble example (question + Hasat's reply) styled like WhatsApp thread.
-7. **Güven** — 3 one-liners: %5 komisyon (ilk 3 ay ücretsiz), veri güvenliği, gerçek çiftçi doğrulaması.
-8. **Indoor Farming** (`id="indoor-basvuru"`) — pitch (indoor + kırsal genç kalıcılığı + TKDK genç çiftçi bonusu) + form (Ad, Telefon, Şehir, İlgi Tipi radio, Not) + WhatsApp CTA (`wa.me/...?text=…`).
-9. **Footer** — 🌸 Hasat + tagline + contact (WhatsApp link).
+## 2. Crop icon / emoji mapping (5-item map, no fallback catalog)
 
-Repeats of the two role CTAs at the bottom of Çiftçi/Alıcı sections and above the footer.
+Three separate copies of the same 5-key emoji map exist, and one page uses ad-hoc `.includes()` string matching:
 
-### 3. Indoor lead capture — backend
+| File | Line | Shape |
+|---|---|---|
+| `src/routes/farmer.storefront.tsx` | 33 | `Record<string,string>` → `?? "🌾"` |
+| `src/routes/buyer.discover.tsx` | 21 | same map → `?? "🌾"` |
+| `src/routes/s.$slug.tsx` | 23-25 | same map → `?? "🌾"` |
+| `src/routes/buyer.producer.$id.tsx` | 95 | inline `l.crop.includes("Safran") ? "🌸" : includes("Lavanta") ? "💜" : "🌿"` |
+| `src/lib/hasat/crop-config.ts` | 29-34 | `CATEGORY_GROUP_META` (4 category → emoji) — used by buyer discover grouping only |
 
-**Migration** (`indoor_interest_leads`):
-- Columns: `id`, `name`, `phone`, `city`, `interest_type` (check: danışmanlık | ortaklık | diğer), `note`, `created_at`.
-- `GRANT INSERT ON public.indoor_interest_leads TO anon, authenticated;`
-- `GRANT ALL ON public.indoor_interest_leads TO service_role;`
-- Enable RLS. Policies:
-  - INSERT: `TO anon, authenticated USING (true) WITH CHECK (true)` (form is public).
-  - SELECT: none for anon/authenticated (service_role bypasses).
+All 4 files degrade to `🌾` (or `🌿` in `buyer.producer`) for the ~65 new crops, so nothing breaks visually — but every new crop shows the same generic wheat icon. `CATEGORY_GROUP_META` is also incomplete: the migration added `tahil`, `baklagil`, `yaglik`, `endustri_bitkisi`, `yumru`, `sebze`, `meyve` but the map only has 4 categories, so grouped views (e.g. `buyer.discover`) will label those with the raw slug.
 
-**Server function** `src/lib/api/indoor-interest.functions.ts` (`createServerFn`, no auth middleware — public form):
-- `inputValidator` with zod: name (1–100, trimmed), phone (digits, 10–15), city (≤80, optional), interest_type enum, note (≤500, optional).
-- Handler:
-  1. Insert row using a server publishable client (respects RLS anon INSERT).
-  2. Fire Twilio SMS to Berkin's number via the existing pattern (env `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_MESSAGING_SERVICE_SID`; Berkin's number stored as a new secret `BERKIN_NOTIFY_PHONE`). Body: `🌱 Yeni indoor başvuru: {name} / {phone} / {city} / {interest_type}`.
-  3. Wrap SMS in try/catch — SMS failure must not block the lead save; log and continue.
-  4. Return `{ ok: true }`.
+## 3. City / il inputs
 
-**Secret**: `BERKIN_NOTIFY_PHONE` (E.164). If not set at call time, skip SMS silently and log a warning. I'll ask the user to add it after the migration lands.
+| File | Line(s) | Field | Current behavior |
+|---|---|---|---|
+| `src/routes/onboarding.farmer.tsx` | 19-30, 209-212 | `city` | ✅ Dropdown (81 provinces) — reference implementation |
+| `src/routes/onboarding.buyer.tsx` | 37, 182 | `address` | Free-text `<Input>` (placeholder "Beyoğlu, İstanbul") — this is a full company address, arguably NOT just a province |
+| `src/routes/farmer.settings.tsx` | 39, 160 | Profile `city` | Free-text `<Input>` — should be province dropdown |
+| `src/routes/farmer.settings.tsx` | 449 | Parcel-create `nCity` ("Şehir / İlçe") | Free-text `<Input>` with placeholder "Karabük / Safranbolu" — value is written into `location_label` on the parcel |
+| `src/routes/farmer.journal.index.tsx` | inline parcel sheet | — | Sheet has no city/location field at all |
 
-### 4. Client form wiring
+Note: `parcels.location_label` is a general free-text location string (used for `"{city} — Ana Parsel"` naming in onboarding, and shown as-is elsewhere). It legitimately can hold "Şehir / İlçe / Mahalle". Treating it as a strict province dropdown loses expressiveness. See proposal below.
 
-- Local `useMutation` calling `useServerFn(submitIndoorInterest)`.
-- Client-side zod validation + inline errors.
-- On success: toast "Başvurunuz alındı", reset form.
-- WhatsApp CTA button renders alongside form: `https://wa.me/{BERKIN_NUMBER}?text=…` — number is a client-safe constant (put in `src/lib/hasat/constants.ts`); confirm the number with user before hardcoding, otherwise use a placeholder note.
+## 4. Proposed single source of truth
 
-### 5. Cleanup
+### 4a. Crops — read live from `crop_config`
 
-- No `/indoor-basvuru` route created (spec explicit); if one already exists, leave it out of scope unless found during exploration.
-- `bunx tsgo --noEmit` must be clean at the end.
+Add to `src/lib/hasat/crop-config.ts`:
 
-### Files (planned)
+```ts
+// Returns [{ crop, display_name, category_group, emoji }] sorted alphabetically
+export function useCropOptions(): { data: CropOption[]; isLoading }
+```
 
-- edit: `src/routes/index.tsx` (auth-aware redirect + full landing page)
-- new: `src/lib/api/indoor-interest.functions.ts`
-- new: migration for `indoor_interest_leads`
-- edit (if needed): `src/lib/hasat/constants.ts` for Berkin WhatsApp number constant
+- Backed by the existing `useCropConfigs()` query (already cached 10 min).
+- Each option's emoji: crop-specific override map (below) → else `CATEGORY_GROUP_META[category_group].emoji` → else `🌾`.
+- Extend `CATEGORY_GROUP_META` to cover all 10 category_groups now in the DB:
+  `tahil 🌾`, `baklagil 🫘`, `yaglik 🌻`, `endustri_bitkisi 🏭`, `yumru 🥔`, `sebze 🥬`, `meyve 🍎`, `sert_kabuklu 🌰`, `tibbi_bitki 🌿`, `baharat 🌶️`.
+- Add a small crop-specific override map for the marquee crops that deserve their own icon (keeps existing 5 + a couple more): `safran 🌸`, `lavanta 💜`, `zeytin 🫒`, `zeytinyağı 🫒`, `fındık 🌰`, `üzüm 🍇`, `elma 🍎`, `domates 🍅`, `mısır 🌽`, `çilek 🍓`, `gül 🌹`, `buğday 🌾`, `çay 🍵`. Everything else falls back through the category emoji.
 
-### Open questions
+Replace all `CROP_EMOJI` usages and the ad-hoc `.includes()` in `buyer.producer.$id.tsx` with one shared helper `cropEmoji(cropSlug, cropMap)` exported from `crop-config.ts`. Delete the 3 duplicate `CROP_EMOJI` constants.
 
-1. **Berkin's phone number** for both the Twilio SMS notify and the WhatsApp CTA `wa.me` link — please share the E.164 number (e.g. `+9053…`). I'll add the SMS target as a secret (`BERKIN_NOTIFY_PHONE`) and use the same number for the `wa.me` link.
-2. Any existing indoor pitch copy you want reused, or should I write concise Turkish copy from scratch matching the rest of the page's tone?
+Replace every hardcoded `CROPS` array with `useCropOptions()`:
+- `onboarding.farmer.tsx` chips
+- `onboarding.buyer.tsx` chips
+- `farmer.settings.tsx` parcel-create chips
+- `farmer.storefront.tsx` listing-create `<Select>`
+- `farmer.journal.index.tsx` inline parcel-create chips (also change the `["Safran"]` default to `[]` — no reason to pre-check a crop)
+
+Because `crop_config` values are lowercase slugs (`buğday`, `kuru_fasulye`, `safran_soğanı`) but existing parcels/listings store the Turkish display forms (`"Safran"`, `"Lavanta"`, `"Fındık"`), we need a decision:
+
+**Assumption:** new selections write the `display_name` (e.g. `"Buğday"`, `"Kuru Fasulye"`) to `listings.crop` / `parcels.crops[]`, matching how existing data looks. `crop_config` lookups already normalize via `normalizeCropKey`, and `findCropConfig(map, "Buğday")` resolves via the display_name key registered in `useCropConfigMap`. This keeps existing rows working with no data migration. Flag if you want to move to slug-based storage instead — that's a separate follow-up.
+
+### 4b. Cities — one exported list
+
+Move the 81-province array from `onboarding.farmer.tsx` to a new file `src/lib/hasat/cities.ts`:
+
+```ts
+export const TR_PROVINCES: readonly string[] = [ ...81 provinces alphabetical... ];
+```
+
+Reuse everywhere a **province** is meant:
+- `onboarding.farmer.tsx` (already the reference — just imports it now)
+- `farmer.settings.tsx` profile `city` field → convert `<Input>` to `<Select>` from `TR_PROVINCES`
+
+Leave as free-text (intentional):
+- `onboarding.buyer.tsx` "Şirket Adresi" — this is a full postal address, not a province. Optionally split into `province` (dropdown) + `addressLine` (free text) as a UX improvement, but current behavior is defensible.
+- `farmer.settings.tsx` parcel-create "Şehir / İlçe" (`nCity` → `location_label`) — the label explicitly asks for city + district. Recommended: split into two fields — `province` (dropdown, required) + `district` (free-text, optional) — then join to `location_label`. If you'd rather keep it a single field, convert to the province dropdown and drop "/ İlçe" from the label.
+- `farmer.journal.index.tsx` parcel sheet has no location field; leave as-is or add the same split.
+
+### 4c. `farmer.community.tsx` categories
+
+`CATS = ["Tümü","Safran","Pazar","Hava","Hastalık","Diğer"]` mixes crops with post topics. This is a taxonomy for community post filtering, not a crop selector. Leave alone unless you specifically want community post filters to key off `crop_config` too.
+
+## Deliverables when this is approved (build phase)
+
+1. `src/lib/hasat/cities.ts` — export `TR_PROVINCES`.
+2. `src/lib/hasat/crop-config.ts` — add `useCropOptions()`, `cropEmoji()`, extend `CATEGORY_GROUP_META` to 10 groups, add crop-specific emoji override map.
+3. Delete 3 duplicate `CROP_EMOJI` maps and 5 hardcoded `CROPS` arrays.
+4. Wire `useCropOptions()` into: onboarding.farmer, onboarding.buyer, farmer.settings, farmer.storefront, farmer.journal.index.
+5. Convert farmer.settings profile `city` to `<Select>` from `TR_PROVINCES`.
+6. Decide (open question): split parcel `Şehir / İlçe` into two fields, or convert to province-only dropdown?
+7. Show loading state (skeleton chips) while `useCropOptions()` loads, since `crop_config` is a network fetch.
+8. Run `tsgo` typecheck.
+
+## Open questions for you
+
+1. **Parcel "Şehir / İlçe" field** — split into province dropdown + district free-text, or collapse to just the province dropdown?
+2. **Buyer onboarding "Şirket Adresi"** — leave as free-text, or add a province dropdown alongside?
+3. **Crop storage format** — keep writing display names (`"Buğday"`) as today, or switch new writes to slugs (`"buğday"`)? Recommendation: keep display names; slug migration is a separate task.
+4. **Community filter chips** — leave the mixed crop/topic list, or replace with `crop_config`-driven crop filters?
