@@ -13,6 +13,9 @@ import { TierBadge } from "@/components/hasat/TierBadge";
 import { UpgradeModal } from "@/components/hasat/UpgradeModal";
 import { PhotoUploader } from "@/components/hasat/PhotoUploader";
 import { vitrinUrl, copyVitrinLink } from "@/lib/hasat/vitrin";
+import { TR_PROVINCES } from "@/lib/hasat/cities";
+import { CropChips } from "@/components/hasat/CropChips";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 export const Route = createFileRoute("/farmer/settings")({ component: Settings });
 
@@ -48,14 +51,14 @@ function Settings() {
   // New parcel sheet state
   const [newParcelOpen, setNewParcelOpen] = useState(false);
   const [nName, setNName] = useState("");
-  const [nCity, setNCity] = useState("");
+  const [nProvince, setNProvince] = useState("");
+  const [nDistrict, setNDistrict] = useState("");
   const [nArea, setNArea] = useState(0);
   const [nCrops, setNCrops] = useState<string[]>([]);
   const [nPhotoFiles, setNPhotoFiles] = useState<File[]>([]);
-  const CROPS = ["Safran", "Lavanta", "Tıbbi Bitkiler", "Fındık", "Zeytin", "Diğer"];
 
   const resetNewParcel = () => {
-    setNName(""); setNCity(""); setNArea(0); setNCrops([]); setNPhotoFiles([]);
+    setNName(""); setNProvince(""); setNDistrict(""); setNArea(0); setNCrops([]); setNPhotoFiles([]);
   };
 
   const addParcel = async () => {
@@ -65,7 +68,7 @@ function Settings() {
         name: nName.trim(),
         area: nArea,
         crops: nCrops,
-        location: { label: nCity, lat: 0, lng: 0 },
+        location: { label: [nProvince, nDistrict.trim()].filter(Boolean).join(" / "), lat: 0, lng: 0 },
         photoFiles: nPhotoFiles,
       });
       toast.success("Parsel eklendi");
@@ -157,7 +160,10 @@ function Settings() {
           <label className="text-xs text-muted-foreground">Ad Soyad</label>
           <Input value={name} onChange={(e) => setName(e.target.value)} className="mt-1 mb-3" />
           <label className="text-xs text-muted-foreground">Şehir</label>
-          <Input value={city} onChange={(e) => setCity(e.target.value)} className="mt-1 mb-3" />
+          <Select value={city} onValueChange={setCity}>
+            <SelectTrigger className="mt-1 mb-3"><SelectValue placeholder="İl seçin" /></SelectTrigger>
+            <SelectContent>{TR_PROVINCES.map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent>
+          </Select>
           <button onClick={saveProfile}
             className="rounded-lg px-4 py-2 text-sm font-medium"
             style={{ background: "var(--saffron)", color: "var(--hwhite)" }}>Kaydet</button>
@@ -445,8 +451,15 @@ function Settings() {
               <Input value={nName} onChange={(e) => setNName(e.target.value)} placeholder="Ana Parsel" className="mt-1" />
             </div>
             <div>
-              <label className="text-xs text-muted-foreground">Şehir / İlçe</label>
-              <Input value={nCity} onChange={(e) => setNCity(e.target.value)} placeholder="Karabük / Safranbolu" className="mt-1" />
+              <label className="text-xs text-muted-foreground">İl</label>
+              <Select value={nProvince} onValueChange={setNProvince}>
+                <SelectTrigger className="mt-1"><SelectValue placeholder="İl seçin" /></SelectTrigger>
+                <SelectContent>{TR_PROVINCES.map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent>
+              </Select>
+            </div>
+            <div>
+              <label className="text-xs text-muted-foreground">İlçe / Mahalle (opsiyonel)</label>
+              <Input value={nDistrict} onChange={(e) => setNDistrict(e.target.value)} placeholder="Safranbolu" className="mt-1" />
             </div>
             <div>
               <label className="text-xs text-muted-foreground">Alan (dönüm)</label>
@@ -454,25 +467,8 @@ function Settings() {
             </div>
             <div>
               <label className="text-xs text-muted-foreground">Ana Ürünler</label>
-              <div className="mt-2 flex flex-wrap gap-2">
-                {CROPS.map((c) => {
-                  const on = nCrops.includes(c);
-                  return (
-                    <button
-                      key={c}
-                      type="button"
-                      onClick={() => setNCrops(on ? nCrops.filter((x) => x !== c) : [...nCrops, c])}
-                      className="rounded-full border px-3 py-1.5 text-xs transition"
-                      style={{
-                        background: on ? "var(--saffron)" : "transparent",
-                        color: on ? "var(--hwhite)" : undefined,
-                        borderColor: on ? "var(--saffron)" : undefined,
-                      }}
-                    >
-                      {c}
-                    </button>
-                  );
-                })}
+              <div className="mt-2">
+                <CropChips value={nCrops} onChange={setNCrops} />
               </div>
             </div>
             <div>

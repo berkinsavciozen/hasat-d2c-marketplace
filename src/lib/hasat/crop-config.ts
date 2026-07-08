@@ -27,11 +27,89 @@ export function normalizeCropKey(input: string | null | undefined): string {
 }
 
 export const CATEGORY_GROUP_META: Record<string, { label: string; emoji: string }> = {
-  baharat: { label: "Baharat", emoji: "🌸" },
-  tibbi_bitki: { label: "Tıbbi Bitkiler", emoji: "🌿" },
+  tahil: { label: "Tahıllar", emoji: "🌾" },
+  baklagil: { label: "Baklagiller", emoji: "🫘" },
+  yaglik: { label: "Yağlı Tohumlar", emoji: "🌻" },
+  endustri_bitkisi: { label: "Endüstri Bitkileri", emoji: "🏭" },
+  yumru: { label: "Yumru Bitkiler", emoji: "🥔" },
+  sebze: { label: "Sebzeler", emoji: "🥬" },
+  meyve: { label: "Meyveler", emoji: "🍎" },
   sert_kabuklu: { label: "Sert Kabuklular", emoji: "🌰" },
-  yaglik: { label: "Yağlıklar", emoji: "🫒" },
+  tibbi_bitki: { label: "Tıbbi Bitkiler", emoji: "🌿" },
+  baharat: { label: "Baharatlar", emoji: "🌶️" },
 };
+
+/**
+ * Crop-specific emoji overrides for marquee crops.
+ * Keys match normalized display names (lowercased tr-TR).
+ */
+const CROP_EMOJI_OVERRIDES: Record<string, string> = {
+  "safran": "🌸",
+  "lavanta": "💜",
+  "zeytin": "🫒",
+  "zeytinyağı": "🫒",
+  "üzüm": "🍇",
+  "çilek": "🍓",
+  "gül": "🌹",
+  "fındık": "🌰",
+  "ceviz": "🌰",
+  "badem": "🌰",
+  "buğday": "🌾",
+  "arpa": "🌾",
+  "mısır": "🌽",
+  "pirinç": "🍚",
+  "domates": "🍅",
+  "biber": "🌶️",
+  "patates": "🥔",
+  "soğan": "🧅",
+  "sarımsak": "🧄",
+  "havuç": "🥕",
+  "elma": "🍎",
+  "portakal": "🍊",
+  "limon": "🍋",
+  "kiraz": "🍒",
+  "karpuz": "🍉",
+  "muz": "🍌",
+  "nane": "🌿",
+  "kekik": "🌿",
+  "papatya": "🌼",
+  "ayçiçeği": "🌻",
+  "pamuk": "🌱",
+  "çay": "🍵",
+  "fıstık": "🥜",
+};
+
+export function cropEmoji(crop: string | null | undefined, cfg?: CropConfig | null): string {
+  const key = normalizeCropKey(crop);
+  if (key && CROP_EMOJI_OVERRIDES[key]) return CROP_EMOJI_OVERRIDES[key];
+  const group = cfg?.category_group;
+  if (group && CATEGORY_GROUP_META[group]) return CATEGORY_GROUP_META[group].emoji;
+  return "🌾";
+}
+
+export interface CropOption {
+  value: string; // display_name — what we store & show
+  label: string;
+  emoji: string;
+  category_group: string | null;
+}
+
+/**
+ * Hook that returns a sorted, ready-to-render list of crop options
+ * backed by the crop_config catalog. Use everywhere a crop picker is needed.
+ */
+export function useCropOptions() {
+  const q = useCropConfigs();
+  const options: CropOption[] = (q.data ?? [])
+    .map((c) => ({
+      value: c.display_name,
+      label: c.display_name,
+      emoji: cropEmoji(c.display_name, c),
+      category_group: c.category_group,
+    }))
+    .sort((a, b) => a.label.localeCompare(b.label, "tr-TR"));
+  return { ...q, options };
+}
 
 export function useCropConfigs() {
   return useQuery({

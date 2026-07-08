@@ -20,7 +20,7 @@ import { PhotoUploader } from "@/components/hasat/PhotoUploader";
 import { MarketDeviationAlert } from "@/components/hasat/MarketDeviationAlert";
 import { StockBadge } from "@/components/hasat/StockBadge";
 import { CoverageBadge } from "@/components/hasat/CoverageBadge";
-import { findCropConfig, useCropConfigMap } from "@/lib/hasat/crop-config";
+import { cropEmoji, findCropConfig, useCropConfigMap, useCropOptions } from "@/lib/hasat/crop-config";
 import { computeCoverage } from "@/lib/hasat/coverage";
 import { useListingBatchEntries } from "@/lib/hasat/queries";
 import { Eye } from "lucide-react";
@@ -30,8 +30,6 @@ export const Route = createFileRoute("/farmer/storefront")({
   component: Storefront,
 });
 
-const CROP_EMOJI: Record<string, string> = { Safran: "🌸", Lavanta: "💜", "Tıbbi Bitkiler": "🌿", Fındık: "🌰", Zeytinyağı: "🫒" };
-const CROPS = ["Safran", "Lavanta", "Tıbbi Bitkiler", "Fındık", "Zeytinyağı"];
 
 function Storefront() {
   const { data: profile } = useProfile();
@@ -187,7 +185,7 @@ function ListingCard({ listing, muted, onEdit, onRemove }: { listing: Listing; m
         {photo ? (
           <img src={photo} alt={formatCrop(listing.crop)} className="h-12 w-12 rounded-xl object-cover" />
         ) : (
-          <div className="grid h-12 w-12 place-items-center rounded-xl bg-cream text-2xl">{CROP_EMOJI[listing.crop] ?? "🌾"}</div>
+          <div className="grid h-12 w-12 place-items-center rounded-xl bg-cream text-2xl">{cropEmoji(listing.crop)}</div>
         )}
         <div className="flex-1">
           <div className="flex items-center gap-2 flex-wrap">
@@ -220,7 +218,8 @@ function ListingSheet({ open, editing, onClose }: { open: boolean; editing: List
   const createListing = useCreateListing();
   const updateListing = useUpdateListing();
 
-  const [crop, setCrop] = useState(editing?.crop ?? "Safran");
+  const [crop, setCrop] = useState(editing?.crop ?? "");
+  const { options: cropOptions, isLoading: cropsLoading } = useCropOptions();
   const [quantity, setQuantity] = useState(editing?.quantity ?? 100);
   const [unit, setUnit] = useState<"g" | "kg" | "L">(editing?.unit ?? "g");
   const [price, setPrice] = useState(editing?.pricePerUnit ?? 350);
@@ -238,7 +237,7 @@ function ListingSheet({ open, editing, onClose }: { open: boolean; editing: List
       setDesc(editing.description ?? "");
       setExistingPhotos(editing.photos ?? []);
     } else {
-      setCrop("Safran"); setQuantity(100); setUnit("g"); setPrice(350); setMinOrder(10); setQuality("A");
+      setCrop(""); setQuantity(100); setUnit("g"); setPrice(350); setMinOrder(10); setQuality("A");
       setDesc("");
       setExistingPhotos([]);
     }
@@ -249,6 +248,7 @@ function ListingSheet({ open, editing, onClose }: { open: boolean; editing: List
   const pending = createListing.isPending || updateListing.isPending;
 
   const save = async () => {
+    if (!crop) { toast.error("Ürün seçin"); return; }
     if (unit === "g" && price > 500) {
       const ok = window.confirm(
         `₺${price}/g olarak kaydedilecek. Kilogram fiyatını yanlışlıkla girmiş olabilirsiniz. Devam etmek istiyor musunuz?`
@@ -279,8 +279,8 @@ function ListingSheet({ open, editing, onClose }: { open: boolean; editing: List
           <div>
             <div className="mb-1.5 text-xs font-medium text-hmuted">Ürün</div>
             <Select value={crop} onValueChange={setCrop}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>{CROPS.map((c) => <SelectItem key={c} value={c}>{CROP_EMOJI[c]} {c}</SelectItem>)}</SelectContent>
+              <SelectTrigger><SelectValue placeholder={cropsLoading ? "Yükleniyor…" : "Ürün seçin"} /></SelectTrigger>
+              <SelectContent>{cropOptions.map((o) => <SelectItem key={o.value} value={o.value}>{o.emoji} {o.label}</SelectItem>)}</SelectContent>
             </Select>
           </div>
           <div>

@@ -6,7 +6,7 @@ import { LoadingDots } from "@/components/hasat/LoadingDots";
 import { CoverageBadge } from "@/components/hasat/CoverageBadge";
 import { formatTRY, formatCrop } from "@/lib/hasat/format";
 import { useActiveListings, useListingStock } from "@/lib/hasat/queries";
-import { CATEGORY_GROUP_META, findCropConfig, useCropConfigMap } from "@/lib/hasat/crop-config";
+import { CATEGORY_GROUP_META, cropEmoji, findCropConfig, useCropConfigMap } from "@/lib/hasat/crop-config";
 import { slugifyFarmer } from "@/lib/hasat/vitrin";
 
 
@@ -18,7 +18,7 @@ export const Route = createFileRoute("/buyer/discover")({
 
 const SORTS = ["Puan", "Fiyat", "Yakınlık", "En Yeni"];
 
-const CROP_EMOJI: Record<string, string> = { Safran: "🌸", Lavanta: "💜", "Tıbbi Bitkiler": "🌿", Fındık: "🌰", Zeytinyağı: "🫒" };
+
 
 function Discover() {
   const navigate = useNavigate();
@@ -161,7 +161,7 @@ function ListingCard({ listing: l, onOpen }: { listing: ListingRow; onOpen: () =
           </div>
         )}
         <div className="absolute bottom-2 left-3 right-3 text-white">
-          <div className="font-serif text-base leading-tight line-clamp-2">{CROP_EMOJI[l.crop] ?? "🌾"} {formatCrop(l.crop)}</div>
+          <div className="font-serif text-base leading-tight line-clamp-2">{cropEmoji(l.crop)} {formatCrop(l.crop)}</div>
           <div className="text-[11px] opacity-80 truncate">
             {farmerSlug ? (
               <Link to="/s/$slug" params={{ slug: farmerSlug }} onClick={(e) => e.stopPropagation()} className="underline hover:text-saffron">
