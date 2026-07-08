@@ -5,6 +5,7 @@ import { TrustBadge } from "@/components/hasat/TrustBadge";
 import { formatTRY, formatCrop } from "@/lib/hasat/format";
 import { useHasat } from "@/lib/hasat/store";
 import { useParcelsByFarmer } from "@/lib/hasat/queries";
+import { cropEmoji } from "@/lib/hasat/crop-config";
 
 export const Route = createFileRoute("/buyer/producer/$id")({
   head: () => ({ meta: [{ title: "Üretici — Hasat" }] }),
