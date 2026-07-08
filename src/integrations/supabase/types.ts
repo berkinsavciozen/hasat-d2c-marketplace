@@ -1112,7 +1112,7 @@ export type Database = {
         | "ihracatci"
         | "diger"
       delivery_type: "kargo-buyer" | "kargo-seller" | "elden"
-      listing_status: "active" | "sold" | "expired"
+      listing_status: "draft" | "active" | "sold" | "expired"
       notif_channel: "whatsapp" | "push" | "sms"
       offer_status:
         | "pending"
@@ -1277,7 +1277,7 @@ export const Constants = {
         "diger",
       ],
       delivery_type: ["kargo-buyer", "kargo-seller", "elden"],
-      listing_status: ["active", "sold", "expired"],
+      listing_status: ["draft", "active", "sold", "expired"],
       notif_channel: ["whatsapp", "push", "sms"],
       offer_status: [
         "pending",
