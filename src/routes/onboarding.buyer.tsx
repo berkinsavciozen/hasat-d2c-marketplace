@@ -76,17 +76,20 @@ function BuyerOnboarding() {
         navigate({ to: "/login", search: { role: "buyer" } });
         return;
       }
+      const isIndividual = mode === "individual";
+      const buyerType = isIndividual ? "bireysel" : ((type || "diger") as (typeof TYPES)[number]["id"]);
+      const dbType =
+        buyerType === "market" ? "organik_market" : buyerType;
+
       const { error: pErr } = await supabase.from("profiles").upsert({
         id: user.id,
         role: "buyer",
         name: company,
         phone: user.phone ? "+" + user.phone : null,
+        buyer_type: dbType,
       });
       if (pErr) throw pErr;
 
-      const buyerType = (type || "diger") as (typeof TYPES)[number]["id"];
-      const dbType =
-        buyerType === "market" ? "organik_market" : buyerType;
       const { error: bErr } = await supabase.from("buyer_profiles").insert({
         user_id: user.id,
         company_name: company,
