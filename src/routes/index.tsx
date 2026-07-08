@@ -60,6 +60,7 @@ const lpVars: React.CSSProperties = {
   ["--lp-cream-2" as string]: "#EDE7D6",
   ["--lp-white" as string]: "#FFFFFF",
   ["--lp-gray" as string]: "#8A8F87",
+  ["--lp-muted" as string]: "#5A6560",
   ["--lp-ink" as string]: "#14231C",
   ["--lp-line" as string]: "rgba(20,35,28,0.10)",
 };
@@ -220,7 +221,7 @@ function Nav({ onRole }: { onRole: (r: "farmer" | "buyer") => void }) {
         <div className="flex items-center gap-2 min-w-0">
           <span className="text-lg">🌸</span>
           <span className="font-serif text-lg" style={{ color: "var(--lp-primary)" }}>Hasat</span>
-          <span className="hidden sm:inline text-[10px] uppercase tracking-widest ml-2" style={{ color: "var(--lp-gray)" }}>
+          <span className="hidden sm:inline text-[10px] uppercase tracking-widest ml-2" style={{ color: "var(--lp-muted)" }}>
             Trust Infrastructure
           </span>
         </div>
@@ -265,7 +266,7 @@ function Hero({ onRole }: { onRole: (r: "farmer" | "buyer") => void }) {
         className="absolute inset-0 -z-10"
         style={{
           background:
-            "linear-gradient(180deg, color-mix(in oklab, var(--lp-primary) 78%, transparent) 0%, color-mix(in oklab, var(--lp-primary) 60%, transparent) 60%, color-mix(in oklab, var(--lp-cream) 92%, transparent) 100%)",
+            "linear-gradient(180deg, color-mix(in oklab, var(--lp-primary) 82%, transparent) 0%, color-mix(in oklab, var(--lp-primary) 68%, transparent) 60%, color-mix(in oklab, var(--lp-primary) 45%, transparent) 100%)",
         }}
         aria-hidden
       />
@@ -273,7 +274,7 @@ function Hero({ onRole }: { onRole: (r: "farmer" | "buyer") => void }) {
       <div className="mx-auto max-w-6xl px-4 pt-16 pb-24 md:pt-24 md:pb-28 grid gap-12 md:grid-cols-2 items-center">
         <div className="text-white lp-reveal">
           <div className="inline-flex items-center gap-2 rounded-full px-3 py-1 text-[11px] uppercase tracking-widest"
-            style={{ background: "rgba(255,255,255,0.14)", color: "#EAF1EA" }}>
+            style={{ background: "rgba(255,255,255,0.18)", color: "#FFFFFF" }}>
             <ShieldCheck className="w-3.5 h-3.5" /> Türkiye'nin izlenebilir tarım pazarı
           </div>
           <h1 className="mt-5 font-serif leading-[1.05] text-4xl sm:text-5xl md:text-6xl">
@@ -327,10 +328,10 @@ function Hero({ onRole }: { onRole: (r: "farmer" | "buyer") => void }) {
                 <div className="font-serif text-lg" style={{ color: "var(--lp-ink)" }}>Safran · 50 gr</div>
                 <div className="text-sm font-medium" style={{ color: "var(--lp-primary)" }}>₺2.900</div>
               </div>
-              <div className="mt-1 flex items-center gap-2 text-xs" style={{ color: "var(--lp-gray)" }}>
+              <div className="mt-1 flex items-center gap-2 text-xs" style={{ color: "var(--lp-muted)" }}>
                 <MapPin className="w-3 h-3" /> Safranbolu · Ahmet
               </div>
-              <div className="mt-2 flex items-center gap-2 text-xs" style={{ color: "var(--lp-gray)" }}>
+              <div className="mt-2 flex items-center gap-2 text-xs" style={{ color: "var(--lp-muted)" }}>
                 <div className="inline-flex items-center gap-0.5" style={{ color: "var(--lp-accent)" }}>
                   {Array.from({ length: 5 }).map((_, i) => <Star key={i} className="w-3 h-3 fill-current" />)}
                 </div>
@@ -344,7 +345,7 @@ function Hero({ onRole }: { onRole: (r: "farmer" | "buyer") => void }) {
             className="lp-glass rounded-2xl p-4 mt-4 max-w-sm mx-auto md:ml-auto md:-mt-6 md:mr-6 md:translate-x-4"
             style={{ boxShadow: "0 20px 40px -18px rgba(0,0,0,0.3)" }}
           >
-            <div className="text-[11px] uppercase tracking-widest mb-3" style={{ color: "var(--lp-gray)" }}>
+            <div className="text-[11px] uppercase tracking-widest mb-3" style={{ color: "var(--lp-muted)" }}>
               Tarla günlüğü
             </div>
             <TimelineDraw
@@ -382,7 +383,7 @@ function TimelineDraw({ items }: { items: { icon: React.ReactNode; label: string
             {it.icon}
           </span>
           <div className="text-sm" style={{ color: "var(--lp-ink)" }}>{it.label}</div>
-          <div className="ml-auto text-[11px]" style={{ color: "var(--lp-gray)" }}>{it.date}</div>
+          <div className="ml-auto text-[11px]" style={{ color: "var(--lp-muted)" }}>{it.date}</div>
         </li>
       ))}
     </ol>
@@ -412,7 +413,7 @@ function ValuePillars() {
               {it.icon}
             </div>
             <div className="font-serif text-lg mb-1" style={{ color: "var(--lp-ink)" }}>{it.title}</div>
-            <div className="text-sm" style={{ color: "var(--lp-gray)" }}>{it.body}</div>
+            <div className="text-sm" style={{ color: "var(--lp-muted)" }}>{it.body}</div>
           </div>
         ))}
       </div>
@@ -429,7 +430,7 @@ function SupplyChain() {
     <section className="px-4 py-16 md:py-24 border-t" style={{ borderColor: "var(--lp-line)", background: "var(--lp-cream-2)" }} ref={ref}>
       <div className="mx-auto max-w-6xl">
         <div className="text-center mb-12 lp-reveal">
-          <div className="text-xs uppercase tracking-widest mb-2" style={{ color: "var(--lp-gray)" }}>Tedarik zinciri</div>
+          <div className="text-xs uppercase tracking-widest mb-2" style={{ color: "var(--lp-muted)" }}>Tedarik zinciri</div>
           <h2 className="font-serif text-3xl md:text-4xl" style={{ color: "var(--lp-ink)" }}>
             Değer, halkalar arasında kayboluyor.
           </h2>
@@ -445,9 +446,8 @@ function SupplyChain() {
                 <div
                   className="rounded-xl px-3 py-2 text-xs md:text-sm"
                   style={{
-                    background: `color-mix(in oklab, var(--lp-earth) ${18 - i * 2}%, var(--lp-white))`,
+                    background: "color-mix(in oklab, var(--lp-earth) 14%, var(--lp-white))",
                     color: "var(--lp-ink)",
-                    opacity: 1 - i * 0.08,
                   }}
                 >
                   {node}
@@ -502,11 +502,11 @@ function TraceabilityMock() {
     <section className="px-4 py-16 md:py-24 border-t" style={{ borderColor: "var(--lp-line)" }} ref={ref}>
       <div className="mx-auto max-w-6xl grid gap-12 md:grid-cols-2 items-center">
         <div className="lp-reveal">
-          <div className="text-xs uppercase tracking-widest mb-2" style={{ color: "var(--lp-gray)" }}>İzlenebilirlik</div>
+          <div className="text-xs uppercase tracking-widest mb-2" style={{ color: "var(--lp-muted)" }}>İzlenebilirlik</div>
           <h2 className="font-serif text-3xl md:text-4xl mb-4" style={{ color: "var(--lp-ink)" }}>
             Her ürünün kanıtlı bir geçmişi var.
           </h2>
-          <p className="text-base mb-6" style={{ color: "var(--lp-gray)" }}>
+          <p className="text-base mb-6" style={{ color: "var(--lp-muted)" }}>
             Tarla günlüğü fotoğraflı olarak tutulur. Alıcı, satın almadan önce
             sulama, gübreleme, hasat tarihini tek tek görür. "Tam İzlenebilir"
             rozeti, uydurma değil — her adımın kaydından hesaplanır.
@@ -550,7 +550,7 @@ function TraceabilityMock() {
                         {r.icon}
                       </span>
                       <span className="text-xs" style={{ color: "var(--lp-ink)" }}>{r.label}</span>
-                      <span className="ml-auto text-[11px]" style={{ color: "var(--lp-gray)" }}>{r.date}</span>
+                      <span className="ml-auto text-[11px]" style={{ color: "var(--lp-muted)" }}>{r.date}</span>
                     </li>
                   ))}
                 </ol>
@@ -583,7 +583,7 @@ function MarketplacePreview() {
       <div className="mx-auto max-w-6xl">
         <div className="flex items-end justify-between mb-8 lp-reveal">
           <div>
-            <div className="text-xs uppercase tracking-widest mb-2" style={{ color: "var(--lp-gray)" }}>Pazar yeri</div>
+            <div className="text-xs uppercase tracking-widest mb-2" style={{ color: "var(--lp-muted)" }}>Pazar yeri</div>
             <h2 className="font-serif text-3xl md:text-4xl" style={{ color: "var(--lp-ink)" }}>Öne çıkan üreticiler.</h2>
           </div>
         </div>
@@ -610,14 +610,14 @@ function MarketplacePreview() {
               </div>
               <div className="p-4">
                 <div className="font-serif text-base mb-1" style={{ color: "var(--lp-ink)" }}>{it.crop}</div>
-                <div className="text-xs mb-3 flex items-center gap-1" style={{ color: "var(--lp-gray)" }}>
+                <div className="text-xs mb-3 flex items-center gap-1" style={{ color: "var(--lp-muted)" }}>
                   <MapPin className="w-3 h-3" /> {it.loc} · {it.farmer}
                 </div>
                 <div className="flex items-baseline justify-between mb-2">
-                  <span className="text-sm" style={{ color: "var(--lp-gray)" }}>{it.qty}</span>
+                  <span className="text-sm" style={{ color: "var(--lp-muted)" }}>{it.qty}</span>
                   <span className="text-base font-medium" style={{ color: "var(--lp-primary)" }}>{it.price}</span>
                 </div>
-                <div className="flex items-center justify-between text-[11px]" style={{ color: "var(--lp-gray)" }}>
+                <div className="flex items-center justify-between text-[11px]" style={{ color: "var(--lp-muted)" }}>
                   <span>{it.when}</span>
                   <span>{it.delivery}</span>
                 </div>
@@ -650,7 +650,7 @@ function TurkeyMap() {
     <section className="px-4 py-16 md:py-24 border-t" style={{ borderColor: "var(--lp-line)" }} ref={ref}>
       <div className="mx-auto max-w-6xl">
         <div className="text-center mb-10 lp-reveal">
-          <div className="text-xs uppercase tracking-widest mb-2" style={{ color: "var(--lp-gray)" }}>Üretim haritası</div>
+          <div className="text-xs uppercase tracking-widest mb-2" style={{ color: "var(--lp-muted)" }}>Üretim haritası</div>
           <h2 className="font-serif text-3xl md:text-4xl" style={{ color: "var(--lp-ink)" }}>Türkiye'nin dört bir yanından.</h2>
         </div>
 
@@ -695,11 +695,11 @@ function TurkeyMap() {
           </div>
 
           <div className="rounded-2xl p-4" style={{ background: "var(--lp-cream)", border: "1px solid var(--lp-line)" }}>
-            <div className="text-[11px] uppercase tracking-widest mb-2" style={{ color: "var(--lp-gray)" }}>
+            <div className="text-[11px] uppercase tracking-widest mb-2" style={{ color: "var(--lp-muted)" }}>
               Örnek üretim
             </div>
             <div className="font-serif text-xl mb-1" style={{ color: "var(--lp-ink)" }}>{pin.region}</div>
-            <div className="text-sm mb-3" style={{ color: "var(--lp-gray)" }}>{pin.crop} · {pin.qty}</div>
+            <div className="text-sm mb-3" style={{ color: "var(--lp-muted)" }}>{pin.crop} · {pin.qty}</div>
             <span
               className="inline-flex items-center gap-1 rounded-full px-2 py-1 text-[10px] font-medium"
               style={{ background: "var(--lp-primary)", color: "#fff" }}
@@ -743,12 +743,12 @@ function FarmerStory() {
           />
         </div>
         <div className="lp-reveal lp-reveal-d2">
-          <div className="text-xs uppercase tracking-widest mb-2" style={{ color: "var(--lp-gray)" }}>Çiftçi hikayesi</div>
+          <div className="text-xs uppercase tracking-widest mb-2" style={{ color: "var(--lp-muted)" }}>Çiftçi hikayesi</div>
           <blockquote className="font-serif text-2xl md:text-3xl leading-snug" style={{ color: "var(--lp-ink)" }}>
             "Ürünümü ilk defa doğru fiyata sattım. Alıcı, tarlamın her adımını
             görüyor — güven kendiliğinden geliyor."
           </blockquote>
-          <div className="mt-4 text-sm" style={{ color: "var(--lp-gray)" }}>
+          <div className="mt-4 text-sm" style={{ color: "var(--lp-muted)" }}>
             <span className="italic">Örnek senaryo — </span> Ahmet, Safranbolu · 5 dönüm safran
           </div>
         </div>
@@ -771,7 +771,7 @@ function BuyerPersonas() {
     <section className="px-4 py-16 md:py-24 border-t" style={{ borderColor: "var(--lp-line)" }} ref={ref}>
       <div className="mx-auto max-w-6xl">
         <div className="text-center mb-10 lp-reveal">
-          <div className="text-xs uppercase tracking-widest mb-2" style={{ color: "var(--lp-gray)" }}>Alıcılar</div>
+          <div className="text-xs uppercase tracking-widest mb-2" style={{ color: "var(--lp-muted)" }}>Alıcılar</div>
           <h2 className="font-serif text-3xl md:text-4xl" style={{ color: "var(--lp-ink)" }}>Herkese göre bir yol.</h2>
         </div>
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
@@ -787,7 +787,7 @@ function BuyerPersonas() {
                 {p.icon}
               </div>
               <div className="font-serif text-base mb-1" style={{ color: "var(--lp-ink)" }}>{p.title}</div>
-              <div className="text-sm" style={{ color: "var(--lp-gray)" }}>{p.body}</div>
+              <div className="text-sm" style={{ color: "var(--lp-muted)" }}>{p.body}</div>
             </div>
           ))}
         </div>
@@ -803,13 +803,13 @@ function AISection() {
     <section className="px-4 py-16 md:py-24 border-t" style={{ borderColor: "var(--lp-line)", background: "var(--lp-cream-2)" }} ref={ref}>
       <div className="mx-auto max-w-5xl">
         <div className="text-center mb-10 lp-reveal">
-          <div className="inline-flex items-center gap-2 text-xs uppercase tracking-widest mb-2" style={{ color: "var(--lp-gray)" }}>
+          <div className="inline-flex items-center gap-2 text-xs uppercase tracking-widest mb-2" style={{ color: "var(--lp-muted)" }}>
             <Sparkles className="w-3.5 h-3.5" /> Hasat AI
           </div>
           <h2 className="font-serif text-3xl md:text-4xl" style={{ color: "var(--lp-ink)" }}>
             Tarlanın yanında bir <span style={{ color: "var(--lp-accent)" }}>uzman</span>.
           </h2>
-          <p className="mt-3 text-sm max-w-xl mx-auto" style={{ color: "var(--lp-gray)" }}>
+          <p className="mt-3 text-sm max-w-xl mx-auto" style={{ color: "var(--lp-muted)" }}>
             Türkçe WhatsApp asistanı. Tarladan yaz — cevap gelsin, ilanın kendiliğinden güncellensin.
           </p>
         </div>
@@ -848,13 +848,13 @@ function ChatCard({ title, messages }: { title: string; messages: { who: "farmer
             key={i}
             className={`max-w-[86%] rounded-2xl px-3 py-2 text-sm ${m.who === "farmer" ? "ml-auto rounded-tr-sm" : "rounded-tl-sm"}`}
             style={{
-              background: m.who === "farmer" ? "color-mix(in oklab, var(--lp-accent) 22%, var(--lp-white))" : "var(--lp-cream)",
+              background: m.who === "farmer" ? "color-mix(in oklab, var(--lp-accent) 22%, var(--lp-white))" : "var(--lp-white)",
               color: "var(--lp-ink)",
               border: "1px solid var(--lp-line)",
             }}
           >
             {m.who === "hasat" && (
-              <div className="flex items-center gap-1 text-[10px] mb-0.5" style={{ color: "var(--lp-gray)" }}>
+              <div className="flex items-center gap-1 text-[10px] mb-0.5" style={{ color: "var(--lp-muted)" }}>
                 <span>🌸</span><span>Hasat</span>
               </div>
             )}
@@ -879,7 +879,7 @@ function TrustScoreLadder() {
     <section className="px-4 py-16 md:py-24 border-t" style={{ borderColor: "var(--lp-line)" }} ref={ref}>
       <div className="mx-auto max-w-6xl">
         <div className="text-center mb-10 lp-reveal">
-          <div className="text-xs uppercase tracking-widest mb-2" style={{ color: "var(--lp-gray)" }}>Güven skoru</div>
+          <div className="text-xs uppercase tracking-widest mb-2" style={{ color: "var(--lp-muted)" }}>Güven skoru</div>
           <h2 className="font-serif text-3xl md:text-4xl" style={{ color: "var(--lp-ink)" }}>
             Kanıtladıkça güçlenen bir rozet.
           </h2>
@@ -903,11 +903,11 @@ function TrustScoreLadder() {
                 className={`rounded-2xl p-4 lp-reveal lp-reveal-d${i + 1}`}
                 style={{ background: "var(--lp-cream)", border: "1px solid var(--lp-line)" }}
               >
-                <div className="flex items-center gap-2 text-[11px] uppercase tracking-widest mb-2" style={{ color: "var(--lp-gray)" }}>
+                <div className="flex items-center gap-2 text-[11px] uppercase tracking-widest mb-2" style={{ color: "var(--lp-muted)" }}>
                   <span>Aşama {i + 1}</span>
                 </div>
                 <div className="font-serif text-lg mb-1" style={{ color: "var(--lp-ink)" }}>{t.label}</div>
-                <div className="text-sm mb-3" style={{ color: "var(--lp-gray)" }}>{t.desc}</div>
+                <div className="text-sm mb-3" style={{ color: "var(--lp-muted)" }}>{t.desc}</div>
                 <div className="h-1.5 rounded-full overflow-hidden" style={{ background: "var(--lp-cream-2)" }}>
                   <div
                     className="h-full rounded-full"
@@ -921,7 +921,7 @@ function TrustScoreLadder() {
             ))}
           </div>
 
-          <div className="mt-6 flex flex-wrap items-center gap-4 text-xs" style={{ color: "var(--lp-gray)" }}>
+          <div className="mt-6 flex flex-wrap items-center gap-4 text-xs" style={{ color: "var(--lp-muted)" }}>
             <span className="inline-flex items-center gap-1"><Lock className="w-3 h-3" /> Verileriniz şifreli</span>
             <span className="inline-flex items-center gap-1"><ShieldCheck className="w-3 h-3" /> Telefonla doğrulanmış üreticiler</span>
             <span className="inline-flex items-center gap-1"><Percent className="w-3 h-3" /> Şeffaf komisyon: %5</span>
@@ -1024,7 +1024,7 @@ function IndoorSection() {
               style={{ background: "#fff", border: "1px solid var(--lp-line)", color: "var(--lp-ink)" }} />
           </Field>
           <div>
-            <div className="text-xs mb-2" style={{ color: "var(--lp-gray)" }}>İlgi tipi</div>
+            <div className="text-xs mb-2" style={{ color: "var(--lp-muted)" }}>İlgi tipi</div>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
               {(["danışmanlık", "ortaklık", "diğer"] as const).map((t) => (
                 <button key={t} type="button" onClick={() => setInterest(t)}
@@ -1057,7 +1057,7 @@ function IndoorSection() {
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <label className="block">
-      <div className="text-xs mb-1" style={{ color: "var(--lp-gray)" }}>{label}</div>
+      <div className="text-xs mb-1" style={{ color: "var(--lp-muted)" }}>{label}</div>
       {children}
     </label>
   );
@@ -1069,7 +1069,7 @@ function Footer() {
   return (
     <footer
       className="px-4 py-12 border-t text-center text-xs"
-      style={{ borderColor: "var(--lp-line)", background: "var(--lp-cream)", color: "var(--lp-gray)" }}
+      style={{ borderColor: "var(--lp-line)", background: "var(--lp-cream)", color: "var(--lp-muted)" }}
     >
       <div className="text-2xl mb-1">🌸</div>
       <div className="font-serif text-base" style={{ color: "var(--lp-primary)" }}>Hasat</div>
