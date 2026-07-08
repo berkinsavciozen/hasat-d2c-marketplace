@@ -807,7 +807,7 @@ function AISection() {
             <Sparkles className="w-3.5 h-3.5" /> Hasat AI
           </div>
           <h2 className="font-serif text-3xl md:text-4xl" style={{ color: "var(--lp-ink)" }}>
-            Tarlanın yanında bir <span style={{ color: "var(--lp-accent)" }}>uzman</span>.
+            Tarlanda bir <span style={{ color: "var(--lp-accent)" }}>uzman</span>.
           </h2>
           <p className="mt-3 text-sm max-w-xl mx-auto" style={{ color: "var(--lp-muted)" }}>
             Türkçe WhatsApp asistanı. Tarladan yaz — cevap gelsin, ilanın kendiliğinden güncellensin.
