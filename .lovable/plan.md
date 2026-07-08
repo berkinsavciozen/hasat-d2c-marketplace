@@ -1,94 +1,55 @@
-# Add Individual ("Bireysel") Buyer Support
 
-## Findings — where buyer-as-company is baked in
+# Landing page contrast fixes
 
-**DB (Supabase)**
-- Enum `public.company_type`: `restoran | otel | organik_market | ihracatci | diger` — no `bireysel`.
-- Table `public.buyer_profiles`: `company_name text NOT NULL`, `company_type company_type NOT NULL`.
+Scope: `src/routes/index.tsx` only. No other routes, no global tokens.
 
-**Onboarding — `src/routes/onboarding.buyer.tsx`**
-- Step 1 forces `Şirket Adı` + one of 5 business tiles.
-- Inserts `buyer_profiles { company_name, company_type }`; also writes `profiles.name = company`.
-- Local `TYPES` const has no individual option.
+## Problems found (audit of every section)
 
-**Types — `src/lib/hasat/types.ts`**
-- `BuyerType = "restoran" | "otel" | "market" | "ihracatci"` (note: `market`, not `organik_market`; enum-to-type mapping happens in onboarding).
-- `User.company?.type: BuyerType | "diger"` — no `bireysel`.
-- `Offer.buyerType: BuyerType` (required, not optional).
+1. **`--lp-gray` (#8A8F87) on cream is too light.** Used everywhere for body copy, captions, meta, footer, form labels. Contrast against `--lp-cream` (#F5F1E6) ≈ 2.9:1 — fails WCAG AA for small text. This is the single biggest issue and affects value pillars, marketplace cards, personas, map side card, footer, form field labels, etc.
 
-**Farmer-facing displays**
-- `src/routes/farmer.orders.index.tsx` — `BUYER_TYPE_LABEL` / `BUYER_TYPE_EMOJI` records keyed on `BuyerType`, rendered on every offer row (line 130). Individual buyers would fall through as `restoran` today due to the default in queries.
-- `src/lib/hasat/queries.ts` line 514 — `buyerType: ((r.buyer?.buyer_type as BuyerType) ?? "restoran")`. Reads `profiles.buyer_type` (not `buyer_profiles.company_type`); if this column doesn't exist we should confirm before relying on it. **Open question — must verify with `read_query` before implementing.**
+2. **Hero bottom gradient fades to cream while text stays white.** The gradient ends at `color-mix(var(--lp-cream) 92%)`, so the paragraph and CTA row can sit on a near-cream background with white/`white/85` text → unreadable on shorter viewports. Also the "Türkiye'nin izlenebilir tarım pazarı" pill uses `#EAF1EA` on translucent white, borderline on light patches.
 
-**Buyer-side**
-- `src/routes/buyer.account.tsx` — `TYPE_LABEL` map, renders `user.company.name` / `.type` / `.address`. Needs a branch for individuals (show `profile.name`, no type badge, no address block, no "Organik Market" chip).
+3. **AI ChatCard "Hasat" bubble** uses `--lp-cream` background inside a `--lp-cream-2` section — bubble nearly disappears; only the 1px line separates it. Farmer bubble is fine.
 
-**Copy-only mentions (no change needed)**
-- `terms.tsx`, `index.tsx`, `__root.tsx` — marketing text mentions "restoran, otel, butik alıcılar". Fine as-is; optionally add "ve bireysel gurmeler" later.
+4. **Supply-chain traditional nodes fade with `opacity: 1 - i*0.08`** — last nodes drop to ~0.6 opacity on already-low-contrast earth tint. Text becomes hard to read.
 
-## Proposed plan
+5. **TrustScoreLadder tier cards**: cream cards on cream-2 section, "Aşama N" label in `--lp-gray` — same gray issue; description text also `--lp-gray`.
 
-### 1. Onboarding UX (step 1 of `onboarding.buyer.tsx`)
+6. **TurkeyMap side card**: region name is fine but `pin.crop · pin.qty` and pill row in `--lp-gray` fail the same way.
 
-Add a segmented toggle at the top of step 1:
+7. **Indoor form**: field labels + "İlgi tipi" caption in `--lp-gray` on cream — same problem.
 
-```text
-┌─────────────┬─────────────┐
-│  Şirket     │  Bireysel   │  ← Tabs (default: Şirket)
-└─────────────┴─────────────┘
-```
+## Fix strategy
 
-- **Şirket** (default): unchanged — `Şirket Adı` + 5-tile business type grid.
-- **Bireysel**: replace "Şirket Adı" label with **"Adınız Soyadınız"**, hide the business-type grid entirely. Step 2 (interests + monthly volume) stays as-is; step 3 relabels "Şirket Adresi (opsiyonel)" → "Adres (opsiyonel)".
+**A. Introduce two darker text tokens (still scoped, added to `lpVars`):**
+- `--lp-muted: #5A6560` — replaces `--lp-gray` for all body/meta text on cream surfaces. Contrast ≈ 6.5:1 on cream, still visibly secondary vs. `--lp-ink`.
+- Keep `--lp-gray` only where it's decorative (progress bar gradient stop, disabled pin dot).
 
-On submit for individual path:
-- `profiles.name = fullName`
-- `buyer_profiles.company_name = fullName` (reuse the column; see §2 for rationale)
-- `buyer_profiles.company_type = 'bireysel'`
-- Local store: `user.company = { name: fullName, type: 'bireysel', address, volume }`
+Do a mechanical swap of `color: "var(--lp-gray)"` → `color: "var(--lp-muted)"` in text usages. Keep the gradient in TrustScoreLadder and the inactive map pin fill as `--lp-gray`.
 
-### 2. Database migration
+**B. Hero:**
+- Change the overlay gradient bottom stop from cream to keep the dark tint under the content: end at `color-mix(var(--lp-primary) 35%, transparent)` instead of fading to cream. The section boundary already gives visual separation via the next section's own background.
+- Change the eyebrow pill text from `#EAF1EA` → `#FFFFFF` and lift bg opacity to `rgba(255,255,255,0.18)`.
 
-Add `'bireysel'` to the enum; keep `company_name NOT NULL` and store the person's name there (simpler than adding a nullable path — the column is really "display name for the buyer entity"). One migration:
+**C. AI ChatCard Hasat bubble:**
+- Change bg from `--lp-cream` to `--lp-white` so it separates from the `--lp-cream-2` section. Keeps ink text, keeps the border.
 
-```sql
-ALTER TYPE public.company_type ADD VALUE IF NOT EXISTS 'bireysel';
-```
+**D. Supply chain traditional nodes:**
+- Drop the `opacity: 1 - i*0.08` and the shrinking `18 - i*2%` tint. Use a single readable tint (`color-mix(var(--lp-earth) 14%, var(--lp-white))`) with full opacity, keep the arrow+"değer" caption using `--lp-earth` at 0.85 opacity to still convey the "value bleeds away" idea via the caption row rather than fading the labels themselves.
 
-No column nullability changes. No data backfill needed.
+**E. TrustScoreLadder + TurkeyMap side card + Indoor form labels:**
+- Covered by the `--lp-muted` swap in (A). No structural changes.
 
-### 3. TypeScript type updates
+**F. Footer:**
+- Change base footer text color from `--lp-gray` to `--lp-muted`. Underlined links inherit — legible.
 
-- `src/lib/hasat/types.ts`
-  - `BuyerType = "restoran" | "otel" | "market" | "ihracatci" | "bireysel"`
-  - `User.company.type: BuyerType | "diger"` — already permits extension.
-- `src/lib/hasat/queries.ts` line 514 — change default from `"restoran"` to `"bireysel"` (safer neutral fallback) and verify the source column (`profiles.buyer_type` vs joining `buyer_profiles.company_type`); adjust the select if needed.
+## Non-goals
 
-### 4. Display maps
+- Not touching global tokens, other routes, layout, copy, imagery, animations, or the design language. Purely legibility.
+- Not touching the Indoor (`--lp-primary` bg) section — white/white-85 on deep green is already fine.
 
-- `src/routes/farmer.orders.index.tsx`
-  - `BUYER_TYPE_LABEL`: add `bireysel: "Bireysel"`
-  - `BUYER_TYPE_EMOJI`: add `bireysel: "👤"`
-- `src/routes/buyer.account.tsx`
-  - `TYPE_LABEL`: add `bireysel: "Bireysel"`
-  - When `type === 'bireysel'`: hide address line only if empty; keep name; badge label reads "Bireysel Alıcı". No "İlgi Alanları" card change.
+## Verification
 
-### 5. Farmer-facing copy for individual buyers
-
-Recommend a **neutral "👤 Bireysel" badge** (parallel with existing tile pattern) rather than hiding the type entirely — farmers currently rely on the type chip for at-a-glance context, and an empty slot would look like a data bug. Name still shown next to it as today.
-
-## Open items to confirm before build mode
-
-1. Where does `queries.ts` line 514 actually read the buyer type from? The code reads `r.buyer?.buyer_type` but the column of record is `buyer_profiles.company_type`. Will verify with a quick `read_query` on the join shape before editing.
-2. Confirm no RLS/CHECK constraint elsewhere references the enum values as a literal list (grep already clean, but will re-check after migration is drafted).
-
-## Files that will change (build phase)
-
-- `supabase/migrations/<new>.sql` (enum extension)
-- `src/routes/onboarding.buyer.tsx` (tabs + conditional step 1)
-- `src/routes/buyer.account.tsx` (label map + conditional render)
-- `src/routes/farmer.orders.index.tsx` (label + emoji maps)
-- `src/lib/hasat/types.ts` (extend `BuyerType`)
-- `src/lib/hasat/queries.ts` (default fallback, possibly select shape)
-
-No changes: `terms.tsx`, `index.tsx`, `__root.tsx`, `buyer.tsx` nav, storefront, negotiation routes (they don't key off buyer type).
+- Re-read the file after edits and confirm no stale `--lp-gray` remains in `color:` contexts (only in the two decorative spots).
+- `tsgo` typecheck.
+- Spot-check the preview at `/` for the hero bottom, AI section, supply chain, and footer.

@@ -60,6 +60,7 @@ const lpVars: React.CSSProperties = {
   ["--lp-cream-2" as string]: "#EDE7D6",
   ["--lp-white" as string]: "#FFFFFF",
   ["--lp-gray" as string]: "#8A8F87",
+  ["--lp-muted" as string]: "#5A6560",
   ["--lp-ink" as string]: "#14231C",
   ["--lp-line" as string]: "rgba(20,35,28,0.10)",
 };
