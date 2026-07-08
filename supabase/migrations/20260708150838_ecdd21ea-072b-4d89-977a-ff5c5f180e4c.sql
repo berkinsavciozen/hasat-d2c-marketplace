@@ -1,0 +1,1 @@
+ALTER TYPE public.company_type ADD VALUE IF NOT EXISTS 'bireysel';
