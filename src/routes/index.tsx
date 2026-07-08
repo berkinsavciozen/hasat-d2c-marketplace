@@ -446,9 +446,8 @@ function SupplyChain() {
                 <div
                   className="rounded-xl px-3 py-2 text-xs md:text-sm"
                   style={{
-                    background: `color-mix(in oklab, var(--lp-earth) ${18 - i * 2}%, var(--lp-white))`,
+                    background: "color-mix(in oklab, var(--lp-earth) 14%, var(--lp-white))",
                     color: "var(--lp-ink)",
-                    opacity: 1 - i * 0.08,
                   }}
                 >
                   {node}
