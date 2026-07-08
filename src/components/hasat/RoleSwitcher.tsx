@@ -15,7 +15,7 @@ export function RoleSwitcher() {
     return (
       <button
         onClick={() => setOpen(true)}
-        className="fixed bottom-24 right-3 md:bottom-4 z-[60] h-9 rounded-full bg-popover/85 px-3 text-[11px] font-medium shadow-lg border backdrop-blur flex items-center gap-1.5 text-foreground/80 hover:bg-popover"
+        className="fixed bottom-24 left-3 md:bottom-4 md:right-4 md:left-auto z-[60] h-9 rounded-full bg-popover/85 px-3 text-[11px] font-medium shadow-lg border backdrop-blur flex items-center gap-1.5 text-foreground/80 hover:bg-popover"
         aria-label="Dev role switcher"
       >
         <span className="text-saffron">⚙</span> DEV
