@@ -250,29 +250,29 @@ function Nav({ onRole }: { onRole: (r: "farmer" | "buyer") => void }) {
 function Hero({ onRole }: { onRole: (r: "farmer" | "buyer") => void }) {
   const ref = useReveal<HTMLDivElement>();
   return (
-    <section className="relative overflow-hidden" ref={ref}>
+    <section className="relative isolate overflow-hidden" ref={ref}>
       {/* Background photo, desaturated & dimmed */}
       <div
-        className="absolute inset-0 -z-10"
+        className="absolute inset-0 z-0"
         style={{
           backgroundImage: `url(${IMG_HERO_FIELD})`,
           backgroundSize: "cover",
           backgroundPosition: "center",
-          filter: "grayscale(35%) brightness(0.55)",
+          filter: "grayscale(35%) brightness(0.42)",
         }}
         aria-hidden
       />
       <div
-        className="absolute inset-0 -z-10"
+        className="absolute inset-0 z-0"
         style={{
           background:
-            "linear-gradient(180deg, color-mix(in oklab, var(--lp-primary) 82%, transparent) 0%, color-mix(in oklab, var(--lp-primary) 68%, transparent) 60%, color-mix(in oklab, var(--lp-primary) 45%, transparent) 100%)",
+            "linear-gradient(180deg, color-mix(in oklab, var(--lp-primary) 90%, transparent) 0%, color-mix(in oklab, var(--lp-primary) 76%, transparent) 58%, color-mix(in oklab, var(--lp-primary) 64%, transparent) 100%)",
         }}
         aria-hidden
       />
 
-      <div className="mx-auto max-w-6xl px-4 pt-16 pb-24 md:pt-24 md:pb-28 grid gap-12 md:grid-cols-2 items-center">
-        <div className="text-white lp-reveal">
+      <div className="relative z-10 mx-auto max-w-6xl px-4 pt-16 pb-24 md:pt-24 md:pb-28 grid gap-12 md:grid-cols-2 items-center">
+        <div className="lp-reveal" style={{ color: "var(--lp-white)", textShadow: "0 2px 18px rgba(0,0,0,0.32)" }}>
           <div className="inline-flex items-center gap-2 rounded-full px-3 py-1 text-[11px] uppercase tracking-widest"
             style={{ background: "rgba(255,255,255,0.18)", color: "#FFFFFF" }}>
             <ShieldCheck className="w-3.5 h-3.5" /> Türkiye'nin izlenebilir tarım pazarı
@@ -282,7 +282,7 @@ function Hero({ onRole }: { onRole: (r: "farmer" | "buyer") => void }) {
             <span style={{ color: "#CFE8D3" }}>güveni</span>{" "}
             satıyoruz.
           </h1>
-          <p className="mt-5 text-base md:text-lg text-white/85 max-w-lg">
+          <p className="mt-5 text-base md:text-lg max-w-lg" style={{ color: "rgba(255,255,255,0.94)" }}>
             Hasat, tarımsal ticaret için güven altyapısıdır. Her ürünün geçmişi,
             her üreticinin doğrulanmış kimliği, her fiyatın şeffaf gerekçesi —
             tarladan sofraya kanıtlı bir zincir.
