@@ -122,7 +122,10 @@ export function useCreateParcel() {
       }
       return dbToParcel(row);
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["parcels", userId] }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["parcels", userId] });
+      qc.invalidateQueries({ queryKey: ["farmerListings", userId] });
+    },
   });
 }
 
@@ -148,7 +151,10 @@ export function useUpdateParcel() {
       const { error } = await supabase.from("parcels").update(dbPatch).eq("id", id);
       if (error) throw error;
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["parcels", userId] }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["parcels", userId] });
+      qc.invalidateQueries({ queryKey: ["farmerListings", userId] });
+    },
   });
 }
 
@@ -231,7 +237,12 @@ export function useCreateEntry() {
       if (error) throw error;
       return dbToEntry(data);
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["entries", userId] }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["entries", userId] });
+      qc.invalidateQueries({ queryKey: ["farmerListings", userId] });
+      qc.invalidateQueries({ queryKey: ["listingStock"] });
+      qc.invalidateQueries({ queryKey: ["listingBatchEntries"] });
+    },
   });
 }
 
