@@ -64,7 +64,7 @@ export interface PricePoint {
   delta7d: number;
 }
 
-export type BuyerType = "restoran" | "otel" | "market" | "ihracatci";
+export type BuyerType = "restoran" | "otel" | "market" | "ihracatci" | "bireysel";
 export type OfferStatus = "pending" | "accepted" | "counter" | "active" | "completed" | "rejected";
 export type BallSide = "farmer" | "buyer";
 export type PaymentStatus = "unpaid" | "pending" | "pending_transfer" | "paid";
