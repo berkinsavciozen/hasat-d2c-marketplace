@@ -211,13 +211,13 @@ function LoginPage() {
               <div className="text-xs text-hwhite/60">+90 {formattedPhone}</div>
               <div className="text-sm mt-1">6 haneli kodu girin</div>
             </div>
-            <div className="flex justify-between gap-2" onPaste={handleOtpPaste}>
+            <div className="flex justify-between gap-1" onPaste={handleOtpPaste}>
               {otp.map((d, i) => (
                 <input key={i} ref={(el) => { inputsRef.current[i] = el; }} value={d}
                   onChange={(e) => handleOtpChange(i, e.target.value)} onKeyDown={(e) => handleOtpKey(i, e)}
                   inputMode="numeric" maxLength={1}
-                  className="w-12 h-14 text-center rounded-lg border border-white/15 bg-white/5 outline-none focus:border-saffron"
-                  style={{ fontFamily: "Courier New, monospace", fontSize: 22 }} />
+                  className="w-10 h-12 sm:w-12 sm:h-14 min-w-0 flex-1 text-center rounded-lg border border-white/15 bg-white/5 outline-none focus:border-saffron"
+                  style={{ fontFamily: "Courier New, monospace", fontSize: 20 }} />
               ))}
             </div>
             <div className="mt-3 text-center text-[11px] text-hwhite/50">
