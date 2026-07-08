@@ -161,7 +161,7 @@ function ListingCard({ listing: l, onOpen }: { listing: ListingRow; onOpen: () =
           </div>
         )}
         <div className="absolute bottom-2 left-3 right-3 text-white">
-          <div className="font-serif text-base leading-tight line-clamp-2">{cropEmoji(l.crop, findCropConfig(cropMap, l.crop))} {formatCrop(l.crop)}</div>
+          <div className="font-serif text-base leading-tight line-clamp-2">{cropEmoji(l.crop)} {formatCrop(l.crop)}</div>
           <div className="text-[11px] opacity-80 truncate">
             {farmerSlug ? (
               <Link to="/s/$slug" params={{ slug: farmerSlug }} onClick={(e) => e.stopPropagation()} className="underline hover:text-saffron">
