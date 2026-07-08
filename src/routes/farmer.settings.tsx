@@ -160,7 +160,10 @@ function Settings() {
           <label className="text-xs text-muted-foreground">Ad Soyad</label>
           <Input value={name} onChange={(e) => setName(e.target.value)} className="mt-1 mb-3" />
           <label className="text-xs text-muted-foreground">Şehir</label>
-          <Input value={city} onChange={(e) => setCity(e.target.value)} className="mt-1 mb-3" />
+          <Select value={city} onValueChange={setCity}>
+            <SelectTrigger className="mt-1 mb-3"><SelectValue placeholder="İl seçin" /></SelectTrigger>
+            <SelectContent>{TR_PROVINCES.map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent>
+          </Select>
           <button onClick={saveProfile}
             className="rounded-lg px-4 py-2 text-sm font-medium"
             style={{ background: "var(--saffron)", color: "var(--hwhite)" }}>Kaydet</button>
