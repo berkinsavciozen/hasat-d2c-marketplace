@@ -163,7 +163,7 @@ function Hero({ onRole }: { onRole: (r: "farmer" | "buyer") => void }) {
       <div className="mx-auto max-w-3xl text-center">
         <div className="text-6xl mb-4">🌸</div>
         <div className="font-mono text-xs opacity-60 mb-1">هارست</div>
-        <h1 className="font-serif text-4xl md:text-6xl leading-tight" style={{ color: "var(--hwhite)" }}>
+        <h1 className="font-serif text-3xl sm:text-4xl md:text-6xl leading-tight" style={{ color: "var(--hwhite)" }}>
           Tarladan sofraya,{" "}
           <span style={{ color: "var(--saffron)" }}>aracısız.</span>
         </h1>
@@ -582,7 +582,7 @@ function IndoorSection() {
           </Field>
           <div>
             <div className="text-xs text-hwhite/60 mb-2">İlgi tipi</div>
-            <div className="grid grid-cols-3 gap-2">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
               {(["danışmanlık", "ortaklık", "diğer"] as const).map((t) => (
                 <button key={t} type="button" onClick={() => setInterest(t)}
                   className="rounded-lg px-2 py-2 text-xs capitalize"

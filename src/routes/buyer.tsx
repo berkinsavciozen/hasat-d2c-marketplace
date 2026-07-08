@@ -1,6 +1,8 @@
 import { createFileRoute, Link, Outlet, redirect, useRouterState } from "@tanstack/react-router";
-import { Search, Package, BarChart3, MessageCircle, User, Repeat } from "lucide-react";
+import { useState } from "react";
+import { Search, Package, BarChart3, MessageCircle, User, Repeat, MoreHorizontal } from "lucide-react";
 import { useRealtimeSync, useAuthUserId } from "@/lib/hasat/queries";
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 
 export const Route = createFileRoute("/buyer")({
   beforeLoad: () => {
@@ -26,9 +28,23 @@ const tabs = [
   { to: "/buyer/account", label: "Hesap", icon: User },
 ] as const;
 
+const mobileTabs = [
+  { to: "/buyer/discover", label: "Keşfet", icon: Search },
+  { to: "/buyer/orders", label: "Siparişler", icon: Package },
+  { to: "/buyer/subscriptions", label: "Abonelikler", icon: Repeat },
+  { to: "/buyer/reports", label: "Raporlar", icon: BarChart3 },
+] as const;
+
+const moreItems = [
+  { to: "/buyer/messages", label: "Mesajlar", icon: MessageCircle },
+  { to: "/buyer/account", label: "Hesap", icon: User },
+] as const;
+
 function BuyerShell() {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
+  const [moreOpen, setMoreOpen] = useState(false);
   useRealtimeSync(useAuthUserId());
+  const moreActive = moreItems.some((i) => pathname.startsWith(i.to));
   return (
     <div className="min-h-screen md:grid md:grid-cols-[230px_1fr]">
       <aside className="hidden md:flex flex-col gap-1 p-4 sticky top-0 h-screen" style={{ background: "var(--dark)", color: "var(--hwhite)" }}>
@@ -51,7 +67,7 @@ function BuyerShell() {
       </aside>
       <main className="pb-24 md:pb-0 min-h-screen"><Outlet /></main>
       <nav className="md:hidden fixed bottom-0 inset-x-0 z-40 grid grid-cols-5 border-t pb-safe" style={{ background: "var(--dark)" }}>
-        {tabs.map(({ to, label, icon: Icon }) => {
+        {mobileTabs.map(({ to, label, icon: Icon }) => {
           const active = pathname.startsWith(to);
           return (
             <Link key={to} to={to} className="flex flex-col items-center gap-0.5 py-2 text-[10px]"
@@ -60,7 +76,45 @@ function BuyerShell() {
             </Link>
           );
         })}
+        <button
+          type="button"
+          onClick={() => setMoreOpen(true)}
+          className="flex flex-col items-center gap-0.5 py-2 text-[10px]"
+          style={{ color: moreActive ? "var(--saffron)" : "var(--hwhite)" }}
+          aria-label="Daha fazla"
+        >
+          <MoreHorizontal className="h-5 w-5" />
+          <span>Daha</span>
+        </button>
       </nav>
+
+      <Sheet open={moreOpen} onOpenChange={setMoreOpen}>
+        <SheetContent
+          side="bottom"
+          className="md:hidden rounded-t-2xl border-t-0 p-0"
+          style={{ background: "var(--dark)", color: "var(--hwhite)" }}
+        >
+          <SheetHeader className="px-4 pt-4 pb-2 text-left">
+            <SheetTitle className="text-hwhite font-serif">Menü</SheetTitle>
+          </SheetHeader>
+          <div className="px-3 pb-6 space-y-1">
+            {moreItems.map(({ to, label, icon: Icon }) => {
+              const active = pathname.startsWith(to);
+              return (
+                <Link
+                  key={to}
+                  to={to}
+                  onClick={() => setMoreOpen(false)}
+                  className={`flex items-center gap-3 rounded-lg px-3 py-3 text-sm ${active ? "bg-saffron text-white" : "text-hwhite/80 hover:bg-white/5"}`}
+                >
+                  <Icon className="h-4 w-4" />
+                  <span className="flex-1">{label}</span>
+                </Link>
+              );
+            })}
+          </div>
+        </SheetContent>
+      </Sheet>
     </div>
   );
 }

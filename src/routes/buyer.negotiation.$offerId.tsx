@@ -100,10 +100,10 @@ function Negotiation() {
         </div>
 
 
-        <div className="fixed inset-x-0 bottom-0 z-30 grid grid-cols-3 gap-2 border-t bg-background p-3 pb-safe md:static md:border-0 md:bg-transparent md:p-0">
-          <Button variant="outline" onClick={reject} className="border-hred/40 text-hred hover:bg-hred/5">Reddet</Button>
-          <Button variant="outline" onClick={() => setSheetOpen(true)}>Karşı Teklif Yap</Button>
-          <Button onClick={accept} style={{ background: "var(--saffron)", color: "var(--hwhite)" }}>Kabul Et</Button>
+        <div className="fixed inset-x-0 bottom-0 z-30 grid grid-cols-3 gap-1.5 border-t bg-background p-3 pb-safe md:static md:border-0 md:bg-transparent md:p-0 md:gap-2">
+          <Button variant="outline" onClick={reject} className="border-hred/40 text-hred hover:bg-hred/5 px-2 text-xs sm:text-sm">Reddet</Button>
+          <Button variant="outline" onClick={() => setSheetOpen(true)} className="px-2 text-xs sm:text-sm"><span className="sm:hidden">Karşı Teklif</span><span className="hidden sm:inline">Karşı Teklif Yap</span></Button>
+          <Button onClick={accept} className="px-2 text-xs sm:text-sm" style={{ background: "var(--saffron)", color: "var(--hwhite)" }}>Kabul Et</Button>
         </div>
       </div>
 

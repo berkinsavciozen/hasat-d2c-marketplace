@@ -136,8 +136,8 @@ function Storefront() {
               {parcels.map((p) => (
                 <div key={p.id} className="rounded-2xl border bg-card p-4">
                   <div className="flex items-baseline justify-between gap-2">
-                    <div className="font-medium">{p.name}</div>
-                    <div className="text-xs text-hmuted">{p.area} dönüm · {p.location.label}</div>
+                    <div className="font-medium truncate min-w-0">{p.name}</div>
+                    <div className="text-xs text-hmuted truncate min-w-0 text-right">{p.area} dönüm · {p.location.label}</div>
                   </div>
                   {p.photos && p.photos.length > 0 ? (
                     <div className="mt-3 flex gap-2 overflow-x-auto snap-x snap-mandatory pb-1">
@@ -162,7 +162,7 @@ function Storefront() {
       {active.length > 0 && (
         <button
           onClick={() => setSheet({ open: true })}
-          className="fixed bottom-20 right-4 md:bottom-6 z-30 flex items-center gap-1.5 rounded-full bg-saffron px-4 py-3 text-sm font-medium text-white shadow-xl mb-safe"
+          className="fixed bottom-36 right-4 md:bottom-6 z-30 flex items-center gap-1.5 rounded-full bg-saffron px-4 py-3 text-sm font-medium text-white shadow-xl mb-safe"
         >
           <Plus className="h-4 w-4" /> Yeni Ürün
         </button>
