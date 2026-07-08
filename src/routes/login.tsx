@@ -232,6 +232,10 @@ function LoginPage() {
         <div className="mt-8 text-center text-xs text-hwhite/50">
           Hesabın yoksa otomatik oluşturulur. Telefonunla devam et.
         </div>
+        <div className="mt-4 flex items-center justify-center gap-4 text-[11px] text-hwhite/50">
+          <Link to="/terms" className="underline hover:text-hwhite/80">Kullanım Koşulları</Link>
+          <Link to="/privacy" className="underline hover:text-hwhite/80">Gizlilik</Link>
+        </div>
       </div>
     </div>
   );
