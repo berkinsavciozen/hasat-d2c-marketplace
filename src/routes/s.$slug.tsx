@@ -19,10 +19,7 @@ export const Route = createFileRoute("/s/$slug")({
   ),
 });
 
-
-const CROP_EMOJI: Record<string, string> = {
-  Safran: "🌸", Lavanta: "💜", "Tıbbi Bitkiler": "🌿", Fındık: "🌰", Zeytinyağı: "🫒",
-};
+import { cropEmoji } from "@/lib/hasat/crop-config";
 
 function slugify(input: string): string {
   return input
@@ -152,7 +149,7 @@ function PublicStorefront() {
                   {l.photos?.[0] ? (
                     <img src={l.photos[0]} alt={formatCrop(l.crop)} className="h-14 w-14 object-cover" />
                   ) : (
-                    CROP_EMOJI[l.crop] ?? "🌾"
+                    cropEmoji(l.crop)
                   )}
                 </div>
                 <div className="flex-1 min-w-0">

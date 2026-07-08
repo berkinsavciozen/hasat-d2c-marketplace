@@ -92,7 +92,7 @@ function ProducerProfile() {
                 <div className="p-4">
                   <div className="flex items-start justify-between">
                     <div>
-                      <div className="font-medium">{l.crop.includes("Safran") ? "🌸" : l.crop.includes("Lavanta") ? "💜" : "🌿"} {formatCrop(l.crop)}</div>
+                      <div className="font-medium">{cropEmoji(l.crop)} {formatCrop(l.crop)}</div>
                       <div className="text-xs text-hmuted mt-1">{l.quantity} {l.unit} · Min {l.minOrder} {l.unit} · Kalite {l.quality}</div>
                     </div>
                     <div style={{ fontFamily: "Courier New, monospace", color: "var(--saffron)" }} className="text-sm">
