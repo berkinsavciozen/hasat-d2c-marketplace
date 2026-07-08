@@ -655,10 +655,12 @@ function Footer() {
       <div className="text-2xl mb-1">🌸</div>
       <div className="font-serif text-base" style={{ color: "var(--saffron)" }}>Hasat</div>
       <div className="mt-1">Tarladan sofraya, aracısız.</div>
-      <div className="mt-3">
+      <div className="mt-3 flex items-center justify-center gap-4 flex-wrap">
         <a href={waHref} target="_blank" rel="noopener noreferrer" className="underline hover:text-hwhite">
           İletişim: WhatsApp
         </a>
+        <Link to="/terms" className="underline hover:text-hwhite">Kullanım Koşulları</Link>
+        <Link to="/privacy" className="underline hover:text-hwhite">Gizlilik</Link>
       </div>
       <div className="mt-4 opacity-50">© {new Date().getFullYear()} Hasat</div>
     </footer>

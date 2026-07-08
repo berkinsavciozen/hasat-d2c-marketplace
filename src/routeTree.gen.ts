@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as TermsRouteImport } from './routes/terms'
+import { Route as PrivacyRouteImport } from './routes/privacy'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as JoinRouteImport } from './routes/join'
 import { Route as FarmerRouteImport } from './routes/farmer'
@@ -51,6 +52,11 @@ import { Route as BuyerNegotiationOfferIdRouteImport } from './routes/buyer.nego
 const TermsRoute = TermsRouteImport.update({
   id: '/terms',
   path: '/terms',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PrivacyRoute = PrivacyRouteImport.update({
+  id: '/privacy',
+  path: '/privacy',
   getParentRoute: () => rootRouteImport,
 } as any)
 const LoginRoute = LoginRouteImport.update({
@@ -246,6 +252,7 @@ export interface FileRoutesByFullPath {
   '/farmer': typeof FarmerRouteWithChildren
   '/join': typeof JoinRoute
   '/login': typeof LoginRoute
+  '/privacy': typeof PrivacyRoute
   '/terms': typeof TermsRoute
   '/batch/$listingId': typeof BatchListingIdRoute
   '/buyer/account': typeof BuyerAccountRoute
@@ -286,6 +293,7 @@ export interface FileRoutesByTo {
   '/farmer': typeof FarmerRouteWithChildren
   '/join': typeof JoinRoute
   '/login': typeof LoginRoute
+  '/privacy': typeof PrivacyRoute
   '/terms': typeof TermsRoute
   '/batch/$listingId': typeof BatchListingIdRoute
   '/buyer/account': typeof BuyerAccountRoute
@@ -326,6 +334,7 @@ export interface FileRoutesById {
   '/farmer': typeof FarmerRouteWithChildren
   '/join': typeof JoinRoute
   '/login': typeof LoginRoute
+  '/privacy': typeof PrivacyRoute
   '/terms': typeof TermsRoute
   '/batch/$listingId': typeof BatchListingIdRoute
   '/buyer/account': typeof BuyerAccountRoute
@@ -368,6 +377,7 @@ export interface FileRouteTypes {
     | '/farmer'
     | '/join'
     | '/login'
+    | '/privacy'
     | '/terms'
     | '/batch/$listingId'
     | '/buyer/account'
@@ -408,6 +418,7 @@ export interface FileRouteTypes {
     | '/farmer'
     | '/join'
     | '/login'
+    | '/privacy'
     | '/terms'
     | '/batch/$listingId'
     | '/buyer/account'
@@ -447,6 +458,7 @@ export interface FileRouteTypes {
     | '/farmer'
     | '/join'
     | '/login'
+    | '/privacy'
     | '/terms'
     | '/batch/$listingId'
     | '/buyer/account'
@@ -488,6 +500,7 @@ export interface RootRouteChildren {
   FarmerRoute: typeof FarmerRouteWithChildren
   JoinRoute: typeof JoinRoute
   LoginRoute: typeof LoginRoute
+  PrivacyRoute: typeof PrivacyRoute
   TermsRoute: typeof TermsRoute
   BatchListingIdRoute: typeof BatchListingIdRoute
   OnboardingBuyerRoute: typeof OnboardingBuyerRoute
@@ -502,6 +515,13 @@ declare module '@tanstack/react-router' {
       path: '/terms'
       fullPath: '/terms'
       preLoaderRoute: typeof TermsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/privacy': {
+      id: '/privacy'
+      path: '/privacy'
+      fullPath: '/privacy'
+      preLoaderRoute: typeof PrivacyRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/login': {
@@ -875,6 +895,7 @@ const rootRouteChildren: RootRouteChildren = {
   FarmerRoute: FarmerRouteWithChildren,
   JoinRoute: JoinRoute,
   LoginRoute: LoginRoute,
+  PrivacyRoute: PrivacyRoute,
   TermsRoute: TermsRoute,
   BatchListingIdRoute: BatchListingIdRoute,
   OnboardingBuyerRoute: OnboardingBuyerRoute,
