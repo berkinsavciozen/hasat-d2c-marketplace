@@ -151,7 +151,10 @@ export function useUpdateParcel() {
       const { error } = await supabase.from("parcels").update(dbPatch).eq("id", id);
       if (error) throw error;
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["parcels", userId] }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["parcels", userId] });
+      qc.invalidateQueries({ queryKey: ["farmerListings", userId] });
+    },
   });
 }
 
