@@ -1,5 +1,5 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ArrowLeft, Camera, X } from "lucide-react";
 import { useParcels, useCreateEntry } from "@/lib/hasat/queries";
 import {
@@ -34,15 +34,30 @@ function NewEntry() {
   const [unit, setUnit] = useState<"g" | "kg" | "adet">("g");
   const [notes, setNotes] = useState("");
   const [photoName, setPhotoName] = useState<string | null>(null);
+  const [crop, setCrop] = useState<string>("");
 
   // sync default parcel once loaded
   if (!parcelId && parcels[0]) setParcelId(parcels[0].id);
 
   const parcel = parcels.find((p) => p.id === parcelId);
-  const crop = parcel?.crops[0] ?? "Safran";
+  const parcelCrops = parcel?.crops ?? [];
+
+  // Keep `crop` in sync with the selected parcel: default to first crop; if
+  // the current selection isn't among this parcel's crops, reset it.
+  useEffect(() => {
+    if (parcelCrops.length === 0) {
+      setCrop("");
+      return;
+    }
+    if (!crop || !parcelCrops.includes(crop)) {
+      setCrop(parcelCrops[0]);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [parcelId, parcelCrops.join("|")]);
 
   const save = async () => {
     if (!parcelId) return toast.error("Lütfen bir parsel seçin");
+    if (!crop) return toast.error("Lütfen bir ürün seçin");
     try {
       const submitUnit: "g" | "kg" | "L" = unit === "adet" ? "g" : unit;
       const quantity = qty.trim() ? Number(qty) || 0 : 0;
@@ -112,6 +127,32 @@ function NewEntry() {
               </div>
             )}
           </div>
+
+          {parcelCrops.length > 1 && (
+            <div>
+              <label className="text-xs text-hmuted">Ürün</label>
+              <div className="mt-2 -mx-4 md:mx-0 px-4 md:px-0 overflow-x-auto">
+                <div className="flex gap-2 min-w-max md:flex-wrap">
+                  {parcelCrops.map((c) => {
+                    const active = c === crop;
+                    return (
+                      <button
+                        key={c}
+                        type="button"
+                        onClick={() => setCrop(c)}
+                        className={`rounded-full border px-4 py-2 text-sm whitespace-nowrap transition ${
+                          active ? "bg-saffron text-white border-saffron" : "border-border text-dark"
+                        }`}
+                        style={!active ? { background: "var(--cream)" } : undefined}
+                      >
+                        🌾 {c}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+          )}
 
           <div>
             <label className="text-xs text-hmuted">Tarih</label>

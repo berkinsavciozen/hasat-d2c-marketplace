@@ -3,7 +3,7 @@ import { ArrowLeft, Copy, Check } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useBuyerOffers, useSimulatePayment, useMarkTransferSent } from "@/lib/hasat/queries";
 import { LoadingDots } from "@/components/hasat/LoadingDots";
-import { formatTRY } from "@/lib/hasat/format";
+import { formatTRY, formatCrop } from "@/lib/hasat/format";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/buyer/pay/$offerId")({
@@ -135,7 +135,7 @@ function PayPage() {
       <div className="p-4 md:p-8 max-w-2xl space-y-5">
         <div className="rounded-2xl bg-card border p-4">
           <div className="text-xs text-hmuted">Sipariş Özeti</div>
-          <div className="mt-2 font-medium">{offer.crop} — {offer.buyerName}</div>
+          <div className="mt-2 font-medium">{formatCrop(offer.crop)} — {offer.buyerName}</div>
           <div className="text-xs text-hmuted mt-1">{qty} {offer.unit} × {formatTRY(price)}</div>
           <div className="mt-3 border-t pt-3 space-y-1 text-sm">
             <div className="flex justify-between"><span>Ara Toplam</span><span className="font-mono">{formatTRY(total)}</span></div>

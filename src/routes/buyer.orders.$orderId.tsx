@@ -4,7 +4,7 @@ import { useState } from "react";
 import { OrderTimeline } from "@/components/hasat/OrderTimeline";
 import { LoadingDots } from "@/components/hasat/LoadingDots";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
-import { formatTRY } from "@/lib/hasat/format";
+import { formatTRY, formatCrop } from "@/lib/hasat/format";
 import { useBuyerOrders, useOrderTimeline } from "@/lib/hasat/queries";
 
 export const Route = createFileRoute("/buyer/orders/$orderId")({
@@ -39,7 +39,7 @@ function OrderTracker() {
 
       <div className="p-4 md:p-8 space-y-5 max-w-2xl">
         <div className="rounded-2xl bg-card border p-4">
-          <div className="font-medium">{order.crop} — {order.producerName}</div>
+          <div className="font-medium">{formatCrop(order.crop)} — {order.producerName}</div>
           <div className="text-xs text-hmuted mt-1">{order.quantity} {order.unit} · {order.delivery}</div>
           <div className="mt-3 flex items-baseline justify-between border-t pt-3">
             <span className="text-xs text-hmuted">Toplam</span>

@@ -2,7 +2,7 @@ import { createFileRoute, Link, useNavigate, notFound } from "@tanstack/react-ro
 import { ArrowLeft, Star } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Tooltip } from "recharts";
 import { TrustBadge } from "@/components/hasat/TrustBadge";
-import { formatTRY } from "@/lib/hasat/format";
+import { formatTRY, formatCrop } from "@/lib/hasat/format";
 import { useHasat } from "@/lib/hasat/store";
 import { useParcelsByFarmer } from "@/lib/hasat/queries";
 
@@ -92,7 +92,7 @@ function ProducerProfile() {
                 <div className="p-4">
                   <div className="flex items-start justify-between">
                     <div>
-                      <div className="font-medium">{l.crop.includes("Safran") ? "🌸" : l.crop.includes("Lavanta") ? "💜" : "🌿"} {l.crop}</div>
+                      <div className="font-medium">{l.crop.includes("Safran") ? "🌸" : l.crop.includes("Lavanta") ? "💜" : "🌿"} {formatCrop(l.crop)}</div>
                       <div className="text-xs text-hmuted mt-1">{l.quantity} {l.unit} · Min {l.minOrder} {l.unit} · Kalite {l.quality}</div>
                     </div>
                     <div style={{ fontFamily: "Courier New, monospace", color: "var(--saffron)" }} className="text-sm">
