@@ -6,6 +6,7 @@ import { ProgressDots } from "@/components/hasat/ProgressDots";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { supabase } from "@/integrations/supabase/client";
+import { CropChips } from "@/components/hasat/CropChips";
 
 export const Route = createFileRoute("/onboarding/buyer")({
   head: () => ({ meta: [{ title: "Kayıt — Hasat Alıcı" }] }),
@@ -20,7 +21,6 @@ const TYPES = [
   { id: "diger", icon: "🏢", label: "Diğer" },
 ] as const;
 
-const CROPS = ["Safran", "Lavanta", "Tıbbi Bitkiler", "Fındık", "Zeytin", "Diğer"];
 const VOLUMES = ["< 100g", "100g–1kg", "1–10kg", "10kg+"];
 
 function BuyerOnboarding() {
@@ -150,12 +150,8 @@ function BuyerOnboarding() {
             <h2 className="font-serif text-2xl mb-1">Ne Alıyorsunuz?</h2>
             <p className="text-sm text-hwhite/60 mb-6">Eşleşmeler için ilgi alanlarınız.</p>
             <label className="text-xs text-hwhite/60">İlgilendiğiniz Ürünler</label>
-            <div className="mt-2 mb-6 flex flex-wrap gap-2">
-              {CROPS.map((c) => (
-                <button key={c} onClick={() => toggle(interests, setInterests, c)}
-                  className="rounded-full px-3 py-1.5 text-xs border transition"
-                  style={{ background: interests.includes(c) ? "var(--gold)" : "rgba(255,255,255,0.05)", color: interests.includes(c) ? "var(--dark)" : undefined, borderColor: interests.includes(c) ? "var(--gold)" : "rgba(255,255,255,0.15)" }}>{c}</button>
-              ))}
+            <div className="mt-2 mb-6">
+              <CropChips value={interests} onChange={setInterests} variant="dark" />
             </div>
             <label className="text-xs text-hwhite/60 mb-2 block">Aylık Tahmini Hacim</label>
             <div className="grid grid-cols-2 gap-2 mb-6">
