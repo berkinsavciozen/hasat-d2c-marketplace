@@ -1090,6 +1090,10 @@ export type Database = {
     }
     Functions: {
       can_send_ai_message: { Args: { _user_id: string }; Returns: boolean }
+      create_draft_listings_for_parcel: {
+        Args: { _crops: string[]; _farmer_id: string; _parcel_id: string }
+        Returns: undefined
+      }
       get_my_role: { Args: never; Returns: string }
       get_my_role_for_offer: {
         Args: { offer_row: Database["public"]["Tables"]["offers"]["Row"] }
@@ -1112,7 +1116,7 @@ export type Database = {
         | "ihracatci"
         | "diger"
       delivery_type: "kargo-buyer" | "kargo-seller" | "elden"
-      listing_status: "active" | "sold" | "expired"
+      listing_status: "draft" | "active" | "sold" | "expired"
       notif_channel: "whatsapp" | "push" | "sms"
       offer_status:
         | "pending"
@@ -1277,7 +1281,7 @@ export const Constants = {
         "diger",
       ],
       delivery_type: ["kargo-buyer", "kargo-seller", "elden"],
-      listing_status: ["active", "sold", "expired"],
+      listing_status: ["draft", "active", "sold", "expired"],
       notif_channel: ["whatsapp", "push", "sms"],
       offer_status: [
         "pending",
