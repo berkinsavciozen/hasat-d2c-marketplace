@@ -122,7 +122,10 @@ export function useCreateParcel() {
       }
       return dbToParcel(row);
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["parcels", userId] }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["parcels", userId] });
+      qc.invalidateQueries({ queryKey: ["farmerListings", userId] });
+    },
   });
 }
 
