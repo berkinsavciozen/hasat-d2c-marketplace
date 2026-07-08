@@ -139,7 +139,7 @@ function Nav({ onRole }: { onRole: (r: "farmer" | "buyer") => void }) {
         <div className="flex items-center gap-2">
           <button
             onClick={() => onRole("farmer")}
-            className="hidden sm:inline text-xs px-3 py-1.5 rounded-full border border-white/20 text-hwhite/80 hover:bg-white/5"
+            className="text-xs px-3 py-1.5 rounded-full border border-white/20 text-hwhite/80 hover:bg-white/5"
           >
             Çiftçi girişi
           </button>
