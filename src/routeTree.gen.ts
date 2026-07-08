@@ -9,6 +9,8 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as TermsRouteImport } from './routes/terms'
+import { Route as PrivacyRouteImport } from './routes/privacy'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as JoinRouteImport } from './routes/join'
 import { Route as FarmerRouteImport } from './routes/farmer'
@@ -47,6 +49,16 @@ import { Route as BuyerOrdersOrderIdRouteImport } from './routes/buyer.orders.$o
 import { Route as BuyerOfferListingIdRouteImport } from './routes/buyer.offer.$listingId'
 import { Route as BuyerNegotiationOfferIdRouteImport } from './routes/buyer.negotiation.$offerId'
 
+const TermsRoute = TermsRouteImport.update({
+  id: '/terms',
+  path: '/terms',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PrivacyRoute = PrivacyRouteImport.update({
+  id: '/privacy',
+  path: '/privacy',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
   path: '/login',
@@ -240,6 +252,8 @@ export interface FileRoutesByFullPath {
   '/farmer': typeof FarmerRouteWithChildren
   '/join': typeof JoinRoute
   '/login': typeof LoginRoute
+  '/privacy': typeof PrivacyRoute
+  '/terms': typeof TermsRoute
   '/batch/$listingId': typeof BatchListingIdRoute
   '/buyer/account': typeof BuyerAccountRoute
   '/buyer/discover': typeof BuyerDiscoverRoute
@@ -279,6 +293,8 @@ export interface FileRoutesByTo {
   '/farmer': typeof FarmerRouteWithChildren
   '/join': typeof JoinRoute
   '/login': typeof LoginRoute
+  '/privacy': typeof PrivacyRoute
+  '/terms': typeof TermsRoute
   '/batch/$listingId': typeof BatchListingIdRoute
   '/buyer/account': typeof BuyerAccountRoute
   '/buyer/discover': typeof BuyerDiscoverRoute
@@ -318,6 +334,8 @@ export interface FileRoutesById {
   '/farmer': typeof FarmerRouteWithChildren
   '/join': typeof JoinRoute
   '/login': typeof LoginRoute
+  '/privacy': typeof PrivacyRoute
+  '/terms': typeof TermsRoute
   '/batch/$listingId': typeof BatchListingIdRoute
   '/buyer/account': typeof BuyerAccountRoute
   '/buyer/discover': typeof BuyerDiscoverRoute
@@ -359,6 +377,8 @@ export interface FileRouteTypes {
     | '/farmer'
     | '/join'
     | '/login'
+    | '/privacy'
+    | '/terms'
     | '/batch/$listingId'
     | '/buyer/account'
     | '/buyer/discover'
@@ -398,6 +418,8 @@ export interface FileRouteTypes {
     | '/farmer'
     | '/join'
     | '/login'
+    | '/privacy'
+    | '/terms'
     | '/batch/$listingId'
     | '/buyer/account'
     | '/buyer/discover'
@@ -436,6 +458,8 @@ export interface FileRouteTypes {
     | '/farmer'
     | '/join'
     | '/login'
+    | '/privacy'
+    | '/terms'
     | '/batch/$listingId'
     | '/buyer/account'
     | '/buyer/discover'
@@ -476,6 +500,8 @@ export interface RootRouteChildren {
   FarmerRoute: typeof FarmerRouteWithChildren
   JoinRoute: typeof JoinRoute
   LoginRoute: typeof LoginRoute
+  PrivacyRoute: typeof PrivacyRoute
+  TermsRoute: typeof TermsRoute
   BatchListingIdRoute: typeof BatchListingIdRoute
   OnboardingBuyerRoute: typeof OnboardingBuyerRoute
   OnboardingFarmerRoute: typeof OnboardingFarmerRoute
@@ -484,6 +510,20 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/terms': {
+      id: '/terms'
+      path: '/terms'
+      fullPath: '/terms'
+      preLoaderRoute: typeof TermsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/privacy': {
+      id: '/privacy'
+      path: '/privacy'
+      fullPath: '/privacy'
+      preLoaderRoute: typeof PrivacyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/login': {
       id: '/login'
       path: '/login'
@@ -855,6 +895,8 @@ const rootRouteChildren: RootRouteChildren = {
   FarmerRoute: FarmerRouteWithChildren,
   JoinRoute: JoinRoute,
   LoginRoute: LoginRoute,
+  PrivacyRoute: PrivacyRoute,
+  TermsRoute: TermsRoute,
   BatchListingIdRoute: BatchListingIdRoute,
   OnboardingBuyerRoute: OnboardingBuyerRoute,
   OnboardingFarmerRoute: OnboardingFarmerRoute,
