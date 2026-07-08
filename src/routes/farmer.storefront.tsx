@@ -20,7 +20,7 @@ import { PhotoUploader } from "@/components/hasat/PhotoUploader";
 import { MarketDeviationAlert } from "@/components/hasat/MarketDeviationAlert";
 import { StockBadge } from "@/components/hasat/StockBadge";
 import { CoverageBadge } from "@/components/hasat/CoverageBadge";
-import { findCropConfig, useCropConfigMap } from "@/lib/hasat/crop-config";
+import { cropEmoji, findCropConfig, useCropConfigMap, useCropOptions } from "@/lib/hasat/crop-config";
 import { computeCoverage } from "@/lib/hasat/coverage";
 import { useListingBatchEntries } from "@/lib/hasat/queries";
 import { Eye } from "lucide-react";
@@ -30,8 +30,6 @@ export const Route = createFileRoute("/farmer/storefront")({
   component: Storefront,
 });
 
-const CROP_EMOJI: Record<string, string> = { Safran: "🌸", Lavanta: "💜", "Tıbbi Bitkiler": "🌿", Fındık: "🌰", Zeytinyağı: "🫒" };
-const CROPS = ["Safran", "Lavanta", "Tıbbi Bitkiler", "Fındık", "Zeytinyağı"];
 
 function Storefront() {
   const { data: profile } = useProfile();
@@ -187,7 +185,7 @@ function ListingCard({ listing, muted, onEdit, onRemove }: { listing: Listing; m
         {photo ? (
           <img src={photo} alt={formatCrop(listing.crop)} className="h-12 w-12 rounded-xl object-cover" />
         ) : (
-          <div className="grid h-12 w-12 place-items-center rounded-xl bg-cream text-2xl">{CROP_EMOJI[listing.crop] ?? "🌾"}</div>
+          <div className="grid h-12 w-12 place-items-center rounded-xl bg-cream text-2xl">{cropEmoji(listing.crop)}</div>
         )}
         <div className="flex-1">
           <div className="flex items-center gap-2 flex-wrap">
