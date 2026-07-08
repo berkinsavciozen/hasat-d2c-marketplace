@@ -218,7 +218,8 @@ function ListingSheet({ open, editing, onClose }: { open: boolean; editing: List
   const createListing = useCreateListing();
   const updateListing = useUpdateListing();
 
-  const [crop, setCrop] = useState(editing?.crop ?? "Safran");
+  const [crop, setCrop] = useState(editing?.crop ?? "");
+  const { options: cropOptions, isLoading: cropsLoading } = useCropOptions();
   const [quantity, setQuantity] = useState(editing?.quantity ?? 100);
   const [unit, setUnit] = useState<"g" | "kg" | "L">(editing?.unit ?? "g");
   const [price, setPrice] = useState(editing?.pricePerUnit ?? 350);
@@ -236,7 +237,7 @@ function ListingSheet({ open, editing, onClose }: { open: boolean; editing: List
       setDesc(editing.description ?? "");
       setExistingPhotos(editing.photos ?? []);
     } else {
-      setCrop("Safran"); setQuantity(100); setUnit("g"); setPrice(350); setMinOrder(10); setQuality("A");
+      setCrop(""); setQuantity(100); setUnit("g"); setPrice(350); setMinOrder(10); setQuality("A");
       setDesc("");
       setExistingPhotos([]);
     }
@@ -277,8 +278,8 @@ function ListingSheet({ open, editing, onClose }: { open: boolean; editing: List
           <div>
             <div className="mb-1.5 text-xs font-medium text-hmuted">Ürün</div>
             <Select value={crop} onValueChange={setCrop}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>{CROPS.map((c) => <SelectItem key={c} value={c}>{CROP_EMOJI[c]} {c}</SelectItem>)}</SelectContent>
+              <SelectTrigger><SelectValue placeholder={cropsLoading ? "Yükleniyor…" : "Ürün seçin"} /></SelectTrigger>
+              <SelectContent>{cropOptions.map((o) => <SelectItem key={o.value} value={o.value}>{o.emoji} {o.label}</SelectItem>)}</SelectContent>
             </Select>
           </div>
           <div>
