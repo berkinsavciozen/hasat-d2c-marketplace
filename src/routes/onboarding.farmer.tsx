@@ -197,19 +197,12 @@ function Onboarding() {
             <label className="text-xs text-hwhite/60">Şehir / İlçe</label>
             <Select value={city} onValueChange={setCity}>
               <SelectTrigger className="mt-1 mb-4 bg-white/5 border-white/10 text-hwhite"><SelectValue placeholder="Seç..." /></SelectTrigger>
-              <SelectContent>{CITIES.map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent>
+              <SelectContent>{TR_PROVINCES.map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent>
             </Select>
 
             <label className="text-xs text-hwhite/60">Ana Ürünlerin</label>
-            <div className="mt-2 mb-4 flex flex-wrap gap-2">
-              {CROPS.map((c) => (
-                <button key={c} onClick={() => toggle(crops, setCrops, c)}
-                  className="rounded-full px-3 py-1.5 text-xs border transition"
-                  style={{
-                    background: crops.includes(c) ? "var(--saffron)" : "rgba(255,255,255,0.05)",
-                    borderColor: crops.includes(c) ? "var(--saffron)" : "rgba(255,255,255,0.15)",
-                  }}>{c}</button>
-              ))}
+            <div className="mt-2 mb-4">
+              <CropChips value={crops} onChange={setCrops} variant="dark" />
             </div>
 
             <label className="text-xs text-hwhite/60">Arazi Büyüklüğü: <span style={{ color: "var(--saffron)" }}>{land} dönüm</span></label>
