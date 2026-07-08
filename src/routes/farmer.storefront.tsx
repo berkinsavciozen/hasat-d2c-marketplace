@@ -202,12 +202,20 @@ function Storefront() {
   );
 }
 
-function ListingCard({ listing, muted, onEdit, onRemove }: { listing: Listing; muted?: boolean; onEdit?: () => void; onRemove?: () => void }) {
-  const statusLabel = listing.status === "active" ? "Aktif" : listing.status === "sold" ? "Satıldı" : "Süresi Doldu";
-  const statusColor = listing.status === "active" ? "var(--sage)" : listing.status === "sold" ? "var(--gold)" : "var(--hmuted)";
+function ListingCard({ listing, muted, draft, parcelLabel, onEdit, onRemove }: { listing: Listing; muted?: boolean; draft?: boolean; parcelLabel?: string; onEdit?: () => void; onRemove?: () => void }) {
+  const statusLabel =
+    listing.status === "active" ? "Aktif"
+    : listing.status === "draft" ? "Taslak"
+    : listing.status === "sold" ? "Satıldı"
+    : "Süresi Doldu";
+  const statusColor =
+    listing.status === "active" ? "var(--sage)"
+    : listing.status === "draft" ? "var(--hmuted)"
+    : listing.status === "sold" ? "var(--gold)"
+    : "var(--hmuted)";
   const photo = listing.photos?.[0];
   return (
-    <div className={`rounded-2xl border bg-card p-4 ${muted ? "opacity-60" : ""}`}>
+    <div className={`rounded-2xl border bg-card p-4 ${muted ? "opacity-60" : ""} ${draft ? "border-dashed" : ""}`}>
       <div className="flex items-start gap-3">
         {photo ? (
           <img src={photo} alt={formatCrop(listing.crop)} className="h-12 w-12 rounded-xl object-cover" />
@@ -220,6 +228,9 @@ function ListingCard({ listing, muted, onEdit, onRemove }: { listing: Listing; m
             <span className="rounded-full px-2 py-0.5 text-[10px] font-medium text-white" style={{ background: statusColor }}>{statusLabel}</span>
             <StockBadge listingId={listing.id} unit={listing.unit} />
           </div>
+          {parcelLabel && (
+            <div className="mt-0.5 text-[11px] text-hmuted">📍 {parcelLabel}</div>
+          )}
           <div className="mt-0.5 text-xs text-hmuted">{listing.quantity} {listing.unit} • Min. {listing.minOrder} {listing.unit}</div>
           <div className="mt-1.5 flex items-center gap-2">
             <span className="font-mono text-sm font-semibold">{formatTRY(listing.pricePerUnit)}/{listing.unit}</span>
@@ -227,19 +238,29 @@ function ListingCard({ listing, muted, onEdit, onRemove }: { listing: Listing; m
           </div>
         </div>
       </div>
-      <MarketDeviationAlert crop={listing.crop} pricePerUnit={listing.pricePerUnit} unit={listing.unit} />
+      {!draft && <MarketDeviationAlert crop={listing.crop} pricePerUnit={listing.pricePerUnit} unit={listing.unit} />}
+      {draft && (listing.quantity === 0 || listing.pricePerUnit === 0) && (
+        <div className="mt-2 rounded-lg bg-muted/60 px-2 py-1.5 text-[11px] text-hmuted">
+          Yayınlamadan önce miktar ve fiyatı güncelleyin.
+        </div>
+      )}
       {!muted && (
         <div className="mt-3 flex gap-2">
-          <Link to="/batch/$listingId" params={{ listingId: listing.id }} className="flex flex-1 items-center justify-center gap-1.5 rounded-lg border py-2 text-xs font-medium hover:bg-cream">
-            📦 Parti
-          </Link>
-          <button onClick={onEdit} className="flex flex-1 items-center justify-center gap-1.5 rounded-lg border py-2 text-xs font-medium hover:bg-cream"><Pencil className="h-3.5 w-3.5" /> Düzenle</button>
+          {!draft && (
+            <Link to="/batch/$listingId" params={{ listingId: listing.id }} className="flex flex-1 items-center justify-center gap-1.5 rounded-lg border py-2 text-xs font-medium hover:bg-cream">
+              📦 Parti
+            </Link>
+          )}
+          <button onClick={onEdit} className={`flex flex-1 items-center justify-center gap-1.5 rounded-lg py-2 text-xs font-medium ${draft ? "bg-saffron text-white hover:opacity-90" : "border hover:bg-cream"}`}>
+            {draft ? <>✓ Yayınla</> : <><Pencil className="h-3.5 w-3.5" /> Düzenle</>}
+          </button>
           <button onClick={onRemove} className="flex flex-1 items-center justify-center gap-1.5 rounded-lg border border-hred/30 py-2 text-xs font-medium text-hred hover:bg-hred/5"><Trash2 className="h-3.5 w-3.5" /> Kaldır</button>
         </div>
       )}
     </div>
   );
 }
+
 
 function ListingSheet({ open, editing, onClose }: { open: boolean; editing: Listing | null; onClose: () => void }) {
   const createListing = useCreateListing();
