@@ -61,9 +61,12 @@ function Storefront() {
           <div className="mt-2 truncate font-mono text-[11px] text-hmuted">{vUrl}</div>
         </div>
         <Tabs defaultValue="active" className="mt-4">
-          <TabsList className="grid w-full grid-cols-2">
+          <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="active">Ürünlerim</TabsTrigger>
-            <TabsTrigger value="history">Geçmiş</TabsTrigger>
+            <TabsTrigger value="draft">
+              Taslak{drafts.length > 0 ? ` (${drafts.length})` : ""}
+            </TabsTrigger>
+            <TabsTrigger value="archive">Arşiv</TabsTrigger>
           </TabsList>
 
           <TabsContent value="active" className="mt-4 space-y-3">
@@ -86,16 +89,38 @@ function Storefront() {
             )}
           </TabsContent>
 
-          <TabsContent value="history" className="mt-4 space-y-3">
+          <TabsContent value="draft" className="mt-4 space-y-3">
             {isLoading ? (
               <LoadingDots />
-            ) : history.length === 0 ? (
-              <div className="py-12 text-center text-sm text-hmuted">Geçmiş kayıt yok.</div>
+            ) : drafts.length === 0 ? (
+              <div className="rounded-2xl border border-dashed py-12 px-6 text-center">
+                <div className="mb-3 text-5xl">📝</div>
+                <div className="text-xs text-hmuted">
+                  Henüz taslak yok. Bir parsel oluşturduğunuzda, o parselin her ürünü için otomatik bir taslak ilan hazırlanır.
+                </div>
+              </div>
             ) : (
-              history.map((l) => <ListingCard key={l.id} listing={l} muted />)
+              drafts.map((l) => (
+                <ListingCard key={l.id} listing={l} draft
+                  parcelLabel={parcelName(l.parcelId)}
+                  onEdit={() => setSheet({ open: true, editing: l })}
+                  onRemove={() => setConfirmDelete(l)}
+                />
+              ))
+            )}
+          </TabsContent>
+
+          <TabsContent value="archive" className="mt-4 space-y-3">
+            {isLoading ? (
+              <LoadingDots />
+            ) : archive.length === 0 ? (
+              <div className="py-12 text-center text-sm text-hmuted">Arşivde kayıt yok.</div>
+            ) : (
+              archive.map((l) => <ListingCard key={l.id} listing={l} muted />)
             )}
           </TabsContent>
         </Tabs>
+
 
         <section className="mt-8">
           <div className="mb-3 flex items-center justify-between">
