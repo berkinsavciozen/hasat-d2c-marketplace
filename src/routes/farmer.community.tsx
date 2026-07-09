@@ -51,6 +51,7 @@ function ReplyThread({ post }: { post: CommunityPostRow }) {
   const { data: replies = [], isLoading } = useCommunityReplies(post.id);
   const [draft, setDraft] = useState("");
   const createReply = useCreateReply();
+  const viewerId = useAuthUserId();
 
   const submit = async () => {
     if (!draft.trim()) return;
