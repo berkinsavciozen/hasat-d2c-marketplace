@@ -1977,38 +1977,47 @@ export function usePricePoints() {
 }
 
 // ---- price feed (community-contributed market prices) ----
-export interface PriceFeedEntry {
-  id: string;
+//
+// NOTE: raw price_feed rows are NOT readable by clients. Reads go through the
+// SECURITY DEFINER RPC `get_price_feed_summary(p_crop)` which returns only
+// aggregate stats (avg, stddev, distinct contributor count) over a 30-day
+// window, and reports `insufficient_data: true` when fewer than 5 distinct
+// farmers contributed. This is a competition-law safeguard: no user of Hasat
+// can see any other farmer's individual price entries.
+//
+// TODO: paid featured placement (future) must render a "Sponsorlu" badge and
+// be excluded from the default "newest first" order in useActiveListings.
+export interface PriceFeedSummary {
   cropName: string;
-  price: number;
-  unit: string;
-  source: string | null;
-  recordedAt: string;
-  recordedBy: string | null;
+  avgPrice: number | null;
+  stddevPrice: number | null;
+  distinctFarmerCount: number;
+  lastUpdated: string | null;
+  insufficientData: boolean;
 }
 
-export function usePriceFeed() {
+export function usePriceFeedSummary(crop: string | null | undefined) {
+  const key = (crop ?? "").trim();
   return useQuery({
-    queryKey: ["priceFeed"],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("price_feed" as any)
-        .select("id, crop_name, price_per_kg, unit, source, recorded_at, recorded_by")
-        .order("recorded_at", { ascending: false })
-        .limit(500);
+    queryKey: ["priceFeedSummary", key.toLowerCase()],
+    enabled: key.length > 0,
+    queryFn: async (): Promise<PriceFeedSummary | null> => {
+      const { data, error } = await supabase.rpc("get_price_feed_summary", { p_crop: key });
       if (error) throw error;
-      return ((data ?? []) as any[]).map((r): PriceFeedEntry => ({
-        id: r.id,
-        cropName: r.crop_name,
-        price: Number(r.price_per_kg),
-        unit: r.unit ?? "kg",
-        source: r.source ?? null,
-        recordedAt: r.recorded_at,
-        recordedBy: r.recorded_by ?? null,
-      }));
+      const row = Array.isArray(data) ? data[0] : null;
+      if (!row) return null;
+      return {
+        cropName: row.crop_name ?? key,
+        avgPrice: row.avg_price == null ? null : Number(row.avg_price),
+        stddevPrice: row.stddev_price == null ? null : Number(row.stddev_price),
+        distinctFarmerCount: Number(row.distinct_farmer_count ?? 0),
+        lastUpdated: row.last_updated ?? null,
+        insufficientData: !!row.insufficient_data,
+      };
     },
   });
 }
+
 
 export function useCreatePriceFeedEntry() {
   const qc = useQueryClient();
