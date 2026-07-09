@@ -190,7 +190,7 @@ function Community() {
                     </div>
                     <span className="text-[10px] px-2 py-0.5 rounded-full" style={{ background: "var(--muted)" }}>{p.category}</span>
                   </div>
-                  <p className="text-sm mb-3 whitespace-pre-wrap">{p.content}</p>
+                  <p className={`text-sm mb-3 whitespace-pre-wrap ${p.flaggedForReview && p.authorId !== viewerId ? "italic text-hmuted" : ""}`}>{maskIfFlagged(p, viewerId)}</p>
                   <div className="flex items-center gap-4 text-xs text-muted-foreground">
                     <button onClick={(e) => { e.stopPropagation(); toggleLike(p.id); }} className="flex items-center gap-1">
                       <Heart className="h-4 w-4" fill={liked ? "var(--hred)" : "none"} color={liked ? "var(--hred)" : "currentColor"} />
