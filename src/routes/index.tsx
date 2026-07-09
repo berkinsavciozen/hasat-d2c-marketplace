@@ -391,7 +391,7 @@ function ValuePillars() {
     { icon: <Percent className="w-5 h-5" />, title: "Adil Fiyat", body: "Piyasa referansı görünür; sapmalar hem alıcıya hem üreticiye bildirilir." },
   ];
   return (
-    <section className="px-4 py-16 md:py-20" ref={ref}>
+    <section className="px-4 py-16 md:py-20" style={{ background: "var(--lp-cream)", position: "relative", isolation: "isolate" }} ref={ref}>
       <div className="mx-auto max-w-6xl grid gap-4 md:grid-cols-3">
         {items.map((it, i) => (
           <div
@@ -664,23 +664,28 @@ function MarketplacePreview() {
 }
 
 /* ---------- Turkey map ---------- */
-type Pin = { id: string; x: number; y: number; region: string; crop: string; qty: string; tier: string };
+type Pin = { id: string; xPct: number; yPct: number; region: string; crop: string; qty: string; tier: string };
 const PINS: Pin[] = [
-  { id: "safranbolu", x: 470, y: 92, region: "Safranbolu", crop: "Safran", qty: "1.2 kg", tier: "Tam İzlenebilir" },
-  { id: "isparta", x: 385, y: 235, region: "Isparta", crop: "Lavanta", qty: "40 kg", tier: "Tam İzlenebilir" },
-  { id: "ayvalik", x: 170, y: 195, region: "Ayvalık", crop: "Zeytinyağı", qty: "800 L", tier: "İyi Belgelenmiş" },
-  { id: "giresun", x: 620, y: 100, region: "Giresun", crop: "Fındık", qty: "2 t", tier: "İyi Belgelenmiş" },
-  { id: "malatya", x: 665, y: 215, region: "Malatya", crop: "Kayısı", qty: "1.5 t", tier: "İyi Belgelenmiş" },
-  { id: "izmir", x: 165, y: 240, region: "İzmir", crop: "İncir", qty: "600 kg", tier: "Tam İzlenebilir" },
-  { id: "antalya", x: 350, y: 305, region: "Antalya", crop: "Nar", qty: "900 kg", tier: "Temel" },
+  // Coordinates are % positions inside the visible Turkey outline area (cropped band).
+  { id: "safranbolu", xPct: 47, yPct: 30, region: "Safranbolu", crop: "Safran", qty: "1.2 kg", tier: "Tam İzlenebilir" },
+  { id: "isparta",    xPct: 34, yPct: 62, region: "Isparta",    crop: "Lavanta",    qty: "40 kg", tier: "Tam İzlenebilir" },
+  { id: "ayvalik",    xPct: 14, yPct: 48, region: "Ayvalık",    crop: "Zeytinyağı", qty: "800 L", tier: "İyi Belgelenmiş" },
+  { id: "giresun",    xPct: 70, yPct: 24, region: "Giresun",    crop: "Fındık",     qty: "2 t",   tier: "İyi Belgelenmiş" },
+  { id: "malatya",    xPct: 71, yPct: 55, region: "Malatya",    crop: "Kayısı",     qty: "1.5 t", tier: "İyi Belgelenmiş" },
+  { id: "izmir",      xPct: 13, yPct: 60, region: "İzmir",      crop: "İncir",      qty: "600 kg", tier: "Tam İzlenebilir" },
+  { id: "antalya",    xPct: 37, yPct: 78, region: "Antalya",    crop: "Nar",        qty: "900 kg", tier: "Temel" },
 ];
 
 function TurkeyMap() {
   const ref = useReveal<HTMLDivElement>();
-  const [active, setActive] = useState<string | null>("safranbolu");
+  const [active, setActive] = useState<string>("safranbolu");
   const pin = useMemo(() => PINS.find((p) => p.id === active) ?? PINS[0], [active]);
   return (
-    <section className="px-4 py-16 md:py-24 border-t" style={{ borderColor: "var(--lp-line)" }} ref={ref}>
+    <section
+      className="px-4 py-16 md:py-24 border-t"
+      style={{ borderColor: "var(--lp-line)", background: "var(--lp-cream)", position: "relative", isolation: "isolate" }}
+      ref={ref}
+    >
       <div className="mx-auto max-w-6xl">
         <div className="text-center mb-10 lp-reveal">
           <div className="text-xs uppercase tracking-widest mb-2" style={{ color: "var(--lp-muted)" }}>Üretim haritası</div>
@@ -688,46 +693,63 @@ function TurkeyMap() {
         </div>
 
         <div className="lp-card rounded-3xl p-4 md:p-8 lp-reveal lp-reveal-d1 grid gap-6 md:grid-cols-[1fr_260px] items-center">
-          <div className="relative">
-            <svg viewBox="0 0 800 400" className="w-full h-auto">
-              {/* Stylized Turkey outline — abstract, not geographically precise */}
-              <path
-                d="M60,220 C90,180 130,155 190,150 C240,145 275,165 320,155 C360,145 400,120 460,115 C520,110 570,90 620,95 C670,100 720,110 750,135 C775,155 770,190 745,210 C720,230 680,240 640,235 C600,230 570,240 530,245 C480,252 430,260 380,270 C330,280 290,300 245,305 C200,310 155,300 115,285 C80,272 55,255 60,220 Z"
-                fill="color-mix(in oklab, var(--lp-primary) 12%, var(--lp-cream))"
-                stroke="var(--lp-primary)"
-                strokeWidth="1.5"
-              />
-              {PINS.map((p) => {
-                const isActive = p.id === active;
-                return (
-                  <g key={p.id} onClick={() => setActive(p.id)} className="cursor-pointer">
-                    <circle
-                      cx={p.x}
-                      cy={p.y}
-                      r={6}
-                      fill={isActive ? "var(--lp-accent)" : "var(--lp-primary)"}
-                    />
-                    <circle
-                      cx={p.x}
-                      cy={p.y}
-                      r={6}
-                      fill={isActive ? "var(--lp-accent)" : "var(--lp-primary)"}
-                      className="lp-pin-halo"
-                      style={{ transformOrigin: `${p.x}px ${p.y}px`, transformBox: "fill-box" }}
-                      opacity={0.35}
-                    />
-                    {isActive && (
-                      <text x={p.x + 10} y={p.y + 4} fontSize="11" fill="var(--lp-ink)" fontFamily="Georgia, serif">
-                        {p.region}
-                      </text>
-                    )}
-                  </g>
-                );
-              })}
-            </svg>
+          <div
+            className="relative w-full mx-auto"
+            style={{ aspectRatio: "16 / 8", maxWidth: 720 }}
+          >
+            <img
+              src={turkeyOutlineUrl}
+              alt="Türkiye haritası ana hattı"
+              className="absolute inset-0 w-full h-full"
+              style={{
+                objectFit: "cover",
+                objectPosition: "center",
+                /* Recolor the black silhouette to a soft primary tint */
+                filter: "brightness(0) saturate(100%) invert(19%) sepia(19%) saturate(1113%) hue-rotate(97deg) brightness(96%) contrast(88%) opacity(0.55)",
+              }}
+            />
+            {/* Pin overlay */}
+            {PINS.map((p) => {
+              const isActive = p.id === active;
+              return (
+                <button
+                  key={p.id}
+                  type="button"
+                  onClick={() => setActive(p.id)}
+                  className="absolute -translate-x-1/2 -translate-y-1/2 group"
+                  style={{ left: `${p.xPct}%`, top: `${p.yPct}%` }}
+                  aria-label={p.region}
+                >
+                  <span
+                    className="block rounded-full"
+                    style={{
+                      width: isActive ? 14 : 10,
+                      height: isActive ? 14 : 10,
+                      background: isActive ? "var(--lp-accent)" : "var(--lp-primary)",
+                      boxShadow: isActive
+                        ? "0 0 0 4px color-mix(in oklab, var(--lp-accent) 25%, transparent)"
+                        : "0 0 0 2px var(--lp-white)",
+                      transition: "all .25s ease",
+                    }}
+                  />
+                  <span
+                    className="absolute left-1/2 -translate-x-1/2 mt-1.5 whitespace-nowrap rounded px-1.5 py-0.5 text-[10px] font-medium pointer-events-none"
+                    style={{
+                      top: "100%",
+                      background: isActive ? "var(--lp-primary)" : "var(--lp-white)",
+                      color: isActive ? "#fff" : "var(--lp-ink)",
+                      border: "1px solid var(--lp-line)",
+                      opacity: isActive ? 1 : 0.85,
+                    }}
+                  >
+                    {p.region}
+                  </span>
+                </button>
+              );
+            })}
           </div>
 
-          <div className="rounded-2xl p-4" style={{ background: "var(--lp-cream)", border: "1px solid var(--lp-line)" }}>
+          <div className="rounded-2xl p-4" style={{ background: "var(--lp-cream-2)", border: "1px solid var(--lp-line)" }}>
             <div className="text-[11px] uppercase tracking-widest mb-2" style={{ color: "var(--lp-muted)" }}>
               Örnek üretim
             </div>
