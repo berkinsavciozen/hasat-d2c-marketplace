@@ -623,7 +623,7 @@ function MarketplacePreview() {
           <div>
             <div className="text-xs uppercase tracking-widest mb-2" style={{ color: "var(--lp-muted)" }}>Pazar yeri</div>
             <h2 className="font-serif text-3xl md:text-4xl" style={{ color: "var(--lp-ink)" }}>Öne çıkan üreticiler.</h2>
-            <div className="text-xs mt-1" style={{ color: "var(--lp-muted)" }}>Aşağıdaki kartlar örnek üretici verisi içerir.</div>
+            <div className="text-xs mt-1" style={{ color: "var(--lp-muted)" }}>Aşağıdaki kartlar örnek üretici verisi içerir. İlanlar en yeni tarihe göre sıralanır — ücretli öne çıkarma yoktur.</div>
           </div>
         </div>
         <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
