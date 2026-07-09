@@ -120,6 +120,7 @@ function Community() {
 
   const { data: posts = [], isLoading } = useCommunityPosts(cat);
   const createPost = useCreatePost();
+  const viewerId = useAuthUserId();
 
   const filtered = posts.filter((p) => {
     if (q === "") return true;
