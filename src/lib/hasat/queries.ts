@@ -1619,6 +1619,7 @@ export interface CommunityPostRow {
   createdAt: string;
   parentId: string | null;
   replyCount: number;
+  flaggedForReview: boolean;
 }
 
 function dbToPost(r: any): CommunityPostRow {
@@ -1635,8 +1636,21 @@ function dbToPost(r: any): CommunityPostRow {
     createdAt: r.created_at,
     parentId: r.parent_id ?? null,
     replyCount: 0,
+    flaggedForReview: !!r.flagged_for_review,
   };
 }
+
+// Rule-based check for potential price-coordination content.
+// Flags posts that reference money AND coordination language — never blocks.
+const CURRENCY_TERMS = ["₺", " tl", "$"];
+const COORDINATION_TERMS = ["anlaşalım", "birlikte", "hepimiz", "sabit fiyat", "taban fiyat"];
+export function looksLikePriceCoordination(text: string): boolean {
+  const s = ` ${text.toLowerCase()} `;
+  const hasCurrency = CURRENCY_TERMS.some((t) => s.includes(t));
+  const hasCoord = COORDINATION_TERMS.some((t) => s.includes(t));
+  return hasCurrency && hasCoord;
+}
+
 
 export function useCommunityPosts(categoryFilter?: string) {
   const filter = categoryFilter && categoryFilter !== "Tümü" ? categoryFilter : null;
@@ -1695,6 +1709,7 @@ export function useCreatePost() {
         author_id: userId,
         content: input.content,
         category: input.category,
+        flagged_for_review: looksLikePriceCoordination(input.content),
       }).select("*").single();
       if (error) throw error;
       return data;
@@ -1712,6 +1727,7 @@ export function useCreateReply() {
       const { data: parent } = await supabase
         .from("community_posts")
         .select("category")
+
         .eq("id", input.postId)
         .maybeSingle();
       const { data, error } = await supabase.from("community_posts").insert({
@@ -1719,6 +1735,7 @@ export function useCreateReply() {
         content: input.content,
         category: parent?.category ?? "Diğer",
         parent_id: input.postId,
+        flagged_for_review: looksLikePriceCoordination(input.content),
       }).select("*, author:profiles!community_posts_author_id_fkey(id,name,city,role)").single();
       if (error) throw error;
       // Best-effort notification to parent author (skip self-reply).
@@ -1960,38 +1977,47 @@ export function usePricePoints() {
 }
 
 // ---- price feed (community-contributed market prices) ----
-export interface PriceFeedEntry {
-  id: string;
+//
+// NOTE: raw price_feed rows are NOT readable by clients. Reads go through the
+// SECURITY DEFINER RPC `get_price_feed_summary(p_crop)` which returns only
+// aggregate stats (avg, stddev, distinct contributor count) over a 30-day
+// window, and reports `insufficient_data: true` when fewer than 5 distinct
+// farmers contributed. This is a competition-law safeguard: no user of Hasat
+// can see any other farmer's individual price entries.
+//
+// TODO: paid featured placement (future) must render a "Sponsorlu" badge and
+// be excluded from the default "newest first" order in useActiveListings.
+export interface PriceFeedSummary {
   cropName: string;
-  price: number;
-  unit: string;
-  source: string | null;
-  recordedAt: string;
-  recordedBy: string | null;
+  avgPrice: number | null;
+  stddevPrice: number | null;
+  distinctFarmerCount: number;
+  lastUpdated: string | null;
+  insufficientData: boolean;
 }
 
-export function usePriceFeed() {
+export function usePriceFeedSummary(crop: string | null | undefined) {
+  const key = (crop ?? "").trim();
   return useQuery({
-    queryKey: ["priceFeed"],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("price_feed" as any)
-        .select("id, crop_name, price_per_kg, unit, source, recorded_at, recorded_by")
-        .order("recorded_at", { ascending: false })
-        .limit(500);
+    queryKey: ["priceFeedSummary", key.toLowerCase()],
+    enabled: key.length > 0,
+    queryFn: async (): Promise<PriceFeedSummary | null> => {
+      const { data, error } = await supabase.rpc("get_price_feed_summary", { p_crop: key });
       if (error) throw error;
-      return ((data ?? []) as any[]).map((r): PriceFeedEntry => ({
-        id: r.id,
-        cropName: r.crop_name,
-        price: Number(r.price_per_kg),
-        unit: r.unit ?? "kg",
-        source: r.source ?? null,
-        recordedAt: r.recorded_at,
-        recordedBy: r.recorded_by ?? null,
-      }));
+      const row = Array.isArray(data) ? data[0] : null;
+      if (!row) return null;
+      return {
+        cropName: row.crop_name ?? key,
+        avgPrice: row.avg_price == null ? null : Number(row.avg_price),
+        stddevPrice: row.stddev_price == null ? null : Number(row.stddev_price),
+        distinctFarmerCount: Number(row.distinct_farmer_count ?? 0),
+        lastUpdated: row.last_updated ?? null,
+        insufficientData: !!row.insufficient_data,
+      };
     },
   });
 }
+
 
 export function useCreatePriceFeedEntry() {
   const qc = useQueryClient();

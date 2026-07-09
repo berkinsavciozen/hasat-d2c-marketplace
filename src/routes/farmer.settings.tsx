@@ -6,7 +6,7 @@ import { useParcels, useCreateParcel, useUpdateParcel, useDeleteParcel, useCerti
 import { ProgressDots } from "@/components/hasat/ProgressDots";
 import { Input } from "@/components/ui/input";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
-import { Bell, ChevronRight, LogOut, Pencil, Trash2, Sparkles } from "lucide-react";
+import { Bell, ChevronRight, Download, LogOut, Pencil, Trash2, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { TierBadge } from "@/components/hasat/TierBadge";
@@ -135,6 +135,43 @@ function Settings() {
     try { await supabase.auth.signOut(); }
     catch (e) { toast.error((e as Error).message); }
     finally { setRole(null); navigate({ to: "/" }); }
+  };
+
+  const [exporting, setExporting] = useState(false);
+  const exportData = async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) { toast.error("Oturum bulunamadı"); return; }
+    setExporting(true);
+    try {
+      const [parcelsR, harvestsR, listingsR, certsR] = await Promise.all([
+        supabase.from("parcels").select("*").eq("farmer_id", user.id),
+        supabase.from("harvest_entries").select("*").eq("farmer_id", user.id),
+        supabase.from("listings").select("*").eq("farmer_id", user.id),
+        supabase.from("certifications").select("*").eq("farmer_id", user.id),
+      ]);
+      const payload = {
+        exported_at: new Date().toISOString(),
+        farmer_id: user.id,
+        parcels: parcelsR.data ?? [],
+        harvest_entries: harvestsR.data ?? [],
+        listings: listingsR.data ?? [],
+        certifications: certsR.data ?? [],
+      };
+      const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `hasat-verilerim-${new Date().toISOString().slice(0, 10)}.json`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+      toast.success("Verileriniz indirildi");
+    } catch (e: any) {
+      toast.error(e?.message ?? "İndirilemedi");
+    } finally {
+      setExporting(false);
+    }
   };
 
   const fmtDate = (s: string | null) => s ? new Date(s).toLocaleDateString("tr-TR") : "—";
@@ -366,6 +403,20 @@ function Settings() {
           <span className="flex-1 text-sm">Bildirim Tercihleri</span>
           <ChevronRight className="h-4 w-4 text-muted-foreground" />
         </Link>
+
+        <Section title="Verilerim">
+          <div className="text-xs text-muted-foreground mb-2">
+            Parsellerinizi, tarla günlüğü kayıtlarınızı, ilanlarınızı ve
+            sertifikalarınızı JSON dosyası olarak indirin.
+          </div>
+          <button
+            onClick={exportData}
+            disabled={exporting}
+            className="flex items-center gap-2 rounded-lg px-4 py-2.5 text-sm font-medium border border-border hover:bg-muted disabled:opacity-50"
+          >
+            <Download className="h-4 w-4" /> {exporting ? "Hazırlanıyor…" : "Verilerimi İndir"}
+          </button>
+        </Section>
 
         <Section title="Hesap">
           <button onClick={logout}

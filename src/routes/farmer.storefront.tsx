@@ -60,6 +60,7 @@ function Storefront() {
           </button>
           <div className="mt-2 truncate font-mono text-[11px] text-hmuted">{vUrl}</div>
         </div>
+        <div className="mt-3 text-[11px] text-hmuted">İlanlar en yeni tarihe göre sıralanır.</div>
         <Tabs defaultValue="active" className="mt-4">
           <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="active">Ürünlerim</TabsTrigger>

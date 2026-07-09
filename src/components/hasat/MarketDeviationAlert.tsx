@@ -1,40 +1,52 @@
-import { usePriceFeed } from "@/lib/hasat/queries";
+import { usePriceFeedSummary } from "@/lib/hasat/queries";
 
 interface Props {
   crop: string;
   pricePerUnit: number;
+  /** Kept in signature for backwards-compat with callers. */
   unit: string;
 }
 
-function normalize(s: string) {
-  return s.toLowerCase().trim();
-}
-
 /**
- * Shows an amber alert under a listing if its unit price deviates >20% from
- * the latest community price feed entry for the same crop. Silent when no
- * feed data exists for the crop.
+ * Band-based market signal (competition-law safe).
+ * Never displays a suggested price. Renders nothing when data is insufficient
+ * (fewer than 5 distinct farmers in the 30-day window).
  *
- * Note: compares raw price values; the price_feed `price_per_kg` column is
- * generic (actual unit stored in `unit`), so we only compare when units match.
+ * - price > avg + stddev → "YÜKSEK" (red)
+ * - avg - stddev ≤ price ≤ avg + stddev → "UYGUN" (neutral)
+ * - price < avg - stddev → "DÜŞÜK" (amber)
  */
-export function MarketDeviationAlert({ crop, pricePerUnit, unit }: Props) {
-  const { data: feed = [] } = usePriceFeed();
-  const target = normalize(crop);
-  const latest = feed.find((e) => normalize(e.cropName) === target);
-  if (!latest) return null;
-  if (latest.unit !== unit) return null;
-  if (!latest.price || !pricePerUnit) return null;
+export function MarketDeviationAlert({ crop, pricePerUnit }: Props) {
+  const { data: summary } = usePriceFeedSummary(crop);
+  if (!summary || summary.insufficientData) return null;
+  if (summary.avgPrice == null || summary.stddevPrice == null) return null;
+  if (!pricePerUnit) return null;
 
-  const deviation = ((pricePerUnit - latest.price) / latest.price) * 100;
-  if (Math.abs(deviation) < 20) return null;
+  const lo = summary.avgPrice - summary.stddevPrice;
+  const hi = summary.avgPrice + summary.stddevPrice;
 
-  const direction = deviation > 0 ? "üzerinde" : "altında";
-  const pct = Math.round(Math.abs(deviation));
+  let label: "YÜKSEK" | "UYGUN" | "DÜŞÜK";
+  let text: string;
+  let cls: string;
+
+  if (pricePerUnit > hi) {
+    label = "YÜKSEK";
+    text = "Fiyatın piyasa aralığının üzerinde. Gözden geçirmek isteyebilirsin.";
+    cls = "border-red-500/40 bg-red-500/10 text-red-900 dark:text-red-200";
+  } else if (pricePerUnit < lo) {
+    label = "DÜŞÜK";
+    text = "Fiyatın piyasa aralığının altında. Gözden geçirmek isteyebilirsin.";
+    cls = "border-amber-500/40 bg-amber-500/10 text-amber-900 dark:text-amber-200";
+  } else {
+    label = "UYGUN";
+    text = "Fiyatın piyasa aralığında.";
+    cls = "border-border bg-muted text-foreground/80";
+  }
 
   return (
-    <div className="mt-2 rounded-lg border border-amber-500/40 bg-amber-500/10 px-2.5 py-1.5 text-[11px] text-amber-900 dark:text-amber-200">
-      ⚠️ Piyasa fiyatının %{pct} {direction}sınız
+    <div className={`mt-2 flex items-center gap-2 rounded-lg border px-2.5 py-1.5 text-[11px] ${cls}`}>
+      <span className="rounded-full px-1.5 py-0.5 text-[10px] font-semibold tracking-wide">{label}</span>
+      <span>{text}</span>
     </div>
   );
 }

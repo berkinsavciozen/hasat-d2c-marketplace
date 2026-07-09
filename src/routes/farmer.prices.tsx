@@ -2,19 +2,17 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { FarmerHeader } from "./farmer";
 import {
-  usePriceFeed,
+  usePriceFeedSummary,
   useCreatePriceFeedEntry,
   useProfile,
   useFarmerListings,
-  type PriceFeedEntry,
 } from "@/lib/hasat/queries";
 import { LoadingDots } from "@/components/hasat/LoadingDots";
 import { formatTRY, formatCrop } from "@/lib/hasat/format";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
-import { Plus } from "lucide-react";
-import { LineChart, Line, ResponsiveContainer } from "recharts";
+import { Plus, Info } from "lucide-react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/farmer/prices")({
@@ -24,11 +22,8 @@ export const Route = createFileRoute("/farmer/prices")({
 
 const UNITS = ["kg", "g", "adet", "litre"] as const;
 
-function normalize(s: string) {
-  return s.toLowerCase().trim();
-}
-
-function timeAgo(iso: string): string {
+function timeAgo(iso: string | null): string {
+  if (!iso) return "";
   const diff = Date.now() - new Date(iso).getTime();
   const m = Math.floor(diff / 60_000);
   if (m < 1) return "az önce";
@@ -39,59 +34,44 @@ function timeAgo(iso: string): string {
   return `${d} gün önce`;
 }
 
-interface Grouped {
-  key: string;
-  cropName: string;
-  latest: PriceFeedEntry;
-  series: PriceFeedEntry[];
-}
-
-function groupFeed(entries: PriceFeedEntry[]): Grouped[] {
-  const map = new Map<string, PriceFeedEntry[]>();
-  for (const e of entries) {
-    const k = normalize(e.cropName);
-    const arr = map.get(k) ?? [];
-    arr.push(e);
-    map.set(k, arr);
-  }
-  return Array.from(map.entries()).map(([key, arr]) => {
-    const sorted = [...arr].sort(
-      (a, b) => new Date(b.recordedAt).getTime() - new Date(a.recordedAt).getTime(),
-    );
-    return {
-      key,
-      cropName: sorted[0].cropName,
-      latest: sorted[0],
-      series: sorted.slice(0, 14).reverse(),
-    };
-  });
-}
-
 function Prices() {
   const { data: profile } = useProfile();
-  const { data: entries = [], isLoading } = usePriceFeed();
+  const { data: listings = [], isLoading: listingsLoading } = useFarmerListings();
   const [sheetOpen, setSheetOpen] = useState(false);
-  const groups = useMemo(() => groupFeed(entries), [entries]);
   const isFarmer = profile?.role === "farmer";
+
+  const crops = useMemo(() => {
+    const s = new Set<string>();
+    for (const l of listings) if (l.crop) s.add(l.crop);
+    return Array.from(s);
+  }, [listings]);
 
   return (
     <>
-      <FarmerHeader title="Fiyat Takibi" subtitle="Topluluk fiyat akışı" />
+      <FarmerHeader title="Fiyat Takibi" subtitle="Topluluk fiyat özeti" />
       <div className="px-4 md:px-8 py-5 pb-32 md:pb-5 space-y-3">
-        {isLoading ? (
+        <div className="rounded-xl border bg-muted/40 p-3 text-[11px] text-hmuted flex gap-2">
+          <Info className="h-3.5 w-3.5 mt-0.5 shrink-0" />
+          <div>
+            Rekabet hukuku gereği bireysel fiyat kayıtları gösterilmez. Yalnızca
+            son 30 güne ait ortalama ve piyasa aralığı görüntülenir. En az 5
+            farklı üreticiden veri gelmediği ürünler için değerlendirme
+            yapılmaz.
+          </div>
+        </div>
+
+        {listingsLoading ? (
           <div className="py-12"><LoadingDots /></div>
-        ) : groups.length === 0 ? (
+        ) : crops.length === 0 ? (
           <div className="rounded-2xl border border-dashed py-12 text-center">
             <div className="mb-3 text-5xl">📊</div>
-            <div className="mb-1 font-medium">Fiyat verisi bekleniyor</div>
+            <div className="mb-1 font-medium">Fiyat özeti için ürün ekleyin</div>
             <div className="text-xs text-hmuted">
-              {isFarmer
-                ? "İlk fiyatı sen ekle — topluluk için yararlı olur."
-                : "Çiftçilerimiz fiyat eklediğinde burada görünecek."}
+              Vitrine ürün eklediğinizde piyasa aralığı burada görünecek.
             </div>
           </div>
         ) : (
-          groups.map((g) => <PriceCard key={g.key} group={g} />)
+          crops.map((c) => <PriceSummaryCard key={c} crop={c} />)
         )}
       </div>
 
@@ -100,59 +80,58 @@ function Prices() {
           onClick={() => setSheetOpen(true)}
           className="fixed bottom-36 right-4 md:bottom-6 z-30 flex items-center gap-1.5 rounded-full bg-saffron px-4 py-3 text-sm font-medium text-white shadow-xl mb-safe"
         >
-          <Plus className="h-4 w-4" /> Fiyat Güncelle
+          <Plus className="h-4 w-4" /> Fiyat Ekle
         </button>
       )}
 
-      {isFarmer && <PriceUpdateSheet open={sheetOpen} onClose={() => setSheetOpen(false)} />}
+      {isFarmer && <PriceUpdateSheet open={sheetOpen} onClose={() => setSheetOpen(false)} crops={crops} />}
     </>
   );
 }
 
-function PriceCard({ group }: { group: Grouped }) {
-  const { latest, series } = group;
-  const data = series.map((e, i) => ({ i, v: e.price }));
+function PriceSummaryCard({ crop }: { crop: string }) {
+  const { data: summary, isLoading } = usePriceFeedSummary(crop);
   return (
     <div className="rounded-2xl border bg-card p-4">
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0 flex-1">
-          <div className="font-medium">{formatCrop(group.cropName)}</div>
-          <div className="mt-0.5 flex items-baseline gap-1">
-            <span className="font-mono text-lg font-semibold">{formatTRY(latest.price)}</span>
-            <span className="text-xs text-hmuted">/{latest.unit}</span>
+      <div className="font-medium">{formatCrop(crop)}</div>
+      {isLoading ? (
+        <div className="mt-2 text-xs text-hmuted">Yükleniyor…</div>
+      ) : !summary || summary.insufficientData || summary.avgPrice == null ? (
+        <div className="mt-2 text-xs text-hmuted">
+          Yeterli veri yok (en az 5 farklı üreticiden veri gerekli).
+        </div>
+      ) : (
+        <>
+          <div className="mt-1 flex items-baseline gap-2">
+            <span className="text-xs text-hmuted">Ortalama</span>
+            <span className="font-mono text-lg font-semibold">{formatTRY(summary.avgPrice)}</span>
           </div>
+          {summary.stddevPrice != null && (
+            <div className="mt-0.5 text-xs text-hmuted">
+              Piyasa aralığı:{" "}
+              <span className="font-mono">{formatTRY(Math.max(0, summary.avgPrice - summary.stddevPrice))}</span>
+              {" – "}
+              <span className="font-mono">{formatTRY(summary.avgPrice + summary.stddevPrice)}</span>
+            </div>
+          )}
           <div className="mt-1 text-[11px] text-hmuted">
-            {latest.source ? `${latest.source} · ` : ""}{timeAgo(latest.recordedAt)}
+            {summary.distinctFarmerCount} üretici · son 30 gün · {timeAgo(summary.lastUpdated)}
           </div>
-        </div>
-        <div style={{ width: 120, height: 40 }}>
-          <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={data} margin={{ top: 4, right: 2, bottom: 4, left: 2 }}>
-              <Line type="monotone" dataKey="v" stroke="var(--saffron)" strokeWidth={2} dot={false} isAnimationActive={false} />
-            </LineChart>
-          </ResponsiveContainer>
-        </div>
-      </div>
+        </>
+      )}
     </div>
   );
 }
 
-function PriceUpdateSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
-  const { data: listings = [] } = useFarmerListings();
+function PriceUpdateSheet({ open, onClose, crops }: { open: boolean; onClose: () => void; crops: string[] }) {
   const create = useCreatePriceFeedEntry();
-  const cropSuggestions = useMemo(() => {
-    const s = new Set<string>();
-    for (const l of listings) s.add(l.crop);
-    return Array.from(s);
-  }, [listings]);
-
-  const [crop, setCrop] = useState<string>(cropSuggestions[0] ?? "");
+  const [crop, setCrop] = useState<string>(crops[0] ?? "");
   const [customCrop, setCustomCrop] = useState("");
   const [price, setPrice] = useState<number>(0);
   const [unit, setUnit] = useState<string>("kg");
   const [source, setSource] = useState("");
 
-  const useCustom = crop === "__custom__" || cropSuggestions.length === 0;
+  const useCustom = crop === "__custom__" || crops.length === 0;
   const finalCrop = useCustom ? customCrop : crop;
 
   const submit = async () => {
@@ -160,7 +139,7 @@ function PriceUpdateSheet({ open, onClose }: { open: boolean; onClose: () => voi
     if (!price || price <= 0) return toast.error("Geçerli bir fiyat girin");
     try {
       await create.mutateAsync({ cropName: finalCrop, price, unit, source });
-      toast.success("Fiyat güncellendi");
+      toast.success("Fiyat eklendi");
       onClose();
       setPrice(0); setSource(""); setCustomCrop("");
     } catch (e: any) {
@@ -172,16 +151,20 @@ function PriceUpdateSheet({ open, onClose }: { open: boolean; onClose: () => voi
     <Sheet open={open} onOpenChange={(o) => !o && onClose()}>
       <SheetContent side="bottom" className="rounded-t-2xl pb-safe">
         <SheetHeader>
-          <SheetTitle className="font-serif text-xl">Fiyat Güncelle</SheetTitle>
+          <SheetTitle className="font-serif text-xl">Fiyat Ekle</SheetTitle>
         </SheetHeader>
         <div className="mt-4 space-y-4">
+          <div className="rounded-lg border bg-muted/40 p-2.5 text-[11px] text-hmuted">
+            Girdiğiniz fiyat topluluk ortalamasına anonim olarak eklenir.
+            Bireysel kayıtlar başka üreticilere gösterilmez.
+          </div>
           <div>
             <div className="mb-1.5 text-xs font-medium text-hmuted">Ürün</div>
-            {cropSuggestions.length > 0 ? (
+            {crops.length > 0 ? (
               <Select value={crop} onValueChange={setCrop}>
                 <SelectTrigger><SelectValue placeholder="Seçin" /></SelectTrigger>
                 <SelectContent>
-                  {cropSuggestions.map((c) => (
+                  {crops.map((c) => (
                     <SelectItem key={c} value={c}>{formatCrop(c)}</SelectItem>
                   ))}
                   <SelectItem value="__custom__">Diğer (yaz)…</SelectItem>
@@ -219,7 +202,7 @@ function PriceUpdateSheet({ open, onClose }: { open: boolean; onClose: () => voi
             </div>
           </div>
           <div>
-            <div className="mb-1.5 text-xs font-medium text-hmuted">Kaynak</div>
+            <div className="mb-1.5 text-xs font-medium text-hmuted">Kaynak (opsiyonel)</div>
             <Input
               value={source}
               onChange={(e) => setSource(e.target.value)}

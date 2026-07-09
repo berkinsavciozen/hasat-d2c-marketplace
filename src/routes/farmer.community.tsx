@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { Heart, MessageCircle, Plus, Search } from "lucide-react";
-import { useCommunityPosts, useCommunityReplies, useCreatePost, useCreateReply, type CommunityPostRow } from "@/lib/hasat/queries";
+import { useCommunityPosts, useCommunityReplies, useCreatePost, useCreateReply, useAuthUserId, type CommunityPostRow } from "@/lib/hasat/queries";
 import { LoadingDots } from "@/components/hasat/LoadingDots";
 import { slugifyFarmer } from "@/lib/hasat/vitrin";
 import { toast } from "sonner";
@@ -42,10 +42,16 @@ function AuthorName({ post, className }: { post: Pick<CommunityPostRow, "authorI
   return <span className={className}>{name}</span>;
 }
 
+function maskIfFlagged(post: CommunityPostRow, viewerId: string | null): string {
+  if (post.flaggedForReview && post.authorId !== viewerId) return "Bu gönderi incelemede.";
+  return post.content;
+}
+
 function ReplyThread({ post }: { post: CommunityPostRow }) {
   const { data: replies = [], isLoading } = useCommunityReplies(post.id);
   const [draft, setDraft] = useState("");
   const createReply = useCreateReply();
+  const viewerId = useAuthUserId();
 
   const submit = async () => {
     if (!draft.trim()) return;
@@ -76,7 +82,7 @@ function ReplyThread({ post }: { post: CommunityPostRow }) {
                     <AuthorName post={r} className="font-medium" />
                     <span className="text-[10px] text-hmuted">{relTime(r.createdAt)}</span>
                   </div>
-                  <div className="whitespace-pre-wrap break-words">{r.content}</div>
+                  <div className={`whitespace-pre-wrap break-words ${r.flaggedForReview && r.authorId !== viewerId ? "italic text-hmuted" : ""}`}>{maskIfFlagged(r, viewerId)}</div>
                 </div>
               </li>
             );
@@ -114,6 +120,7 @@ function Community() {
 
   const { data: posts = [], isLoading } = useCommunityPosts(cat);
   const createPost = useCreatePost();
+  const viewerId = useAuthUserId();
 
   const filtered = posts.filter((p) => {
     if (q === "") return true;
@@ -183,7 +190,7 @@ function Community() {
                     </div>
                     <span className="text-[10px] px-2 py-0.5 rounded-full" style={{ background: "var(--muted)" }}>{p.category}</span>
                   </div>
-                  <p className="text-sm mb-3 whitespace-pre-wrap">{p.content}</p>
+                  <p className={`text-sm mb-3 whitespace-pre-wrap ${p.flaggedForReview && p.authorId !== viewerId ? "italic text-hmuted" : ""}`}>{maskIfFlagged(p, viewerId)}</p>
                   <div className="flex items-center gap-4 text-xs text-muted-foreground">
                     <button onClick={(e) => { e.stopPropagation(); toggleLike(p.id); }} className="flex items-center gap-1">
                       <Heart className="h-4 w-4" fill={liked ? "var(--hred)" : "none"} color={liked ? "var(--hred)" : "currentColor"} />

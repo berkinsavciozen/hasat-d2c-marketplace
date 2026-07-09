@@ -102,7 +102,8 @@ function Discover() {
         </div>
 
         <div>
-          <h2 className="font-serif text-lg mb-3">Aktif İlanlar</h2>
+          <h2 className="font-serif text-lg mb-1">Aktif İlanlar</h2>
+          <div className="text-[11px] text-hmuted mb-3">İlanlar en yeni tarihe göre sıralanır. Ücretli öne çıkarma yoktur.</div>
           {isLoading ? (
             <LoadingDots />
           ) : filtered.length === 0 ? (
