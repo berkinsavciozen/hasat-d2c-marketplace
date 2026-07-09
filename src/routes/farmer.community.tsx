@@ -82,7 +82,7 @@ function ReplyThread({ post }: { post: CommunityPostRow }) {
                     <AuthorName post={r} className="font-medium" />
                     <span className="text-[10px] text-hmuted">{relTime(r.createdAt)}</span>
                   </div>
-                  <div className="whitespace-pre-wrap break-words">{r.content}</div>
+                  <div className={`whitespace-pre-wrap break-words ${r.flaggedForReview && r.authorId !== viewerId ? "italic text-hmuted" : ""}`}>{maskIfFlagged(r, viewerId)}</div>
                 </div>
               </li>
             );
