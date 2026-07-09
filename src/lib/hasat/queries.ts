@@ -1735,6 +1735,7 @@ export function useCreateReply() {
         content: input.content,
         category: parent?.category ?? "Diğer",
         parent_id: input.postId,
+        flagged_for_review: looksLikePriceCoordination(input.content),
       }).select("*, author:profiles!community_posts_author_id_fkey(id,name,city,role)").single();
       if (error) throw error;
       // Best-effort notification to parent author (skip self-reply).
