@@ -522,14 +522,18 @@ function SupplyChain() {
 function TraceabilityMock() {
   const ref = useReveal<HTMLDivElement>();
   const rows = [
-    { icon: <Sprout className="w-3.5 h-3.5" />, label: "Dikim", date: "12 Nis" },
-    { icon: <Droplets className="w-3.5 h-3.5" />, label: "Sulama", date: "3 May" },
-    { icon: <Camera className="w-3.5 h-3.5" />, label: "Fotoğraf: çiçek", date: "20 May" },
-    { icon: <Sprout className="w-3.5 h-3.5" />, label: "Gübreleme", date: "8 Haz" },
-    { icon: <Scissors className="w-3.5 h-3.5" />, label: "Hasat", date: "22 Eki" },
+    { icon: <Sprout className="w-4 h-4" />, label: "Dikim", date: "12 Nis" },
+    { icon: <Droplets className="w-4 h-4" />, label: "Sulama", date: "3 May" },
+    { icon: <Camera className="w-4 h-4" />, label: "Fotoğraf: çiçek", date: "20 May" },
+    { icon: <Sprout className="w-4 h-4" />, label: "Gübreleme", date: "8 Haz" },
+    { icon: <Scissors className="w-4 h-4" />, label: "Hasat", date: "22 Eki" },
   ];
   return (
-    <section className="px-4 py-16 md:py-24 border-t" style={{ borderColor: "var(--lp-line)" }} ref={ref}>
+    <section
+      className="px-4 py-16 md:py-24 border-t"
+      style={{ borderColor: "var(--lp-line)", background: "var(--lp-cream)", position: "relative", isolation: "isolate" }}
+      ref={ref}
+    >
       <div className="mx-auto max-w-6xl grid gap-12 md:grid-cols-2 items-center">
         <div className="lp-reveal">
           <div className="text-xs uppercase tracking-widest mb-2" style={{ color: "var(--lp-muted)" }}>İzlenebilirlik</div>
@@ -564,28 +568,28 @@ function TraceabilityMock() {
                   <MapPin className="w-3 h-3" /> Safranbolu
                 </span>
               </div>
-              <div className="p-4">
-                <div className="font-serif text-base mb-3" style={{ color: "var(--lp-ink)" }}>Safran · Parsel 1</div>
-                <ol className="space-y-2.5">
+              <div className="p-5">
+                <div className="font-serif text-base mb-4" style={{ color: "var(--lp-ink)" }}>Safran · Parsel 1</div>
+                <ol className="space-y-4">
                   {rows.map((r, i) => (
                     <li
                       key={r.label}
-                      className="flex items-center gap-3 opacity-0"
+                      className="grid grid-cols-[auto_1fr_auto] items-center gap-4 opacity-0"
                       style={{ animation: `lp-fade-up .55s ease-out ${0.1 + i * 0.18}s both` }}
                     >
                       <span
-                        className="grid place-items-center w-6 h-6 rounded-full"
+                        className="grid place-items-center w-7 h-7 rounded-full shrink-0"
                         style={{ background: "color-mix(in oklab, var(--lp-accent) 18%, transparent)", color: "var(--lp-accent)" }}
                       >
                         {r.icon}
                       </span>
-                      <span className="text-xs" style={{ color: "var(--lp-ink)" }}>{r.label}</span>
-                      <span className="ml-auto text-[11px]" style={{ color: "var(--lp-muted)" }}>{r.date}</span>
+                      <span className="text-sm min-w-0 truncate" style={{ color: "var(--lp-ink)" }}>{r.label}</span>
+                      <span className="text-xs tabular-nums" style={{ color: "var(--lp-muted)" }}>{r.date}</span>
                     </li>
                   ))}
                 </ol>
                 <div
-                  className="mt-4 inline-flex items-center gap-1 rounded-full px-2 py-1 text-[10px] font-medium"
+                  className="mt-5 inline-flex items-center gap-1 rounded-full px-2 py-1 text-[10px] font-medium"
                   style={{ background: "var(--lp-primary)", color: "#fff" }}
                 >
                   <ShieldCheck className="w-3 h-3" /> Tam İzlenebilir · %92
@@ -603,18 +607,23 @@ function TraceabilityMock() {
 function MarketplacePreview() {
   const ref = useReveal<HTMLDivElement>();
   const items = [
-    { img: IMG_SAFFRON, crop: "Safran", loc: "Safranbolu", farmer: "Ahmet", tier: "Tam İzlenebilir", qty: "50 gr", price: "₺2.900", when: "Hasat: 22 Eki 2025", delivery: "Kargo" },
-    { img: IMG_OLIVE, crop: "Zeytinyağı · Erken hasat", loc: "Ayvalık", farmer: "Mehmet", tier: "İyi Belgelenmiş", qty: "1 L", price: "₺620", when: "Hasat: 3 Kas 2025", delivery: "Kargo" },
-    { img: IMG_LAVENDER, crop: "Lavanta kurusu", loc: "Isparta", farmer: "Ayşe", tier: "Tam İzlenebilir", qty: "250 gr", price: "₺380", when: "Hasat: 18 Tem 2025", delivery: "Kargo" },
-    { img: IMG_HAZELNUT, crop: "Fındık · Levant", loc: "Giresun", farmer: "Selim", tier: "İyi Belgelenmiş", qty: "1 kg", price: "₺310", when: "Hasat: 25 Ağu 2025", delivery: "Kargo · Elden" },
+    { img: IMG_SAFFRON, crop: "Safran", loc: "Safranbolu", farmer: "A. Y.", tier: "Tam İzlenebilir", qty: "50 gr", price: "₺2.900", when: "Hasat: 22 Eki 2025", delivery: "Kargo" },
+    { img: IMG_OLIVE, crop: "Zeytinyağı · Erken hasat", loc: "Ayvalık", farmer: "M. K.", tier: "İyi Belgelenmiş", qty: "1 L", price: "₺620", when: "Hasat: 3 Kas 2025", delivery: "Kargo" },
+    { img: IMG_LAVENDER, crop: "Lavanta kurusu", loc: "Isparta", farmer: "A. D.", tier: "Tam İzlenebilir", qty: "250 gr", price: "₺380", when: "Hasat: 18 Tem 2025", delivery: "Kargo" },
+    { img: IMG_HAZELNUT, crop: "Fındık · Levant", loc: "Giresun", farmer: "S. T.", tier: "İyi Belgelenmiş", qty: "1 kg", price: "₺310", when: "Hasat: 25 Ağu 2025", delivery: "Kargo · Elden" },
   ];
   return (
-    <section className="px-4 py-16 md:py-24 border-t" style={{ borderColor: "var(--lp-line)", background: "var(--lp-cream-2)" }} ref={ref}>
+    <section
+      className="px-4 py-16 md:py-24 border-t"
+      style={{ borderColor: "var(--lp-line)", background: "var(--lp-cream-2)", position: "relative", isolation: "isolate" }}
+      ref={ref}
+    >
       <div className="mx-auto max-w-6xl">
         <div className="flex items-end justify-between mb-8 lp-reveal">
           <div>
             <div className="text-xs uppercase tracking-widest mb-2" style={{ color: "var(--lp-muted)" }}>Pazar yeri</div>
             <h2 className="font-serif text-3xl md:text-4xl" style={{ color: "var(--lp-ink)" }}>Öne çıkan üreticiler.</h2>
+            <div className="text-xs mt-1" style={{ color: "var(--lp-muted)" }}>Aşağıdaki kartlar örnek üretici verisi içerir.</div>
           </div>
         </div>
         <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
@@ -624,24 +633,18 @@ function MarketplacePreview() {
               className={`lp-card lp-card-hover rounded-2xl overflow-hidden lp-reveal lp-reveal-d${(i % 4) + 1}`}
             >
               <div className="relative aspect-[4/3]">
-                <img src={it.img} alt={it.crop} className="w-full h-full object-cover" />
+                <img src={it.img} alt={it.crop} loading="lazy" className="w-full h-full object-cover" />
                 <span
                   className="absolute top-3 left-3 inline-flex items-center gap-1 rounded-full px-2 py-1 text-[10px] font-medium"
                   style={{ background: "var(--lp-primary)", color: "#fff" }}
                 >
                   <ShieldCheck className="w-3 h-3" /> {it.tier}
                 </span>
-                <span
-                  className="absolute top-3 right-3 inline-flex items-center rounded-full px-2 py-1 text-[10px]"
-                  style={{ background: "rgba(255,255,255,0.92)", color: "var(--lp-ink)" }}
-                >
-                  Örnek ilan
-                </span>
               </div>
               <div className="p-4">
                 <div className="font-serif text-base mb-1" style={{ color: "var(--lp-ink)" }}>{it.crop}</div>
                 <div className="text-xs mb-3 flex items-center gap-1" style={{ color: "var(--lp-muted)" }}>
-                  <MapPin className="w-3 h-3" /> {it.loc} · {it.farmer}
+                  <MapPin className="w-3 h-3" /> {it.loc} · Üretici {it.farmer}
                 </div>
                 <div className="flex items-baseline justify-between mb-2">
                   <span className="text-sm" style={{ color: "var(--lp-muted)" }}>{it.qty}</span>
