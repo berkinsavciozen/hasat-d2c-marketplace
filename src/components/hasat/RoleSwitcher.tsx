@@ -1,4 +1,4 @@
-import { useNavigate } from "@tanstack/react-router";
+import { useNavigate, useRouterState } from "@tanstack/react-router";
 import { useState } from "react";
 import { useHasat } from "@/lib/hasat/store";
 import { ChevronDown, X } from "lucide-react";
@@ -7,9 +7,12 @@ export function RoleSwitcher() {
   const user = useHasat((s) => s.user);
   const setRole = useHasat((s) => s.setRole);
   const navigate = useNavigate();
+  const pathname = useRouterState({ select: (s) => s.location.pathname });
   const [open, setOpen] = useState(false);
 
   if (!import.meta.env.DEV) return null;
+  // Never leak dev switcher onto the public landing page.
+  if (pathname === "/") return null;
 
   if (!open) {
     return (

@@ -931,7 +931,7 @@ function TrustScoreLadder() {
     { key: "tam", label: "Tam İzlenebilir", desc: "Sezon adımları tam kayıtlı.", pct: 100 },
   ];
   return (
-    <section className="px-4 py-16 md:py-24 border-t" style={{ borderColor: "var(--lp-line)" }} ref={ref}>
+    <section className="px-4 py-16 md:py-24 border-t" style={{ borderColor: "var(--lp-line)", background: "var(--lp-cream)", position: "relative", isolation: "isolate" }} ref={ref}>
       <div className="mx-auto max-w-6xl">
         <div className="text-center mb-10 lp-reveal">
           <div className="text-xs uppercase tracking-widest mb-2" style={{ color: "var(--lp-muted)" }}>Güven skoru</div>
