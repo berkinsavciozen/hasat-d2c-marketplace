@@ -21,7 +21,7 @@ import {
   ShoppingBasket,
   Globe2,
   Users2,
-  TrendingDown,
+  
   Lock,
   Percent,
 } from "lucide-react";
@@ -66,16 +66,14 @@ const lpVars: React.CSSProperties = {
 };
 
 /* Photo URLs — atmospheric stock, no faces, no watermarks. */
+import IMG_SAFFRON from "@/assets/crop-saffron.jpg";
+import IMG_OLIVE from "@/assets/crop-olive.jpg";
+import IMG_HAZELNUT from "@/assets/crop-hazelnut.jpg";
+import turkeyOutlineUrl from "@/assets/turkey-outline.svg?url";
 const IMG_HERO_FIELD =
   "https://images.unsplash.com/photo-1500937386664-56d1dfef3854?auto=format&fit=crop&w=2000&q=80";
-const IMG_SAFFRON =
-  "https://images.unsplash.com/photo-1600289031464-74d374b64991?auto=format&fit=crop&w=1200&q=80";
-const IMG_OLIVE =
-  "https://images.unsplash.com/photo-1445264718234-a623be589d37?auto=format&fit=crop&w=1200&q=80";
 const IMG_LAVENDER =
-  "https://images.unsplash.com/photo-1468581264429-2548ef9eb732?auto=format&fit=crop&w=1200&q=80";
-const IMG_HAZELNUT =
-  "https://images.unsplash.com/photo-1508747703725-719777637510?auto=format&fit=crop&w=1200&q=80";
+  "https://images.unsplash.com/photo-1499002238440-d264edd596ec?auto=format&fit=crop&w=1200&q=80";
 const IMG_SOIL_HANDS =
   "https://images.unsplash.com/photo-1592982537447-7440770cbfc9?auto=format&fit=crop&w=1600&q=80";
 
@@ -214,8 +212,8 @@ function useReveal<T extends HTMLElement>() {
 function Nav({ onRole }: { onRole: (r: "farmer" | "buyer") => void }) {
   return (
     <header
-      className="sticky top-0 z-40 backdrop-blur border-b"
-      style={{ background: "color-mix(in oklab, var(--lp-cream) 82%, transparent)", borderColor: "var(--lp-line)" }}
+      className="sticky top-0 z-40 border-b"
+      style={{ background: "var(--lp-cream)", borderColor: "var(--lp-line)" }}
     >
       <div className="mx-auto max-w-6xl px-4 py-3 flex items-center justify-between">
         <div className="flex items-center gap-2 min-w-0">
@@ -316,12 +314,6 @@ function Hero({ onRole }: { onRole: (r: "farmer" | "buyer") => void }) {
               >
                 <ShieldCheck className="w-3 h-3" /> Tam İzlenebilir
               </span>
-              <span
-                className="absolute top-3 right-3 inline-flex items-center rounded-full px-2 py-1 text-[10px]"
-                style={{ background: "rgba(255,255,255,0.9)", color: "var(--lp-ink)" }}
-              >
-                Örnek ilan
-              </span>
             </div>
             <div className="p-3">
               <div className="flex items-baseline justify-between gap-2">
@@ -329,7 +321,7 @@ function Hero({ onRole }: { onRole: (r: "farmer" | "buyer") => void }) {
                 <div className="text-sm font-medium" style={{ color: "var(--lp-primary)" }}>₺2.900</div>
               </div>
               <div className="mt-1 flex items-center gap-2 text-xs" style={{ color: "var(--lp-muted)" }}>
-                <MapPin className="w-3 h-3" /> Safranbolu · Ahmet
+                <MapPin className="w-3 h-3" /> Safranbolu · A. Y. <span className="opacity-70">· örnek üretici</span>
               </div>
               <div className="mt-2 flex items-center gap-2 text-xs" style={{ color: "var(--lp-muted)" }}>
                 <div className="inline-flex items-center gap-0.5" style={{ color: "var(--lp-accent)" }}>
@@ -342,18 +334,18 @@ function Hero({ onRole }: { onRole: (r: "farmer" | "buyer") => void }) {
 
           {/* Timeline overlay */}
           <div
-            className="lp-glass rounded-2xl p-4 mt-4 max-w-sm mx-auto md:ml-auto md:-mt-6 md:mr-6 md:translate-x-4"
+            className="lp-glass rounded-2xl p-6 mt-4 max-w-sm mx-auto md:ml-auto md:-mt-6 md:mr-6 md:translate-x-4"
             style={{ boxShadow: "0 20px 40px -18px rgba(0,0,0,0.3)" }}
           >
-            <div className="text-[11px] uppercase tracking-widest mb-3" style={{ color: "var(--lp-muted)" }}>
+            <div className="text-[11px] uppercase tracking-widest mb-4" style={{ color: "var(--lp-muted)" }}>
               Tarla günlüğü
             </div>
             <TimelineDraw
               items={[
-                { icon: <Droplets className="w-3.5 h-3.5" />, label: "Sulandı", date: "3 Eki" },
-                { icon: <Camera className="w-3.5 h-3.5" />, label: "Fotoğraf eklendi", date: "8 Eki" },
-                { icon: <Sprout className="w-3.5 h-3.5" />, label: "Gübrelendi", date: "15 Eki" },
-                { icon: <Scissors className="w-3.5 h-3.5" />, label: "Hasat edildi", date: "22 Eki" },
+                { icon: <Droplets className="w-4 h-4" />, label: "Sulandı", date: "3 Eki" },
+                { icon: <Camera className="w-4 h-4" />, label: "Fotoğraf eklendi", date: "8 Eki" },
+                { icon: <Sprout className="w-4 h-4" />, label: "Gübrelendi", date: "15 Eki" },
+                { icon: <Scissors className="w-4 h-4" />, label: "Hasat edildi", date: "22 Eki" },
               ]}
             />
           </div>
@@ -365,25 +357,25 @@ function Hero({ onRole }: { onRole: (r: "farmer" | "buyer") => void }) {
 
 function TimelineDraw({ items }: { items: { icon: React.ReactNode; label: string; date: string }[] }) {
   return (
-    <ol className="relative pl-6 space-y-3">
+    <ol className="relative pl-9 space-y-5">
       <span
-        className="absolute left-[9px] top-1 bottom-1 w-px"
+        className="absolute left-[11px] top-2 bottom-2 w-px"
         style={{ background: "var(--lp-accent)", animation: "lp-timeline-grow 1.6s ease-out forwards" }}
       />
       {items.map((it, i) => (
         <li
           key={it.label}
-          className="relative flex items-center gap-3"
+          className="relative grid grid-cols-[1fr_auto] items-center gap-4"
           style={{ animation: `lp-fade-up .6s ease-out ${0.4 + i * 0.25}s both` }}
         >
           <span
-            className="absolute -left-6 top-1 grid place-items-center w-[18px] h-[18px] rounded-full"
+            className="absolute -left-9 top-1/2 -translate-y-1/2 grid place-items-center w-6 h-6 rounded-full"
             style={{ background: "var(--lp-accent)", color: "#fff" }}
           >
             {it.icon}
           </span>
           <div className="text-sm" style={{ color: "var(--lp-ink)" }}>{it.label}</div>
-          <div className="ml-auto text-[11px]" style={{ color: "var(--lp-muted)" }}>{it.date}</div>
+          <div className="text-xs tabular-nums" style={{ color: "var(--lp-muted)" }}>{it.date}</div>
         </li>
       ))}
     </ol>
@@ -399,7 +391,7 @@ function ValuePillars() {
     { icon: <Percent className="w-5 h-5" />, title: "Adil Fiyat", body: "Piyasa referansı görünür; sapmalar hem alıcıya hem üreticiye bildirilir." },
   ];
   return (
-    <section className="px-4 py-16 md:py-20" ref={ref}>
+    <section className="px-4 py-16 md:py-20" style={{ background: "var(--lp-cream)", position: "relative", isolation: "isolate" }} ref={ref}>
       <div className="mx-auto max-w-6xl grid gap-4 md:grid-cols-3">
         {items.map((it, i) => (
           <div
@@ -424,63 +416,101 @@ function ValuePillars() {
 /* ---------- Supply chain comparison ---------- */
 function SupplyChain() {
   const ref = useReveal<HTMLDivElement>();
-  const traditional = ["Çiftçi", "Aracı", "Toptancı", "Distribütör", "Perakendeci", "Tüketici"];
-  const direct = ["Çiftçi", "Hasat", "{ Restoran · İhracatçı · Market · Bireysel }"];
+  const [mode, setMode] = useState<"traditional" | "hasat">("traditional");
+  const traditional = [
+    { label: "Çiftçi", pct: 100 },
+    { label: "Aracı", pct: 62 },
+    { label: "Toptancı", pct: 46 },
+    { label: "Distribütör", pct: 32 },
+    { label: "Perakendeci", pct: 22 },
+    { label: "Tüketici", pct: 14 },
+  ];
+  const direct = [
+    { label: "Çiftçi", pct: 100 },
+    { label: "Hasat", pct: 95 },
+    { label: "Alıcı", pct: 92 },
+  ];
+  const isHasat = mode === "hasat";
+  const nodes = isHasat ? direct : traditional;
+  const barTint = isHasat ? "var(--lp-accent)" : "var(--lp-earth)";
+  const nodeBg = isHasat
+    ? "color-mix(in oklab, var(--lp-accent) 12%, var(--lp-white))"
+    : "color-mix(in oklab, var(--lp-earth) 12%, var(--lp-white))";
   return (
-    <section className="px-4 py-16 md:py-24 border-t" style={{ borderColor: "var(--lp-line)", background: "var(--lp-cream-2)" }} ref={ref}>
+    <section
+      className="px-4 py-16 md:py-24 border-t"
+      style={{ borderColor: "var(--lp-line)", background: "var(--lp-cream-2)", position: "relative", isolation: "isolate" }}
+      ref={ref}
+    >
       <div className="mx-auto max-w-6xl">
-        <div className="text-center mb-12 lp-reveal">
+        <div className="text-center mb-10 lp-reveal">
           <div className="text-xs uppercase tracking-widest mb-2" style={{ color: "var(--lp-muted)" }}>Tedarik zinciri</div>
-          <h2 className="font-serif text-3xl md:text-4xl" style={{ color: "var(--lp-ink)" }}>
-            Değer, halkalar arasında kayboluyor.
+          <h2 className="font-serif text-3xl md:text-4xl transition-opacity duration-300" style={{ color: "var(--lp-ink)" }} key={mode}>
+            {isHasat ? "Doğrudan ödeme, bütün değer üreticide." : "Değer, halkalar arasında kayboluyor."}
           </h2>
         </div>
 
-        <div className="lp-card rounded-3xl p-6 md:p-10 lp-reveal lp-reveal-d1">
-          <div className="text-xs uppercase tracking-widest mb-4" style={{ color: "var(--lp-earth)" }}>
-            Geleneksel
+        {/* Toggle */}
+        <div className="mx-auto mb-8 inline-flex rounded-full p-1 lp-reveal lp-reveal-d1"
+          style={{ background: "var(--lp-white)", border: "1px solid var(--lp-line)" }}>
+          <button
+            onClick={() => setMode("traditional")}
+            className="rounded-full px-4 py-2 text-xs md:text-sm font-medium transition"
+            style={{
+              background: !isHasat ? "var(--lp-earth)" : "transparent",
+              color: !isHasat ? "#fff" : "var(--lp-muted)",
+            }}
+          >Geleneksel</button>
+          <button
+            onClick={() => setMode("hasat")}
+            className="rounded-full px-4 py-2 text-xs md:text-sm font-medium transition"
+            style={{
+              background: isHasat ? "var(--lp-primary)" : "transparent",
+              color: isHasat ? "#fff" : "var(--lp-muted)",
+            }}
+          >Hasat ile</button>
+        </div>
+
+        <div className="lp-card rounded-3xl p-6 md:p-10 lp-reveal lp-reveal-d2">
+          <div className="flex items-baseline justify-between mb-6">
+            <div className="text-xs uppercase tracking-widest" style={{ color: isHasat ? "var(--lp-accent)" : "var(--lp-earth)" }}>
+              {isHasat ? "Hasat ile" : "Geleneksel"}
+            </div>
+            <div className="text-xs" style={{ color: "var(--lp-muted)" }}>Üreticinin eline geçen değer</div>
           </div>
-          <div className="flex flex-wrap items-center gap-2 md:gap-3">
-            {traditional.map((node, i) => (
-              <div key={node} className="flex items-center gap-2 md:gap-3">
-                <div
-                  className="rounded-xl px-3 py-2 text-xs md:text-sm"
-                  style={{
-                    background: "color-mix(in oklab, var(--lp-earth) 14%, var(--lp-white))",
-                    color: "var(--lp-ink)",
-                  }}
-                >
-                  {node}
-                </div>
-                {i < traditional.length - 1 && (
-                  <span className="inline-flex items-center gap-1" style={{ color: "var(--lp-earth)", opacity: 0.7 }}>
-                    <ArrowRight className="w-3.5 h-3.5" />
-                    <span className="text-[10px] inline-flex items-center gap-0.5">
-                      <TrendingDown className="w-3 h-3" /> değer
-                    </span>
-                  </span>
+
+          <div className="grid gap-3" style={{ gridTemplateColumns: `repeat(${nodes.length}, minmax(0,1fr))` }}>
+            {nodes.map((n, i) => (
+              <div key={n.label} className="flex flex-col items-center relative">
+                {i < nodes.length - 1 && (
+                  <span className="hidden md:block absolute top-4 left-1/2 w-full h-px" style={{ background: "var(--lp-line)" }} aria-hidden />
                 )}
-              </div>
-            ))}
-          </div>
-
-          <div className="my-8 h-px" style={{ background: "var(--lp-line)" }} />
-
-          <div className="text-xs uppercase tracking-widest mb-4" style={{ color: "var(--lp-accent)" }}>
-            Hasat ile
-          </div>
-          <div className="flex flex-wrap items-center gap-3">
-            {direct.map((node, i) => (
-              <div key={node} className="flex items-center gap-3">
                 <div
-                  className="rounded-xl px-3 py-2 text-sm md:text-base font-medium"
-                  style={{ background: "var(--lp-primary)", color: "#fff" }}
+                  className="rounded-full px-3 py-1.5 text-[11px] md:text-xs relative z-10 text-center w-full max-w-[140px]"
+                  style={{ background: nodeBg, color: "var(--lp-ink)", border: "1px solid var(--lp-line)" }}
                 >
-                  {node}
+                  {n.label}
                 </div>
-                {i < direct.length - 1 && <ArrowRight className="w-4 h-4" style={{ color: "var(--lp-accent)" }} />}
+                {/* Value bar */}
+                <div className="mt-4 w-full max-w-[80px] flex flex-col items-center">
+                  <div className="relative w-full h-24 md:h-32 rounded-lg overflow-hidden" style={{ background: "color-mix(in oklab, var(--lp-line) 60%, transparent)" }}>
+                    <div
+                      className="absolute inset-x-0 bottom-0 rounded-lg transition-all duration-700 ease-out"
+                      style={{ height: `${n.pct}%`, background: barTint }}
+                    />
+                  </div>
+                  <div className="mt-2 text-sm md:text-base font-semibold tabular-nums" style={{ color: "var(--lp-ink)" }}>
+                    {n.pct}%
+                  </div>
+                </div>
               </div>
             ))}
+          </div>
+
+          <div className="mt-8 pt-6 border-t text-xs md:text-sm text-center" style={{ borderColor: "var(--lp-line)", color: "var(--lp-muted)" }}>
+            {isHasat
+              ? "Şeffaf komisyon: %5. Ödeme doğrudan çiftçinin IBAN'ına."
+              : "Ortalama olarak son tüketicinin ödediği her ₺100'ün yalnızca ~₺14'ü üreticide kalıyor."}
           </div>
         </div>
       </div>
@@ -492,14 +522,18 @@ function SupplyChain() {
 function TraceabilityMock() {
   const ref = useReveal<HTMLDivElement>();
   const rows = [
-    { icon: <Sprout className="w-3.5 h-3.5" />, label: "Dikim", date: "12 Nis" },
-    { icon: <Droplets className="w-3.5 h-3.5" />, label: "Sulama", date: "3 May" },
-    { icon: <Camera className="w-3.5 h-3.5" />, label: "Fotoğraf: çiçek", date: "20 May" },
-    { icon: <Sprout className="w-3.5 h-3.5" />, label: "Gübreleme", date: "8 Haz" },
-    { icon: <Scissors className="w-3.5 h-3.5" />, label: "Hasat", date: "22 Eki" },
+    { icon: <Sprout className="w-4 h-4" />, label: "Dikim", date: "12 Nis" },
+    { icon: <Droplets className="w-4 h-4" />, label: "Sulama", date: "3 May" },
+    { icon: <Camera className="w-4 h-4" />, label: "Fotoğraf: çiçek", date: "20 May" },
+    { icon: <Sprout className="w-4 h-4" />, label: "Gübreleme", date: "8 Haz" },
+    { icon: <Scissors className="w-4 h-4" />, label: "Hasat", date: "22 Eki" },
   ];
   return (
-    <section className="px-4 py-16 md:py-24 border-t" style={{ borderColor: "var(--lp-line)" }} ref={ref}>
+    <section
+      className="px-4 py-16 md:py-24 border-t"
+      style={{ borderColor: "var(--lp-line)", background: "var(--lp-cream)", position: "relative", isolation: "isolate" }}
+      ref={ref}
+    >
       <div className="mx-auto max-w-6xl grid gap-12 md:grid-cols-2 items-center">
         <div className="lp-reveal">
           <div className="text-xs uppercase tracking-widest mb-2" style={{ color: "var(--lp-muted)" }}>İzlenebilirlik</div>
@@ -534,28 +568,28 @@ function TraceabilityMock() {
                   <MapPin className="w-3 h-3" /> Safranbolu
                 </span>
               </div>
-              <div className="p-4">
-                <div className="font-serif text-base mb-3" style={{ color: "var(--lp-ink)" }}>Safran · Parsel 1</div>
-                <ol className="space-y-2.5">
+              <div className="p-5">
+                <div className="font-serif text-base mb-4" style={{ color: "var(--lp-ink)" }}>Safran · Parsel 1</div>
+                <ol className="space-y-4">
                   {rows.map((r, i) => (
                     <li
                       key={r.label}
-                      className="flex items-center gap-3 opacity-0"
+                      className="grid grid-cols-[auto_1fr_auto] items-center gap-4 opacity-0"
                       style={{ animation: `lp-fade-up .55s ease-out ${0.1 + i * 0.18}s both` }}
                     >
                       <span
-                        className="grid place-items-center w-6 h-6 rounded-full"
+                        className="grid place-items-center w-7 h-7 rounded-full shrink-0"
                         style={{ background: "color-mix(in oklab, var(--lp-accent) 18%, transparent)", color: "var(--lp-accent)" }}
                       >
                         {r.icon}
                       </span>
-                      <span className="text-xs" style={{ color: "var(--lp-ink)" }}>{r.label}</span>
-                      <span className="ml-auto text-[11px]" style={{ color: "var(--lp-muted)" }}>{r.date}</span>
+                      <span className="text-sm min-w-0 truncate" style={{ color: "var(--lp-ink)" }}>{r.label}</span>
+                      <span className="text-xs tabular-nums" style={{ color: "var(--lp-muted)" }}>{r.date}</span>
                     </li>
                   ))}
                 </ol>
                 <div
-                  className="mt-4 inline-flex items-center gap-1 rounded-full px-2 py-1 text-[10px] font-medium"
+                  className="mt-5 inline-flex items-center gap-1 rounded-full px-2 py-1 text-[10px] font-medium"
                   style={{ background: "var(--lp-primary)", color: "#fff" }}
                 >
                   <ShieldCheck className="w-3 h-3" /> Tam İzlenebilir · %92
@@ -573,18 +607,23 @@ function TraceabilityMock() {
 function MarketplacePreview() {
   const ref = useReveal<HTMLDivElement>();
   const items = [
-    { img: IMG_SAFFRON, crop: "Safran", loc: "Safranbolu", farmer: "Ahmet", tier: "Tam İzlenebilir", qty: "50 gr", price: "₺2.900", when: "Hasat: 22 Eki 2025", delivery: "Kargo" },
-    { img: IMG_OLIVE, crop: "Zeytinyağı · Erken hasat", loc: "Ayvalık", farmer: "Mehmet", tier: "İyi Belgelenmiş", qty: "1 L", price: "₺620", when: "Hasat: 3 Kas 2025", delivery: "Kargo" },
-    { img: IMG_LAVENDER, crop: "Lavanta kurusu", loc: "Isparta", farmer: "Ayşe", tier: "Tam İzlenebilir", qty: "250 gr", price: "₺380", when: "Hasat: 18 Tem 2025", delivery: "Kargo" },
-    { img: IMG_HAZELNUT, crop: "Fındık · Levant", loc: "Giresun", farmer: "Selim", tier: "İyi Belgelenmiş", qty: "1 kg", price: "₺310", when: "Hasat: 25 Ağu 2025", delivery: "Kargo · Elden" },
+    { img: IMG_SAFFRON, crop: "Safran", loc: "Safranbolu", farmer: "A. Y.", tier: "Tam İzlenebilir", qty: "50 gr", price: "₺2.900", when: "Hasat: 22 Eki 2025", delivery: "Kargo" },
+    { img: IMG_OLIVE, crop: "Zeytinyağı · Erken hasat", loc: "Ayvalık", farmer: "M. K.", tier: "İyi Belgelenmiş", qty: "1 L", price: "₺620", when: "Hasat: 3 Kas 2025", delivery: "Kargo" },
+    { img: IMG_LAVENDER, crop: "Lavanta kurusu", loc: "Isparta", farmer: "A. D.", tier: "Tam İzlenebilir", qty: "250 gr", price: "₺380", when: "Hasat: 18 Tem 2025", delivery: "Kargo" },
+    { img: IMG_HAZELNUT, crop: "Fındık · Levant", loc: "Giresun", farmer: "S. T.", tier: "İyi Belgelenmiş", qty: "1 kg", price: "₺310", when: "Hasat: 25 Ağu 2025", delivery: "Kargo · Elden" },
   ];
   return (
-    <section className="px-4 py-16 md:py-24 border-t" style={{ borderColor: "var(--lp-line)", background: "var(--lp-cream-2)" }} ref={ref}>
+    <section
+      className="px-4 py-16 md:py-24 border-t"
+      style={{ borderColor: "var(--lp-line)", background: "var(--lp-cream-2)", position: "relative", isolation: "isolate" }}
+      ref={ref}
+    >
       <div className="mx-auto max-w-6xl">
         <div className="flex items-end justify-between mb-8 lp-reveal">
           <div>
             <div className="text-xs uppercase tracking-widest mb-2" style={{ color: "var(--lp-muted)" }}>Pazar yeri</div>
             <h2 className="font-serif text-3xl md:text-4xl" style={{ color: "var(--lp-ink)" }}>Öne çıkan üreticiler.</h2>
+            <div className="text-xs mt-1" style={{ color: "var(--lp-muted)" }}>Aşağıdaki kartlar örnek üretici verisi içerir.</div>
           </div>
         </div>
         <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
@@ -594,24 +633,18 @@ function MarketplacePreview() {
               className={`lp-card lp-card-hover rounded-2xl overflow-hidden lp-reveal lp-reveal-d${(i % 4) + 1}`}
             >
               <div className="relative aspect-[4/3]">
-                <img src={it.img} alt={it.crop} className="w-full h-full object-cover" />
+                <img src={it.img} alt={it.crop} loading="lazy" className="w-full h-full object-cover" />
                 <span
                   className="absolute top-3 left-3 inline-flex items-center gap-1 rounded-full px-2 py-1 text-[10px] font-medium"
                   style={{ background: "var(--lp-primary)", color: "#fff" }}
                 >
                   <ShieldCheck className="w-3 h-3" /> {it.tier}
                 </span>
-                <span
-                  className="absolute top-3 right-3 inline-flex items-center rounded-full px-2 py-1 text-[10px]"
-                  style={{ background: "rgba(255,255,255,0.92)", color: "var(--lp-ink)" }}
-                >
-                  Örnek ilan
-                </span>
               </div>
               <div className="p-4">
                 <div className="font-serif text-base mb-1" style={{ color: "var(--lp-ink)" }}>{it.crop}</div>
                 <div className="text-xs mb-3 flex items-center gap-1" style={{ color: "var(--lp-muted)" }}>
-                  <MapPin className="w-3 h-3" /> {it.loc} · {it.farmer}
+                  <MapPin className="w-3 h-3" /> {it.loc} · Üretici {it.farmer}
                 </div>
                 <div className="flex items-baseline justify-between mb-2">
                   <span className="text-sm" style={{ color: "var(--lp-muted)" }}>{it.qty}</span>
@@ -631,23 +664,28 @@ function MarketplacePreview() {
 }
 
 /* ---------- Turkey map ---------- */
-type Pin = { id: string; x: number; y: number; region: string; crop: string; qty: string; tier: string };
+type Pin = { id: string; xPct: number; yPct: number; region: string; crop: string; qty: string; tier: string };
 const PINS: Pin[] = [
-  { id: "safranbolu", x: 470, y: 92, region: "Safranbolu", crop: "Safran", qty: "1.2 kg", tier: "Tam İzlenebilir" },
-  { id: "isparta", x: 385, y: 235, region: "Isparta", crop: "Lavanta", qty: "40 kg", tier: "Tam İzlenebilir" },
-  { id: "ayvalik", x: 170, y: 195, region: "Ayvalık", crop: "Zeytinyağı", qty: "800 L", tier: "İyi Belgelenmiş" },
-  { id: "giresun", x: 620, y: 100, region: "Giresun", crop: "Fındık", qty: "2 t", tier: "İyi Belgelenmiş" },
-  { id: "malatya", x: 665, y: 215, region: "Malatya", crop: "Kayısı", qty: "1.5 t", tier: "İyi Belgelenmiş" },
-  { id: "izmir", x: 165, y: 240, region: "İzmir", crop: "İncir", qty: "600 kg", tier: "Tam İzlenebilir" },
-  { id: "antalya", x: 350, y: 305, region: "Antalya", crop: "Nar", qty: "900 kg", tier: "Temel" },
+  // Coordinates are % positions inside the visible Turkey outline area (cropped band).
+  { id: "safranbolu", xPct: 47, yPct: 30, region: "Safranbolu", crop: "Safran", qty: "1.2 kg", tier: "Tam İzlenebilir" },
+  { id: "isparta",    xPct: 34, yPct: 62, region: "Isparta",    crop: "Lavanta",    qty: "40 kg", tier: "Tam İzlenebilir" },
+  { id: "ayvalik",    xPct: 14, yPct: 48, region: "Ayvalık",    crop: "Zeytinyağı", qty: "800 L", tier: "İyi Belgelenmiş" },
+  { id: "giresun",    xPct: 70, yPct: 24, region: "Giresun",    crop: "Fındık",     qty: "2 t",   tier: "İyi Belgelenmiş" },
+  { id: "malatya",    xPct: 71, yPct: 55, region: "Malatya",    crop: "Kayısı",     qty: "1.5 t", tier: "İyi Belgelenmiş" },
+  { id: "izmir",      xPct: 13, yPct: 60, region: "İzmir",      crop: "İncir",      qty: "600 kg", tier: "Tam İzlenebilir" },
+  { id: "antalya",    xPct: 37, yPct: 78, region: "Antalya",    crop: "Nar",        qty: "900 kg", tier: "Temel" },
 ];
 
 function TurkeyMap() {
   const ref = useReveal<HTMLDivElement>();
-  const [active, setActive] = useState<string | null>("safranbolu");
+  const [active, setActive] = useState<string>("safranbolu");
   const pin = useMemo(() => PINS.find((p) => p.id === active) ?? PINS[0], [active]);
   return (
-    <section className="px-4 py-16 md:py-24 border-t" style={{ borderColor: "var(--lp-line)" }} ref={ref}>
+    <section
+      className="px-4 py-16 md:py-24 border-t"
+      style={{ borderColor: "var(--lp-line)", background: "var(--lp-cream)", position: "relative", isolation: "isolate" }}
+      ref={ref}
+    >
       <div className="mx-auto max-w-6xl">
         <div className="text-center mb-10 lp-reveal">
           <div className="text-xs uppercase tracking-widest mb-2" style={{ color: "var(--lp-muted)" }}>Üretim haritası</div>
@@ -655,46 +693,63 @@ function TurkeyMap() {
         </div>
 
         <div className="lp-card rounded-3xl p-4 md:p-8 lp-reveal lp-reveal-d1 grid gap-6 md:grid-cols-[1fr_260px] items-center">
-          <div className="relative">
-            <svg viewBox="0 0 800 400" className="w-full h-auto">
-              {/* Stylized Turkey outline — abstract, not geographically precise */}
-              <path
-                d="M60,220 C90,180 130,155 190,150 C240,145 275,165 320,155 C360,145 400,120 460,115 C520,110 570,90 620,95 C670,100 720,110 750,135 C775,155 770,190 745,210 C720,230 680,240 640,235 C600,230 570,240 530,245 C480,252 430,260 380,270 C330,280 290,300 245,305 C200,310 155,300 115,285 C80,272 55,255 60,220 Z"
-                fill="color-mix(in oklab, var(--lp-primary) 12%, var(--lp-cream))"
-                stroke="var(--lp-primary)"
-                strokeWidth="1.5"
-              />
-              {PINS.map((p) => {
-                const isActive = p.id === active;
-                return (
-                  <g key={p.id} onClick={() => setActive(p.id)} className="cursor-pointer">
-                    <circle
-                      cx={p.x}
-                      cy={p.y}
-                      r={6}
-                      fill={isActive ? "var(--lp-accent)" : "var(--lp-primary)"}
-                    />
-                    <circle
-                      cx={p.x}
-                      cy={p.y}
-                      r={6}
-                      fill={isActive ? "var(--lp-accent)" : "var(--lp-primary)"}
-                      className="lp-pin-halo"
-                      style={{ transformOrigin: `${p.x}px ${p.y}px`, transformBox: "fill-box" }}
-                      opacity={0.35}
-                    />
-                    {isActive && (
-                      <text x={p.x + 10} y={p.y + 4} fontSize="11" fill="var(--lp-ink)" fontFamily="Georgia, serif">
-                        {p.region}
-                      </text>
-                    )}
-                  </g>
-                );
-              })}
-            </svg>
+          <div
+            className="relative w-full mx-auto"
+            style={{ aspectRatio: "16 / 8", maxWidth: 720 }}
+          >
+            <img
+              src={turkeyOutlineUrl}
+              alt="Türkiye haritası ana hattı"
+              className="absolute inset-0 w-full h-full"
+              style={{
+                objectFit: "cover",
+                objectPosition: "center",
+                /* Recolor the black silhouette to a soft primary tint */
+                filter: "brightness(0) saturate(100%) invert(19%) sepia(19%) saturate(1113%) hue-rotate(97deg) brightness(96%) contrast(88%) opacity(0.55)",
+              }}
+            />
+            {/* Pin overlay */}
+            {PINS.map((p) => {
+              const isActive = p.id === active;
+              return (
+                <button
+                  key={p.id}
+                  type="button"
+                  onClick={() => setActive(p.id)}
+                  className="absolute -translate-x-1/2 -translate-y-1/2 group"
+                  style={{ left: `${p.xPct}%`, top: `${p.yPct}%` }}
+                  aria-label={p.region}
+                >
+                  <span
+                    className="block rounded-full"
+                    style={{
+                      width: isActive ? 14 : 10,
+                      height: isActive ? 14 : 10,
+                      background: isActive ? "var(--lp-accent)" : "var(--lp-primary)",
+                      boxShadow: isActive
+                        ? "0 0 0 4px color-mix(in oklab, var(--lp-accent) 25%, transparent)"
+                        : "0 0 0 2px var(--lp-white)",
+                      transition: "all .25s ease",
+                    }}
+                  />
+                  <span
+                    className="absolute left-1/2 -translate-x-1/2 mt-1.5 whitespace-nowrap rounded px-1.5 py-0.5 text-[10px] font-medium pointer-events-none"
+                    style={{
+                      top: "100%",
+                      background: isActive ? "var(--lp-primary)" : "var(--lp-white)",
+                      color: isActive ? "#fff" : "var(--lp-ink)",
+                      border: "1px solid var(--lp-line)",
+                      opacity: isActive ? 1 : 0.85,
+                    }}
+                  >
+                    {p.region}
+                  </span>
+                </button>
+              );
+            })}
           </div>
 
-          <div className="rounded-2xl p-4" style={{ background: "var(--lp-cream)", border: "1px solid var(--lp-line)" }}>
+          <div className="rounded-2xl p-4" style={{ background: "var(--lp-cream-2)", border: "1px solid var(--lp-line)" }}>
             <div className="text-[11px] uppercase tracking-widest mb-2" style={{ color: "var(--lp-muted)" }}>
               Örnek üretim
             </div>
@@ -749,7 +804,7 @@ function FarmerStory() {
             görüyor — güven kendiliğinden geliyor."
           </blockquote>
           <div className="mt-4 text-sm" style={{ color: "var(--lp-muted)" }}>
-            <span className="italic">Örnek senaryo — </span> Ahmet, Safranbolu · 5 dönüm safran
+            <span className="italic">Örnek senaryo — </span> Üretici A. Y., Safranbolu · 5 dönüm safran
           </div>
         </div>
       </div>
@@ -768,7 +823,7 @@ function BuyerPersonas() {
     { icon: <Users2 className="w-5 h-5" />, title: "Bireysel Tüketici", body: "Ailen için güvenli, taze ve gerçekten üreticiden gelen ürünler." },
   ];
   return (
-    <section className="px-4 py-16 md:py-24 border-t" style={{ borderColor: "var(--lp-line)" }} ref={ref}>
+    <section className="px-4 py-16 md:py-24 border-t" style={{ borderColor: "var(--lp-line)", background: "var(--lp-cream)", position: "relative", isolation: "isolate" }} ref={ref}>
       <div className="mx-auto max-w-6xl">
         <div className="text-center mb-10 lp-reveal">
           <div className="text-xs uppercase tracking-widest mb-2" style={{ color: "var(--lp-muted)" }}>Alıcılar</div>
@@ -876,7 +931,7 @@ function TrustScoreLadder() {
     { key: "tam", label: "Tam İzlenebilir", desc: "Sezon adımları tam kayıtlı.", pct: 100 },
   ];
   return (
-    <section className="px-4 py-16 md:py-24 border-t" style={{ borderColor: "var(--lp-line)" }} ref={ref}>
+    <section className="px-4 py-16 md:py-24 border-t" style={{ borderColor: "var(--lp-line)", background: "var(--lp-cream)", position: "relative", isolation: "isolate" }} ref={ref}>
       <div className="mx-auto max-w-6xl">
         <div className="text-center mb-10 lp-reveal">
           <div className="text-xs uppercase tracking-widest mb-2" style={{ color: "var(--lp-muted)" }}>Güven skoru</div>
