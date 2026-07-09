@@ -1,0 +1,170 @@
+{
+  "version": 1,
+  "sdk_version": "0.20.0",
+  "path": "/mcp",
+  "auth": {
+    "type": "oauth",
+    "issuer": "https://efuqpiaavrzimvstpdpm.supabase.co/auth/v1",
+    "accepted_audiences": [
+      "authenticated"
+    ]
+  },
+  "mcp": {
+    "server": {
+      "name": "hasat-mcp",
+      "version": "0.1.0",
+      "title": "Hasat"
+    },
+    "tools": [
+      {
+        "name": "list_my_listings",
+        "title": "List my listings",
+        "description": "List the signed-in farmer's active marketplace listings (crop, quantity, price).",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "type": "object",
+          "properties": {
+            "status": {
+              "default": "active",
+              "description": "Filter by listing status. Defaults to active.",
+              "type": "string",
+              "enum": [
+                "active",
+                "draft",
+                "sold",
+                "any"
+              ]
+            },
+            "limit": {
+              "default": 20,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            }
+          }
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "list_recent_harvests",
+        "title": "List recent harvests",
+        "description": "List the signed-in farmer's most recent harvest journal entries (crop, quantity, quality, date).",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "type": "object",
+          "properties": {
+            "limit": {
+              "default": 10,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 50
+            },
+            "crop": {
+              "description": "Optional crop name filter.",
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "list_pending_offers",
+        "title": "List pending offers",
+        "description": "List offers currently awaiting the signed-in user's response (as farmer or buyer). RLS scopes the result.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "type": "object",
+          "properties": {
+            "limit": {
+              "default": 20,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 50
+            }
+          }
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "create_harvest_entry",
+        "title": "Create harvest entry",
+        "description": "Log a new harvest journal entry for the signed-in farmer. Requires an existing parcel_id owned by the user.",
+        "annotations": {
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "type": "object",
+          "properties": {
+            "parcel_id": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
+              "description": "Parcel UUID owned by the farmer."
+            },
+            "crop": {
+              "type": "string",
+              "minLength": 1
+            },
+            "quantity": {
+              "type": "number",
+              "exclusiveMinimum": 0
+            },
+            "unit": {
+              "default": "kg",
+              "type": "string",
+              "enum": [
+                "g",
+                "kg",
+                "L"
+              ]
+            },
+            "harvest_date": {
+              "type": "string",
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+              "description": "ISO date YYYY-MM-DD."
+            },
+            "quality": {
+              "default": "A",
+              "type": "string",
+              "enum": [
+                "A",
+                "B",
+                "C"
+              ]
+            },
+            "notes": {
+              "type": "string",
+              "maxLength": 2000
+            }
+          },
+          "required": [
+            "parcel_id",
+            "crop",
+            "quantity",
+            "harvest_date"
+          ]
+        },
+        "outputSchema": null
+      }
+    ]
+  }
+}

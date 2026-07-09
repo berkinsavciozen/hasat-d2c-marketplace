@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as TermsRouteImport } from './routes/terms'
 import { Route as PrivacyRouteImport } from './routes/privacy'
+import { Route as McpRouteImport } from './routes/mcp'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as JoinRouteImport } from './routes/join'
 import { Route as FarmerRouteImport } from './routes/farmer'
@@ -37,6 +38,8 @@ import { Route as BuyerMessagesRouteImport } from './routes/buyer.messages'
 import { Route as BuyerDiscoverRouteImport } from './routes/buyer.discover'
 import { Route as BuyerAccountRouteImport } from './routes/buyer.account'
 import { Route as BatchListingIdRouteImport } from './routes/batch.$listingId'
+import { Route as Char91DotwellKnownChar93OauthProtectedResourceRouteImport } from './routes/[.well-known]/oauth-protected-resource'
+import { Route as Char91DotmcpChar93ListToolsRouteImport } from './routes/[.mcp]/list-tools'
 import { Route as FarmerOrdersIndexRouteImport } from './routes/farmer.orders.index'
 import { Route as FarmerJournalIndexRouteImport } from './routes/farmer.journal.index'
 import { Route as FarmerSettingsNotifsRouteImport } from './routes/farmer.settings.notifs'
@@ -48,6 +51,7 @@ import { Route as BuyerPayOfferIdRouteImport } from './routes/buyer.pay.$offerId
 import { Route as BuyerOrdersOrderIdRouteImport } from './routes/buyer.orders.$orderId'
 import { Route as BuyerOfferListingIdRouteImport } from './routes/buyer.offer.$listingId'
 import { Route as BuyerNegotiationOfferIdRouteImport } from './routes/buyer.negotiation.$offerId'
+import { Route as Char91DotmcpChar93InvokeToolToolRouteImport } from './routes/[.mcp]/invoke-tool/$tool'
 
 const TermsRoute = TermsRouteImport.update({
   id: '/terms',
@@ -57,6 +61,11 @@ const TermsRoute = TermsRouteImport.update({
 const PrivacyRoute = PrivacyRouteImport.update({
   id: '/privacy',
   path: '/privacy',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const McpRoute = McpRouteImport.update({
+  id: '/mcp',
+  path: '/mcp',
   getParentRoute: () => rootRouteImport,
 } as any)
 const LoginRoute = LoginRouteImport.update({
@@ -189,6 +198,18 @@ const BatchListingIdRoute = BatchListingIdRouteImport.update({
   path: '/batch/$listingId',
   getParentRoute: () => rootRouteImport,
 } as any)
+const Char91DotwellKnownChar93OauthProtectedResourceRoute =
+  Char91DotwellKnownChar93OauthProtectedResourceRouteImport.update({
+    id: '/.well-known/oauth-protected-resource',
+    path: '/.well-known/oauth-protected-resource',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const Char91DotmcpChar93ListToolsRoute =
+  Char91DotmcpChar93ListToolsRouteImport.update({
+    id: '/.mcp/list-tools',
+    path: '/.mcp/list-tools',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const FarmerOrdersIndexRoute = FarmerOrdersIndexRouteImport.update({
   id: '/orders/',
   path: '/orders/',
@@ -245,6 +266,12 @@ const BuyerNegotiationOfferIdRoute = BuyerNegotiationOfferIdRouteImport.update({
   path: '/negotiation/$offerId',
   getParentRoute: () => BuyerRoute,
 } as any)
+const Char91DotmcpChar93InvokeToolToolRoute =
+  Char91DotmcpChar93InvokeToolToolRouteImport.update({
+    id: '/.mcp/invoke-tool/$tool',
+    path: '/.mcp/invoke-tool/$tool',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -252,8 +279,11 @@ export interface FileRoutesByFullPath {
   '/farmer': typeof FarmerRouteWithChildren
   '/join': typeof JoinRoute
   '/login': typeof LoginRoute
+  '/mcp': typeof McpRoute
   '/privacy': typeof PrivacyRoute
   '/terms': typeof TermsRoute
+  '/.mcp/list-tools': typeof Char91DotmcpChar93ListToolsRoute
+  '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   '/batch/$listingId': typeof BatchListingIdRoute
   '/buyer/account': typeof BuyerAccountRoute
   '/buyer/discover': typeof BuyerDiscoverRoute
@@ -275,6 +305,7 @@ export interface FileRoutesByFullPath {
   '/onboarding/buyer': typeof OnboardingBuyerRoute
   '/onboarding/farmer': typeof OnboardingFarmerRoute
   '/s/$slug': typeof SSlugRoute
+  '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
   '/buyer/negotiation/$offerId': typeof BuyerNegotiationOfferIdRoute
   '/buyer/offer/$listingId': typeof BuyerOfferListingIdRoute
   '/buyer/orders/$orderId': typeof BuyerOrdersOrderIdRoute
@@ -293,8 +324,11 @@ export interface FileRoutesByTo {
   '/farmer': typeof FarmerRouteWithChildren
   '/join': typeof JoinRoute
   '/login': typeof LoginRoute
+  '/mcp': typeof McpRoute
   '/privacy': typeof PrivacyRoute
   '/terms': typeof TermsRoute
+  '/.mcp/list-tools': typeof Char91DotmcpChar93ListToolsRoute
+  '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   '/batch/$listingId': typeof BatchListingIdRoute
   '/buyer/account': typeof BuyerAccountRoute
   '/buyer/discover': typeof BuyerDiscoverRoute
@@ -315,6 +349,7 @@ export interface FileRoutesByTo {
   '/onboarding/buyer': typeof OnboardingBuyerRoute
   '/onboarding/farmer': typeof OnboardingFarmerRoute
   '/s/$slug': typeof SSlugRoute
+  '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
   '/buyer/negotiation/$offerId': typeof BuyerNegotiationOfferIdRoute
   '/buyer/offer/$listingId': typeof BuyerOfferListingIdRoute
   '/buyer/orders/$orderId': typeof BuyerOrdersOrderIdRoute
@@ -334,8 +369,11 @@ export interface FileRoutesById {
   '/farmer': typeof FarmerRouteWithChildren
   '/join': typeof JoinRoute
   '/login': typeof LoginRoute
+  '/mcp': typeof McpRoute
   '/privacy': typeof PrivacyRoute
   '/terms': typeof TermsRoute
+  '/.mcp/list-tools': typeof Char91DotmcpChar93ListToolsRoute
+  '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   '/batch/$listingId': typeof BatchListingIdRoute
   '/buyer/account': typeof BuyerAccountRoute
   '/buyer/discover': typeof BuyerDiscoverRoute
@@ -357,6 +395,7 @@ export interface FileRoutesById {
   '/onboarding/buyer': typeof OnboardingBuyerRoute
   '/onboarding/farmer': typeof OnboardingFarmerRoute
   '/s/$slug': typeof SSlugRoute
+  '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
   '/buyer/negotiation/$offerId': typeof BuyerNegotiationOfferIdRoute
   '/buyer/offer/$listingId': typeof BuyerOfferListingIdRoute
   '/buyer/orders/$orderId': typeof BuyerOrdersOrderIdRoute
@@ -377,8 +416,11 @@ export interface FileRouteTypes {
     | '/farmer'
     | '/join'
     | '/login'
+    | '/mcp'
     | '/privacy'
     | '/terms'
+    | '/.mcp/list-tools'
+    | '/.well-known/oauth-protected-resource'
     | '/batch/$listingId'
     | '/buyer/account'
     | '/buyer/discover'
@@ -400,6 +442,7 @@ export interface FileRouteTypes {
     | '/onboarding/buyer'
     | '/onboarding/farmer'
     | '/s/$slug'
+    | '/.mcp/invoke-tool/$tool'
     | '/buyer/negotiation/$offerId'
     | '/buyer/offer/$listingId'
     | '/buyer/orders/$orderId'
@@ -418,8 +461,11 @@ export interface FileRouteTypes {
     | '/farmer'
     | '/join'
     | '/login'
+    | '/mcp'
     | '/privacy'
     | '/terms'
+    | '/.mcp/list-tools'
+    | '/.well-known/oauth-protected-resource'
     | '/batch/$listingId'
     | '/buyer/account'
     | '/buyer/discover'
@@ -440,6 +486,7 @@ export interface FileRouteTypes {
     | '/onboarding/buyer'
     | '/onboarding/farmer'
     | '/s/$slug'
+    | '/.mcp/invoke-tool/$tool'
     | '/buyer/negotiation/$offerId'
     | '/buyer/offer/$listingId'
     | '/buyer/orders/$orderId'
@@ -458,8 +505,11 @@ export interface FileRouteTypes {
     | '/farmer'
     | '/join'
     | '/login'
+    | '/mcp'
     | '/privacy'
     | '/terms'
+    | '/.mcp/list-tools'
+    | '/.well-known/oauth-protected-resource'
     | '/batch/$listingId'
     | '/buyer/account'
     | '/buyer/discover'
@@ -481,6 +531,7 @@ export interface FileRouteTypes {
     | '/onboarding/buyer'
     | '/onboarding/farmer'
     | '/s/$slug'
+    | '/.mcp/invoke-tool/$tool'
     | '/buyer/negotiation/$offerId'
     | '/buyer/offer/$listingId'
     | '/buyer/orders/$orderId'
@@ -500,12 +551,16 @@ export interface RootRouteChildren {
   FarmerRoute: typeof FarmerRouteWithChildren
   JoinRoute: typeof JoinRoute
   LoginRoute: typeof LoginRoute
+  McpRoute: typeof McpRoute
   PrivacyRoute: typeof PrivacyRoute
   TermsRoute: typeof TermsRoute
+  Char91DotmcpChar93ListToolsRoute: typeof Char91DotmcpChar93ListToolsRoute
+  Char91DotwellKnownChar93OauthProtectedResourceRoute: typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   BatchListingIdRoute: typeof BatchListingIdRoute
   OnboardingBuyerRoute: typeof OnboardingBuyerRoute
   OnboardingFarmerRoute: typeof OnboardingFarmerRoute
   SSlugRoute: typeof SSlugRoute
+  Char91DotmcpChar93InvokeToolToolRoute: typeof Char91DotmcpChar93InvokeToolToolRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -522,6 +577,13 @@ declare module '@tanstack/react-router' {
       path: '/privacy'
       fullPath: '/privacy'
       preLoaderRoute: typeof PrivacyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/mcp': {
+      id: '/mcp'
+      path: '/mcp'
+      fullPath: '/mcp'
+      preLoaderRoute: typeof McpRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/login': {
@@ -706,6 +768,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof BatchListingIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/.well-known/oauth-protected-resource': {
+      id: '/.well-known/oauth-protected-resource'
+      path: '/.well-known/oauth-protected-resource'
+      fullPath: '/.well-known/oauth-protected-resource'
+      preLoaderRoute: typeof Char91DotwellKnownChar93OauthProtectedResourceRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/.mcp/list-tools': {
+      id: '/.mcp/list-tools'
+      path: '/.mcp/list-tools'
+      fullPath: '/.mcp/list-tools'
+      preLoaderRoute: typeof Char91DotmcpChar93ListToolsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/farmer/orders/': {
       id: '/farmer/orders/'
       path: '/orders'
@@ -782,6 +858,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/buyer/negotiation/$offerId'
       preLoaderRoute: typeof BuyerNegotiationOfferIdRouteImport
       parentRoute: typeof BuyerRoute
+    }
+    '/.mcp/invoke-tool/$tool': {
+      id: '/.mcp/invoke-tool/$tool'
+      path: '/.mcp/invoke-tool/$tool'
+      fullPath: '/.mcp/invoke-tool/$tool'
+      preLoaderRoute: typeof Char91DotmcpChar93InvokeToolToolRouteImport
+      parentRoute: typeof rootRouteImport
     }
   }
 }
@@ -895,12 +978,17 @@ const rootRouteChildren: RootRouteChildren = {
   FarmerRoute: FarmerRouteWithChildren,
   JoinRoute: JoinRoute,
   LoginRoute: LoginRoute,
+  McpRoute: McpRoute,
   PrivacyRoute: PrivacyRoute,
   TermsRoute: TermsRoute,
+  Char91DotmcpChar93ListToolsRoute: Char91DotmcpChar93ListToolsRoute,
+  Char91DotwellKnownChar93OauthProtectedResourceRoute:
+    Char91DotwellKnownChar93OauthProtectedResourceRoute,
   BatchListingIdRoute: BatchListingIdRoute,
   OnboardingBuyerRoute: OnboardingBuyerRoute,
   OnboardingFarmerRoute: OnboardingFarmerRoute,
   SSlugRoute: SSlugRoute,
+  Char91DotmcpChar93InvokeToolToolRoute: Char91DotmcpChar93InvokeToolToolRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
