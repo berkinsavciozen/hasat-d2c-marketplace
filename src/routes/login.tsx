@@ -7,8 +7,16 @@ import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/login")({
   head: () => ({ meta: [{ title: "Giriş — Hasat" }] }),
-  validateSearch: (s: Record<string, unknown>): { role?: "farmer" | "buyer" } =>
-    s.role === "buyer" ? { role: "buyer" } : s.role === "farmer" ? { role: "farmer" } : {},
+  validateSearch: (s: Record<string, unknown>): { role?: "farmer" | "buyer"; next?: string } => {
+    const out: { role?: "farmer" | "buyer"; next?: string } = {};
+    if (s.role === "buyer") out.role = "buyer";
+    else if (s.role === "farmer") out.role = "farmer";
+    // Only preserve same-origin relative paths — never external URLs.
+    if (typeof s.next === "string" && s.next.startsWith("/") && !s.next.startsWith("//")) {
+      out.next = s.next;
+    }
+    return out;
+  },
   component: LoginPage,
 });
 
@@ -27,7 +35,7 @@ function translateAuthError(e: Error): string {
 function LoginPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const { role: roleParam } = Route.useSearch();
+  const { role: roleParam, next } = Route.useSearch();
   const role: "farmer" | "buyer" = roleParam ?? "farmer";
   const setRole = useHasat((s) => s.setRole);
   const updateUser = useHasat((s) => s.updateUser);
