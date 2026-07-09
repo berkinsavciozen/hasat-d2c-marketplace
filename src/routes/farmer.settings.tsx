@@ -404,6 +404,20 @@ function Settings() {
           <ChevronRight className="h-4 w-4 text-muted-foreground" />
         </Link>
 
+        <Section title="Verilerim">
+          <div className="text-xs text-muted-foreground mb-2">
+            Parsellerinizi, tarla günlüğü kayıtlarınızı, ilanlarınızı ve
+            sertifikalarınızı JSON dosyası olarak indirin.
+          </div>
+          <button
+            onClick={exportData}
+            disabled={exporting}
+            className="flex items-center gap-2 rounded-lg px-4 py-2.5 text-sm font-medium border border-border hover:bg-muted disabled:opacity-50"
+          >
+            <Download className="h-4 w-4" /> {exporting ? "Hazırlanıyor…" : "Verilerimi İndir"}
+          </button>
+        </Section>
+
         <Section title="Hesap">
           <button onClick={logout}
             className="flex items-center gap-2 rounded-lg px-4 py-2.5 text-sm font-medium text-destructive border border-destructive/40 hover:bg-destructive/10">
