@@ -137,6 +137,43 @@ function Settings() {
     finally { setRole(null); navigate({ to: "/" }); }
   };
 
+  const [exporting, setExporting] = useState(false);
+  const exportData = async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) { toast.error("Oturum bulunamadı"); return; }
+    setExporting(true);
+    try {
+      const [parcelsR, harvestsR, listingsR, certsR] = await Promise.all([
+        supabase.from("parcels").select("*").eq("farmer_id", user.id),
+        supabase.from("harvest_entries").select("*").eq("farmer_id", user.id),
+        supabase.from("listings").select("*").eq("farmer_id", user.id),
+        supabase.from("certifications").select("*").eq("farmer_id", user.id),
+      ]);
+      const payload = {
+        exported_at: new Date().toISOString(),
+        farmer_id: user.id,
+        parcels: parcelsR.data ?? [],
+        harvest_entries: harvestsR.data ?? [],
+        listings: listingsR.data ?? [],
+        certifications: certsR.data ?? [],
+      };
+      const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `hasat-verilerim-${new Date().toISOString().slice(0, 10)}.json`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+      toast.success("Verileriniz indirildi");
+    } catch (e: any) {
+      toast.error(e?.message ?? "İndirilemedi");
+    } finally {
+      setExporting(false);
+    }
+  };
+
   const fmtDate = (s: string | null) => s ? new Date(s).toLocaleDateString("tr-TR") : "—";
 
   return (
