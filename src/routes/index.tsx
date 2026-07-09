@@ -321,7 +321,7 @@ function Hero({ onRole }: { onRole: (r: "farmer" | "buyer") => void }) {
                 <div className="text-sm font-medium" style={{ color: "var(--lp-primary)" }}>₺2.900</div>
               </div>
               <div className="mt-1 flex items-center gap-2 text-xs" style={{ color: "var(--lp-muted)" }}>
-                <MapPin className="w-3 h-3" /> Safranbolu · Ahmet
+                <MapPin className="w-3 h-3" /> Safranbolu · A. Y. <span className="opacity-70">· örnek üretici</span>
               </div>
               <div className="mt-2 flex items-center gap-2 text-xs" style={{ color: "var(--lp-muted)" }}>
                 <div className="inline-flex items-center gap-0.5" style={{ color: "var(--lp-accent)" }}>
@@ -334,18 +334,18 @@ function Hero({ onRole }: { onRole: (r: "farmer" | "buyer") => void }) {
 
           {/* Timeline overlay */}
           <div
-            className="lp-glass rounded-2xl p-4 mt-4 max-w-sm mx-auto md:ml-auto md:-mt-6 md:mr-6 md:translate-x-4"
+            className="lp-glass rounded-2xl p-6 mt-4 max-w-sm mx-auto md:ml-auto md:-mt-6 md:mr-6 md:translate-x-4"
             style={{ boxShadow: "0 20px 40px -18px rgba(0,0,0,0.3)" }}
           >
-            <div className="text-[11px] uppercase tracking-widest mb-3" style={{ color: "var(--lp-muted)" }}>
+            <div className="text-[11px] uppercase tracking-widest mb-4" style={{ color: "var(--lp-muted)" }}>
               Tarla günlüğü
             </div>
             <TimelineDraw
               items={[
-                { icon: <Droplets className="w-3.5 h-3.5" />, label: "Sulandı", date: "3 Eki" },
-                { icon: <Camera className="w-3.5 h-3.5" />, label: "Fotoğraf eklendi", date: "8 Eki" },
-                { icon: <Sprout className="w-3.5 h-3.5" />, label: "Gübrelendi", date: "15 Eki" },
-                { icon: <Scissors className="w-3.5 h-3.5" />, label: "Hasat edildi", date: "22 Eki" },
+                { icon: <Droplets className="w-4 h-4" />, label: "Sulandı", date: "3 Eki" },
+                { icon: <Camera className="w-4 h-4" />, label: "Fotoğraf eklendi", date: "8 Eki" },
+                { icon: <Sprout className="w-4 h-4" />, label: "Gübrelendi", date: "15 Eki" },
+                { icon: <Scissors className="w-4 h-4" />, label: "Hasat edildi", date: "22 Eki" },
               ]}
             />
           </div>
@@ -357,25 +357,25 @@ function Hero({ onRole }: { onRole: (r: "farmer" | "buyer") => void }) {
 
 function TimelineDraw({ items }: { items: { icon: React.ReactNode; label: string; date: string }[] }) {
   return (
-    <ol className="relative pl-6 space-y-3">
+    <ol className="relative pl-9 space-y-5">
       <span
-        className="absolute left-[9px] top-1 bottom-1 w-px"
+        className="absolute left-[11px] top-2 bottom-2 w-px"
         style={{ background: "var(--lp-accent)", animation: "lp-timeline-grow 1.6s ease-out forwards" }}
       />
       {items.map((it, i) => (
         <li
           key={it.label}
-          className="relative flex items-center gap-3"
+          className="relative grid grid-cols-[1fr_auto] items-center gap-4"
           style={{ animation: `lp-fade-up .6s ease-out ${0.4 + i * 0.25}s both` }}
         >
           <span
-            className="absolute -left-6 top-1 grid place-items-center w-[18px] h-[18px] rounded-full"
+            className="absolute -left-9 top-1/2 -translate-y-1/2 grid place-items-center w-6 h-6 rounded-full"
             style={{ background: "var(--lp-accent)", color: "#fff" }}
           >
             {it.icon}
           </span>
           <div className="text-sm" style={{ color: "var(--lp-ink)" }}>{it.label}</div>
-          <div className="ml-auto text-[11px]" style={{ color: "var(--lp-muted)" }}>{it.date}</div>
+          <div className="text-xs tabular-nums" style={{ color: "var(--lp-muted)" }}>{it.date}</div>
         </li>
       ))}
     </ol>
