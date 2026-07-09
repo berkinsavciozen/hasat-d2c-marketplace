@@ -68,7 +68,12 @@ function LoginPage() {
         .maybeSingle();
       if (cancelled) return;
       const r = (profile?.role === "buyer" ? "buyer" : "farmer") as "farmer" | "buyer";
-      if (!profile?.name || profile.name.trim() === "") {
+      const hasProfile = !!profile?.name && profile.name.trim() !== "";
+      if (next && hasProfile) {
+        window.location.href = next;
+        return;
+      }
+      if (!hasProfile) {
         navigate({ to: r === "buyer" ? "/onboarding/buyer" : "/onboarding/farmer" });
       } else {
         navigate({ to: r === "buyer" ? "/buyer/discover" : "/farmer/home" });
@@ -169,7 +174,11 @@ function LoginPage() {
           city: profile.city ?? "",
           premium: !!profile.premium,
         });
-        navigate({ to: profileRole === "buyer" ? "/buyer/discover" : "/farmer/home" });
+        if (next) {
+          window.location.href = next;
+        } else {
+          navigate({ to: profileRole === "buyer" ? "/buyer/discover" : "/farmer/home" });
+        }
       }
     } catch (e) {
       toast.error(translateAuthError(e as Error));
