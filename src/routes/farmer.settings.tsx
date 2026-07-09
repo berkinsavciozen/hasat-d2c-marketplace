@@ -6,7 +6,7 @@ import { useParcels, useCreateParcel, useUpdateParcel, useDeleteParcel, useCerti
 import { ProgressDots } from "@/components/hasat/ProgressDots";
 import { Input } from "@/components/ui/input";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
-import { Bell, ChevronRight, LogOut, Pencil, Trash2, Sparkles } from "lucide-react";
+import { Bell, ChevronRight, Download, LogOut, Pencil, Trash2, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { TierBadge } from "@/components/hasat/TierBadge";
