@@ -1619,6 +1619,7 @@ export interface CommunityPostRow {
   createdAt: string;
   parentId: string | null;
   replyCount: number;
+  flaggedForReview: boolean;
 }
 
 function dbToPost(r: any): CommunityPostRow {
@@ -1635,8 +1636,21 @@ function dbToPost(r: any): CommunityPostRow {
     createdAt: r.created_at,
     parentId: r.parent_id ?? null,
     replyCount: 0,
+    flaggedForReview: !!r.flagged_for_review,
   };
 }
+
+// Rule-based check for potential price-coordination content.
+// Flags posts that reference money AND coordination language — never blocks.
+const CURRENCY_TERMS = ["₺", " tl", "$"];
+const COORDINATION_TERMS = ["anlaşalım", "birlikte", "hepimiz", "sabit fiyat", "taban fiyat"];
+export function looksLikePriceCoordination(text: string): boolean {
+  const s = ` ${text.toLowerCase()} `;
+  const hasCurrency = CURRENCY_TERMS.some((t) => s.includes(t));
+  const hasCoord = COORDINATION_TERMS.some((t) => s.includes(t));
+  return hasCurrency && hasCoord;
+}
+
 
 export function useCommunityPosts(categoryFilter?: string) {
   const filter = categoryFilter && categoryFilter !== "Tümü" ? categoryFilter : null;
