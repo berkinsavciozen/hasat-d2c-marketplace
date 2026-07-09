@@ -181,6 +181,7 @@ export type Database = {
           comments_count: number
           content: string
           created_at: string
+          flagged_for_review: boolean
           id: string
           likes_count: number
           parent_id: string | null
@@ -191,6 +192,7 @@ export type Database = {
           comments_count?: number
           content: string
           created_at?: string
+          flagged_for_review?: boolean
           id?: string
           likes_count?: number
           parent_id?: string | null
@@ -201,6 +203,7 @@ export type Database = {
           comments_count?: number
           content?: string
           created_at?: string
+          flagged_for_review?: boolean
           id?: string
           likes_count?: number
           parent_id?: string | null
@@ -1101,6 +1104,17 @@ export type Database = {
       get_my_role_for_offer: {
         Args: { offer_row: Database["public"]["Tables"]["offers"]["Row"] }
         Returns: string
+      }
+      get_price_feed_summary: {
+        Args: { p_crop: string }
+        Returns: {
+          avg_price: number
+          crop_name: string
+          distinct_farmer_count: number
+          insufficient_data: boolean
+          last_updated: string
+          stddev_price: number
+        }[]
       }
       increment_ai_usage: { Args: { _user_id: string }; Returns: number }
     }
