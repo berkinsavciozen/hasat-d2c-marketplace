@@ -804,7 +804,7 @@ function FarmerStory() {
             görüyor — güven kendiliğinden geliyor."
           </blockquote>
           <div className="mt-4 text-sm" style={{ color: "var(--lp-muted)" }}>
-            <span className="italic">Örnek senaryo — </span> Ahmet, Safranbolu · 5 dönüm safran
+            <span className="italic">Örnek senaryo — </span> Üretici A. Y., Safranbolu · 5 dönüm safran
           </div>
         </div>
       </div>
