@@ -116,7 +116,7 @@ function TermsPage() {
         </section>
 
         <section>
-          <h2 className="font-serif text-2xl mb-3" style={{ color: "var(--gold)" }}>8. Rekabet ve Fiyat Koordinasyonu Yasağı</h2>
+          <h2 className="font-serif text-2xl mb-3" style={{ color: "var(--gold)" }}>Rekabet ve Fiyat Koordinasyonu Yasağı</h2>
           <p className="text-sm text-hwhite/80 leading-relaxed">
             Hasat platformunu (Topluluk özelliği dahil) diğer üreticilerle
             satış fiyatı, üretim miktarı ya da hangi alıcıya veya bölgeye satış
