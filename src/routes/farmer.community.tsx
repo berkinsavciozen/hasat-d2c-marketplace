@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { Heart, MessageCircle, Plus, Search } from "lucide-react";
-import { useCommunityPosts, useCommunityReplies, useCreatePost, useCreateReply, type CommunityPostRow } from "@/lib/hasat/queries";
+import { useCommunityPosts, useCommunityReplies, useCreatePost, useCreateReply, useAuthUserId, type CommunityPostRow } from "@/lib/hasat/queries";
 import { LoadingDots } from "@/components/hasat/LoadingDots";
 import { slugifyFarmer } from "@/lib/hasat/vitrin";
 import { toast } from "sonner";
