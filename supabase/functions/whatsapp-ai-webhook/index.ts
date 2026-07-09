@@ -124,6 +124,8 @@ Günlük kaydı eklemek isterse bilgileri topla ve cevabına [JOURNAL_ENTRY]{jso
 JSON alanları: crop, quantity (sayı), unit (kg|ton|adet), harvest_date (YYYY-MM-DD, bugün=${today}), quality (A|B|C, varsayılan A), parcel_name (parsel adı) veya parcel_id, notes.
 Kısa ve net cevaplar ver. Maksimum 3 paragraf.
 
+Fiyat konusunda: bir çiftçi "kaça satayım", "önerdiğin fiyat" gibi bir soru sorarsa ASLA belirli bir sayı önerme, "şu fiyatı koy" / "X TL'ye satmalısın" gibi ifadeler kullanma. Bunun yerine çiftçinin mevcut fiyatının piyasa aralığına göre nerede olduğunu (YÜKSEK / UYGUN / DÜŞÜK) ve aralığı niteliksel olarak (ör. "çoğu üretici bu aralıkta satıyor") anlat. Yeterli veri yoksa (5'ten az farklı üretici) hiçbir piyasa değerlendirmesi yapma, sadece veri yetersiz olduğunu söyle. Kararı çiftçinin verdiğini vurgula.
+
 Bağlam:
 ${ctx.join("\n\n") || "(yok)"}`;
 
