@@ -12,7 +12,7 @@
   "mcp": {
     "server": {
       "name": "hasat-mcp",
-      "version": "0.1.0",
+      "version": "0.2.0",
       "title": "Hasat"
     },
     "tools": [
@@ -162,6 +162,424 @@
             "quantity",
             "harvest_date"
           ]
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "create_parcel",
+        "title": "Create parcel",
+        "description": "Create a new parcel (field/plot) for the signed-in farmer. Triggers auto-draft-listing generation.",
+        "annotations": {
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "type": "object",
+          "properties": {
+            "name": {
+              "type": "string",
+              "minLength": 1
+            },
+            "city": {
+              "type": "string",
+              "minLength": 1,
+              "description": "City / location label."
+            },
+            "area": {
+              "type": "number",
+              "exclusiveMinimum": 0,
+              "description": "Area in decares (dönüm)."
+            },
+            "crops": {
+              "minItems": 1,
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1
+              }
+            }
+          },
+          "required": [
+            "name",
+            "city",
+            "area",
+            "crops"
+          ]
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "list_my_parcels",
+        "title": "List my parcels",
+        "description": "List the signed-in farmer's parcels.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "type": "object",
+          "properties": {
+            "limit": {
+              "default": 50,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            }
+          }
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "publish_listing",
+        "title": "Publish listing",
+        "description": "Publish a draft listing: set status=active with the given quantity and unit price. Only the listing's owner can publish (enforced by RLS).",
+        "annotations": {
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "type": "object",
+          "properties": {
+            "listing_id": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "quantity": {
+              "type": "number",
+              "exclusiveMinimum": 0
+            },
+            "price_per_unit": {
+              "type": "number",
+              "exclusiveMinimum": 0
+            }
+          },
+          "required": [
+            "listing_id",
+            "quantity",
+            "price_per_unit"
+          ]
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "list_offers_on_my_listings",
+        "title": "List offers on my listings",
+        "description": "List all offers on the signed-in farmer's listings, in any status. RLS scopes results to your listings.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "type": "object",
+          "properties": {
+            "status": {
+              "default": "any",
+              "type": "string",
+              "enum": [
+                "accepted",
+                "pending",
+                "counter",
+                "rejected",
+                "completed",
+                "any"
+              ]
+            },
+            "limit": {
+              "default": 50,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            }
+          }
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "respond_to_offer",
+        "title": "Respond to buyer's offer",
+        "description": "SENSITIVE — respond to a buyer's offer on your listing. action='accept' LOCKS the listing's stock via a DB trigger and creates an order; this cannot be reversed via this tool. action='decline' rejects it. action='counter' sends a counter-offer. Requires confirm=true.",
+        "annotations": {
+          "readOnlyHint": false,
+          "destructiveHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "type": "object",
+          "properties": {
+            "offer_id": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "action": {
+              "type": "string",
+              "enum": [
+                "accept",
+                "decline",
+                "counter"
+              ]
+            },
+            "counter_price": {
+              "description": "Required when action='counter'.",
+              "type": "number",
+              "exclusiveMinimum": 0
+            },
+            "counter_quantity": {
+              "type": "number",
+              "exclusiveMinimum": 0
+            },
+            "confirm": {
+              "type": "boolean",
+              "const": true,
+              "description": "Must be true — safety guard for irreversible actions."
+            }
+          },
+          "required": [
+            "offer_id",
+            "action",
+            "confirm"
+          ]
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "confirm_payment_received",
+        "title": "Confirm payment received",
+        "description": "SENSITIVE — as the farmer, confirm the buyer's bank transfer has arrived. Finalizes the order as paid. This cannot be reversed via this tool. Requires confirm=true.",
+        "annotations": {
+          "readOnlyHint": false,
+          "destructiveHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "type": "object",
+          "properties": {
+            "order_id": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "confirm": {
+              "type": "boolean",
+              "const": true,
+              "description": "Must be true — safety guard for irreversible action."
+            }
+          },
+          "required": [
+            "order_id",
+            "confirm"
+          ]
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "browse_marketplace",
+        "title": "Browse marketplace",
+        "description": "Browse public active listings on the marketplace. Optionally filter by crop or seller city.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "type": "object",
+          "properties": {
+            "crop": {
+              "type": "string",
+              "minLength": 1
+            },
+            "city": {
+              "description": "Seller's city (matches profiles.city).",
+              "type": "string",
+              "minLength": 1
+            },
+            "limit": {
+              "default": 20,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 50
+            }
+          }
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "create_offer",
+        "title": "Create offer",
+        "description": "Submit a new offer on an active listing as the signed-in buyer.",
+        "annotations": {
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "type": "object",
+          "properties": {
+            "listing_id": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "quantity": {
+              "type": "number",
+              "exclusiveMinimum": 0
+            },
+            "offered_price": {
+              "type": "number",
+              "exclusiveMinimum": 0,
+              "description": "Per-unit price offered."
+            }
+          },
+          "required": [
+            "listing_id",
+            "quantity",
+            "offered_price"
+          ]
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "respond_to_counter",
+        "title": "Respond to farmer's counter-offer",
+        "description": "SENSITIVE — respond to the farmer's counter-offer as the buyer. action='accept' LOCKS the listing's stock and creates an order; this cannot be reversed via this tool. action='decline' rejects it. Requires confirm=true.",
+        "annotations": {
+          "readOnlyHint": false,
+          "destructiveHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "type": "object",
+          "properties": {
+            "offer_id": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "action": {
+              "type": "string",
+              "enum": [
+                "accept",
+                "decline"
+              ]
+            },
+            "confirm": {
+              "type": "boolean",
+              "const": true,
+              "description": "Must be true — safety guard for irreversible action."
+            }
+          },
+          "required": [
+            "offer_id",
+            "action",
+            "confirm"
+          ]
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "list_my_offers",
+        "title": "List my offers",
+        "description": "List the signed-in buyer's offers, in any status.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "type": "object",
+          "properties": {
+            "status": {
+              "default": "any",
+              "type": "string",
+              "enum": [
+                "pending",
+                "counter",
+                "accepted",
+                "rejected",
+                "completed",
+                "any"
+              ]
+            },
+            "limit": {
+              "default": 50,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            }
+          }
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "mark_transfer_sent",
+        "title": "Mark bank transfer sent",
+        "description": "SENSITIVE — as the buyer, signal to the farmer that you have sent the IBAN bank transfer for an accepted offer. This is a simulated payment bridge (no real payment gateway is connected yet). Requires confirm=true.",
+        "annotations": {
+          "readOnlyHint": false,
+          "destructiveHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "type": "object",
+          "properties": {
+            "order_id": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "confirm": {
+              "type": "boolean",
+              "const": true,
+              "description": "Must be true — safety guard."
+            }
+          },
+          "required": [
+            "order_id",
+            "confirm"
+          ]
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "list_my_orders",
+        "title": "List my orders",
+        "description": "List the signed-in buyer's orders.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "type": "object",
+          "properties": {
+            "status": {
+              "type": "string",
+              "minLength": 1
+            },
+            "limit": {
+              "default": 50,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            }
+          }
         },
         "outputSchema": null
       }
