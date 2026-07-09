@@ -1709,6 +1709,7 @@ export function useCreatePost() {
         author_id: userId,
         content: input.content,
         category: input.category,
+        flagged_for_review: looksLikePriceCoordination(input.content),
       }).select("*").single();
       if (error) throw error;
       return data;
@@ -1726,6 +1727,7 @@ export function useCreateReply() {
       const { data: parent } = await supabase
         .from("community_posts")
         .select("category")
+
         .eq("id", input.postId)
         .maybeSingle();
       const { data, error } = await supabase.from("community_posts").insert({
