@@ -212,8 +212,8 @@ function useReveal<T extends HTMLElement>() {
 function Nav({ onRole }: { onRole: (r: "farmer" | "buyer") => void }) {
   return (
     <header
-      className="sticky top-0 z-40 backdrop-blur border-b"
-      style={{ background: "color-mix(in oklab, var(--lp-cream) 82%, transparent)", borderColor: "var(--lp-line)" }}
+      className="sticky top-0 z-40 border-b"
+      style={{ background: "var(--lp-cream)", borderColor: "var(--lp-line)" }}
     >
       <div className="mx-auto max-w-6xl px-4 py-3 flex items-center justify-between">
         <div className="flex items-center gap-2 min-w-0">
@@ -313,12 +313,6 @@ function Hero({ onRole }: { onRole: (r: "farmer" | "buyer") => void }) {
                 style={{ background: "var(--lp-primary)", color: "#fff" }}
               >
                 <ShieldCheck className="w-3 h-3" /> Tam İzlenebilir
-              </span>
-              <span
-                className="absolute top-3 right-3 inline-flex items-center rounded-full px-2 py-1 text-[10px]"
-                style={{ background: "rgba(255,255,255,0.9)", color: "var(--lp-ink)" }}
-              >
-                Örnek ilan
               </span>
             </div>
             <div className="p-3">
