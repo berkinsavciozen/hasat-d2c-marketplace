@@ -42,6 +42,11 @@ function AuthorName({ post, className }: { post: Pick<CommunityPostRow, "authorI
   return <span className={className}>{name}</span>;
 }
 
+function maskIfFlagged(post: CommunityPostRow, viewerId: string | null): string {
+  if (post.flaggedForReview && post.authorId !== viewerId) return "Bu gönderi incelemede.";
+  return post.content;
+}
+
 function ReplyThread({ post }: { post: CommunityPostRow }) {
   const { data: replies = [], isLoading } = useCommunityReplies(post.id);
   const [draft, setDraft] = useState("");
