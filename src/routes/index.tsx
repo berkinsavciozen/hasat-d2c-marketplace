@@ -21,7 +21,7 @@ import {
   ShoppingBasket,
   Globe2,
   Users2,
-  TrendingDown,
+  
   Lock,
   Percent,
 } from "lucide-react";
@@ -66,16 +66,14 @@ const lpVars: React.CSSProperties = {
 };
 
 /* Photo URLs — atmospheric stock, no faces, no watermarks. */
+import IMG_SAFFRON from "@/assets/crop-saffron.jpg";
+import IMG_OLIVE from "@/assets/crop-olive.jpg";
+import IMG_HAZELNUT from "@/assets/crop-hazelnut.jpg";
+import turkeyOutlineUrl from "@/assets/turkey-outline.svg?url";
 const IMG_HERO_FIELD =
   "https://images.unsplash.com/photo-1500937386664-56d1dfef3854?auto=format&fit=crop&w=2000&q=80";
-const IMG_SAFFRON =
-  "https://images.unsplash.com/photo-1600289031464-74d374b64991?auto=format&fit=crop&w=1200&q=80";
-const IMG_OLIVE =
-  "https://images.unsplash.com/photo-1445264718234-a623be589d37?auto=format&fit=crop&w=1200&q=80";
 const IMG_LAVENDER =
-  "https://images.unsplash.com/photo-1468581264429-2548ef9eb732?auto=format&fit=crop&w=1200&q=80";
-const IMG_HAZELNUT =
-  "https://images.unsplash.com/photo-1508747703725-719777637510?auto=format&fit=crop&w=1200&q=80";
+  "https://images.unsplash.com/photo-1499002238440-d264edd596ec?auto=format&fit=crop&w=1200&q=80";
 const IMG_SOIL_HANDS =
   "https://images.unsplash.com/photo-1592982537447-7440770cbfc9?auto=format&fit=crop&w=1600&q=80";
 
