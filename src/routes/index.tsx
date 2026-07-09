@@ -416,63 +416,101 @@ function ValuePillars() {
 /* ---------- Supply chain comparison ---------- */
 function SupplyChain() {
   const ref = useReveal<HTMLDivElement>();
-  const traditional = ["Çiftçi", "Aracı", "Toptancı", "Distribütör", "Perakendeci", "Tüketici"];
-  const direct = ["Çiftçi", "Hasat", "{ Restoran · İhracatçı · Market · Bireysel }"];
+  const [mode, setMode] = useState<"traditional" | "hasat">("traditional");
+  const traditional = [
+    { label: "Çiftçi", pct: 100 },
+    { label: "Aracı", pct: 62 },
+    { label: "Toptancı", pct: 46 },
+    { label: "Distribütör", pct: 32 },
+    { label: "Perakendeci", pct: 22 },
+    { label: "Tüketici", pct: 14 },
+  ];
+  const direct = [
+    { label: "Çiftçi", pct: 100 },
+    { label: "Hasat", pct: 95 },
+    { label: "Alıcı", pct: 92 },
+  ];
+  const isHasat = mode === "hasat";
+  const nodes = isHasat ? direct : traditional;
+  const barTint = isHasat ? "var(--lp-accent)" : "var(--lp-earth)";
+  const nodeBg = isHasat
+    ? "color-mix(in oklab, var(--lp-accent) 12%, var(--lp-white))"
+    : "color-mix(in oklab, var(--lp-earth) 12%, var(--lp-white))";
   return (
-    <section className="px-4 py-16 md:py-24 border-t" style={{ borderColor: "var(--lp-line)", background: "var(--lp-cream-2)" }} ref={ref}>
+    <section
+      className="px-4 py-16 md:py-24 border-t"
+      style={{ borderColor: "var(--lp-line)", background: "var(--lp-cream-2)", position: "relative", isolation: "isolate" }}
+      ref={ref}
+    >
       <div className="mx-auto max-w-6xl">
-        <div className="text-center mb-12 lp-reveal">
+        <div className="text-center mb-10 lp-reveal">
           <div className="text-xs uppercase tracking-widest mb-2" style={{ color: "var(--lp-muted)" }}>Tedarik zinciri</div>
-          <h2 className="font-serif text-3xl md:text-4xl" style={{ color: "var(--lp-ink)" }}>
-            Değer, halkalar arasında kayboluyor.
+          <h2 className="font-serif text-3xl md:text-4xl transition-opacity duration-300" style={{ color: "var(--lp-ink)" }} key={mode}>
+            {isHasat ? "Doğrudan ödeme, bütün değer üreticide." : "Değer, halkalar arasında kayboluyor."}
           </h2>
         </div>
 
-        <div className="lp-card rounded-3xl p-6 md:p-10 lp-reveal lp-reveal-d1">
-          <div className="text-xs uppercase tracking-widest mb-4" style={{ color: "var(--lp-earth)" }}>
-            Geleneksel
+        {/* Toggle */}
+        <div className="mx-auto mb-8 inline-flex rounded-full p-1 lp-reveal lp-reveal-d1"
+          style={{ background: "var(--lp-white)", border: "1px solid var(--lp-line)" }}>
+          <button
+            onClick={() => setMode("traditional")}
+            className="rounded-full px-4 py-2 text-xs md:text-sm font-medium transition"
+            style={{
+              background: !isHasat ? "var(--lp-earth)" : "transparent",
+              color: !isHasat ? "#fff" : "var(--lp-muted)",
+            }}
+          >Geleneksel</button>
+          <button
+            onClick={() => setMode("hasat")}
+            className="rounded-full px-4 py-2 text-xs md:text-sm font-medium transition"
+            style={{
+              background: isHasat ? "var(--lp-primary)" : "transparent",
+              color: isHasat ? "#fff" : "var(--lp-muted)",
+            }}
+          >Hasat ile</button>
+        </div>
+
+        <div className="lp-card rounded-3xl p-6 md:p-10 lp-reveal lp-reveal-d2">
+          <div className="flex items-baseline justify-between mb-6">
+            <div className="text-xs uppercase tracking-widest" style={{ color: isHasat ? "var(--lp-accent)" : "var(--lp-earth)" }}>
+              {isHasat ? "Hasat ile" : "Geleneksel"}
+            </div>
+            <div className="text-xs" style={{ color: "var(--lp-muted)" }}>Üreticinin eline geçen değer</div>
           </div>
-          <div className="flex flex-wrap items-center gap-2 md:gap-3">
-            {traditional.map((node, i) => (
-              <div key={node} className="flex items-center gap-2 md:gap-3">
-                <div
-                  className="rounded-xl px-3 py-2 text-xs md:text-sm"
-                  style={{
-                    background: "color-mix(in oklab, var(--lp-earth) 14%, var(--lp-white))",
-                    color: "var(--lp-ink)",
-                  }}
-                >
-                  {node}
-                </div>
-                {i < traditional.length - 1 && (
-                  <span className="inline-flex items-center gap-1" style={{ color: "var(--lp-earth)", opacity: 0.7 }}>
-                    <ArrowRight className="w-3.5 h-3.5" />
-                    <span className="text-[10px] inline-flex items-center gap-0.5">
-                      <TrendingDown className="w-3 h-3" /> değer
-                    </span>
-                  </span>
+
+          <div className="grid gap-3" style={{ gridTemplateColumns: `repeat(${nodes.length}, minmax(0,1fr))` }}>
+            {nodes.map((n, i) => (
+              <div key={n.label} className="flex flex-col items-center relative">
+                {i < nodes.length - 1 && (
+                  <span className="hidden md:block absolute top-4 left-1/2 w-full h-px" style={{ background: "var(--lp-line)" }} aria-hidden />
                 )}
-              </div>
-            ))}
-          </div>
-
-          <div className="my-8 h-px" style={{ background: "var(--lp-line)" }} />
-
-          <div className="text-xs uppercase tracking-widest mb-4" style={{ color: "var(--lp-accent)" }}>
-            Hasat ile
-          </div>
-          <div className="flex flex-wrap items-center gap-3">
-            {direct.map((node, i) => (
-              <div key={node} className="flex items-center gap-3">
                 <div
-                  className="rounded-xl px-3 py-2 text-sm md:text-base font-medium"
-                  style={{ background: "var(--lp-primary)", color: "#fff" }}
+                  className="rounded-full px-3 py-1.5 text-[11px] md:text-xs relative z-10 text-center w-full max-w-[140px]"
+                  style={{ background: nodeBg, color: "var(--lp-ink)", border: "1px solid var(--lp-line)" }}
                 >
-                  {node}
+                  {n.label}
                 </div>
-                {i < direct.length - 1 && <ArrowRight className="w-4 h-4" style={{ color: "var(--lp-accent)" }} />}
+                {/* Value bar */}
+                <div className="mt-4 w-full max-w-[80px] flex flex-col items-center">
+                  <div className="relative w-full h-24 md:h-32 rounded-lg overflow-hidden" style={{ background: "color-mix(in oklab, var(--lp-line) 60%, transparent)" }}>
+                    <div
+                      className="absolute inset-x-0 bottom-0 rounded-lg transition-all duration-700 ease-out"
+                      style={{ height: `${n.pct}%`, background: barTint }}
+                    />
+                  </div>
+                  <div className="mt-2 text-sm md:text-base font-semibold tabular-nums" style={{ color: "var(--lp-ink)" }}>
+                    {n.pct}%
+                  </div>
+                </div>
               </div>
             ))}
+          </div>
+
+          <div className="mt-8 pt-6 border-t text-xs md:text-sm text-center" style={{ borderColor: "var(--lp-line)", color: "var(--lp-muted)" }}>
+            {isHasat
+              ? "Şeffaf komisyon: %5. Ödeme doğrudan çiftçinin IBAN'ına."
+              : "Ortalama olarak son tüketicinin ödediği her ₺100'ün yalnızca ~₺14'ü üreticide kalıyor."}
           </div>
         </div>
       </div>
