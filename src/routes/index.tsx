@@ -604,11 +604,11 @@ function SupplyChain() {
 function TraceabilityMock() {
   const ref = useReveal<HTMLDivElement>();
   const rows = [
-    { icon: <Sprout className="w-4 h-4" />, label: "Dikim", date: "12 Nis" },
-    { icon: <Droplets className="w-4 h-4" />, label: "Sulama", date: "3 May" },
-    { icon: <Camera className="w-4 h-4" />, label: "Fotoğraf: çiçek", date: "20 May" },
-    { icon: <Sprout className="w-4 h-4" />, label: "Gübreleme", date: "8 Haz" },
-    { icon: <Scissors className="w-4 h-4" />, label: "Hasat", date: "22 Eki" },
+    { icon: <Sprout className="w-4 h-4" />, label: "Dikim", date: "10 Mar" },
+    { icon: <Droplets className="w-4 h-4" />, label: "Sulama", date: "18 Haz" },
+    { icon: <Camera className="w-4 h-4" />, label: "Fotoğraf: dal", date: "5 Eyl" },
+    { icon: <Sprout className="w-4 h-4" />, label: "Gübreleme", date: "22 Eyl" },
+    { icon: <Scissors className="w-4 h-4" />, label: "Hasat", date: "8 Kas" },
   ];
   return (
     <section
