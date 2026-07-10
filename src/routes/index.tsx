@@ -30,20 +30,68 @@ import { useHasat } from "@/lib/hasat/store";
 import { HASAT_WHATSAPP_NUMBER } from "@/lib/hasat/constants";
 import { submitIndoorInterest } from "@/lib/api/indoor-interest.functions";
 
+const HASAT_TITLE = "Hasat | Çiftçiden Doğrudan Alışveriş — İzlenebilir Tarım Pazarı";
+const HASAT_DESC =
+  "Hasat, üreticiyi alıcıyla doğrudan buluşturan, her ürünün geçmişini kanıtlı şekilde gösteren Türkiye'nin izlenebilir tarım pazarıdır.";
+const HASAT_URL = "https://hasat.lovable.app";
+
+const FAQ_ITEMS: { q: string; a: string }[] = [
+  {
+    q: "Hasat nedir?",
+    a: "Hasat, Türkiye'de çiftçilerin ürünlerini doğrudan restoran, otel, market, ihracatçı ve bireysel alıcılara sattığı bir pazar yeridir. Her ürünün hasat geçmişi kayıt altına alınır.",
+  },
+  {
+    q: "Hasat'ta komisyon ne kadar?",
+    a: "Şeffaf ve sabit %5 komisyon uygulanır, gizli ücret yoktur.",
+  },
+  {
+    q: "İzlenebilirlik rozeti nasıl hesaplanır?",
+    a: "Çiftçinin tarla günlüğüne girdiği sulama, gübreleme ve hasat kayıtlarının tamlığına göre otomatik hesaplanır — Belgeleniyor, Temel, İyi Belgelenmiş ve Tam İzlenebilir olmak üzere dört seviyesi vardır.",
+  },
+  {
+    q: "Bireysel alıcı olarak alışveriş yapabilir miyim?",
+    a: "Evet, Hasat restoran/otel gibi işletmelerin yanında bireysel tüketicilere de açıktır.",
+  },
+  {
+    q: "Ödeme nasıl yapılır?",
+    a: "Alıcı, anlaşılan tutarı çiftçinin IBAN'ına doğrudan gönderir; ödeme çiftçi tarafından onaylandığında sipariş tamamlanır.",
+  },
+  {
+    q: "Çiftçi olarak nasıl başlarım?",
+    a: "Telefon numaranla ücretsiz kaydolur, parselini ve ürününü eklersin — ilk ilanın otomatik olarak taslak oluşturulur, sen onayladığında yayınlanır.",
+  },
+];
+
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "Hasat — Tarımda Güven Altyapısı" },
+      { title: HASAT_TITLE },
+      { name: "description", content: HASAT_DESC },
+      { property: "og:title", content: HASAT_TITLE },
+      { property: "og:description", content: HASAT_DESC },
+    ],
+    scripts: [
       {
-        name: "description",
-        content:
-          "Hasat, Türkiye'nin izlenebilir tarım pazarıdır. Ürünün geçmişi, üretici doğrulaması ve şeffaf fiyatlarla tarladan sofraya güven altyapısı.",
+        type: "application/ld+json",
+        children: JSON.stringify({
+          "@context": "https://schema.org",
+          "@type": "Organization",
+          name: "Hasat",
+          description: HASAT_DESC,
+          url: HASAT_URL,
+        }),
       },
-      { property: "og:title", content: "Hasat — Tarımda Güven Altyapısı" },
       {
-        property: "og:description",
-        content:
-          "Ürününü değil, güveni satıyoruz. İzlenebilir tarım pazarı — üreticiden doğrudan, kanıtlı geçmişle.",
+        type: "application/ld+json",
+        children: JSON.stringify({
+          "@context": "https://schema.org",
+          "@type": "FAQPage",
+          mainEntity: FAQ_ITEMS.map((f) => ({
+            "@type": "Question",
+            name: f.q,
+            acceptedAnswer: { "@type": "Answer", text: f.a },
+          })),
+        }),
       },
     ],
   }),
