@@ -969,7 +969,7 @@ function AISection() {
             title="Otomatik ilan güncellemesi"
             messages={[
               { who: "farmer", text: "Bugün hasat yaptım, 320 gr safran çıktı." },
-              { who: "hasat", text: "Harika 🌸 İlanına 320 gr eklendi, güven skoru %78 → %92'ye çıktı. Fiyatı ₺2.900 olarak güncelledim, onaylıyor musun?" },
+              { who: "hasat", text: "Harika 🌸 İlanına 320 gr eklendi, güven skoru %78'den %92'ye çıktı. Fiyatı ₺2.900 olarak güncelledim, onaylıyor musun?" },
             ]}
           />
         </div>
