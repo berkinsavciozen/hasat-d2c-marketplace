@@ -230,14 +230,36 @@ function LandingStyles() {
       .lp-card-hover { transition: transform .35s ease, box-shadow .35s ease; }
       .lp-card-hover:hover { transform: translateY(-3px); box-shadow: 0 20px 40px -24px rgba(20,35,28,0.25); }
       .lp-pin-halo { animation: lp-pin 2.4s ease-out infinite; }
-      @keyframes lp-flow-dash { to { stroke-dashoffset: -20 } }
-      .lp-flow-line { stroke-dasharray: 4 6; animation: lp-flow-dash 1.4s linear infinite; }
       .lp-chain-card { transition: box-shadow .35s ease; }
       .lp-chain-group:hover .lp-chain-card--trad { box-shadow: 0 0 0 3px color-mix(in oklab, var(--lp-earth) 25%, transparent); }
       .lp-chain-group:hover .lp-chain-card--hasat { box-shadow: 0 0 0 3px color-mix(in oklab, var(--lp-primary) 30%, transparent); }
+      .lp-marker { position: absolute; top: 50%; width: 20px; height: 20px; border-radius: 50%; display: grid; place-items: center; color: #fff; font-size: 11px; font-weight: 600; line-height: 1; pointer-events: none; box-shadow: 0 2px 6px rgba(20,35,28,0.25); will-change: left, transform, opacity; }
+      @keyframes lp-erode {
+        0%    { left: 0%;     transform: translate(-50%, -50%) scale(1.00); opacity: 0; }
+        4%    { left: 4%;     transform: translate(-50%, -50%) scale(1.00); opacity: 1; }
+        16.6% { left: 36.23%; transform: translate(-50%, -50%) scale(1.00); opacity: 1; }
+        16.7% { left: 36.23%; transform: translate(-50%, -50%) scale(0.75); opacity: 0.95; }
+        33.3% { left: 58.70%; transform: translate(-50%, -50%) scale(0.75); opacity: 0.95; }
+        33.4% { left: 58.70%; transform: translate(-50%, -50%) scale(0.62); opacity: 0.9; }
+        50%   { left: 75.36%; transform: translate(-50%, -50%) scale(0.62); opacity: 0.9; }
+        50.1% { left: 75.36%; transform: translate(-50%, -50%) scale(0.52); opacity: 0.8; }
+        66.6% { left: 86.96%; transform: translate(-50%, -50%) scale(0.52); opacity: 0.8; }
+        66.7% { left: 86.96%; transform: translate(-50%, -50%) scale(0.45); opacity: 0.7; }
+        83.3% { left: 94.93%; transform: translate(-50%, -50%) scale(0.45); opacity: 0.7; }
+        83.4% { left: 94.93%; transform: translate(-50%, -50%) scale(0.40); opacity: 0.6; }
+        96%   { left: 100%;   transform: translate(-50%, -50%) scale(0.40); opacity: 0.4; }
+        100%  { left: 100%;   transform: translate(-50%, -50%) scale(0.35); opacity: 0; }
+      }
+      @keyframes lp-flow {
+        0%    { left: 0%;   transform: translate(-50%, -50%) scale(1); opacity: 0; }
+        12%   { left: 8%;   transform: translate(-50%, -50%) scale(1); opacity: 1; }
+        88%   { left: 92%;  transform: translate(-50%, -50%) scale(1); opacity: 1; }
+        100%  { left: 100%; transform: translate(-50%, -50%) scale(1); opacity: 0; }
+      }
+      .lp-marker--trad { animation: lp-erode 6s linear infinite; }
+      .lp-marker--hasat { animation: lp-flow 3s ease-in-out infinite; }
       @media (prefers-reduced-motion: reduce) {
-        .lp-chain-anim { display: none; }
-        .lp-flow-line { animation: none; }
+        .lp-marker { animation: none !important; opacity: 0; }
       }
     `}</style>
   );
