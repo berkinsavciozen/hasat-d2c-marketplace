@@ -365,11 +365,10 @@ export function useReferredFarmers() {
 export async function lookupReferralOwner(code: string): Promise<{ id: string; name: string | null } | null> {
   const clean = code.trim().toUpperCase();
   if (!clean) return null;
-  const { data, error } = await supabase
-    .from("profiles")
+  const { data, error } = await (supabase as any)
+    .from("public_farmer_profiles")
     .select("id, name")
     .eq("referral_code", clean)
-    .eq("role", "farmer")
     .maybeSingle();
   if (error) return null;
   return data ?? null;

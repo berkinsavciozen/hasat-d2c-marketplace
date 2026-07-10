@@ -29,7 +29,7 @@ export default defineTool({
     let farmerIds: string[] | null = null;
     if (city) {
       const { data: profs, error: pErr } = await sb
-        .from("profiles").select("id").ilike("city", city);
+        .from("public_farmer_profiles" as any).select("id").ilike("city", city);
       if (pErr) return { content: [{ type: "text", text: pErr.message }], isError: true };
       farmerIds = (profs ?? []).map((p: any) => p.id);
       if (farmerIds.length === 0) {
