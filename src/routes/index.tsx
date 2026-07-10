@@ -436,11 +436,15 @@ function ValuePillars() {
   const items = [
     { icon: <Sprout className="w-5 h-5" />, title: "Doğrudan Üreticiden", body: "Aracı zinciri yok. Ödeme çiftçinin IBAN'ına gider, komisyon şeffaf." },
     { icon: <ShieldCheck className="w-5 h-5" />, title: "Tam İzlenebilir", body: "Her ürünün sulama, gübreleme, hasat kaydı fotoğraflı olarak kayıtlı." },
-    { icon: <Percent className="w-5 h-5" />, title: "Adil Fiyat", body: "Piyasa referansı görünür; sapmalar hem alıcıya hem üreticiye bildirilir." },
+    { icon: <Percent className="w-5 h-5" />, title: "Adil Fiyat", body: "Güncel piyasa fiyatını görürsün; fiyatın çok farklıysa hem sana hem alıcıya haber verilir." },
   ];
   return (
     <section className="px-4 py-16 md:py-20" style={{ background: "var(--lp-cream)", position: "relative", isolation: "isolate" }} ref={ref}>
-      <div className="mx-auto max-w-6xl grid gap-4 md:grid-cols-3">
+      <div className="mx-auto max-w-6xl">
+        <h2 className="font-serif text-xl md:text-2xl mb-6 text-center" style={{ color: "var(--lp-ink)" }}>
+          Neden Hasat?
+        </h2>
+        <div className="grid gap-4 md:grid-cols-3">
         {items.map((it, i) => (
           <div
             key={it.title}
