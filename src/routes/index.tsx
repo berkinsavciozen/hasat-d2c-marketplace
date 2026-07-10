@@ -460,6 +460,7 @@ function ValuePillars() {
             <div className="text-sm" style={{ color: "var(--lp-muted)" }}>{it.body}</div>
           </div>
         ))}
+        </div>
       </div>
     </section>
   );
