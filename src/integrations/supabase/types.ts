@@ -104,6 +104,13 @@ export type Database = {
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "buyer_profiles_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "public_farmer_profiles"
+            referencedColumns: ["id"]
+          },
         ]
       }
       certifications: {
@@ -142,6 +149,13 @@ export type Database = {
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "certifications_farmer_id_fkey"
+            columns: ["farmer_id"]
+            isOneToOne: false
+            referencedRelation: "public_farmer_profiles"
+            referencedColumns: ["id"]
+          },
         ]
       }
       community_post_likes: {
@@ -170,6 +184,13 @@ export type Database = {
             columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "community_post_likes_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "public_farmer_profiles"
             referencedColumns: ["id"]
           },
         ]
@@ -214,6 +235,13 @@ export type Database = {
             columns: ["author_id"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "community_posts_author_id_fkey"
+            columns: ["author_id"]
+            isOneToOne: false
+            referencedRelation: "public_farmer_profiles"
             referencedColumns: ["id"]
           },
           {
@@ -282,6 +310,13 @@ export type Database = {
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "farms_farmer_id_fkey"
+            columns: ["farmer_id"]
+            isOneToOne: false
+            referencedRelation: "public_farmer_profiles"
+            referencedColumns: ["id"]
+          },
         ]
       }
       harvest_entries: {
@@ -342,10 +377,24 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "harvest_entries_farmer_id_fkey"
+            columns: ["farmer_id"]
+            isOneToOne: false
+            referencedRelation: "public_farmer_profiles"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "harvest_entries_parcel_id_fkey"
             columns: ["parcel_id"]
             isOneToOne: false
             referencedRelation: "parcels"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "harvest_entries_parcel_id_fkey"
+            columns: ["parcel_id"]
+            isOneToOne: false
+            referencedRelation: "public_parcel_cards"
             referencedColumns: ["id"]
           },
         ]
@@ -399,10 +448,24 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "harvest_subscriptions_buyer_id_fkey"
+            columns: ["buyer_id"]
+            isOneToOne: false
+            referencedRelation: "public_farmer_profiles"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "harvest_subscriptions_farmer_id_fkey"
             columns: ["farmer_id"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "harvest_subscriptions_farmer_id_fkey"
+            columns: ["farmer_id"]
+            isOneToOne: false
+            referencedRelation: "public_farmer_profiles"
             referencedColumns: ["id"]
           },
         ]
@@ -531,6 +594,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "listings_farmer_id_fkey"
+            columns: ["farmer_id"]
+            isOneToOne: false
+            referencedRelation: "public_farmer_profiles"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "listings_harvest_entry_id_fkey"
             columns: ["harvest_entry_id"]
             isOneToOne: false
@@ -542,6 +612,13 @@ export type Database = {
             columns: ["parcel_id"]
             isOneToOne: false
             referencedRelation: "parcels"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "listings_parcel_id_fkey"
+            columns: ["parcel_id"]
+            isOneToOne: false
+            referencedRelation: "public_parcel_cards"
             referencedColumns: ["id"]
           },
         ]
@@ -594,6 +671,13 @@ export type Database = {
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "notif_prefs_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "public_farmer_profiles"
+            referencedColumns: ["id"]
+          },
         ]
       }
       notifications: {
@@ -633,6 +717,13 @@ export type Database = {
             columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notifications_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "public_farmer_profiles"
             referencedColumns: ["id"]
           },
         ]
@@ -748,10 +839,24 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "offers_buyer_id_fkey"
+            columns: ["buyer_id"]
+            isOneToOne: false
+            referencedRelation: "public_farmer_profiles"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "offers_farmer_id_fkey"
             columns: ["farmer_id"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "offers_farmer_id_fkey"
+            columns: ["farmer_id"]
+            isOneToOne: false
+            referencedRelation: "public_farmer_profiles"
             referencedColumns: ["id"]
           },
           {
@@ -838,10 +943,24 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "orders_buyer_id_fkey"
+            columns: ["buyer_id"]
+            isOneToOne: false
+            referencedRelation: "public_farmer_profiles"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "orders_farmer_id_fkey"
             columns: ["farmer_id"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "orders_farmer_id_fkey"
+            columns: ["farmer_id"]
+            isOneToOne: false
+            referencedRelation: "public_farmer_profiles"
             referencedColumns: ["id"]
           },
           {
@@ -914,6 +1033,13 @@ export type Database = {
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "parcels_farmer_id_fkey"
+            columns: ["farmer_id"]
+            isOneToOne: false
+            referencedRelation: "public_farmer_profiles"
+            referencedColumns: ["id"]
+          },
         ]
       }
       price_alerts: {
@@ -955,6 +1081,13 @@ export type Database = {
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "price_alerts_farmer_id_fkey"
+            columns: ["farmer_id"]
+            isOneToOne: false
+            referencedRelation: "public_farmer_profiles"
+            referencedColumns: ["id"]
+          },
         ]
       }
       price_feed: {
@@ -994,6 +1127,13 @@ export type Database = {
             columns: ["recorded_by"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "price_feed_recorded_by_fkey"
+            columns: ["recorded_by"]
+            isOneToOne: false
+            referencedRelation: "public_farmer_profiles"
             referencedColumns: ["id"]
           },
         ]
@@ -1088,11 +1228,156 @@ export type Database = {
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "profiles_referred_by_fkey"
+            columns: ["referred_by"]
+            isOneToOne: false
+            referencedRelation: "public_farmer_profiles"
+            referencedColumns: ["id"]
+          },
         ]
       }
     }
     Views: {
-      [_ in never]: never
+      public_certifications: {
+        Row: {
+          created_at: string | null
+          expires_at: string | null
+          farmer_id: string | null
+          id: string | null
+          type: Database["public"]["Enums"]["certification_type"] | null
+          verified_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          expires_at?: string | null
+          farmer_id?: string | null
+          id?: string | null
+          type?: Database["public"]["Enums"]["certification_type"] | null
+          verified_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          expires_at?: string | null
+          farmer_id?: string | null
+          id?: string | null
+          type?: Database["public"]["Enums"]["certification_type"] | null
+          verified_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "certifications_farmer_id_fkey"
+            columns: ["farmer_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "certifications_farmer_id_fkey"
+            columns: ["farmer_id"]
+            isOneToOne: false
+            referencedRelation: "public_farmer_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      public_farmer_profiles: {
+        Row: {
+          city: string | null
+          created_at: string | null
+          id: string | null
+          name: string | null
+          premium: boolean | null
+          referral_code: string | null
+          role: Database["public"]["Enums"]["user_role"] | null
+          tier: Database["public"]["Enums"]["user_tier"] | null
+        }
+        Insert: {
+          city?: string | null
+          created_at?: string | null
+          id?: string | null
+          name?: string | null
+          premium?: boolean | null
+          referral_code?: string | null
+          role?: Database["public"]["Enums"]["user_role"] | null
+          tier?: Database["public"]["Enums"]["user_tier"] | null
+        }
+        Update: {
+          city?: string | null
+          created_at?: string | null
+          id?: string | null
+          name?: string | null
+          premium?: boolean | null
+          referral_code?: string | null
+          role?: Database["public"]["Enums"]["user_role"] | null
+          tier?: Database["public"]["Enums"]["user_tier"] | null
+        }
+        Relationships: []
+      }
+      public_parcel_cards: {
+        Row: {
+          area: number | null
+          created_at: string | null
+          crops: string[] | null
+          farm_id: string | null
+          farmer_id: string | null
+          id: string | null
+          is_primary: boolean | null
+          location_label: string | null
+          name: string | null
+          parcel_photo_urls: string[] | null
+          production_method: string | null
+        }
+        Insert: {
+          area?: number | null
+          created_at?: string | null
+          crops?: string[] | null
+          farm_id?: string | null
+          farmer_id?: string | null
+          id?: string | null
+          is_primary?: boolean | null
+          location_label?: string | null
+          name?: string | null
+          parcel_photo_urls?: string[] | null
+          production_method?: string | null
+        }
+        Update: {
+          area?: number | null
+          created_at?: string | null
+          crops?: string[] | null
+          farm_id?: string | null
+          farmer_id?: string | null
+          id?: string | null
+          is_primary?: boolean | null
+          location_label?: string | null
+          name?: string | null
+          parcel_photo_urls?: string[] | null
+          production_method?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "parcels_farm_id_fkey"
+            columns: ["farm_id"]
+            isOneToOne: false
+            referencedRelation: "farms"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "parcels_farmer_id_fkey"
+            columns: ["farmer_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "parcels_farmer_id_fkey"
+            columns: ["farmer_id"]
+            isOneToOne: false
+            referencedRelation: "public_farmer_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Functions: {
       can_send_ai_message: { Args: { _user_id: string }; Returns: boolean }
