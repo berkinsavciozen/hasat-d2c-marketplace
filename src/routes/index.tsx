@@ -578,112 +578,109 @@ function ChainCard({
 }) {
   const isHasat = variant === "hasat";
   const accent = isHasat ? "var(--lp-primary)" : "var(--lp-earth)";
-  const nodeBg = isHasat
-    ? "color-mix(in oklab, var(--lp-primary) 12%, var(--lp-white))"
-    : "color-mix(in oklab, var(--lp-earth) 12%, var(--lp-white))";
-  const N = nodes.length;
-  // Radius per node pct (in svg user units, viewBox 100x20)
-  const rFor = (pct: number) => 0.6 + (pct / 100) * 2.6;
-  const xAt = (i: number) => ((i + 0.5) / N) * 100;
+
+  // Normalize segment widths from pcts so the bar spans 100% of the track.
+  const total = nodes.reduce((s, n) => s + n.pct, 0);
+  const widths = nodes.map((n) => (n.pct / total) * 100);
+  const gridCols = widths.map((w) => `${w.toFixed(3)}fr`).join(" ");
+  // Descending alpha for traditional segments (visible erosion); flat primary for Hasat.
+  const alphaFor = (i: number) => (isHasat ? 1 : [1, 0.82, 0.66, 0.5, 0.36, 0.22][i] ?? 0.22);
 
   return (
     <div
-      className={`lp-card lp-chain-card lp-chain-card--${variant} rounded-3xl p-6 md:p-10 lp-reveal lp-reveal-d2`}
-      style={{ borderColor: accent + "40" as string }}
+      className={`lp-card lp-chain-card lp-chain-card--${variant} rounded-3xl p-5 md:p-8 lp-reveal lp-reveal-d2`}
     >
-      <div className="flex items-baseline justify-between mb-6">
+      <div className="flex items-baseline justify-between mb-5">
         <div className="text-xs uppercase tracking-widest" style={{ color: accent }}>
           {isHasat ? "Hasat ile" : "Geleneksel"}
         </div>
         <div className="text-xs" style={{ color: "var(--lp-muted)" }}>Üreticinin eline geçen değer</div>
       </div>
 
-      <div className="relative">
-        {/* SVG particle overlay across the pill row */}
-        <svg
-          className="lp-chain-anim absolute left-0 right-0 pointer-events-none"
-          style={{ top: 0, height: "36px" }}
-          viewBox="0 0 100 20"
-          preserveAspectRatio="none"
-          aria-hidden
+      {/* Bar track + marker */}
+      <div
+        className="relative w-full rounded-full overflow-visible"
+        style={{
+          height: 28,
+          background: "color-mix(in oklab, var(--lp-line) 55%, transparent)",
+        }}
+      >
+        {/* Segmented fill */}
+        <div
+          className="absolute inset-0 grid rounded-full overflow-hidden"
+          style={{ gridTemplateColumns: isHasat ? `95fr 5fr` : gridCols }}
         >
           {isHasat ? (
             <>
-              {/* Continuous flowing line */}
-              <line
-                x1={xAt(0)} y1="10" x2={xAt(1)} y2="10"
-                stroke={accent}
-                strokeWidth="0.6"
-                strokeLinecap="round"
-                className="lp-flow-line"
-                opacity="0.7"
-              />
-              {/* 3 continuous particles */}
-              {[0, 1, 2].map((k) => (
-                <circle key={k} cx={xAt(0)} cy="10" r="1.6" fill={accent}>
-                  <animate attributeName="cx" from={xAt(0)} to={xAt(1)} dur="3s" begin={`${k * 1}s`} repeatCount="indefinite" />
-                  <animate attributeName="opacity" values="0;1;1;0" keyTimes="0;0.15;0.85;1" dur="3s" begin={`${k * 1}s`} repeatCount="indefinite" />
-                </circle>
-              ))}
+              <div style={{ background: accent }} />
+              <div />
             </>
           ) : (
-            <>
-              {/* Dashed guide line */}
-              <line
-                x1={xAt(0)} y1="10" x2={xAt(N - 1)} y2="10"
-                stroke={accent}
-                strokeWidth="0.4"
-                strokeDasharray="1.5 2"
-                opacity="0.4"
-              />
-              {/* 5 eroding particles, one per segment, staggered */}
-              {Array.from({ length: N - 1 }).map((_, i) => {
-                const dur = 3.2;
-                const begin = i * 0.55;
-                const totalCycle = dur + (N - 1) * 0.55;
-                return (
-                  <circle key={i} cx={xAt(i)} cy="10" r={rFor(nodes[i].pct)} fill={accent}>
-                    <animate attributeName="cx" from={xAt(i)} to={xAt(i + 1)} dur={`${dur}s`} begin={`${begin}s`} repeatCount="indefinite" repeatDur={`${totalCycle}s`} />
-                    <animate attributeName="r" from={rFor(nodes[i].pct)} to={rFor(nodes[i + 1].pct)} dur={`${dur}s`} begin={`${begin}s`} repeatCount="indefinite" repeatDur={`${totalCycle}s`} />
-                    <animate attributeName="opacity" values="0;1;0.85;0.35;0" keyTimes="0;0.15;0.6;0.9;1" dur={`${dur}s`} begin={`${begin}s`} repeatCount="indefinite" repeatDur={`${totalCycle}s`} />
-                  </circle>
-                );
-              })}
-            </>
-          )}
-        </svg>
-
-        <div className="grid gap-3 relative" style={{ gridTemplateColumns: `repeat(${N}, minmax(0,1fr))` }}>
-          {nodes.map((n, i) => (
-            <div key={n.label} className="flex flex-col items-center relative">
+            nodes.map((n, i) => (
               <div
-                className="rounded-full px-3 py-1.5 text-[11px] md:text-xs relative z-10 text-center w-full max-w-[140px]"
-                style={{ background: nodeBg, color: "var(--lp-ink)", border: "1px solid var(--lp-line)" }}
+                key={n.label}
+                className="relative flex items-center justify-center"
+                style={{
+                  background: `color-mix(in oklab, ${accent} ${Math.round(alphaFor(i) * 100)}%, transparent)`,
+                  boxShadow: i < nodes.length - 1 ? "inset -1px 0 0 var(--lp-cream-2)" : undefined,
+                }}
               >
-                {n.label}
+                {n.pct >= 20 && (
+                  <span className="text-[10px] md:text-[11px] font-semibold tabular-nums" style={{ color: "#fff" }}>
+                    {n.pct}%
+                  </span>
+                )}
               </div>
-              <div className="mt-4 w-full max-w-[80px] flex flex-col items-center">
-                <div className="relative w-full h-24 md:h-32 rounded-lg overflow-hidden" style={{ background: "color-mix(in oklab, var(--lp-line) 60%, transparent)" }}>
-                  <div
-                    className="absolute inset-x-0 bottom-0 rounded-lg transition-all duration-700 ease-out"
-                    style={{ height: `${n.pct}%`, background: accent }}
-                  />
-                </div>
-                <div className="mt-2 text-sm md:text-base font-semibold tabular-nums" style={{ color: "var(--lp-ink)" }}>
-                  {n.pct}%
-                </div>
-              </div>
-            </div>
-          ))}
+            ))
+          )}
         </div>
+
+        {/* Animated marker */}
+        <span
+          className={`lp-marker lp-marker--${variant}`}
+          style={{ background: accent }}
+          aria-hidden
+        >
+          ₺
+        </span>
       </div>
 
-      <div className="mt-8 pt-6 border-t text-xs md:text-sm text-center" style={{ borderColor: "var(--lp-line)", color: "var(--lp-muted)" }}>
+      {/* Labels aligned to segments */}
+      <div
+        className="mt-3 grid gap-1"
+        style={{ gridTemplateColumns: isHasat ? `1fr 1fr` : gridCols }}
+      >
+        {isHasat ? (
+          <>
+            <div className="text-[10px] md:text-[11px] text-left" style={{ color: "var(--lp-muted)" }}>
+              Çiftçi <span className="tabular-nums font-semibold" style={{ color: accent }}>%100</span>
+            </div>
+            <div className="text-[10px] md:text-[11px] text-right" style={{ color: "var(--lp-muted)" }}>
+              Alıcı <span className="tabular-nums font-semibold" style={{ color: accent }}>%95</span>
+            </div>
+          </>
+        ) : (
+          nodes.map((n) => (
+            <div key={n.label} className="text-center leading-tight">
+              <div className="text-[10px] md:text-[11px] truncate" style={{ color: "var(--lp-muted)" }}>
+                {n.label}
+              </div>
+              <div className="text-[10px] md:text-[11px] tabular-nums font-semibold" style={{ color: "var(--lp-ink)" }}>
+                %{n.pct}
+              </div>
+            </div>
+          ))
+        )}
+      </div>
+
+      <div className="mt-6 pt-5 border-t text-xs md:text-sm text-center" style={{ borderColor: "var(--lp-line)", color: "var(--lp-muted)" }}>
         {caption}
       </div>
     </div>
   );
 }
+
+
 
 
 /* ---------- Traceability phone mock ---------- */
