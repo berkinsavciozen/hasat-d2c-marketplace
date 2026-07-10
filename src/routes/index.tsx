@@ -278,14 +278,14 @@ function Nav({ onRole }: { onRole: (r: "farmer" | "buyer") => void }) {
             className="text-xs px-3 py-1.5 rounded-full border transition hover:bg-black/[0.03]"
             style={{ borderColor: "var(--lp-line)", color: "var(--lp-ink)" }}
           >
-            Çiftçi girişi
+            Çiftçiyim
           </button>
           <button
             onClick={() => onRole("buyer")}
             className="text-xs px-3 py-1.5 rounded-full font-medium transition hover:opacity-90"
             style={{ background: "var(--lp-primary)", color: "var(--lp-cream)" }}
           >
-            Alıcı girişi
+            Alıcıyım
           </button>
         </div>
       </div>
