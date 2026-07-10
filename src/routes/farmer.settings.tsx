@@ -371,7 +371,7 @@ function Settings() {
                   </div>
                   <div className="flex items-center gap-2">
                     <div className="text-[11px] text-muted-foreground text-right">
-                      <div>Doğrulandı: {fmtDate(c.verified_at)}</div>
+                      <div>{c.verified_at ? `Doğrulandı: ${fmtDate(c.verified_at)}` : "Doğrulama bekleniyor"}</div>
                       <div>Süre: {fmtDate(c.expires_at)}</div>
                     </div>
                     <button
