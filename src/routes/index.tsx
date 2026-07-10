@@ -642,16 +642,16 @@ function TraceabilityMock() {
           >
             <div className="rounded-[28px] overflow-hidden" style={{ background: "var(--lp-white)" }}>
               <div className="relative aspect-[16/10]">
-                <img src={IMG_SAFFRON} alt="" className="w-full h-full object-cover" />
+                <img src={IMG_OLIVE} alt="Ayvalık'ta zeytin dalında olgunlaşmış zeytinler" className="w-full h-full object-cover" />
                 <span
                   className="absolute bottom-2 left-2 inline-flex items-center gap-1 rounded-full px-2 py-1 text-[10px]"
                   style={{ background: "rgba(255,255,255,0.92)", color: "var(--lp-primary)" }}
                 >
-                  <MapPin className="w-3 h-3" /> Safranbolu
+                  <MapPin className="w-3 h-3" /> Ayvalık
                 </span>
               </div>
               <div className="p-5">
-                <div className="font-serif text-base mb-4" style={{ color: "var(--lp-ink)" }}>Safran · Parsel 1</div>
+                <div className="font-serif text-base mb-4" style={{ color: "var(--lp-ink)" }}>Zeytin · Parsel 1</div>
                 <ol className="space-y-4">
                   {rows.map((r, i) => (
                     <li
