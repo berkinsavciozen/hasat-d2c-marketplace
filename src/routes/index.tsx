@@ -480,8 +480,7 @@ function SupplyChain() {
   ];
   const direct = [
     { label: "Çiftçi", pct: 100 },
-    { label: "Hasat", pct: 95 },
-    { label: "Alıcı", pct: 92 },
+    { label: "Alıcı", pct: 95 },
   ];
   const isHasat = mode === "hasat";
   const nodes = isHasat ? direct : traditional;
@@ -489,6 +488,7 @@ function SupplyChain() {
   const nodeBg = isHasat
     ? "color-mix(in oklab, var(--lp-accent) 12%, var(--lp-white))"
     : "color-mix(in oklab, var(--lp-earth) 12%, var(--lp-white))";
+  const calloutRef = useReveal<HTMLDivElement>();
   return (
     <section
       className="px-4 py-16 md:py-24 border-t"
@@ -496,12 +496,41 @@ function SupplyChain() {
       ref={ref}
     >
       <div className="mx-auto max-w-6xl">
-        <div className="text-center mb-10 lp-reveal">
+        <div className="text-center mb-8 lp-reveal">
           <div className="text-xs uppercase tracking-widest mb-2" style={{ color: "var(--lp-muted)" }}>Tedarik zinciri</div>
-          <h2 className="font-serif text-3xl md:text-4xl transition-opacity duration-300" style={{ color: "var(--lp-ink)" }} key={mode}>
-            {isHasat ? "Doğrudan ödeme, bütün değer üreticide." : "Değer, halkalar arasında kayboluyor."}
+          <h2 className="font-serif text-3xl md:text-4xl" style={{ color: "var(--lp-ink)" }}>
+            Üreticinin eline ne kadar geçiyor?
           </h2>
+          <p className="mt-3 text-sm max-w-xl mx-auto" style={{ color: "var(--lp-muted)" }}>
+            Alıcının ödediği her ₺100'ün, üreticiye kalan payı.
+          </p>
         </div>
+
+        {/* Headline callout */}
+        <div ref={calloutRef} className="grid gap-4 md:grid-cols-2 mb-10">
+          <div
+            className="rounded-3xl p-6 md:p-8 text-center lp-reveal"
+            style={{ background: "var(--lp-white)", border: "1px solid var(--lp-line)" }}
+          >
+            <div className="text-[11px] uppercase tracking-widest mb-2" style={{ color: "var(--lp-earth)" }}>Geleneksel</div>
+            <div className="font-serif tabular-nums text-6xl md:text-7xl leading-none" style={{ color: "var(--lp-earth)" }}>
+              %<CountUp to={14} />
+            </div>
+            <div className="mt-3 text-sm" style={{ color: "var(--lp-muted)" }}>üreticiye kalan pay</div>
+          </div>
+          <div
+            className="rounded-3xl p-6 md:p-8 text-center lp-reveal lp-reveal-d2"
+            style={{ background: "var(--lp-primary)", color: "#fff" }}
+          >
+            <div className="text-[11px] uppercase tracking-widest mb-2" style={{ color: "#CFE8D3" }}>Hasat ile</div>
+            <div className="font-serif tabular-nums text-6xl md:text-7xl leading-none" style={{ color: "#CFE8D3" }}>
+              %<CountUp to={95} />
+            </div>
+            <div className="mt-3 text-sm" style={{ color: "rgba(255,255,255,0.85)" }}>üreticiye kalan pay</div>
+          </div>
+        </div>
+
+
 
         {/* Toggle */}
         <div className="mx-auto mb-8 inline-flex rounded-full p-1 lp-reveal lp-reveal-d1"
