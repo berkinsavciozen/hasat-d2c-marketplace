@@ -879,7 +879,7 @@ function FarmerStory() {
     <section className="px-4 py-16 md:py-24 border-t" style={{ borderColor: "var(--lp-line)", background: "var(--lp-cream-2)" }} ref={ref}>
       <div className="mx-auto max-w-6xl grid gap-10 md:grid-cols-[1.2fr_1fr] items-center">
         <div className="relative rounded-3xl overflow-hidden aspect-[4/3] lp-reveal">
-          <img src={IMG_SOIL_HANDS} alt="Toprakla çalışan eller" className="w-full h-full object-cover" style={{ filter: "saturate(0.9)" }} />
+          <img src={IMG_LAVENDER} alt="Isparta'da mor lavanta tarlası" className="w-full h-full object-cover" style={{ filter: "saturate(0.9)" }} />
           <div
             className="absolute inset-0"
             style={{ background: "linear-gradient(180deg, transparent 40%, rgba(20,35,28,0.35) 100%)" }}
@@ -892,7 +892,7 @@ function FarmerStory() {
             görüyor — güven kendiliğinden geliyor."
           </blockquote>
           <div className="mt-4 text-sm" style={{ color: "var(--lp-muted)" }}>
-            <span className="italic">Örnek senaryo — </span> Üretici A. Y., Safranbolu · 5 dönüm safran
+            <span className="italic">Gösterim amaçlı — </span> Üretici E. D., Isparta · 8 dönüm lavanta
           </div>
         </div>
       </div>
