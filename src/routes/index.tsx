@@ -330,9 +330,8 @@ function Hero({ onRole }: { onRole: (r: "farmer" | "buyer") => void }) {
             satıyoruz.
           </h1>
           <p className="mt-5 text-base md:text-lg max-w-lg" style={{ color: "rgba(255,255,255,0.94)" }}>
-            Hasat, tarımsal ticaret için güven altyapısıdır. Her ürünün geçmişi,
-            her üreticinin doğrulanmış kimliği, her fiyatın şeffaf gerekçesi —
-            tarladan sofraya kanıtlı bir zincir.
+            Çiftçiler ürününü doğrudan alıcıya listeler, her hasat kaydı
+            fotoğrafla belgelenir, fiyat pazarlıkla şeffaf şekilde belirlenir.
           </p>
           <div className="mt-8 flex flex-wrap gap-3">
             <button
