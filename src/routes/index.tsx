@@ -230,6 +230,15 @@ function LandingStyles() {
       .lp-card-hover { transition: transform .35s ease, box-shadow .35s ease; }
       .lp-card-hover:hover { transform: translateY(-3px); box-shadow: 0 20px 40px -24px rgba(20,35,28,0.25); }
       .lp-pin-halo { animation: lp-pin 2.4s ease-out infinite; }
+      @keyframes lp-flow-dash { to { stroke-dashoffset: -20 } }
+      .lp-flow-line { stroke-dasharray: 4 6; animation: lp-flow-dash 1.4s linear infinite; }
+      .lp-chain-card { transition: box-shadow .35s ease; }
+      .lp-chain-group:hover .lp-chain-card--trad { box-shadow: 0 0 0 3px color-mix(in oklab, var(--lp-earth) 25%, transparent); }
+      .lp-chain-group:hover .lp-chain-card--hasat { box-shadow: 0 0 0 3px color-mix(in oklab, var(--lp-primary) 30%, transparent); }
+      @media (prefers-reduced-motion: reduce) {
+        .lp-chain-anim { display: none; }
+        .lp-flow-line { animation: none; }
+      }
     `}</style>
   );
 }
