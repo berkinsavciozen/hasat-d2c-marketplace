@@ -203,6 +203,7 @@ function LandingPage() {
       <AISection />
       <TrustScoreLadder />
       <IndoorSection />
+      <FAQ />
       <Footer />
     </div>
   );
