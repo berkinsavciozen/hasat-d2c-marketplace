@@ -1206,6 +1206,83 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
   );
 }
 
+/* ---------- CountUp ---------- */
+function CountUp({ to, duration = 1200 }: { to: number; duration?: number }) {
+  const [val, setVal] = useState(0);
+  const ref = useRef<HTMLSpanElement | null>(null);
+  const started = useRef(false);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const io = new IntersectionObserver((entries) => {
+      for (const e of entries) {
+        if (e.isIntersecting && !started.current) {
+          started.current = true;
+          const start = performance.now();
+          const tick = (now: number) => {
+            const t = Math.min(1, (now - start) / duration);
+            const eased = 1 - Math.pow(1 - t, 3);
+            setVal(Math.round(eased * to));
+            if (t < 1) requestAnimationFrame(tick);
+          };
+          requestAnimationFrame(tick);
+          io.disconnect();
+        }
+      }
+    }, { threshold: 0.4 });
+    io.observe(el);
+    return () => io.disconnect();
+  }, [to, duration]);
+  return <span ref={ref}>{val}</span>;
+}
+
+/* ---------- FAQ ---------- */
+function FAQ() {
+  const ref = useReveal<HTMLDivElement>();
+  return (
+    <section
+      className="px-4 py-16 md:py-24 border-t"
+      style={{ borderColor: "var(--lp-line)", background: "var(--lp-cream)" }}
+      ref={ref}
+    >
+      <div className="mx-auto max-w-3xl">
+        <div className="text-center mb-10 lp-reveal">
+          <div className="text-xs uppercase tracking-widest mb-2" style={{ color: "var(--lp-muted)" }}>SSS</div>
+          <h2 className="font-serif text-3xl md:text-4xl" style={{ color: "var(--lp-ink)" }}>
+            Sıkça Sorulan Sorular
+          </h2>
+        </div>
+        <div className="space-y-3">
+          {FAQ_ITEMS.map((f, i) => (
+            <details
+              key={f.q}
+              className={`lp-card rounded-2xl p-5 group lp-reveal lp-reveal-d${(i % 5) + 1}`}
+            >
+              <summary
+                className="cursor-pointer list-none flex items-center justify-between gap-4 font-serif text-base md:text-lg"
+                style={{ color: "var(--lp-ink)" }}
+              >
+                <span>{f.q}</span>
+                <span
+                  className="text-xl leading-none transition-transform group-open:rotate-45"
+                  style={{ color: "var(--lp-accent)" }}
+                  aria-hidden
+                >
+                  +
+                </span>
+              </summary>
+              <div className="mt-3 text-sm" style={{ color: "var(--lp-muted)" }}>
+                {f.a}
+              </div>
+            </details>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+
 /* ---------- Footer ---------- */
 function Footer() {
   const waHref = `https://wa.me/${HASAT_WHATSAPP_NUMBER}`;
