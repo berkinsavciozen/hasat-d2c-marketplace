@@ -30,20 +30,68 @@ import { useHasat } from "@/lib/hasat/store";
 import { HASAT_WHATSAPP_NUMBER } from "@/lib/hasat/constants";
 import { submitIndoorInterest } from "@/lib/api/indoor-interest.functions";
 
+const HASAT_TITLE = "Hasat | Çiftçiden Doğrudan Alışveriş — İzlenebilir Tarım Pazarı";
+const HASAT_DESC =
+  "Hasat, üreticiyi alıcıyla doğrudan buluşturan, her ürünün geçmişini kanıtlı şekilde gösteren Türkiye'nin izlenebilir tarım pazarıdır.";
+const HASAT_URL = "https://hasat.lovable.app";
+
+const FAQ_ITEMS: { q: string; a: string }[] = [
+  {
+    q: "Hasat nedir?",
+    a: "Hasat, Türkiye'de çiftçilerin ürünlerini doğrudan restoran, otel, market, ihracatçı ve bireysel alıcılara sattığı bir pazar yeridir. Her ürünün hasat geçmişi kayıt altına alınır.",
+  },
+  {
+    q: "Hasat'ta komisyon ne kadar?",
+    a: "Şeffaf ve sabit %5 komisyon uygulanır, gizli ücret yoktur.",
+  },
+  {
+    q: "İzlenebilirlik rozeti nasıl hesaplanır?",
+    a: "Çiftçinin tarla günlüğüne girdiği sulama, gübreleme ve hasat kayıtlarının tamlığına göre otomatik hesaplanır — Belgeleniyor, Temel, İyi Belgelenmiş ve Tam İzlenebilir olmak üzere dört seviyesi vardır.",
+  },
+  {
+    q: "Bireysel alıcı olarak alışveriş yapabilir miyim?",
+    a: "Evet, Hasat restoran/otel gibi işletmelerin yanında bireysel tüketicilere de açıktır.",
+  },
+  {
+    q: "Ödeme nasıl yapılır?",
+    a: "Alıcı, anlaşılan tutarı çiftçinin IBAN'ına doğrudan gönderir; ödeme çiftçi tarafından onaylandığında sipariş tamamlanır.",
+  },
+  {
+    q: "Çiftçi olarak nasıl başlarım?",
+    a: "Telefon numaranla ücretsiz kaydolur, parselini ve ürününü eklersin — ilk ilanın otomatik olarak taslak oluşturulur, sen onayladığında yayınlanır.",
+  },
+];
+
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "Hasat — Tarımda Güven Altyapısı" },
+      { title: HASAT_TITLE },
+      { name: "description", content: HASAT_DESC },
+      { property: "og:title", content: HASAT_TITLE },
+      { property: "og:description", content: HASAT_DESC },
+    ],
+    scripts: [
       {
-        name: "description",
-        content:
-          "Hasat, Türkiye'nin izlenebilir tarım pazarıdır. Ürünün geçmişi, üretici doğrulaması ve şeffaf fiyatlarla tarladan sofraya güven altyapısı.",
+        type: "application/ld+json",
+        children: JSON.stringify({
+          "@context": "https://schema.org",
+          "@type": "Organization",
+          name: "Hasat",
+          description: HASAT_DESC,
+          url: HASAT_URL,
+        }),
       },
-      { property: "og:title", content: "Hasat — Tarımda Güven Altyapısı" },
       {
-        property: "og:description",
-        content:
-          "Ürününü değil, güveni satıyoruz. İzlenebilir tarım pazarı — üreticiden doğrudan, kanıtlı geçmişle.",
+        type: "application/ld+json",
+        children: JSON.stringify({
+          "@context": "https://schema.org",
+          "@type": "FAQPage",
+          mainEntity: FAQ_ITEMS.map((f) => ({
+            "@type": "Question",
+            name: f.q,
+            acceptedAnswer: { "@type": "Answer", text: f.a },
+          })),
+        }),
       },
     ],
   }),
@@ -155,6 +203,7 @@ function LandingPage() {
       <AISection />
       <TrustScoreLadder />
       <IndoorSection />
+      <FAQ />
       <Footer />
     </div>
   );
@@ -229,14 +278,14 @@ function Nav({ onRole }: { onRole: (r: "farmer" | "buyer") => void }) {
             className="text-xs px-3 py-1.5 rounded-full border transition hover:bg-black/[0.03]"
             style={{ borderColor: "var(--lp-line)", color: "var(--lp-ink)" }}
           >
-            Çiftçi girişi
+            Çiftçiyim
           </button>
           <button
             onClick={() => onRole("buyer")}
             className="text-xs px-3 py-1.5 rounded-full font-medium transition hover:opacity-90"
             style={{ background: "var(--lp-primary)", color: "var(--lp-cream)" }}
           >
-            Alıcı girişi
+            Alıcıyım
           </button>
         </div>
       </div>
@@ -281,9 +330,8 @@ function Hero({ onRole }: { onRole: (r: "farmer" | "buyer") => void }) {
             satıyoruz.
           </h1>
           <p className="mt-5 text-base md:text-lg max-w-lg" style={{ color: "rgba(255,255,255,0.94)" }}>
-            Hasat, tarımsal ticaret için güven altyapısıdır. Her ürünün geçmişi,
-            her üreticinin doğrulanmış kimliği, her fiyatın şeffaf gerekçesi —
-            tarladan sofraya kanıtlı bir zincir.
+            Çiftçiler ürününü doğrudan alıcıya listeler, her hasat kaydı
+            fotoğrafla belgelenir, fiyat pazarlıkla şeffaf şekilde belirlenir.
           </p>
           <div className="mt-8 flex flex-wrap gap-3">
             <button
@@ -388,11 +436,15 @@ function ValuePillars() {
   const items = [
     { icon: <Sprout className="w-5 h-5" />, title: "Doğrudan Üreticiden", body: "Aracı zinciri yok. Ödeme çiftçinin IBAN'ına gider, komisyon şeffaf." },
     { icon: <ShieldCheck className="w-5 h-5" />, title: "Tam İzlenebilir", body: "Her ürünün sulama, gübreleme, hasat kaydı fotoğraflı olarak kayıtlı." },
-    { icon: <Percent className="w-5 h-5" />, title: "Adil Fiyat", body: "Piyasa referansı görünür; sapmalar hem alıcıya hem üreticiye bildirilir." },
+    { icon: <Percent className="w-5 h-5" />, title: "Adil Fiyat", body: "Güncel piyasa fiyatını görürsün; fiyatın çok farklıysa hem sana hem alıcıya haber verilir." },
   ];
   return (
     <section className="px-4 py-16 md:py-20" style={{ background: "var(--lp-cream)", position: "relative", isolation: "isolate" }} ref={ref}>
-      <div className="mx-auto max-w-6xl grid gap-4 md:grid-cols-3">
+      <div className="mx-auto max-w-6xl">
+        <h2 className="font-serif text-xl md:text-2xl mb-6 text-center" style={{ color: "var(--lp-ink)" }}>
+          Neden Hasat?
+        </h2>
+        <div className="grid gap-4 md:grid-cols-3">
         {items.map((it, i) => (
           <div
             key={it.title}
@@ -408,6 +460,7 @@ function ValuePillars() {
             <div className="text-sm" style={{ color: "var(--lp-muted)" }}>{it.body}</div>
           </div>
         ))}
+        </div>
       </div>
     </section>
   );
@@ -427,8 +480,7 @@ function SupplyChain() {
   ];
   const direct = [
     { label: "Çiftçi", pct: 100 },
-    { label: "Hasat", pct: 95 },
-    { label: "Alıcı", pct: 92 },
+    { label: "Alıcı", pct: 95 },
   ];
   const isHasat = mode === "hasat";
   const nodes = isHasat ? direct : traditional;
@@ -436,6 +488,7 @@ function SupplyChain() {
   const nodeBg = isHasat
     ? "color-mix(in oklab, var(--lp-accent) 12%, var(--lp-white))"
     : "color-mix(in oklab, var(--lp-earth) 12%, var(--lp-white))";
+  const calloutRef = useReveal<HTMLDivElement>();
   return (
     <section
       className="px-4 py-16 md:py-24 border-t"
@@ -443,12 +496,41 @@ function SupplyChain() {
       ref={ref}
     >
       <div className="mx-auto max-w-6xl">
-        <div className="text-center mb-10 lp-reveal">
+        <div className="text-center mb-8 lp-reveal">
           <div className="text-xs uppercase tracking-widest mb-2" style={{ color: "var(--lp-muted)" }}>Tedarik zinciri</div>
-          <h2 className="font-serif text-3xl md:text-4xl transition-opacity duration-300" style={{ color: "var(--lp-ink)" }} key={mode}>
-            {isHasat ? "Doğrudan ödeme, bütün değer üreticide." : "Değer, halkalar arasında kayboluyor."}
+          <h2 className="font-serif text-3xl md:text-4xl" style={{ color: "var(--lp-ink)" }}>
+            Üreticinin eline ne kadar geçiyor?
           </h2>
+          <p className="mt-3 text-sm max-w-xl mx-auto" style={{ color: "var(--lp-muted)" }}>
+            Alıcının ödediği her ₺100'ün, üreticiye kalan payı.
+          </p>
         </div>
+
+        {/* Headline callout */}
+        <div ref={calloutRef} className="grid gap-4 md:grid-cols-2 mb-10">
+          <div
+            className="rounded-3xl p-6 md:p-8 text-center lp-reveal"
+            style={{ background: "var(--lp-white)", border: "1px solid var(--lp-line)" }}
+          >
+            <div className="text-[11px] uppercase tracking-widest mb-2" style={{ color: "var(--lp-earth)" }}>Geleneksel</div>
+            <div className="font-serif tabular-nums text-6xl md:text-7xl leading-none" style={{ color: "var(--lp-earth)" }}>
+              %<CountUp to={14} />
+            </div>
+            <div className="mt-3 text-sm" style={{ color: "var(--lp-muted)" }}>üreticiye kalan pay</div>
+          </div>
+          <div
+            className="rounded-3xl p-6 md:p-8 text-center lp-reveal lp-reveal-d2"
+            style={{ background: "var(--lp-primary)", color: "#fff" }}
+          >
+            <div className="text-[11px] uppercase tracking-widest mb-2" style={{ color: "#CFE8D3" }}>Hasat ile</div>
+            <div className="font-serif tabular-nums text-6xl md:text-7xl leading-none" style={{ color: "#CFE8D3" }}>
+              %<CountUp to={95} />
+            </div>
+            <div className="mt-3 text-sm" style={{ color: "rgba(255,255,255,0.85)" }}>üreticiye kalan pay</div>
+          </div>
+        </div>
+
+
 
         {/* Toggle */}
         <div className="mx-auto mb-8 inline-flex rounded-full p-1 lp-reveal lp-reveal-d1"
@@ -522,11 +604,11 @@ function SupplyChain() {
 function TraceabilityMock() {
   const ref = useReveal<HTMLDivElement>();
   const rows = [
-    { icon: <Sprout className="w-4 h-4" />, label: "Dikim", date: "12 Nis" },
-    { icon: <Droplets className="w-4 h-4" />, label: "Sulama", date: "3 May" },
-    { icon: <Camera className="w-4 h-4" />, label: "Fotoğraf: çiçek", date: "20 May" },
-    { icon: <Sprout className="w-4 h-4" />, label: "Gübreleme", date: "8 Haz" },
-    { icon: <Scissors className="w-4 h-4" />, label: "Hasat", date: "22 Eki" },
+    { icon: <Sprout className="w-4 h-4" />, label: "Dikim", date: "10 Mar" },
+    { icon: <Droplets className="w-4 h-4" />, label: "Sulama", date: "18 Haz" },
+    { icon: <Camera className="w-4 h-4" />, label: "Fotoğraf: dal", date: "5 Eyl" },
+    { icon: <Sprout className="w-4 h-4" />, label: "Gübreleme", date: "22 Eyl" },
+    { icon: <Scissors className="w-4 h-4" />, label: "Hasat", date: "8 Kas" },
   ];
   return (
     <section
@@ -560,16 +642,16 @@ function TraceabilityMock() {
           >
             <div className="rounded-[28px] overflow-hidden" style={{ background: "var(--lp-white)" }}>
               <div className="relative aspect-[16/10]">
-                <img src={IMG_SAFFRON} alt="" className="w-full h-full object-cover" />
+                <img src={IMG_OLIVE} alt="Ayvalık'ta zeytin dalında olgunlaşmış zeytinler" className="w-full h-full object-cover" />
                 <span
                   className="absolute bottom-2 left-2 inline-flex items-center gap-1 rounded-full px-2 py-1 text-[10px]"
                   style={{ background: "rgba(255,255,255,0.92)", color: "var(--lp-primary)" }}
                 >
-                  <MapPin className="w-3 h-3" /> Safranbolu
+                  <MapPin className="w-3 h-3" /> Ayvalık
                 </span>
               </div>
               <div className="p-5">
-                <div className="font-serif text-base mb-4" style={{ color: "var(--lp-ink)" }}>Safran · Parsel 1</div>
+                <div className="font-serif text-base mb-4" style={{ color: "var(--lp-ink)" }}>Zeytin · Parsel 1</div>
                 <ol className="space-y-4">
                   {rows.map((r, i) => (
                     <li
@@ -623,7 +705,7 @@ function MarketplacePreview() {
           <div>
             <div className="text-xs uppercase tracking-widest mb-2" style={{ color: "var(--lp-muted)" }}>Pazar yeri</div>
             <h2 className="font-serif text-3xl md:text-4xl" style={{ color: "var(--lp-ink)" }}>Öne çıkan üreticiler.</h2>
-            <div className="text-xs mt-1" style={{ color: "var(--lp-muted)" }}>Aşağıdaki kartlar örnek üretici verisi içerir. İlanlar en yeni tarihe göre sıralanır — ücretli öne çıkarma yoktur.</div>
+            <div className="text-xs mt-1" style={{ color: "var(--lp-muted)" }}>Vitrin ilanları böyle görünür — en yeni tarihe göre sıralanır, ücretli öne çıkarma yoktur.</div>
           </div>
         </div>
         <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
@@ -639,6 +721,12 @@ function MarketplacePreview() {
                   style={{ background: "var(--lp-primary)", color: "#fff" }}
                 >
                   <ShieldCheck className="w-3 h-3" /> {it.tier}
+                </span>
+                <span
+                  className="absolute top-3 right-3 rounded-full px-2 py-0.5 text-[10px] font-medium"
+                  style={{ background: "rgba(255,255,255,0.92)", color: "var(--lp-muted)", border: "1px solid var(--lp-line)" }}
+                >
+                  Gösterim
                 </span>
               </div>
               <div className="p-4">
@@ -751,7 +839,7 @@ function TurkeyMap() {
 
           <div className="rounded-2xl p-4" style={{ background: "var(--lp-cream-2)", border: "1px solid var(--lp-line)" }}>
             <div className="text-[11px] uppercase tracking-widest mb-2" style={{ color: "var(--lp-muted)" }}>
-              Örnek üretim
+              Gösterim
             </div>
             <div className="font-serif text-xl mb-1" style={{ color: "var(--lp-ink)" }}>{pin.region}</div>
             <div className="text-sm mb-3" style={{ color: "var(--lp-muted)" }}>{pin.crop} · {pin.qty}</div>
@@ -791,7 +879,7 @@ function FarmerStory() {
     <section className="px-4 py-16 md:py-24 border-t" style={{ borderColor: "var(--lp-line)", background: "var(--lp-cream-2)" }} ref={ref}>
       <div className="mx-auto max-w-6xl grid gap-10 md:grid-cols-[1.2fr_1fr] items-center">
         <div className="relative rounded-3xl overflow-hidden aspect-[4/3] lp-reveal">
-          <img src={IMG_SOIL_HANDS} alt="Toprakla çalışan eller" className="w-full h-full object-cover" style={{ filter: "saturate(0.9)" }} />
+          <img src={IMG_LAVENDER} alt="Isparta'da mor lavanta tarlası" className="w-full h-full object-cover" style={{ filter: "saturate(0.9)" }} />
           <div
             className="absolute inset-0"
             style={{ background: "linear-gradient(180deg, transparent 40%, rgba(20,35,28,0.35) 100%)" }}
@@ -804,7 +892,7 @@ function FarmerStory() {
             görüyor — güven kendiliğinden geliyor."
           </blockquote>
           <div className="mt-4 text-sm" style={{ color: "var(--lp-muted)" }}>
-            <span className="italic">Örnek senaryo — </span> Üretici A. Y., Safranbolu · 5 dönüm safran
+            <span className="italic">Gösterim amaçlı — </span> Üretici E. D., Isparta · 8 dönüm lavanta
           </div>
         </div>
       </div>
@@ -881,7 +969,7 @@ function AISection() {
             title="Otomatik ilan güncellemesi"
             messages={[
               { who: "farmer", text: "Bugün hasat yaptım, 320 gr safran çıktı." },
-              { who: "hasat", text: "Harika 🌸 İlanına 320 gr eklendi, güven skoru %78 → %92'ye çıktı. Fiyatı ₺2.900 olarak güncelledim, onaylıyor musun?" },
+              { who: "hasat", text: "Harika 🌸 İlanına 320 gr eklendi, güven skoru %78'den %92'ye çıktı. Fiyatı ₺2.900 olarak güncelledim, onaylıyor musun?" },
             ]}
           />
         </div>
@@ -1117,6 +1205,83 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
     </label>
   );
 }
+
+/* ---------- CountUp ---------- */
+function CountUp({ to, duration = 1200 }: { to: number; duration?: number }) {
+  const [val, setVal] = useState(0);
+  const ref = useRef<HTMLSpanElement | null>(null);
+  const started = useRef(false);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const io = new IntersectionObserver((entries) => {
+      for (const e of entries) {
+        if (e.isIntersecting && !started.current) {
+          started.current = true;
+          const start = performance.now();
+          const tick = (now: number) => {
+            const t = Math.min(1, (now - start) / duration);
+            const eased = 1 - Math.pow(1 - t, 3);
+            setVal(Math.round(eased * to));
+            if (t < 1) requestAnimationFrame(tick);
+          };
+          requestAnimationFrame(tick);
+          io.disconnect();
+        }
+      }
+    }, { threshold: 0.4 });
+    io.observe(el);
+    return () => io.disconnect();
+  }, [to, duration]);
+  return <span ref={ref}>{val}</span>;
+}
+
+/* ---------- FAQ ---------- */
+function FAQ() {
+  const ref = useReveal<HTMLDivElement>();
+  return (
+    <section
+      className="px-4 py-16 md:py-24 border-t"
+      style={{ borderColor: "var(--lp-line)", background: "var(--lp-cream)" }}
+      ref={ref}
+    >
+      <div className="mx-auto max-w-3xl">
+        <div className="text-center mb-10 lp-reveal">
+          <div className="text-xs uppercase tracking-widest mb-2" style={{ color: "var(--lp-muted)" }}>SSS</div>
+          <h2 className="font-serif text-3xl md:text-4xl" style={{ color: "var(--lp-ink)" }}>
+            Sıkça Sorulan Sorular
+          </h2>
+        </div>
+        <div className="space-y-3">
+          {FAQ_ITEMS.map((f, i) => (
+            <details
+              key={f.q}
+              className={`lp-card rounded-2xl p-5 group lp-reveal lp-reveal-d${(i % 5) + 1}`}
+            >
+              <summary
+                className="cursor-pointer list-none flex items-center justify-between gap-4 font-serif text-base md:text-lg"
+                style={{ color: "var(--lp-ink)" }}
+              >
+                <span>{f.q}</span>
+                <span
+                  className="text-xl leading-none transition-transform group-open:rotate-45"
+                  style={{ color: "var(--lp-accent)" }}
+                  aria-hidden
+                >
+                  +
+                </span>
+              </summary>
+              <div className="mt-3 text-sm" style={{ color: "var(--lp-muted)" }}>
+                {f.a}
+              </div>
+            </details>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
 
 /* ---------- Footer ---------- */
 function Footer() {
