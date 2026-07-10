@@ -1,83 +1,91 @@
-## SupplyChain redesign — dual chain + motion
+## SupplyChain — compact single-bar redesign (plain CSS)
 
-Scope: `src/routes/index.tsx`, only the `SupplyChain` component and a small block of CSS keyframes appended to `LandingStyles`. No new dependencies.
+Root-cause note: SMIL `<animate>` with computed `from`/`to` on a `preserveAspectRatio="none"` viewBox inside a re-rendered React tree ships fine to Chrome but frequently no-ops (particles stay hidden or freeze at initial state) — combined with the absolutely-positioned overlay having `height: 36px` while the viewBox is `100x20` non-uniformly stretched, the particles collapse to invisible sub-pixel radii. Rather than patch, we throw out the SVG overlay and the N‑column grid, and replace with a single horizontal bar per chain animated with plain CSS.
 
-### Layout changes
+Scope: `src/routes/index.tsx` — replace current `ChainCard` implementation; `SupplyChain` wrapper (headline callouts, groups, section chrome, hover‑glow classes) stays as‑is. Existing `.lp-chain-group` / `.lp-chain-card--trad` / `.lp-chain-card--hasat` hover‑glow CSS is reused; SMIL‑era `.lp-flow-line` / `@keyframes lp-flow-dash` removed and replaced with new keyframes.
 
-- Remove `mode` state, the toggle, and `isHasat` branching entirely.
-- Replace the single card with two stacked mini‑cards inside one wrapper (`grid gap-6 md:grid-cols-1`) — traditional on top, Hasat below — so the eye reads "6 leaks → 1 clean pipe" top‑to‑bottom on both desktop and mobile. (Side‑by‑side compresses the 6‑node chain too much on desktop; stacking keeps each chain at readable width. Both chains are always visible without any click, satisfying the "no toggle" requirement.)
-- Each mini‑card keeps: small eyebrow label ("Geleneksel" / "Hasat ile"), the node/bar row, and its existing caption underneath.
-- Traditional card border/accent tinted `--lp-earth`; Hasat card border/accent tinted `--lp-primary` — matching the two headline callout cards above.
+### Visual design
 
-### Chain rendering
+Compact single row per chain (~110px tall vs current ~200px):
 
-- Traditional: 6 nodes (Çiftçi 100 → Aracı 62 → Toptancı 46 → Distribütör 32 → Perakendeci 22 → Tüketici 14). Keep the current node pill + vertical bar + `%` label layout.
-- Hasat: 2 nodes (Çiftçi 100 → Alıcı 95). Because 2 nodes look sparse in a 6‑column grid, render the Hasat chain in its own 2‑column grid at the same max width so the two nodes sit at the far ends of the card — the wide empty middle becomes the "direct pipe" canvas for the flow animation.
+```text
+Geleneksel
+├──────────────────────────────────────────────────────────────┤   ← track (full width, muted)
+│████████████│██████████│████████│██████│████│██│░░░░░░░░░░░░░│   ← 6 stacked segments,
+│    100%    │   62%    │  46%   │ 32%  │22% │14│                    each width = pct-delta of total,
+Çiftçi      Aracı     Toptancı  Dist.  Per. Tük.                    darker earth on left,
+                                                                     fading toward transparent right
+                          ● ← ₺ marker travels L→R, shrinks at each boundary
 
-### Connector layer (SVG overlay per card)
+Hasat ile
+├──────────────────────────────────────────────────────────────┤
+│█████████████████████████████████████████████████████████████░│   ← single solid primary fill 95%
+│                            100%                              │
+Çiftçi                                                    Alıcı
+● ─────────────────────────────────────────────────────────► ●   ← ₺ marker travels full length,
+                                                                     constant size, gentle pulse
+```
 
-Each mini‑card gets an absolutely‑positioned SVG spanning the node row (`position: absolute; inset: 0; pointer-events: none`). The SVG draws the connector line(s) between node centers and hosts the animated particles. Node column widths are equal, so particle x‑positions are computed as percentages of the SVG viewBox — no JS measurement needed, no `requestAnimationFrame`.
+### Bar structure
 
-**Traditional — "value being eaten away":**
-- A single horizontal guide line at bar‑top height, dashed, `--lp-earth` at 40% opacity.
-- 5 `<circle>` particles, one per segment (Çiftçi→Aracı, Aracı→Toptancı, …). Each has:
-  - `<animate attributeName="cx" ...>` moving from segment start to segment end.
-  - `<animate attributeName="r" ...>` shrinking from a starting radius proportional to the *incoming* node's pct down to a radius proportional to the *outgoing* node's pct (so the particle visibly gets smaller as it crosses each middleman — the "bite" at every handoff).
-  - `<animate attributeName="opacity" ...>` fading `1 → 0.35` across the segment.
-  - Small `<text>` label `₺` next to the particle, following via the same `cx` animation.
-  - Segments are staggered with `begin="0s; 0.6s; 1.2s; ..."` so the eye sees a wave of erosion moving left→right, then it loops (`repeatCount="indefinite"`, total cycle ~4s).
-- At each node boundary a tiny static "bite" wedge (`<path>` triangle notch) in `--lp-earth` at 25% opacity, purely decorative, reinforcing the step‑down.
+Both chains use the same wrapper: a full‑width track (`height: 28px`, `border-radius: 14px`, background `color-mix(in oklab, var(--lp-line) 60%, transparent)`) with children absolutely positioned inside.
 
-**Hasat — "direct flow":**
-- A single straight line Çiftçi→Alıcı in `--lp-primary`, drawn with `stroke-dasharray` + animated `stroke-dashoffset` for a subtle continuous "flowing" shimmer (same technique as existing `lp-draw` keyframe, but looping instead of one‑shot).
-- Layered on top, 3 `<circle>` particles traveling left→right continuously with staggered `begin` (0s, 0.8s, 1.6s), constant radius, opacity pulsing gently (0.6→1→0.6). Loop `3s`, `repeatCount="indefinite"`.
-- No shrinkage, no fade‑out at the end — particles arrive at Alıcı at full size, contrast with the eroding traditional particles right above.
+**Geleneksel** — 6 segments rendered as inline‑flex children whose widths correspond to the *drop* between consecutive pcts, normalized so the total spans 100% of the track. Concretely, segment widths derived from the pcts (100, 62, 46, 32, 22, 14) become the on‑track widths (100, 62, 46, 32, 22, 14) each scaled by 100/sum → widths in %. Each segment is filled with `--lp-earth` at descending alpha (`opacity: 1, 0.82, 0.66, 0.5, 0.36, 0.22`), giving a stepped, visibly eroding gradient. Thin 1px gap between segments (via `box-shadow: inset -1px 0 0 var(--lp-cream-2)`) makes each handoff readable.
 
-All animation uses SMIL `<animate>` inside SVG (native, no library, no rAF loop) plus one or two new `@keyframes` in `LandingStyles` for the dashed line shimmer. Mobile (`< 640px`): SVG scales with the container; particle count on traditional reduced to 3 (every other segment) via a `hidden sm:block` split, or kept the same — leaning toward keeping all 5 since SMIL is cheap. Prefers‑reduced‑motion: wrap the animations in `@media (prefers-reduced-motion: reduce)` to freeze `<animate>` via `begin="indefinite"` fallback — simplest is to set `animation-play-state: paused` on the shimmer and rely on SMIL respecting the media query is not guaranteed, so we'll add a CSS rule `@media (prefers-reduced-motion: reduce) { .lp-chain-anim { display: none } }` and show only the static line + nodes.
+Node labels sit in a second row directly below the track: a 6‑column CSS grid with `gridTemplateColumns` matching the segment widths so each label lines up under its segment. Labels are `text-[10px] md:text-[11px]`, muted color, single line. The `%` value renders inside the segment when width allows (`>= 8%`), otherwise omitted.
 
-### Headline ↔ chain connection
+**Hasat ile** — single filled bar at 95% width with `background: var(--lp-primary)`; remaining 5% is track. Two labels ("Çiftçi", "Alıcı") in a 2‑column grid below, aligned to the far ends. A small centered `%100 → %95` legend can be dropped; the caption below already carries the point.
 
-- Wrap each headline callout card + its chain card in a shared parent `<div className="lp-chain-group lp-chain-group--trad">` / `--hasat`.
-- On `:hover` of the group, the chain card below gets a soft outer glow (`box-shadow: 0 0 0 3px color-mix(in oklab, var(--lp-earth) 25%, transparent)` for traditional, same with `--lp-primary` for Hasat) via CSS only.
-- Timing sync: the SMIL animations use the same loop lengths (~4s traditional, ~3s Hasat) that already feel calm. The `CountUp` completing is a one‑shot on reveal — we don't try to trigger a JS pulse from it. Instead, the shared color accent (earth vs primary) between callout card and chain card provides the "these belong together" cue, plus the hover glow is the discoverable secondary connection. Judgment call per the brief: shared color + shared row grouping is enough, no cursor tracking.
+### Marker animation (plain CSS keyframes)
 
-### Caption text
+One `<span>` marker per chain, absolutely positioned on top of the track, `top: 50%; transform: translate(-50%, -50%)`. Marker is a small circle with a `₺` glyph inside (`width: 18px; height: 18px; border-radius: 50%; background: <accent>; color: white; font-size: 10px; display: grid; place-items: center`).
 
-- Traditional caption stays: "Ortalama olarak son tüketicinin ödediği her ₺100'ün yalnızca ~₺14'ü üreticide kalıyor."
-- Hasat caption stays: "Şeffaf komisyon: %5. Ödeme doğrudan çiftçinin IBAN'ına."
-
-### CSS additions (appended inside existing `<style>` block in `LandingStyles`)
+**Traditional marker keyframes** — 6s loop, `linear`, `infinite`. Uses `left` (not `transform: translateX(%)`) so the % refers to the track width. Six equal‑time steps traverse the six segment boundaries; at each boundary the marker shrinks (`scale`) proportional to the pct at that node, and its opacity drops slightly:
 
 ```css
-@keyframes lp-flow-dash { to { stroke-dashoffset: -24 } }
-.lp-flow-line { stroke-dasharray: 4 6; animation: lp-flow-dash 1.4s linear infinite; }
-.lp-chain-group:hover .lp-chain-card--trad { box-shadow: 0 0 0 3px color-mix(in oklab, var(--lp-earth) 25%, transparent); }
-.lp-chain-group:hover .lp-chain-card--hasat { box-shadow: 0 0 0 3px color-mix(in oklab, var(--lp-primary) 25%, transparent); }
-@media (prefers-reduced-motion: reduce) {
-  .lp-chain-anim { display: none; }
-  .lp-flow-line { animation: none; }
+@keyframes lp-erode {
+  0%   { left: 0%;   transform: translate(-50%, -50%) scale(1.00); opacity: 1;   }
+  16%  { left: 50%;  transform: translate(-50%, -50%) scale(1.00); opacity: 1;   } /* end of Çiftçi (100%) */
+  17%  { left: 50%;  transform: translate(-50%, -50%) scale(0.78); opacity: 0.9; } /* enter Aracı */
+  33%  { left: 81%;  transform: translate(-50%, -50%) scale(0.78); opacity: 0.9; }
+  34%  { left: 81%;  transform: translate(-50%, -50%) scale(0.62); opacity: 0.8; }
+  50%  { left: 104%; transform: translate(-50%, -50%) scale(0.62); opacity: 0.8; }
+  /* …continues through 32→22→14, ending faded out past the right edge… */
+  100% { left: 100%; transform: translate(-50%, -50%) scale(0.18); opacity: 0;   }
 }
 ```
 
+The `left` stops are computed from the cumulative segment widths (mid‑segment travel + instantaneous "bite" scale change at each boundary — a stepwise erosion that mirrors the segmented bar underneath). Full 6‑step keyframe list is written in‑file; the sketch above is a shorthand.
+
+**Hasat marker keyframes** — 3s loop, `ease-in-out`, `infinite`. Single continuous travel `left: 0% → 100%`, `scale` constant, opacity `0 → 1 → 1 → 0` (fade in at start, fade out at end) so the marker "arrives" cleanly and restarts without a hard jump:
+
+```css
+@keyframes lp-flow {
+  0%   { left: 0%;   opacity: 0; }
+  10%  { left: 8%;   opacity: 1; }
+  90%  { left: 92%;  opacity: 1; }
+  100% { left: 100%; opacity: 0; }
+}
+```
+
+### Reduced motion
+
+```css
+@media (prefers-reduced-motion: reduce) {
+  .lp-marker { animation: none; opacity: 0; }
+}
+```
+
+Track and segments stay fully visible — the erosion is already legible from the stepped fill alone; the marker is pure ornament.
+
+### Files touched
+
+`src/routes/index.tsx`:
+1. `LandingStyles` — remove `@keyframes lp-flow-dash` and `.lp-flow-line`; add `@keyframes lp-erode`, `@keyframes lp-flow`, `.lp-marker` base rule, and the `prefers-reduced-motion` override. Keep the existing `.lp-chain-group:hover .lp-chain-card--trad|hasat` glow rules unchanged.
+2. `ChainCard` — rewrite. Remove the SVG overlay, the N‑column pill grid, the vertical per‑node bars, and the `xAt`/`rFor` helpers. Render: eyebrow row (unchanged), the single track + marker described above, the aligned label grid, then the existing caption block.
+3. `SupplyChain` — no changes to headline callouts, group wrappers, or captions. The two `ChainCard` invocations already pass `variant`, `nodes`, `caption` — signature is preserved.
+
 ### Verification
 
-- `bunx tsgo --noEmit` at the end. Visual spot check via preview screenshot to confirm both chains render, particles animate, no layout regression on mobile.
-
-### ASCII sketch
-
-```text
-┌─── traditional card ─────────────────────────────────────────┐
-│ Geleneksel                                                   │
-│ [Çiftçi]─·₺─►[Aracı]─·₺─►[Toptancı]─·₺─►[Dist.]─·₺─►[Per.]─·₺─►[Tük.] │
-│  ██        ██          ██            ██          ██         █ │
-│ 100%      62%         46%           32%         22%        14%│
-│ caption…                                                     │
-└──────────────────────────────────────────────────────────────┘
-┌─── hasat card ───────────────────────────────────────────────┐
-│ Hasat ile                                                    │
-│ [Çiftçi] ═·····○·····○·····○═► [Alıcı]                       │
-│  ██████                        █████                         │
-│ 100%                            95%                          │
-│ caption…                                                     │
-└──────────────────────────────────────────────────────────────┘
-```
+- `bunx tsgo --noEmit`.
+- Visual: preview screenshot to confirm both bars render, marker travels and shrinks (traditional) / flows (Hasat), hover glow still fires, mobile stacked layout still readable.
