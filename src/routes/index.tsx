@@ -478,7 +478,6 @@ function ValuePillars() {
 /* ---------- Supply chain comparison ---------- */
 function SupplyChain() {
   const ref = useReveal<HTMLDivElement>();
-  const [mode, setMode] = useState<"traditional" | "hasat">("traditional");
   const traditional = [
     { label: "Çiftçi", pct: 100 },
     { label: "Aracı", pct: 62 },
@@ -491,12 +490,6 @@ function SupplyChain() {
     { label: "Çiftçi", pct: 100 },
     { label: "Alıcı", pct: 95 },
   ];
-  const isHasat = mode === "hasat";
-  const nodes = isHasat ? direct : traditional;
-  const barTint = isHasat ? "var(--lp-accent)" : "var(--lp-earth)";
-  const nodeBg = isHasat
-    ? "color-mix(in oklab, var(--lp-accent) 12%, var(--lp-white))"
-    : "color-mix(in oklab, var(--lp-earth) 12%, var(--lp-white))";
   const calloutRef = useReveal<HTMLDivElement>();
   return (
     <section
@@ -515,99 +508,161 @@ function SupplyChain() {
           </p>
         </div>
 
-        {/* Headline callout */}
-        <div ref={calloutRef} className="grid gap-4 md:grid-cols-2 mb-10">
-          <div
-            className="rounded-3xl p-6 md:p-8 text-center lp-reveal"
-            style={{ background: "var(--lp-white)", border: "1px solid var(--lp-line)" }}
-          >
-            <div className="text-[11px] uppercase tracking-widest mb-2" style={{ color: "var(--lp-earth)" }}>Geleneksel</div>
-            <div className="font-serif tabular-nums text-6xl md:text-7xl leading-none" style={{ color: "var(--lp-earth)" }}>
-              %<CountUp to={14} />
-            </div>
-            <div className="mt-3 text-sm" style={{ color: "var(--lp-muted)" }}>üreticiye kalan pay</div>
-          </div>
-          <div
-            className="rounded-3xl p-6 md:p-8 text-center lp-reveal lp-reveal-d2"
-            style={{ background: "var(--lp-primary)", color: "#fff" }}
-          >
-            <div className="text-[11px] uppercase tracking-widest mb-2" style={{ color: "#CFE8D3" }}>Hasat ile</div>
-            <div className="font-serif tabular-nums text-6xl md:text-7xl leading-none" style={{ color: "#CFE8D3" }}>
-              %<CountUp to={95} />
-            </div>
-            <div className="mt-3 text-sm" style={{ color: "rgba(255,255,255,0.85)" }}>üreticiye kalan pay</div>
-          </div>
-        </div>
-
-
-
-        {/* Toggle */}
-        <div className="mx-auto mb-8 inline-flex rounded-full p-1 lp-reveal lp-reveal-d1"
-          style={{ background: "var(--lp-white)", border: "1px solid var(--lp-line)" }}>
-          <button
-            onClick={() => setMode("traditional")}
-            className="rounded-full px-4 py-2 text-xs md:text-sm font-medium transition"
-            style={{
-              background: !isHasat ? "var(--lp-earth)" : "transparent",
-              color: !isHasat ? "#fff" : "var(--lp-muted)",
-            }}
-          >Geleneksel</button>
-          <button
-            onClick={() => setMode("hasat")}
-            className="rounded-full px-4 py-2 text-xs md:text-sm font-medium transition"
-            style={{
-              background: isHasat ? "var(--lp-primary)" : "transparent",
-              color: isHasat ? "#fff" : "var(--lp-muted)",
-            }}
-          >Hasat ile</button>
-        </div>
-
-        <div className="lp-card rounded-3xl p-6 md:p-10 lp-reveal lp-reveal-d2">
-          <div className="flex items-baseline justify-between mb-6">
-            <div className="text-xs uppercase tracking-widest" style={{ color: isHasat ? "var(--lp-accent)" : "var(--lp-earth)" }}>
-              {isHasat ? "Hasat ile" : "Geleneksel"}
-            </div>
-            <div className="text-xs" style={{ color: "var(--lp-muted)" }}>Üreticinin eline geçen değer</div>
-          </div>
-
-          <div className="grid gap-3" style={{ gridTemplateColumns: `repeat(${nodes.length}, minmax(0,1fr))` }}>
-            {nodes.map((n, i) => (
-              <div key={n.label} className="flex flex-col items-center relative">
-                {i < nodes.length - 1 && (
-                  <span className="hidden md:block absolute top-4 left-1/2 w-full h-px" style={{ background: "var(--lp-line)" }} aria-hidden />
-                )}
-                <div
-                  className="rounded-full px-3 py-1.5 text-[11px] md:text-xs relative z-10 text-center w-full max-w-[140px]"
-                  style={{ background: nodeBg, color: "var(--lp-ink)", border: "1px solid var(--lp-line)" }}
-                >
-                  {n.label}
-                </div>
-                {/* Value bar */}
-                <div className="mt-4 w-full max-w-[80px] flex flex-col items-center">
-                  <div className="relative w-full h-24 md:h-32 rounded-lg overflow-hidden" style={{ background: "color-mix(in oklab, var(--lp-line) 60%, transparent)" }}>
-                    <div
-                      className="absolute inset-x-0 bottom-0 rounded-lg transition-all duration-700 ease-out"
-                      style={{ height: `${n.pct}%`, background: barTint }}
-                    />
-                  </div>
-                  <div className="mt-2 text-sm md:text-base font-semibold tabular-nums" style={{ color: "var(--lp-ink)" }}>
-                    {n.pct}%
-                  </div>
-                </div>
+        <div ref={calloutRef} className="grid gap-8">
+          {/* Traditional group: callout + chain */}
+          <div className="lp-chain-group">
+            <div
+              className="rounded-3xl p-6 md:p-8 text-center lp-reveal mb-4"
+              style={{ background: "var(--lp-white)", border: "1px solid var(--lp-line)" }}
+            >
+              <div className="text-[11px] uppercase tracking-widest mb-2" style={{ color: "var(--lp-earth)" }}>Geleneksel</div>
+              <div className="font-serif tabular-nums text-6xl md:text-7xl leading-none" style={{ color: "var(--lp-earth)" }}>
+                %<CountUp to={14} />
               </div>
-            ))}
+              <div className="mt-3 text-sm" style={{ color: "var(--lp-muted)" }}>üreticiye kalan pay</div>
+            </div>
+            <ChainCard variant="trad" nodes={traditional} caption="Ortalama olarak son tüketicinin ödediği her ₺100'ün yalnızca ~₺14'ü üreticide kalıyor." />
           </div>
 
-          <div className="mt-8 pt-6 border-t text-xs md:text-sm text-center" style={{ borderColor: "var(--lp-line)", color: "var(--lp-muted)" }}>
-            {isHasat
-              ? "Şeffaf komisyon: %5. Ödeme doğrudan çiftçinin IBAN'ına."
-              : "Ortalama olarak son tüketicinin ödediği her ₺100'ün yalnızca ~₺14'ü üreticide kalıyor."}
+          {/* Hasat group: callout + chain */}
+          <div className="lp-chain-group">
+            <div
+              className="rounded-3xl p-6 md:p-8 text-center lp-reveal lp-reveal-d1 mb-4"
+              style={{ background: "var(--lp-primary)", color: "#fff" }}
+            >
+              <div className="text-[11px] uppercase tracking-widest mb-2" style={{ color: "#CFE8D3" }}>Hasat ile</div>
+              <div className="font-serif tabular-nums text-6xl md:text-7xl leading-none" style={{ color: "#CFE8D3" }}>
+                %<CountUp to={95} />
+              </div>
+              <div className="mt-3 text-sm" style={{ color: "rgba(255,255,255,0.85)" }}>üreticiye kalan pay</div>
+            </div>
+            <ChainCard variant="hasat" nodes={direct} caption="Şeffaf komisyon: %5. Ödeme doğrudan çiftçinin IBAN'ına." />
           </div>
         </div>
       </div>
     </section>
   );
 }
+
+/* ---------- Chain card with SVG particle overlay ---------- */
+function ChainCard({
+  variant,
+  nodes,
+  caption,
+}: {
+  variant: "trad" | "hasat";
+  nodes: { label: string; pct: number }[];
+  caption: string;
+}) {
+  const isHasat = variant === "hasat";
+  const accent = isHasat ? "var(--lp-primary)" : "var(--lp-earth)";
+  const nodeBg = isHasat
+    ? "color-mix(in oklab, var(--lp-primary) 12%, var(--lp-white))"
+    : "color-mix(in oklab, var(--lp-earth) 12%, var(--lp-white))";
+  const N = nodes.length;
+  // Radius per node pct (in svg user units, viewBox 100x20)
+  const rFor = (pct: number) => 0.6 + (pct / 100) * 2.6;
+  const xAt = (i: number) => ((i + 0.5) / N) * 100;
+
+  return (
+    <div
+      className={`lp-card lp-chain-card lp-chain-card--${variant} rounded-3xl p-6 md:p-10 lp-reveal lp-reveal-d2`}
+      style={{ borderColor: accent + "40" as string }}
+    >
+      <div className="flex items-baseline justify-between mb-6">
+        <div className="text-xs uppercase tracking-widest" style={{ color: accent }}>
+          {isHasat ? "Hasat ile" : "Geleneksel"}
+        </div>
+        <div className="text-xs" style={{ color: "var(--lp-muted)" }}>Üreticinin eline geçen değer</div>
+      </div>
+
+      <div className="relative">
+        {/* SVG particle overlay across the pill row */}
+        <svg
+          className="lp-chain-anim absolute left-0 right-0 pointer-events-none"
+          style={{ top: 0, height: "36px" }}
+          viewBox="0 0 100 20"
+          preserveAspectRatio="none"
+          aria-hidden
+        >
+          {isHasat ? (
+            <>
+              {/* Continuous flowing line */}
+              <line
+                x1={xAt(0)} y1="10" x2={xAt(1)} y2="10"
+                stroke={accent}
+                strokeWidth="0.6"
+                strokeLinecap="round"
+                className="lp-flow-line"
+                opacity="0.7"
+              />
+              {/* 3 continuous particles */}
+              {[0, 1, 2].map((k) => (
+                <circle key={k} cx={xAt(0)} cy="10" r="1.6" fill={accent}>
+                  <animate attributeName="cx" from={xAt(0)} to={xAt(1)} dur="3s" begin={`${k * 1}s`} repeatCount="indefinite" />
+                  <animate attributeName="opacity" values="0;1;1;0" keyTimes="0;0.15;0.85;1" dur="3s" begin={`${k * 1}s`} repeatCount="indefinite" />
+                </circle>
+              ))}
+            </>
+          ) : (
+            <>
+              {/* Dashed guide line */}
+              <line
+                x1={xAt(0)} y1="10" x2={xAt(N - 1)} y2="10"
+                stroke={accent}
+                strokeWidth="0.4"
+                strokeDasharray="1.5 2"
+                opacity="0.4"
+              />
+              {/* 5 eroding particles, one per segment, staggered */}
+              {Array.from({ length: N - 1 }).map((_, i) => {
+                const dur = 3.2;
+                const begin = i * 0.55;
+                const totalCycle = dur + (N - 1) * 0.55;
+                return (
+                  <circle key={i} cx={xAt(i)} cy="10" r={rFor(nodes[i].pct)} fill={accent}>
+                    <animate attributeName="cx" from={xAt(i)} to={xAt(i + 1)} dur={`${dur}s`} begin={`${begin}s`} repeatCount="indefinite" repeatDur={`${totalCycle}s`} />
+                    <animate attributeName="r" from={rFor(nodes[i].pct)} to={rFor(nodes[i + 1].pct)} dur={`${dur}s`} begin={`${begin}s`} repeatCount="indefinite" repeatDur={`${totalCycle}s`} />
+                    <animate attributeName="opacity" values="0;1;0.85;0.35;0" keyTimes="0;0.15;0.6;0.9;1" dur={`${dur}s`} begin={`${begin}s`} repeatCount="indefinite" repeatDur={`${totalCycle}s`} />
+                  </circle>
+                );
+              })}
+            </>
+          )}
+        </svg>
+
+        <div className="grid gap-3 relative" style={{ gridTemplateColumns: `repeat(${N}, minmax(0,1fr))` }}>
+          {nodes.map((n, i) => (
+            <div key={n.label} className="flex flex-col items-center relative">
+              <div
+                className="rounded-full px-3 py-1.5 text-[11px] md:text-xs relative z-10 text-center w-full max-w-[140px]"
+                style={{ background: nodeBg, color: "var(--lp-ink)", border: "1px solid var(--lp-line)" }}
+              >
+                {n.label}
+              </div>
+              <div className="mt-4 w-full max-w-[80px] flex flex-col items-center">
+                <div className="relative w-full h-24 md:h-32 rounded-lg overflow-hidden" style={{ background: "color-mix(in oklab, var(--lp-line) 60%, transparent)" }}>
+                  <div
+                    className="absolute inset-x-0 bottom-0 rounded-lg transition-all duration-700 ease-out"
+                    style={{ height: `${n.pct}%`, background: accent }}
+                  />
+                </div>
+                <div className="mt-2 text-sm md:text-base font-semibold tabular-nums" style={{ color: "var(--lp-ink)" }}>
+                  {n.pct}%
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div className="mt-8 pt-6 border-t text-xs md:text-sm text-center" style={{ borderColor: "var(--lp-line)", color: "var(--lp-muted)" }}>
+        {caption}
+      </div>
+    </div>
+  );
+}
+
 
 /* ---------- Traceability phone mock ---------- */
 function TraceabilityMock() {
