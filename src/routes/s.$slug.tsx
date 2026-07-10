@@ -64,9 +64,9 @@ function useStorefront(slug: string) {
           .eq("farmer_id", profile.id),
       ]);
       // Public parcels omit lat/lng — construct Parcel-like objects with safe defaults.
-      const parcels = (pRows ?? []).map((r: any) => ({
-        ...dbToParcel({ ...r, lat: 0, lng: 0 }),
-      }));
+      const parcels: Parcel[] = (pRows ?? []).map((r: any) =>
+        dbToParcel({ ...r, lat: 0, lng: 0 })
+      );
       return {
         profile,
         listings: (lRows ?? []).map(dbToListing),
