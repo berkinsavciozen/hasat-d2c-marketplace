@@ -705,7 +705,7 @@ function MarketplacePreview() {
           <div>
             <div className="text-xs uppercase tracking-widest mb-2" style={{ color: "var(--lp-muted)" }}>Pazar yeri</div>
             <h2 className="font-serif text-3xl md:text-4xl" style={{ color: "var(--lp-ink)" }}>Öne çıkan üreticiler.</h2>
-            <div className="text-xs mt-1" style={{ color: "var(--lp-muted)" }}>Aşağıdaki kartlar örnek üretici verisi içerir. İlanlar en yeni tarihe göre sıralanır — ücretli öne çıkarma yoktur.</div>
+            <div className="text-xs mt-1" style={{ color: "var(--lp-muted)" }}>Vitrin ilanları böyle görünür — en yeni tarihe göre sıralanır, ücretli öne çıkarma yoktur.</div>
           </div>
         </div>
         <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
@@ -721,6 +721,12 @@ function MarketplacePreview() {
                   style={{ background: "var(--lp-primary)", color: "#fff" }}
                 >
                   <ShieldCheck className="w-3 h-3" /> {it.tier}
+                </span>
+                <span
+                  className="absolute top-3 right-3 rounded-full px-2 py-0.5 text-[10px] font-medium"
+                  style={{ background: "rgba(255,255,255,0.92)", color: "var(--lp-muted)", border: "1px solid var(--lp-line)" }}
+                >
+                  Gösterim
                 </span>
               </div>
               <div className="p-4">
