@@ -40,15 +40,15 @@ function useStorefront(slug: string) {
     queryFn: async () => {
       let profile: { id: string; name: string | null; city: string | null } | null = null;
       if (UUID_RE.test(slug)) {
-        const { data } = await supabase
-          .from("profiles").select("id, name, city")
-          .eq("id", slug).eq("role", "farmer").maybeSingle();
+        const { data } = await (supabase as any)
+          .from("public_farmer_profiles").select("id, name, city")
+          .eq("id", slug).maybeSingle();
         profile = data ?? null;
       }
       if (!profile) {
-        const { data } = await supabase
-          .from("profiles").select("id, name, city").eq("role", "farmer");
-        const match = (data ?? []).find((p) => p.name && slugify(p.name) === slug);
+        const { data } = await (supabase as any)
+          .from("public_farmer_profiles").select("id, name, city");
+        const match = (data ?? []).find((p: any) => p.name && slugify(p.name) === slug);
         profile = match ?? null;
       }
       if (!profile) return null;
@@ -56,17 +56,21 @@ function useStorefront(slug: string) {
         supabase.from("listings").select("*")
           .eq("farmer_id", profile.id).eq("status", "active")
           .order("created_at", { ascending: false }),
-        supabase.from("parcels").select("*")
+        (supabase as any).from("public_parcel_cards").select("*")
           .eq("farmer_id", profile.id)
           .order("created_at", { ascending: true }),
-        supabase.from("certifications")
+        (supabase as any).from("public_certifications")
           .select("id, type, verified_at, expires_at")
           .eq("farmer_id", profile.id),
       ]);
+      // Public parcels omit lat/lng — construct Parcel-like objects with safe defaults.
+      const parcels = (pRows ?? []).map((r: any) => ({
+        ...dbToParcel({ ...r, lat: 0, lng: 0 }),
+      }));
       return {
         profile,
         listings: (lRows ?? []).map(dbToListing),
-        parcels: (pRows ?? []).map(dbToParcel),
+        parcels,
         certs: (cRows ?? []) as Cert[],
       };
     },
