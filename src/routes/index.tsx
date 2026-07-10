@@ -839,7 +839,7 @@ function TurkeyMap() {
 
           <div className="rounded-2xl p-4" style={{ background: "var(--lp-cream-2)", border: "1px solid var(--lp-line)" }}>
             <div className="text-[11px] uppercase tracking-widest mb-2" style={{ color: "var(--lp-muted)" }}>
-              Örnek üretim
+              Gösterim
             </div>
             <div className="font-serif text-xl mb-1" style={{ color: "var(--lp-ink)" }}>{pin.region}</div>
             <div className="text-sm mb-3" style={{ color: "var(--lp-muted)" }}>{pin.crop} · {pin.qty}</div>
