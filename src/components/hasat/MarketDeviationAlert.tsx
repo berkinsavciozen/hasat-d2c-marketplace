@@ -1,4 +1,4 @@
-import { usePriceFeedSummary } from "@/lib/hasat/queries";
+import { usePriceHistorySummary } from "@/lib/hasat/queries";
 
 interface Props {
   crop: string;
@@ -9,21 +9,24 @@ interface Props {
 
 /**
  * Band-based market signal (competition-law safe).
- * Never displays a suggested price. Renders nothing when data is insufficient
- * (fewer than 5 distinct farmers in the 30-day window).
+ * Never displays a suggested price. Renders nothing when Hasat community
+ * data is insufficient (fewer than 5 distinct farmers in the configured
+ * window). Sourced from get_price_history_summary → hasat_data segment.
+ * Official (HKS) data is intentionally NOT used for the deviation band.
  *
  * - price > avg + stddev → "YÜKSEK" (red)
  * - avg - stddev ≤ price ≤ avg + stddev → "UYGUN" (neutral)
  * - price < avg - stddev → "DÜŞÜK" (amber)
  */
 export function MarketDeviationAlert({ crop, pricePerUnit }: Props) {
-  const { data: summary } = usePriceFeedSummary(crop);
-  if (!summary || summary.insufficientData) return null;
-  if (summary.avgPrice == null || summary.stddevPrice == null) return null;
+  const { data: summary } = usePriceHistorySummary(crop);
+  const hasat = summary?.hasat;
+  if (!hasat || hasat.insufficientData) return null;
+  if (hasat.avgPrice == null || hasat.stddevPrice == null) return null;
   if (!pricePerUnit) return null;
 
-  const lo = summary.avgPrice - summary.stddevPrice;
-  const hi = summary.avgPrice + summary.stddevPrice;
+  const lo = hasat.avgPrice - hasat.stddevPrice;
+  const hi = hasat.avgPrice + hasat.stddevPrice;
 
   let label: "YÜKSEK" | "UYGUN" | "DÜŞÜK";
   let text: string;

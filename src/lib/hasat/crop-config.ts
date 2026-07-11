@@ -16,6 +16,10 @@ export interface CropConfig {
   lifecycle_steps: LifecycleStep[] | null;
   price_benchmark_source: string | null;
   category_group: string | null;
+  has_official_price_source?: boolean;
+  official_source_name?: string | null;
+  price_window_type?: "rolling_30d" | "rolling_365d";
+  is_seasonal_harvest?: boolean;
 }
 
 export function normalizeCropKey(input: string | null | undefined): string {
@@ -92,6 +96,8 @@ export interface CropOption {
   label: string;
   emoji: string;
   category_group: string | null;
+  hasOfficialPriceSource: boolean;
+  officialSourceName: string | null;
 }
 
 /**
@@ -106,6 +112,8 @@ export function useCropOptions() {
       label: c.display_name,
       emoji: cropEmoji(c.display_name, c),
       category_group: c.category_group,
+      hasOfficialPriceSource: !!c.has_official_price_source,
+      officialSourceName: c.official_source_name ?? null,
     }))
     .sort((a, b) => a.label.localeCompare(b.label, "tr-TR"));
   return { ...q, options };

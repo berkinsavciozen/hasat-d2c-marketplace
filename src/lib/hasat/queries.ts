@@ -1975,64 +1975,80 @@ export function usePricePoints() {
   });
 }
 
-// ---- price feed (community-contributed market prices) ----
+// ---- price history (order-derived + official HKS aggregates) ----
 //
-// NOTE: raw price_feed rows are NOT readable by clients. Reads go through the
-// SECURITY DEFINER RPC `get_price_feed_summary(p_crop)` which returns only
-// aggregate stats (avg, stddev, distinct contributor count) over a 30-day
-// window, and reports `insufficient_data: true` when fewer than 5 distinct
-// farmers contributed. This is a competition-law safeguard: no user of Hasat
-// can see any other farmer's individual price entries.
-//
-// TODO: paid featured placement (future) must render a "Sponsorlu" badge and
-// be excluded from the default "newest first" order in useActiveListings.
-export interface PriceFeedSummary {
-  cropName: string;
+// Raw price_history rows are not readable by other users. Aggregate reads go
+// through the SECURITY DEFINER RPC `get_price_history_summary(p_crop)` which
+// returns the Hasat community band (avg/stddev over the crop-configured
+// window, gated at 5 distinct farmers) and, when the crop has an official
+// price source, a separate `official_data` segment (HKS average). The two
+// segments must never be merged into a single number in any UI or AI reply.
+export interface PriceHistoryHasatSegment {
+  insufficientData: boolean;
   avgPrice: number | null;
   stddevPrice: number | null;
   distinctFarmerCount: number;
-  lastUpdated: string | null;
-  insufficientData: boolean;
 }
 
-export function usePriceFeedSummary(crop: string | null | undefined) {
+export interface PriceHistoryOfficialSegment {
+  avgPrice: number;
+  officialSourceName: string;
+}
+
+export interface PriceHistorySummary {
+  hasat: PriceHistoryHasatSegment;
+  official: PriceHistoryOfficialSegment | null;
+  lastUpdated: string | null;
+}
+
+export function usePriceHistorySummary(crop: string | null | undefined) {
   const key = (crop ?? "").trim();
   return useQuery({
-    queryKey: ["priceFeedSummary", key.toLowerCase()],
+    queryKey: ["priceHistorySummary", key.toLowerCase()],
     enabled: key.length > 0,
-    queryFn: async (): Promise<PriceFeedSummary | null> => {
-      const { data, error } = await supabase.rpc("get_price_feed_summary", { p_crop: key });
+    queryFn: async (): Promise<PriceHistorySummary | null> => {
+      const { data, error } = await supabase.rpc(
+        "get_price_history_summary" as any,
+        { p_crop: key } as any,
+      );
       if (error) throw error;
-      const row = Array.isArray(data) ? data[0] : null;
+      const row: any = data ?? null;
       if (!row) return null;
+      const h = row.hasat_data ?? {};
+      const o = row.official_data ?? null;
       return {
-        cropName: row.crop_name ?? key,
-        avgPrice: row.avg_price == null ? null : Number(row.avg_price),
-        stddevPrice: row.stddev_price == null ? null : Number(row.stddev_price),
-        distinctFarmerCount: Number(row.distinct_farmer_count ?? 0),
+        hasat: {
+          insufficientData: !!h.insufficient_data,
+          avgPrice: h.avg_price == null ? null : Number(h.avg_price),
+          stddevPrice: h.stddev_price == null ? null : Number(h.stddev_price),
+          distinctFarmerCount: Number(h.distinct_farmer_count ?? 0),
+        },
+        official: o
+          ? {
+              avgPrice: Number(o.avg_price),
+              officialSourceName: String(o.official_source_name ?? "Resmi kaynak"),
+            }
+          : null,
         lastUpdated: row.last_updated ?? null,
-        insufficientData: !!row.insufficient_data,
       };
     },
   });
 }
 
-
-export function useCreatePriceFeedEntry() {
+export function useCreateCropRequest() {
   const qc = useQueryClient();
   const userId = useAuthUserId();
   return useMutation({
-    mutationFn: async (input: { cropName: string; price: number; unit: string; source?: string }) => {
+    mutationFn: async (input: { cropName: string; note?: string }) => {
       if (!userId) throw new Error("Oturum bulunamadı");
-      const { error } = await supabase.from("price_feed" as any).insert({
-        crop_name: input.cropName.trim(),
-        price_per_kg: input.price,
-        unit: input.unit,
-        source: input.source?.trim() || null,
-        recorded_by: userId,
+      const { error } = await supabase.from("crop_requests" as any).insert({
+        requested_by: userId,
+        crop_name_free_text: input.cropName.trim(),
+        note: input.note?.trim() || null,
       } as any);
       if (error) throw error;
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["priceFeed"] }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["cropRequests"] }),
   });
 }
+
