@@ -261,8 +261,12 @@ export type Database = {
           display_name: string
           harvest_window_end_month: number | null
           harvest_window_start_month: number | null
+          has_official_price_source: boolean
+          is_seasonal_harvest: boolean
           lifecycle_steps: Json | null
+          official_source_name: string | null
           price_benchmark_source: string | null
+          price_window_type: string
         }
         Insert: {
           category_group?: string | null
@@ -271,8 +275,12 @@ export type Database = {
           display_name: string
           harvest_window_end_month?: number | null
           harvest_window_start_month?: number | null
+          has_official_price_source?: boolean
+          is_seasonal_harvest?: boolean
           lifecycle_steps?: Json | null
+          official_source_name?: string | null
           price_benchmark_source?: string | null
+          price_window_type?: string
         }
         Update: {
           category_group?: string | null
@@ -281,10 +289,56 @@ export type Database = {
           display_name?: string
           harvest_window_end_month?: number | null
           harvest_window_start_month?: number | null
+          has_official_price_source?: boolean
+          is_seasonal_harvest?: boolean
           lifecycle_steps?: Json | null
+          official_source_name?: string | null
           price_benchmark_source?: string | null
+          price_window_type?: string
         }
         Relationships: []
+      }
+      crop_requests: {
+        Row: {
+          created_at: string
+          crop_name_free_text: string
+          id: string
+          note: string | null
+          requested_by: string | null
+          status: string
+        }
+        Insert: {
+          created_at?: string
+          crop_name_free_text: string
+          id?: string
+          note?: string | null
+          requested_by?: string | null
+          status?: string
+        }
+        Update: {
+          created_at?: string
+          crop_name_free_text?: string
+          id?: string
+          note?: string | null
+          requested_by?: string | null
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "crop_requests_requested_by_fkey"
+            columns: ["requested_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "crop_requests_requested_by_fkey"
+            columns: ["requested_by"]
+            isOneToOne: false
+            referencedRelation: "public_farmer_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       farms: {
         Row: {
@@ -1090,50 +1144,70 @@ export type Database = {
           },
         ]
       }
-      price_feed: {
+      price_history: {
         Row: {
-          crop_name: string
+          created_at: string
+          crop: string
+          farmer_id: string | null
           id: string
-          price_per_kg: number
-          recorded_at: string
-          recorded_by: string | null
-          source: string | null
-          source_type: string | null
+          order_id: string | null
+          price_per_unit: number
+          recorded_date: string
+          region: string | null
+          source: string
           unit: string
         }
         Insert: {
-          crop_name: string
+          created_at?: string
+          crop: string
+          farmer_id?: string | null
           id?: string
-          price_per_kg: number
-          recorded_at?: string
-          recorded_by?: string | null
-          source?: string | null
-          source_type?: string | null
-          unit?: string
+          order_id?: string | null
+          price_per_unit: number
+          recorded_date: string
+          region?: string | null
+          source: string
+          unit: string
         }
         Update: {
-          crop_name?: string
+          created_at?: string
+          crop?: string
+          farmer_id?: string | null
           id?: string
-          price_per_kg?: number
-          recorded_at?: string
-          recorded_by?: string | null
-          source?: string | null
-          source_type?: string | null
+          order_id?: string | null
+          price_per_unit?: number
+          recorded_date?: string
+          region?: string | null
+          source?: string
           unit?: string
         }
         Relationships: [
           {
-            foreignKeyName: "price_feed_recorded_by_fkey"
-            columns: ["recorded_by"]
+            foreignKeyName: "price_history_crop_fkey"
+            columns: ["crop"]
+            isOneToOne: false
+            referencedRelation: "crop_config"
+            referencedColumns: ["crop"]
+          },
+          {
+            foreignKeyName: "price_history_farmer_id_fkey"
+            columns: ["farmer_id"]
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "price_feed_recorded_by_fkey"
-            columns: ["recorded_by"]
+            foreignKeyName: "price_history_farmer_id_fkey"
+            columns: ["farmer_id"]
             isOneToOne: false
             referencedRelation: "public_farmer_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "price_history_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
             referencedColumns: ["id"]
           },
         ]
@@ -1390,17 +1464,7 @@ export type Database = {
         Args: { offer_row: Database["public"]["Tables"]["offers"]["Row"] }
         Returns: string
       }
-      get_price_feed_summary: {
-        Args: { p_crop: string }
-        Returns: {
-          avg_price: number
-          crop_name: string
-          distinct_farmer_count: number
-          insufficient_data: boolean
-          last_updated: string
-          stddev_price: number
-        }[]
-      }
+      get_price_history_summary: { Args: { p_crop: string }; Returns: Json }
       increment_ai_usage: { Args: { _user_id: string }; Returns: number }
     }
     Enums: {
