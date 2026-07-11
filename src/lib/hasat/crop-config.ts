@@ -96,6 +96,8 @@ export interface CropOption {
   label: string;
   emoji: string;
   category_group: string | null;
+  hasOfficialPriceSource: boolean;
+  officialSourceName: string | null;
 }
 
 /**
@@ -110,6 +112,8 @@ export function useCropOptions() {
       label: c.display_name,
       emoji: cropEmoji(c.display_name, c),
       category_group: c.category_group,
+      hasOfficialPriceSource: !!c.has_official_price_source,
+      officialSourceName: c.official_source_name ?? null,
     }))
     .sort((a, b) => a.label.localeCompare(b.label, "tr-TR"));
   return { ...q, options };
