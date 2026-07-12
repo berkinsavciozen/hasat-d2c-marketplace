@@ -623,17 +623,31 @@ export function useFarmerListings() {
   });
 }
 
+async function attachPublicFarmerProfiles<T extends { farmer_id: string }>(rows: T[]): Promise<(T & { profiles: { id: string; name: string | null; city: string | null } | null })[]> {
+  const ids = Array.from(new Set(rows.map((r) => r.farmer_id).filter(Boolean)));
+  if (ids.length === 0) return rows.map((r) => ({ ...r, profiles: null }));
+  const { data, error } = await (supabase as any)
+    .from("public_farmer_profiles")
+    .select("id, name, city")
+    .in("id", ids);
+  if (error) throw error;
+  const byId = new Map<string, { id: string; name: string | null; city: string | null }>();
+  for (const p of (data ?? []) as any[]) byId.set(p.id, { id: p.id, name: p.name ?? null, city: p.city ?? null });
+  return rows.map((r) => ({ ...r, profiles: byId.get(r.farmer_id) ?? null }));
+}
+
 export function useActiveListings() {
   return useQuery({
     queryKey: ["activeListings"],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("listings")
-        .select("*, profiles!listings_farmer_id_fkey(id,name,city)")
+        .select("*")
         .eq("status", "active")
         .order("created_at", { ascending: false });
       if (error) throw error;
-      return (data ?? []).map(dbToActiveListing);
+      const merged = await attachPublicFarmerProfiles(data ?? []);
+      return merged.map(dbToActiveListing);
     },
   });
 }
@@ -645,11 +659,45 @@ export function useListing(listingId: string) {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("listings")
-        .select("*, profiles!listings_farmer_id_fkey(id,name,city)")
+        .select("*")
         .eq("id", listingId)
         .maybeSingle();
       if (error) throw error;
-      return data ? dbToActiveListing(data) : null;
+      if (!data) return null;
+      const [merged] = await attachPublicFarmerProfiles([data]);
+      return dbToActiveListing(merged);
+    },
+  });
+}
+
+export function useCropsWithPriceData() {
+  return useQuery({
+    queryKey: ["cropsWithPriceData"],
+    queryFn: async () => {
+      const [listingsRes, cfgRes] = await Promise.all([
+        supabase.from("listings").select("crop").eq("status", "active"),
+        (supabase as any).from("crop_config").select("crop, has_official_price_source"),
+      ]);
+      if (listingsRes.error) throw listingsRes.error;
+      if (cfgRes.error) throw cfgRes.error;
+      const canonicalByLower = new Map<string, string>();
+      for (const r of (cfgRes.data ?? []) as any[]) {
+        if (r?.crop) canonicalByLower.set(String(r.crop).toLowerCase(), r.crop);
+      }
+      const officialCrops = new Set<string>(
+        ((cfgRes.data ?? []) as any[])
+          .filter((r) => r.has_official_price_source && r.crop)
+          .map((r) => r.crop as string),
+      );
+      const out = new Set<string>();
+      for (const r of (listingsRes.data ?? []) as any[]) {
+        const raw = r?.crop as string | null;
+        if (!raw) continue;
+        const canon = canonicalByLower.get(raw.toLowerCase()) ?? raw;
+        out.add(canon);
+      }
+      for (const c of officialCrops) out.add(c);
+      return Array.from(out).sort((a, b) => a.localeCompare(b, "tr"));
     },
   });
 }
