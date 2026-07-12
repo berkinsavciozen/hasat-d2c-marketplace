@@ -1404,7 +1404,78 @@ export function useOfferMessages(offerId: string | null | undefined) {
   });
 }
 
-// =====================================================================
+// Buyer inbox: one row per active/negotiating offer, with last message preview.
+export interface BuyerConversationRow {
+  offerId: string;
+  farmerId: string;
+  farmerName: string;
+  farmerCity: string | null;
+  crop: string;
+  status: string;
+  ballSide: "farmer" | "buyer";
+  createdAt: string;
+  lastMessageAt: string | null;
+  lastMessagePreview: string | null;
+  lastSenderRole: "farmer" | "buyer" | null;
+}
+
+export function useBuyerConversations() {
+  const userId = useAuthUserId();
+  return useQuery({
+    queryKey: ["buyerConversations", userId],
+    enabled: !!userId,
+    queryFn: async (): Promise<BuyerConversationRow[]> => {
+      const { data: offers, error } = await supabase
+        .from("offers")
+        .select("id, farmer_id, status, ball_side, created_at, listing:listings(crop)")
+        .eq("buyer_id", userId!)
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      const list = (offers ?? []) as any[];
+      if (list.length === 0) return [];
+      const offerIds = list.map((o) => o.id);
+      const farmerIds = Array.from(new Set(list.map((o) => o.farmer_id).filter(Boolean)));
+      const [msgsRes, farmersRes] = await Promise.all([
+        supabase.from("offer_messages").select("offer_id, sender_role, note, price, quantity, created_at").in("offer_id", offerIds).order("created_at", { ascending: false }),
+        (supabase as any).from("public_farmer_profiles").select("id, name, city").in("id", farmerIds),
+      ]);
+      if (msgsRes.error) throw msgsRes.error;
+      const lastByOffer = new Map<string, any>();
+      for (const m of (msgsRes.data ?? []) as any[]) {
+        if (!lastByOffer.has(m.offer_id)) lastByOffer.set(m.offer_id, m);
+      }
+      const farmers = new Map<string, { name: string | null; city: string | null }>();
+      for (const f of (farmersRes.data ?? []) as any[]) farmers.set(f.id, { name: f.name ?? null, city: f.city ?? null });
+      return list.map((o): BuyerConversationRow => {
+        const m = lastByOffer.get(o.id);
+        const preview = m
+          ? (m.note && String(m.note).trim().length > 0
+              ? String(m.note)
+              : (m.price != null || m.quantity != null ? "Yeni teklif" : null))
+          : null;
+        const farmer = farmers.get(o.farmer_id);
+        return {
+          offerId: o.id,
+          farmerId: o.farmer_id,
+          farmerName: farmer?.name ?? "Üretici",
+          farmerCity: farmer?.city ?? null,
+          crop: o.listing?.crop ?? "—",
+          status: o.status,
+          ballSide: o.ball_side === "buyer" ? "buyer" : "farmer",
+          createdAt: o.created_at,
+          lastMessageAt: m?.created_at ?? null,
+          lastMessagePreview: preview,
+          lastSenderRole: (m?.sender_role === "farmer" || m?.sender_role === "buyer") ? m.sender_role : null,
+        };
+      }).sort((a, b) => {
+        const ta = a.lastMessageAt ?? a.createdAt;
+        const tb = b.lastMessageAt ?? b.createdAt;
+        return tb.localeCompare(ta);
+      });
+    },
+  });
+}
+
 // ORDERS
 // =====================================================================
 const ORDER_SELECT =
