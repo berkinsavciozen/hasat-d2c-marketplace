@@ -28,7 +28,7 @@ function tierFromPct(pct: number): CoverageTier {
   return "temel";
 }
 
-const REPLANT_KEYS = new Set(["replant", "dikim", "plant", "planting"]);
+const REPLANT_KEYS = new Set(["replant", "dikim", "ekim", "plant", "planting"]);
 
 /**
  * Compute a coverage score for one listing / parcel / crop.
