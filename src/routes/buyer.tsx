@@ -1,6 +1,6 @@
 import { createFileRoute, Link, Outlet, redirect, useRouterState } from "@tanstack/react-router";
 import { useState } from "react";
-import { Search, Package, BarChart3, MessageCircle, User, Repeat, MoreHorizontal } from "lucide-react";
+import { Search, Package, BarChart3, MessageCircle, User, Repeat, MoreHorizontal, LineChart } from "lucide-react";
 import { useRealtimeSync, useAuthUserId } from "@/lib/hasat/queries";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 
@@ -23,6 +23,7 @@ const tabs = [
   { to: "/buyer/discover", label: "Keşfet", icon: Search },
   { to: "/buyer/orders", label: "Siparişler", icon: Package },
   { to: "/buyer/subscriptions", label: "Abonelikler", icon: Repeat },
+  { to: "/buyer/prices", label: "Fiyatlar", icon: LineChart },
   { to: "/buyer/reports", label: "Raporlar", icon: BarChart3 },
   { to: "/buyer/messages", label: "Mesajlar", icon: MessageCircle },
   { to: "/buyer/account", label: "Hesap", icon: User },
@@ -31,12 +32,13 @@ const tabs = [
 const mobileTabs = [
   { to: "/buyer/discover", label: "Keşfet", icon: Search },
   { to: "/buyer/orders", label: "Siparişler", icon: Package },
-  { to: "/buyer/subscriptions", label: "Abonelikler", icon: Repeat },
-  { to: "/buyer/reports", label: "Raporlar", icon: BarChart3 },
+  { to: "/buyer/messages", label: "Mesajlar", icon: MessageCircle },
+  { to: "/buyer/prices", label: "Fiyatlar", icon: LineChart },
 ] as const;
 
 const moreItems = [
-  { to: "/buyer/messages", label: "Mesajlar", icon: MessageCircle },
+  { to: "/buyer/subscriptions", label: "Abonelikler", icon: Repeat },
+  { to: "/buyer/reports", label: "Raporlar", icon: BarChart3 },
   { to: "/buyer/account", label: "Hesap", icon: User },
 ] as const;
 
