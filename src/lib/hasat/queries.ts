@@ -623,17 +623,31 @@ export function useFarmerListings() {
   });
 }
 
+async function attachPublicFarmerProfiles<T extends { farmer_id: string }>(rows: T[]): Promise<(T & { profiles: { id: string; name: string | null; city: string | null } | null })[]> {
+  const ids = Array.from(new Set(rows.map((r) => r.farmer_id).filter(Boolean)));
+  if (ids.length === 0) return rows.map((r) => ({ ...r, profiles: null }));
+  const { data, error } = await (supabase as any)
+    .from("public_farmer_profiles")
+    .select("id, name, city")
+    .in("id", ids);
+  if (error) throw error;
+  const byId = new Map<string, { id: string; name: string | null; city: string | null }>();
+  for (const p of (data ?? []) as any[]) byId.set(p.id, { id: p.id, name: p.name ?? null, city: p.city ?? null });
+  return rows.map((r) => ({ ...r, profiles: byId.get(r.farmer_id) ?? null }));
+}
+
 export function useActiveListings() {
   return useQuery({
     queryKey: ["activeListings"],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("listings")
-        .select("*, profiles!listings_farmer_id_fkey(id,name,city)")
+        .select("*")
         .eq("status", "active")
         .order("created_at", { ascending: false });
       if (error) throw error;
-      return (data ?? []).map(dbToActiveListing);
+      const merged = await attachPublicFarmerProfiles(data ?? []);
+      return merged.map(dbToActiveListing);
     },
   });
 }
@@ -645,11 +659,45 @@ export function useListing(listingId: string) {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("listings")
-        .select("*, profiles!listings_farmer_id_fkey(id,name,city)")
+        .select("*")
         .eq("id", listingId)
         .maybeSingle();
       if (error) throw error;
-      return data ? dbToActiveListing(data) : null;
+      if (!data) return null;
+      const [merged] = await attachPublicFarmerProfiles([data]);
+      return dbToActiveListing(merged);
+    },
+  });
+}
+
+export function useCropsWithPriceData() {
+  return useQuery({
+    queryKey: ["cropsWithPriceData"],
+    queryFn: async () => {
+      const [listingsRes, cfgRes] = await Promise.all([
+        supabase.from("listings").select("crop").eq("status", "active"),
+        (supabase as any).from("crop_config").select("crop, has_official_price_source"),
+      ]);
+      if (listingsRes.error) throw listingsRes.error;
+      if (cfgRes.error) throw cfgRes.error;
+      const canonicalByLower = new Map<string, string>();
+      for (const r of (cfgRes.data ?? []) as any[]) {
+        if (r?.crop) canonicalByLower.set(String(r.crop).toLowerCase(), r.crop);
+      }
+      const officialCrops = new Set<string>(
+        ((cfgRes.data ?? []) as any[])
+          .filter((r) => r.has_official_price_source && r.crop)
+          .map((r) => r.crop as string),
+      );
+      const out = new Set<string>();
+      for (const r of (listingsRes.data ?? []) as any[]) {
+        const raw = r?.crop as string | null;
+        if (!raw) continue;
+        const canon = canonicalByLower.get(raw.toLowerCase()) ?? raw;
+        out.add(canon);
+      }
+      for (const c of officialCrops) out.add(c);
+      return Array.from(out).sort((a, b) => a.localeCompare(b, "tr"));
     },
   });
 }
@@ -1356,7 +1404,78 @@ export function useOfferMessages(offerId: string | null | undefined) {
   });
 }
 
-// =====================================================================
+// Buyer inbox: one row per active/negotiating offer, with last message preview.
+export interface BuyerConversationRow {
+  offerId: string;
+  farmerId: string;
+  farmerName: string;
+  farmerCity: string | null;
+  crop: string;
+  status: string;
+  ballSide: "farmer" | "buyer";
+  createdAt: string;
+  lastMessageAt: string | null;
+  lastMessagePreview: string | null;
+  lastSenderRole: "farmer" | "buyer" | null;
+}
+
+export function useBuyerConversations() {
+  const userId = useAuthUserId();
+  return useQuery({
+    queryKey: ["buyerConversations", userId],
+    enabled: !!userId,
+    queryFn: async (): Promise<BuyerConversationRow[]> => {
+      const { data: offers, error } = await supabase
+        .from("offers")
+        .select("id, farmer_id, status, ball_side, created_at, listing:listings(crop)")
+        .eq("buyer_id", userId!)
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      const list = (offers ?? []) as any[];
+      if (list.length === 0) return [];
+      const offerIds = list.map((o) => o.id);
+      const farmerIds = Array.from(new Set(list.map((o) => o.farmer_id).filter(Boolean)));
+      const [msgsRes, farmersRes] = await Promise.all([
+        supabase.from("offer_messages").select("offer_id, sender_role, note, price, quantity, created_at").in("offer_id", offerIds).order("created_at", { ascending: false }),
+        (supabase as any).from("public_farmer_profiles").select("id, name, city").in("id", farmerIds),
+      ]);
+      if (msgsRes.error) throw msgsRes.error;
+      const lastByOffer = new Map<string, any>();
+      for (const m of (msgsRes.data ?? []) as any[]) {
+        if (!lastByOffer.has(m.offer_id)) lastByOffer.set(m.offer_id, m);
+      }
+      const farmers = new Map<string, { name: string | null; city: string | null }>();
+      for (const f of (farmersRes.data ?? []) as any[]) farmers.set(f.id, { name: f.name ?? null, city: f.city ?? null });
+      return list.map((o): BuyerConversationRow => {
+        const m = lastByOffer.get(o.id);
+        const preview = m
+          ? (m.note && String(m.note).trim().length > 0
+              ? String(m.note)
+              : (m.price != null || m.quantity != null ? "Yeni teklif" : null))
+          : null;
+        const farmer = farmers.get(o.farmer_id);
+        return {
+          offerId: o.id,
+          farmerId: o.farmer_id,
+          farmerName: farmer?.name ?? "Üretici",
+          farmerCity: farmer?.city ?? null,
+          crop: o.listing?.crop ?? "—",
+          status: o.status,
+          ballSide: o.ball_side === "buyer" ? "buyer" : "farmer",
+          createdAt: o.created_at,
+          lastMessageAt: m?.created_at ?? null,
+          lastMessagePreview: preview,
+          lastSenderRole: (m?.sender_role === "farmer" || m?.sender_role === "buyer") ? m.sender_role : null,
+        };
+      }).sort((a, b) => {
+        const ta = a.lastMessageAt ?? a.createdAt;
+        const tb = b.lastMessageAt ?? b.createdAt;
+        return tb.localeCompare(ta);
+      });
+    },
+  });
+}
+
 // ORDERS
 // =====================================================================
 const ORDER_SELECT =
@@ -1914,11 +2033,28 @@ export interface BuyerAnalyticsRow {
   status: string;
   created_at: string;
   order_ref: string;
+  farmer_id: string;
   offer: {
     quantity: number;
     price_per_unit: number;
+    current_price: number | null;
+    current_quantity: number | null;
+    payment_status: string | null;
     listing: { crop: string; unit: string } | null;
   } | null;
+  farmer?: { id: string; name: string | null; city: string | null } | null;
+}
+
+const PAID_STATUSES = new Set(["preparing", "shipped", "delivered", "completed"]);
+
+export function isPaidOrder(r: Pick<BuyerAnalyticsRow, "status" | "offer">): boolean {
+  return PAID_STATUSES.has(r.status) || r.offer?.payment_status === "paid";
+}
+
+export function orderRowTotal(r: Pick<BuyerAnalyticsRow, "offer">): number {
+  const q = Number(r.offer?.current_quantity ?? r.offer?.quantity ?? 0);
+  const p = Number(r.offer?.current_price ?? r.offer?.price_per_unit ?? 0);
+  return q * p;
 }
 
 export function useBuyerAnalytics() {
@@ -1930,18 +2066,24 @@ export function useBuyerAnalytics() {
       const { data, error } = await supabase
         .from("orders")
         .select(
-          "id, status, created_at, order_ref, offer:offers(quantity, price_per_unit, listing:listings(crop, unit))",
+          "id, status, created_at, order_ref, farmer_id, offer:offers(quantity, price_per_unit, current_price, current_quantity, payment_status, listing:listings(crop, unit))",
         )
         .eq("buyer_id", userId!)
         .neq("status", "cancelled" as any)
         .order("created_at", { ascending: false });
       if (error) throw error;
-      // one-time shape log to confirm price column name
-      if (data && data.length && typeof window !== "undefined") {
-        // eslint-disable-next-line no-console
-        console.log("[buyerAnalytics] sample row:", data[0]);
+      const rows = ((data ?? []) as unknown) as BuyerAnalyticsRow[];
+      const farmerIds = Array.from(new Set(rows.map((r) => r.farmer_id).filter(Boolean)));
+      if (farmerIds.length > 0) {
+        const { data: farmers } = await (supabase as any)
+          .from("public_farmer_profiles")
+          .select("id, name, city")
+          .in("id", farmerIds);
+        const byId = new Map<string, { id: string; name: string | null; city: string | null }>();
+        for (const f of (farmers ?? []) as any[]) byId.set(f.id, f);
+        for (const r of rows) r.farmer = byId.get(r.farmer_id) ?? null;
       }
-      return (data ?? []) as unknown as BuyerAnalyticsRow[];
+      return rows;
     },
   });
 }
