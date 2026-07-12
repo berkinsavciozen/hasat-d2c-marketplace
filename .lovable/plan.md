@@ -1,137 +1,26 @@
+## Items 1–4 (confirmed bugs — implement directly)
 
-# Pricing System Overhaul
+### 1. `get_price_history_summary()` case-insensitive fix
+Migration rewriting the function. Resolve the canonical crop key first, then use it everywhere:
 
-## Schema verification (confirmed against live DB)
-
-- `listings.crop`, `listings.unit`, `listings.farmer_id` ✓
-- `offers.listing_id`, `offers.farmer_id`, `offers.current_price`, `offers.payment_status` ✓
-- `orders.offer_id` ✓ (join path for `order_id` in trigger)
-- `crop_config.crop` (PK-ish text), `crop_config.display_name`, `harvest_window_start/end_month` ✓
-- `price_feed` columns: `id, crop_name, price_per_kg, unit, source, recorded_at, recorded_by, source_type` — will be dropped
-- Crop keys confirmed present: `domates`, `patates`, `elma`, `safran`, `safran_soğanı`, `lavanta`, `gül`. I'll also flag `gül` (Gül Yağlık, 5–6) as seasonal — please confirm inclusion.
-
-## 1. Migration (single file)
-
-### a) Drop legacy
-```sql
-DROP FUNCTION IF EXISTS public.get_price_feed_summary(text);
-DROP TABLE IF EXISTS public.price_feed CASCADE;
-```
-
-### b) Extend crop_config
-```sql
-ALTER TABLE public.crop_config
-  ADD COLUMN IF NOT EXISTS has_official_price_source boolean NOT NULL DEFAULT false,
-  ADD COLUMN IF NOT EXISTS official_source_name text,
-  ADD COLUMN IF NOT EXISTS price_window_type text NOT NULL DEFAULT 'rolling_30d'
-    CHECK (price_window_type IN ('rolling_30d','rolling_365d')),
-  ADD COLUMN IF NOT EXISTS is_seasonal_harvest boolean NOT NULL DEFAULT false;
-
-UPDATE public.crop_config
-  SET has_official_price_source = true, official_source_name = 'Hal Kayıt Sistemi (HKS)'
-  WHERE crop IN ('domates','patates','elma');
-
-UPDATE public.crop_config
-  SET price_window_type = 'rolling_365d', is_seasonal_harvest = true
-  WHERE crop IN ('safran','safran_soğanı','lavanta','gül');
-```
-
-### c) crop_requests
-```sql
-CREATE TABLE public.crop_requests (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  requested_by uuid REFERENCES public.profiles(id) ON DELETE SET NULL,
-  crop_name_free_text text NOT NULL CHECK (char_length(btrim(crop_name_free_text)) BETWEEN 1 AND 100),
-  note text CHECK (note IS NULL OR char_length(note) <= 500),
-  status text NOT NULL DEFAULT 'pending' CHECK (status IN ('pending','added','rejected')),
-  created_at timestamptz NOT NULL DEFAULT now()
-);
-GRANT SELECT, INSERT ON public.crop_requests TO authenticated;
-GRANT ALL ON public.crop_requests TO service_role;
-ALTER TABLE public.crop_requests ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "own insert" ON public.crop_requests FOR INSERT TO authenticated
-  WITH CHECK (requested_by = auth.uid());
-CREATE POLICY "own select" ON public.crop_requests FOR SELECT TO authenticated
-  USING (requested_by = auth.uid());
-```
-
-### d) price_history
-```sql
-CREATE TABLE public.price_history (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  crop text NOT NULL REFERENCES public.crop_config(crop),
-  source text NOT NULL CHECK (source IN ('order','hks')),
-  price_per_unit numeric NOT NULL CHECK (price_per_unit > 0),
-  unit text NOT NULL,
-  region text,
-  recorded_date date NOT NULL,
-  order_id uuid REFERENCES public.orders(id) ON DELETE SET NULL,
-  farmer_id uuid REFERENCES public.profiles(id) ON DELETE SET NULL,
-  created_at timestamptz NOT NULL DEFAULT now()
-);
-CREATE INDEX price_history_crop_date_idx ON public.price_history (crop, recorded_date DESC);
-CREATE INDEX price_history_source_idx ON public.price_history (crop, source, recorded_date DESC);
-
-GRANT SELECT ON public.price_history TO authenticated; -- filtered by RLS below
-GRANT ALL ON public.price_history TO service_role;
-ALTER TABLE public.price_history ENABLE ROW LEVEL SECURITY;
-
--- Farmers can see only their own rows (personal history). Aggregate access is via RPC.
-CREATE POLICY "own history" ON public.price_history FOR SELECT TO authenticated
-  USING (farmer_id = auth.uid());
--- No INSERT/UPDATE/DELETE policies → only service_role & SECURITY DEFINER trigger can write.
-```
-
-### e) Trigger — write `order` rows on payment
-```sql
-CREATE OR REPLACE FUNCTION public.record_order_price_history()
-RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
-DECLARE
-  v_crop text;
-  v_unit text;
-  v_region text;
-  v_order_id uuid;
-BEGIN
-  IF NEW.payment_status = 'paid' AND OLD.payment_status IS DISTINCT FROM 'paid' THEN
-    SELECT l.crop, l.unit::text INTO v_crop, v_unit
-      FROM public.listings l WHERE l.id = NEW.listing_id;
-    SELECT p.city INTO v_region FROM public.profiles p WHERE p.id = NEW.farmer_id;
-    SELECT o.id INTO v_order_id FROM public.orders o WHERE o.offer_id = NEW.id;
-
-    IF v_crop IS NOT NULL AND EXISTS (SELECT 1 FROM public.crop_config WHERE crop = v_crop) THEN
-      INSERT INTO public.price_history (crop, source, price_per_unit, unit, region, recorded_date, order_id, farmer_id)
-      VALUES (v_crop, 'order', COALESCE(NEW.current_price, NEW.price_per_unit),
-              v_unit, v_region, current_date, v_order_id, NEW.farmer_id);
-    END IF;
-  END IF;
-  RETURN NEW;
-END $$;
-
-CREATE TRIGGER trg_record_order_price_history
-  AFTER UPDATE ON public.offers
-  FOR EACH ROW EXECUTE FUNCTION public.record_order_price_history();
-```
-Fires independently of `enforce_offer_transitions` (BEFORE UPDATE) — no ordering conflict.
-
-### f) RPC — get_price_history_summary
 ```sql
 CREATE OR REPLACE FUNCTION public.get_price_history_summary(p_crop text)
-RETURNS jsonb LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path = public AS $$
+RETURNS jsonb LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path TO 'public' AS $$
 DECLARE
+  v_canonical text;
   v_cfg record;
-  v_days int;
-  v_since date;
-  v_hasat jsonb;
-  v_official jsonb := NULL;
+  v_days int; v_since date;
+  v_hasat jsonb; v_official jsonb := NULL;
   v_avg numeric; v_std numeric; v_cnt int; v_last timestamptz;
 BEGIN
-  SELECT price_window_type, has_official_price_source, official_source_name
-    INTO v_cfg FROM public.crop_config WHERE crop = p_crop;
-  IF NOT FOUND THEN
+  SELECT crop INTO v_canonical FROM public.crop_config
+    WHERE lower(crop) = lower(p_crop) LIMIT 1;
+  IF v_canonical IS NULL THEN
     RETURN jsonb_build_object('hasat_data', jsonb_build_object('insufficient_data', true),
                               'official_data', NULL, 'last_updated', NULL);
   END IF;
-
+  SELECT price_window_type, has_official_price_source, official_source_name
+    INTO v_cfg FROM public.crop_config WHERE crop = v_canonical;
   v_days := CASE WHEN v_cfg.price_window_type = 'rolling_365d' THEN 365 ELSE 30 END;
   v_since := current_date - v_days;
 
@@ -139,22 +28,21 @@ BEGIN
          COUNT(DISTINCT farmer_id), MAX(created_at)
     INTO v_avg, v_std, v_cnt, v_last
     FROM public.price_history
-    WHERE crop = p_crop AND source = 'order' AND recorded_date >= v_since;
+    WHERE crop = v_canonical AND source = 'order' AND recorded_date >= v_since;
 
   IF COALESCE(v_cnt,0) < 5 THEN
     v_hasat := jsonb_build_object('insufficient_data', true,
                                   'distinct_farmer_count', COALESCE(v_cnt,0));
   ELSE
     v_hasat := jsonb_build_object('insufficient_data', false,
-                                  'avg_price', v_avg,
-                                  'stddev_price', COALESCE(v_std,0),
-                                  'distinct_farmer_count', v_cnt);
+      'avg_price', v_avg, 'stddev_price', COALESCE(v_std,0),
+      'distinct_farmer_count', v_cnt);
   END IF;
 
   IF v_cfg.has_official_price_source THEN
     SELECT AVG(price_per_unit) INTO v_avg
       FROM public.price_history
-      WHERE crop = p_crop AND source = 'hks' AND recorded_date >= v_since;
+      WHERE crop = v_canonical AND source = 'hks' AND recorded_date >= v_since;
     IF v_avg IS NOT NULL THEN
       v_official := jsonb_build_object('avg_price', v_avg,
                                        'official_source_name', v_cfg.official_source_name);
@@ -165,34 +53,71 @@ BEGIN
                             'official_data', v_official,
                             'last_updated', v_last);
 END $$;
-
-REVOKE ALL ON FUNCTION public.get_price_history_summary(text) FROM PUBLIC;
-GRANT EXECUTE ON FUNCTION public.get_price_history_summary(text) TO anon, authenticated;
 ```
 
-## 2. Code changes
+Verify by calling with `'Domates'` and `'domates'` → identical output.
 
-- `src/lib/hasat/queries.ts`
-  - Remove `usePriceFeedSummary`, `useCreatePriceFeedEntry`. Add `usePriceHistorySummary(crop)` calling the new RPC and returning `{ hasat, official, lastUpdated }`.
-- `src/components/hasat/MarketDeviationAlert.tsx` — switch to `hasat` segment; same YÜKSEK/UYGUN/DÜŞÜK band logic; renders nothing when insufficient.
-- `src/routes/farmer.prices.tsx` — rebuild:
-  - Cards call `usePriceHistorySummary`.
-  - Show Hasat band line (avg ± stddev) or "Yeterli veri yok".
-  - When `official` present, second labeled line "Resmi Hal Fiyatı — Kaynak: Hal Kayıt Sistemi (HKS)" with the avg.
-  - Remove the "Fiyat Ekle" FAB + `PriceUpdateSheet` entirely (no manual entry anymore).
-- `src/lib/hasat/crop-config.ts` — extend `CropConfig` and `CropOption` with `has_official_price_source`, `official_source_name`, `price_window_type`, `is_seasonal_harvest`. Select `*` already picks them up.
-- `src/components/hasat/CropChips.tsx` — render "🏛️" badge next to label when `has_official_price_source`.
-- Crop request UI — add `CropRequestDialog` component. In `CropChips` (both variants) append a trailing chip "Ürününüzü bulamadınız mı? Talep edin" that opens the dialog; dialog inserts into `crop_requests` with `requested_by = auth.uid()`.
-- `src/components/hasat/ai-chat/useAIChat.ts` — swap price_feed guardrail paragraph to reference `get_price_history_summary` / `price_history`, keep band-only rule; add sentence: never conflate Hasat community data with official HKS data.
-- `supabase/functions/whatsapp-ai-webhook/index.ts` — same paragraph swap.
-- `src/lib/mcp/tools/*` — scan for `price_feed` references; none expected but will grep and remove any.
-- `supabase/config.toml` — unchanged.
+### 2. Prices page → global + shared by both roles
+- Add a query `useCropsWithPriceData()` returning `distinct listings.crop where status='active'` ∪ `crop_config.crop where has_official_price_source=true`, normalized to canonical (lowercased) then de-duplicated.
+- Refactor `farmer.prices.tsx` to use this list and extract the page body + `PriceSummaryCard` into a shared component `src/components/hasat/PricesPageBody.tsx`.
+- Create `src/routes/buyer.prices.tsx` mounting the same body with a `BuyerHeader`.
+- Add a "Fiyatlar" nav entry to the buyer shell (`src/routes/buyer.tsx` — desktop sidebar + mobile "Daha" sheet).
 
-## 3. Verification
+### 3. Public farmer name leak-safe join
+Replace embed joins with a two-step fetch through `public_farmer_profiles`:
+- In `useActiveListings()` and `useListing()`: drop the `profiles!listings_farmer_id_fkey` embed; after fetching listings, `SELECT id,name,city FROM public_farmer_profiles WHERE id IN (…)`; merge into a synthetic `profiles` field before `dbToActiveListing`.
+- Audit: `s.$slug.tsx` already uses `public_farmer_profiles` (safe). `useBuyerOffers` embeds `farmer:profiles!offers_farmer_id_fkey(...,iban,bank_account_name)` — that path only returns offers the buyer already has, so the narrow RLS policies cover it; **leave unchanged** (also needed for IBAN on paid offers). Same for `useBuyerOrders` (order exists → RLS allows). No other public/anonymous-facing farmer joins found.
 
-- Run `tsgo --noEmit` at the end.
-- Confirm no remaining references: `rg "price_feed|usePriceFeedSummary|get_price_feed_summary|PriceUpdateSheet"`.
+### 4. Photo buckets
+Call `supabase--storage_update_bucket` on `parcel-photos` and `listing-photos` with `public=true`. Spot-check one existing `parcel.photo_urls[0]` and one `listing.photo_urls[0]` load 200 after the flip.
 
-## Open confirmation
+Migration + code edits + `tsgo --noEmit` at the end.
 
-Adding `gül` (Gül Yağlık, May–Jun window) to the seasonal/365d list. If you'd rather leave it at defaults, say so and I'll drop it before running the migration.
+---
+
+## Item 5 (investigate before building — proposal below)
+
+### Findings
+
+**`buyer.messages` — genuinely empty (stub).** Route is a "yakında" placeholder. Real per-offer chat already works elsewhere via `<NegotiationThread offerId=…>` embedded inside `buyer.orders.tsx` (row expand) and `buyer.negotiation.$offerId.tsx`. No dedicated inbox exists. Data layer (`offer_messages` + realtime) works.
+
+**`buyer.reports` — data works, UI is thin.** `useBuyerAnalytics()` fetches orders (any status except cancelled) with `offer.quantity * offer.price_per_unit`. Two data-quality caveats worth fixing:
+- Includes `sent`/`accepted` offers before payment → "Toplam Harcama" overstates. Should filter `status IN ('preparing','shipped','delivered','completed')` (or key off `offer.payment_status='paid'`).
+- Uses `offer.price_per_unit` not `current_price` — after negotiated counter-offers the accepted price is `current_price`. Should `COALESCE(current_price, price_per_unit)`.
+
+Otherwise the page renders correctly; the redesign is UI/structure.
+
+**`buyer.subscriptions` — data works, UX minimal.** `useMySubscriptions` / `useCancelSubscription` function correctly. `useCreateSubscription` is wired from `buyer.subscription.$producerId.tsx`. No dedicated realtime channel, but subscription state is buyer-controlled so it's fine.
+
+### Proposed redesigns (visual/structural; no data-layer changes except the two reports fixes)
+
+**Messages — "Görüşmeler" inbox.** New list view aggregating all offers the buyer has active negotiation on (`useBuyerOffers` already returns them + farmer + listing). Each row: farmer name/city, crop, last message preview + timestamp (last `offer_messages` for that offer, plus current offer status pill), unread dot from an existing timestamp comparison. Tapping a row → existing `/buyer/negotiation/$offerId`. Empty state directs to Keşfet. Trust framing: header microcopy "Doğrudan üreticiyle görüşme — Hasat aracı değil, taraf değil."
+
+**Raporlar — trust-oriented supply diary.** Sections:
+1. KPIs (paid-only): Toplam Harcama, Tamamlanan Sipariş, Aktif Üretici Sayısı, Ortalama Tedarik Süresi.
+2. Existing 6-month bar chart, restricted to paid orders and using `current_price`.
+3. New "Ürün kırılımı" horizontal bar (spend per crop) — reuses existing `cropTotals`.
+4. New "Tedarikçi güveni" list — per farmer: order count, on-time %, last order date. Aggregated client-side from existing `useBuyerOrders`/`useBuyerAnalytics` data; no new queries.
+5. Existing order list moves to bottom as "Son siparişler".
+6. Export CSV button (client-side blob; useful for restoran/otel/ihracatçı personas).
+
+**Abonelikler — "Sürekli tedarik".** Keep the current cards but:
+- Header explainer chip: "Rezerve edilmiş hasat — üretici bu miktarı size ayırır."
+- Card additions (all from existing schema): next_harvest_date, estimated_qty, locked_at date, since (created_at), "Bu ay ne bekleniyor?" microline computed from `next_harvest_date`.
+- Status pills for `paused`/`completed` (currently only handles `active` vs "İptal"); enum already supports them.
+- Empty state gets a persona-neutral CTA ("Restoranınız, oteliniz veya evinize düzenli teslimat için…").
+- No mutation changes; `useCancelSubscription` flow untouched.
+
+### Files touched (item 5, when approved)
+- `src/routes/buyer.messages.tsx` — replace stub with inbox.
+- `src/routes/buyer.reports.tsx` — restructure + apply the two `useBuyerAnalytics` correctness fixes (paid-only filter + `current_price` fallback in the hook).
+- `src/routes/buyer.subscriptions.tsx` — expanded cards + explainer.
+- `src/lib/hasat/queries.ts` — small helper: `useBuyerConversations()` (derived from `useBuyerOffers` + last-message join on `offer_messages`); adjust `useBuyerAnalytics` return shape.
+
+No RLS or schema changes for item 5.
+
+---
+
+## Order of work
+1. Items 1–4 as one batch: migration for #1, storage-tool calls for #4, code edits for #2/#3, then `tsgo --noEmit`.
+2. Pause for approval on item 5 redesigns, then implement.
