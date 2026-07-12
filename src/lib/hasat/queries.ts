@@ -1962,11 +1962,29 @@ export interface BuyerAnalyticsRow {
   status: string;
   created_at: string;
   order_ref: string;
+  farmer_id: string;
+  delivered_at?: string | null;
   offer: {
     quantity: number;
     price_per_unit: number;
+    current_price: number | null;
+    current_quantity: number | null;
+    payment_status: string | null;
     listing: { crop: string; unit: string } | null;
   } | null;
+  farmer?: { id: string; name: string | null; city: string | null } | null;
+}
+
+const PAID_STATUSES = new Set(["preparing", "shipped", "delivered", "completed"]);
+
+export function isPaidOrder(r: Pick<BuyerAnalyticsRow, "status" | "offer">): boolean {
+  return PAID_STATUSES.has(r.status) || r.offer?.payment_status === "paid";
+}
+
+export function orderRowTotal(r: Pick<BuyerAnalyticsRow, "offer">): number {
+  const q = Number(r.offer?.current_quantity ?? r.offer?.quantity ?? 0);
+  const p = Number(r.offer?.current_price ?? r.offer?.price_per_unit ?? 0);
+  return q * p;
 }
 
 export function useBuyerAnalytics() {
@@ -1978,18 +1996,24 @@ export function useBuyerAnalytics() {
       const { data, error } = await supabase
         .from("orders")
         .select(
-          "id, status, created_at, order_ref, offer:offers(quantity, price_per_unit, listing:listings(crop, unit))",
+          "id, status, created_at, order_ref, farmer_id, delivered_at, offer:offers(quantity, price_per_unit, current_price, current_quantity, payment_status, listing:listings(crop, unit))",
         )
         .eq("buyer_id", userId!)
         .neq("status", "cancelled" as any)
         .order("created_at", { ascending: false });
       if (error) throw error;
-      // one-time shape log to confirm price column name
-      if (data && data.length && typeof window !== "undefined") {
-        // eslint-disable-next-line no-console
-        console.log("[buyerAnalytics] sample row:", data[0]);
+      const rows = ((data ?? []) as unknown) as BuyerAnalyticsRow[];
+      const farmerIds = Array.from(new Set(rows.map((r) => r.farmer_id).filter(Boolean)));
+      if (farmerIds.length > 0) {
+        const { data: farmers } = await (supabase as any)
+          .from("public_farmer_profiles")
+          .select("id, name, city")
+          .in("id", farmerIds);
+        const byId = new Map<string, { id: string; name: string | null; city: string | null }>();
+        for (const f of (farmers ?? []) as any[]) byId.set(f.id, f);
+        for (const r of rows) r.farmer = byId.get(r.farmer_id) ?? null;
       }
-      return (data ?? []) as unknown as BuyerAnalyticsRow[];
+      return rows;
     },
   });
 }
