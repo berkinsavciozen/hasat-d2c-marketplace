@@ -15,11 +15,31 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
+import { CalendarDays, Sprout, Lock, ShieldCheck } from "lucide-react";
 
 export const Route = createFileRoute("/buyer/subscriptions")({
-  head: () => ({ meta: [{ title: "Aboneliklerim | Hasat" }] }),
+  head: () => ({ meta: [{ title: "Sürekli Tedarik | Hasat" }] }),
   component: Subscriptions,
 });
+
+const STATUS_META: Record<string, { label: string; bg: string; fg: string }> = {
+  active: { label: "Aktif", bg: "var(--saffron)", fg: "#fff" },
+  paused: { label: "Duraklatıldı", bg: "color-mix(in oklab, var(--gold) 22%, transparent)", fg: "var(--gold)" },
+  completed: { label: "Tamamlandı", bg: "color-mix(in oklab, var(--sage) 22%, transparent)", fg: "var(--sage)" },
+  cancelled: { label: "İptal", bg: "color-mix(in oklab, var(--hmuted) 18%, transparent)", fg: "var(--hmuted)" },
+};
+
+function daysUntil(iso: string | null): string | null {
+  if (!iso) return null;
+  const now = new Date(); now.setHours(0, 0, 0, 0);
+  const target = new Date(iso); target.setHours(0, 0, 0, 0);
+  const d = Math.round((target.getTime() - now.getTime()) / 86400000);
+  if (d < 0) return `${Math.abs(d)} gün geçti`;
+  if (d === 0) return "Bugün bekleniyor";
+  if (d === 1) return "Yarın bekleniyor";
+  if (d < 30) return `${d} gün sonra`;
+  return new Date(iso).toLocaleDateString("tr-TR", { day: "numeric", month: "long" });
+}
 
 function Subscriptions() {
   const { data: subs = [], isLoading } = useMySubscriptions();
@@ -40,21 +60,26 @@ function Subscriptions() {
 
   return (
     <>
-      <BuyerHeader title="Aboneliklerim" />
+      <BuyerHeader title="Sürekli Tedarik" subtitle="Rezerve edilmiş hasat — üretici bu miktarı size ayırır." />
       <div className="p-4 md:p-8 max-w-3xl space-y-3">
         {isLoading ? (
           <LoadingDots />
         ) : subs.length === 0 ? (
           <div className="rounded-2xl border border-dashed p-10 text-center text-hmuted">
-            <div className="text-4xl mb-2">🌾</div>
-            <div className="mb-4">Henüz aboneliğiniz yok. Keşfet sayfasından üretici bulun ve düzenli teslimat isteyin.</div>
+            <Sprout className="mx-auto h-8 w-8 mb-3 opacity-40" />
+            <div className="mb-1 font-medium text-dark">Henüz düzenli tedariğiniz yok</div>
+            <div className="mb-4 text-sm">
+              Restoranınız, oteliniz, marketiniz veya eviniz için üreticiden düzenli teslimat rezervasyonu oluşturun.
+            </div>
             <Link to="/buyer/discover" className="inline-block rounded-full bg-saffron px-4 py-2 text-sm font-medium text-white">
-              Keşfet'e Git
+              Üretici Bul
             </Link>
           </div>
         ) : (
           subs.map((s) => {
-            const active = s.status === "active";
+            const meta = STATUS_META[s.status] ?? STATUS_META.cancelled;
+            const nextLabel = daysUntil(s.nextHarvestDate);
+            const sinceDays = Math.floor((Date.now() - new Date(s.createdAt).getTime()) / 86400000);
             return (
               <div
                 key={s.id}
@@ -63,40 +88,59 @@ function Subscriptions() {
               >
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
-                    <div className="font-medium text-dark truncate">{s.farmerName ?? "—"}</div>
-                    <div className="text-xs text-hmuted">{s.farmerCity ?? ""}</div>
+                    <div className="font-medium text-dark truncate">{s.farmerName ?? "Üretici"}</div>
+                    <div className="text-xs text-hmuted">
+                      {s.farmerCity ?? ""}
+                      {s.farmerCity ? " · " : ""}
+                      {sinceDays < 30 ? `${sinceDays} gündür` : `${Math.floor(sinceDays / 30)} aydır`} tedarikçiniz
+                    </div>
                   </div>
                   <span
                     className="rounded-full px-2.5 py-0.5 text-[11px] whitespace-nowrap"
-                    style={{
-                      background: active
-                        ? "var(--saffron)"
-                        : "color-mix(in oklab, var(--hmuted) 18%, transparent)",
-                      color: active ? "#fff" : "var(--hmuted)",
-                    }}
+                    style={{ background: meta.bg, color: meta.fg }}
                   >
-                    {active ? "Aktif" : "İptal"}
+                    {meta.label}
                   </span>
                 </div>
 
+                {nextLabel && s.status === "active" && (
+                  <div className="mt-3 flex items-center gap-2 rounded-lg border p-2.5 text-xs"
+                    style={{ borderColor: "color-mix(in oklab, var(--saffron) 30%, transparent)", background: "color-mix(in oklab, var(--saffron) 6%, transparent)" }}>
+                    <CalendarDays className="h-3.5 w-3.5" style={{ color: "var(--saffron)" }} />
+                    <span className="text-dark">
+                      Sonraki hasat: <span className="font-medium">{nextLabel}</span>
+                      {s.estimatedQty != null ? ` · ~${s.estimatedQty} kg` : ""}
+                    </span>
+                  </div>
+                )}
+
                 <div className="mt-3 grid grid-cols-2 gap-2 text-xs">
                   {s.volumeCommitment != null && (
-                    <div>
-                      <div className="text-hmuted">Taahhüt</div>
-                      <div className="font-mono text-dark">{s.volumeCommitment} kg/ay</div>
+                    <div className="rounded-lg border p-2" style={{ borderColor: "var(--border)" }}>
+                      <div className="flex items-center gap-1 text-hmuted text-[10px] uppercase tracking-wider">
+                        <ShieldCheck className="h-3 w-3" /> Taahhüt
+                      </div>
+                      <div className="font-mono text-dark mt-0.5">{s.volumeCommitment} kg/ay</div>
                     </div>
                   )}
                   {s.priceLock && s.lockedPrice != null && (
-                    <div>
-                      <div className="text-hmuted">Sabit Fiyat</div>
-                      <div className="font-mono" style={{ color: "var(--gold)" }}>
+                    <div className="rounded-lg border p-2" style={{ borderColor: "var(--border)" }}>
+                      <div className="flex items-center gap-1 text-hmuted text-[10px] uppercase tracking-wider">
+                        <Lock className="h-3 w-3" /> Sabit Fiyat
+                      </div>
+                      <div className="font-mono mt-0.5" style={{ color: "var(--gold)" }}>
                         {formatTRY(s.lockedPrice)}
                       </div>
+                      {s.lockedAt && (
+                        <div className="text-[10px] text-hmuted mt-0.5">
+                          {new Date(s.lockedAt).toLocaleDateString("tr-TR")} tarihinden itibaren
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>
 
-                {active && (
+                {s.status === "active" && (
                   <div className="mt-3 flex justify-end">
                     <button
                       onClick={() => setPendingId(s.id)}
@@ -117,7 +161,7 @@ function Subscriptions() {
           <AlertDialogHeader>
             <AlertDialogTitle>Aboneliği iptal et</AlertDialogTitle>
             <AlertDialogDescription>
-              Aboneliği iptal etmek istediğinizden emin misiniz?
+              Aboneliği iptal etmek istediğinizden emin misiniz? Üreticiye ayrılmış rezerv miktarı serbest kalır.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
