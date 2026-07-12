@@ -1963,7 +1963,6 @@ export interface BuyerAnalyticsRow {
   created_at: string;
   order_ref: string;
   farmer_id: string;
-  delivered_at?: string | null;
   offer: {
     quantity: number;
     price_per_unit: number;
@@ -1996,7 +1995,7 @@ export function useBuyerAnalytics() {
       const { data, error } = await supabase
         .from("orders")
         .select(
-          "id, status, created_at, order_ref, farmer_id, delivered_at, offer:offers(quantity, price_per_unit, current_price, current_quantity, payment_status, listing:listings(crop, unit))",
+          "id, status, created_at, order_ref, farmer_id, offer:offers(quantity, price_per_unit, current_price, current_quantity, payment_status, listing:listings(crop, unit))",
         )
         .eq("buyer_id", userId!)
         .neq("status", "cancelled" as any)
