@@ -5,17 +5,23 @@
 export type WorkTypeKey =
   | "sulama"
   | "gubreleme"
+  | "dikim"
   | "budama"
   | "ilaclama"
   | "hasat"
+  | "kurutma"
+  | "distilasyon"
   | "gozlem";
 
 export const WORK_TYPES: { key: WorkTypeKey; label: string; emoji: string }[] = [
   { key: "sulama", label: "Sulama", emoji: "🚿" },
   { key: "gubreleme", label: "Gübreleme", emoji: "🌱" },
+  { key: "dikim", label: "Dikim", emoji: "🪴" },
   { key: "budama", label: "Budama", emoji: "✂️" },
   { key: "ilaclama", label: "İlaçlama", emoji: "🪲" },
   { key: "hasat", label: "Hasat", emoji: "🌾" },
+  { key: "kurutma", label: "Kurutma", emoji: "🌬️" },
+  { key: "distilasyon", label: "Distilasyon", emoji: "🧪" },
   { key: "gozlem", label: "Gözlem", emoji: "📝" },
 ];
 
@@ -26,9 +32,12 @@ export const WORK_TYPE_MAP: Record<WorkTypeKey, { label: string; emoji: string }
 export const WORK_TO_STEP_KEY: Record<WorkTypeKey, string | null> = {
   sulama: "care",
   gubreleme: "care",
+  dikim: "ekim",
   budama: "pruning",
   ilaclama: "care",
   hasat: "harvest",
+  kurutma: "drying",
+  distilasyon: "distillation",
   gozlem: null,
 };
 
