@@ -276,13 +276,13 @@ function NewEntry() {
               type="file"
               accept="image/*"
               className="hidden"
-              onChange={(e) => setPhotoName(e.target.files?.[0]?.name ?? null)}
+              onChange={(e) => setPhotoFile(e.target.files?.[0] ?? null)}
             />
-            {photoName ? (
+            {photoFile ? (
               <div className="flex items-center gap-2 rounded-xl border px-3 py-2.5 text-sm" style={{ background: "var(--cream)", borderColor: "var(--border)" }}>
                 <Camera className="h-4 w-4 text-sage" />
-                <span className="flex-1 truncate text-dark">{photoName}</span>
-                <button type="button" onClick={() => { setPhotoName(null); if (fileRef.current) fileRef.current.value = ""; }} className="text-hmuted hover:text-hred">
+                <span className="flex-1 truncate text-dark">{photoFile.name}</span>
+                <button type="button" onClick={() => { setPhotoFile(null); if (fileRef.current) fileRef.current.value = ""; }} className="text-hmuted hover:text-hred">
                   <X className="h-4 w-4" />
                 </button>
               </div>
