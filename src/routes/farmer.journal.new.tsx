@@ -33,7 +33,7 @@ function NewEntry() {
   // Note: HarvestEntry.unit only allows g|kg|L. "adet" is a UI alias that submits as "g".
   const [unit, setUnit] = useState<"g" | "kg" | "adet">("g");
   const [notes, setNotes] = useState("");
-  const [photoName, setPhotoName] = useState<string | null>(null);
+  const [photoFile, setPhotoFile] = useState<File | null>(null);
   const [crop, setCrop] = useState<string>("");
 
   // sync default parcel once loaded
