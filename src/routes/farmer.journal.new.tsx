@@ -33,7 +33,7 @@ function NewEntry() {
   // Note: HarvestEntry.unit only allows g|kg|L. "adet" is a UI alias that submits as "g".
   const [unit, setUnit] = useState<"g" | "kg" | "adet">("g");
   const [notes, setNotes] = useState("");
-  const [photoName, setPhotoName] = useState<string | null>(null);
+  const [photoFile, setPhotoFile] = useState<File | null>(null);
   const [crop, setCrop] = useState<string>("");
 
   // sync default parcel once loaded
@@ -69,6 +69,7 @@ function NewEntry() {
         unit: submitUnit,
         quality: healthToQuality(health),
         photos: [],
+        photoFile: photoFile ?? undefined,
         notes: encodeNotes({ work, health, text: notes }),
         costs: { ...ZERO_COSTS },
         pricePerUnit: 0,
@@ -275,13 +276,13 @@ function NewEntry() {
               type="file"
               accept="image/*"
               className="hidden"
-              onChange={(e) => setPhotoName(e.target.files?.[0]?.name ?? null)}
+              onChange={(e) => setPhotoFile(e.target.files?.[0] ?? null)}
             />
-            {photoName ? (
+            {photoFile ? (
               <div className="flex items-center gap-2 rounded-xl border px-3 py-2.5 text-sm" style={{ background: "var(--cream)", borderColor: "var(--border)" }}>
                 <Camera className="h-4 w-4 text-sage" />
-                <span className="flex-1 truncate text-dark">{photoName}</span>
-                <button type="button" onClick={() => { setPhotoName(null); if (fileRef.current) fileRef.current.value = ""; }} className="text-hmuted hover:text-hred">
+                <span className="flex-1 truncate text-dark">{photoFile.name}</span>
+                <button type="button" onClick={() => { setPhotoFile(null); if (fileRef.current) fileRef.current.value = ""; }} className="text-hmuted hover:text-hred">
                   <X className="h-4 w-4" />
                 </button>
               </div>

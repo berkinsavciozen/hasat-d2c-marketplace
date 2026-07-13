@@ -215,11 +215,23 @@ export function useEntry(entryId: string) {
   });
 }
 
+async function uploadHarvestPhotos(userId: string, entryId: string, files: File[]): Promise<string[]> {
+  const out: string[] = [];
+  for (const file of files) {
+    const path = `${userId}/${entryId}/${Date.now()}-${file.name}`;
+    const up = await supabase.storage.from("harvest-photos").upload(path, file, { upsert: false });
+    if (up.error) throw up.error;
+    const { data } = supabase.storage.from("harvest-photos").getPublicUrl(path);
+    out.push(data.publicUrl);
+  }
+  return out;
+}
+
 export function useCreateEntry() {
   const qc = useQueryClient();
   const userId = useAuthUserId();
   return useMutation({
-    mutationFn: async (e: Omit<HarvestEntry, "id">) => {
+    mutationFn: async (e: Omit<HarvestEntry, "id"> & { photoFile?: File }) => {
       if (!userId) throw new Error("Oturum bulunamadı");
       const { data, error } = await supabase.from("harvest_entries").insert({
         farmer_id: userId,
@@ -235,7 +247,19 @@ export function useCreateEntry() {
         step_key: e.step_key ?? null,
       }).select("*").single();
       if (error) throw error;
-      return dbToEntry(data);
+      let row = data;
+      if (e.photoFile) {
+        const urls = await uploadHarvestPhotos(userId, data.id, [e.photoFile]);
+        const upd = await supabase
+          .from("harvest_entries")
+          .update({ photo_urls: urls })
+          .eq("id", data.id)
+          .select("*")
+          .single();
+        if (upd.error) throw upd.error;
+        row = upd.data;
+      }
+      return dbToEntry(row);
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["entries", userId] });
@@ -2194,3 +2218,145 @@ export function useCreateCropRequest() {
   });
 }
 
+
+// =====================================================================
+// PUBLIC PRODUCER PROFILE (real data for buyer.producer.$id)
+// =====================================================================
+
+export interface PublicFarmerProfile {
+  id: string;
+  name: string | null;
+  city: string | null;
+}
+
+export function useFarmerPublicProfile(farmerId: string | null | undefined) {
+  return useQuery({
+    queryKey: ["publicFarmerProfile", farmerId],
+    enabled: !!farmerId,
+    queryFn: async (): Promise<PublicFarmerProfile | null> => {
+      const { data, error } = await (supabase as any)
+        .from("public_farmer_profiles")
+        .select("id, name, city")
+        .eq("id", farmerId!)
+        .maybeSingle();
+      if (error) throw error;
+      if (!data) return null;
+      return { id: data.id, name: data.name ?? null, city: data.city ?? null };
+    },
+  });
+}
+
+export function useFarmerActiveListings(farmerId: string | null | undefined) {
+  return useQuery({
+    queryKey: ["farmerActiveListings", farmerId],
+    enabled: !!farmerId,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("listings")
+        .select("*")
+        .eq("farmer_id", farmerId!)
+        .eq("status", "active")
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      return (data ?? []).map(dbToListing);
+    },
+  });
+}
+
+export interface ProducerStats {
+  totalLandDonum: number;
+  yieldHistory: { year: string; value: number }[];
+  modalQuality: string | null;
+  orderCount: number;
+}
+
+export function useFarmerProducerStats(farmerId: string | null | undefined) {
+  return useQuery({
+    queryKey: ["producerStats", farmerId],
+    enabled: !!farmerId,
+    queryFn: async (): Promise<ProducerStats> => {
+      const [parcelsRes, entriesRes, ordersRes] = await Promise.all([
+        supabase.from("parcels").select("area").eq("farmer_id", farmerId!),
+        supabase
+          .from("harvest_entries")
+          .select("harvest_date, quantity, quality")
+          .eq("farmer_id", farmerId!),
+        supabase
+          .from("orders")
+          .select("id", { count: "exact", head: true })
+          .eq("farmer_id", farmerId!),
+      ]);
+      if (parcelsRes.error) throw parcelsRes.error;
+      if (entriesRes.error) throw entriesRes.error;
+      if (ordersRes.error) throw ordersRes.error;
+
+      const totalLandDonum = (parcelsRes.data ?? []).reduce(
+        (s: number, r: any) => s + Number(r.area ?? 0),
+        0,
+      );
+
+      const yieldByYear = new Map<string, number>();
+      const qualityCounts = new Map<string, number>();
+      for (const r of (entriesRes.data ?? []) as any[]) {
+        if (r.harvest_date) {
+          const year = String(r.harvest_date).slice(0, 4);
+          yieldByYear.set(year, (yieldByYear.get(year) ?? 0) + Number(r.quantity ?? 0));
+        }
+        if (r.quality) {
+          qualityCounts.set(r.quality, (qualityCounts.get(r.quality) ?? 0) + 1);
+        }
+      }
+      const yieldHistory = Array.from(yieldByYear.entries())
+        .map(([year, value]) => ({ year, value }))
+        .sort((a, b) => a.year.localeCompare(b.year));
+
+      let modalQuality: string | null = null;
+      let maxCount = 0;
+      for (const [q, c] of qualityCounts) {
+        if (c > maxCount) {
+          maxCount = c;
+          modalQuality = q;
+        }
+      }
+
+      return {
+        totalLandDonum,
+        yieldHistory,
+        modalQuality,
+        orderCount: ordersRes.count ?? 0,
+      };
+    },
+  });
+}
+
+export interface MyActiveSubscriptionSummary {
+  id: string;
+  nextHarvestDate: string | null;
+  estimatedQty: number | null;
+}
+
+export function useMyActiveSubscriptionWith(farmerId: string | null | undefined) {
+  const userId = useAuthUserId();
+  return useQuery({
+    queryKey: ["myActiveSubscriptionWith", userId, farmerId],
+    enabled: !!userId && !!farmerId,
+    queryFn: async (): Promise<MyActiveSubscriptionSummary | null> => {
+      const { data, error } = await supabase
+        .from("harvest_subscriptions")
+        .select("id, next_harvest_date, estimated_qty")
+        .eq("buyer_id", userId!)
+        .eq("farmer_id", farmerId!)
+        .eq("status", "active")
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (error) throw error;
+      if (!data) return null;
+      return {
+        id: data.id,
+        nextHarvestDate: (data as any).next_harvest_date ?? null,
+        estimatedQty: (data as any).estimated_qty != null ? Number((data as any).estimated_qty) : null,
+      };
+    },
+  });
+}

@@ -51,6 +51,21 @@ function BatchPage() {
       </div>
 
       <div className="p-4 md:p-8 space-y-4 max-w-3xl mx-auto">
+        {listing.photos && listing.photos.length > 0 && (
+          <div className="rounded-2xl overflow-hidden border bg-card">
+            <div className="flex gap-1 overflow-x-auto snap-x snap-mandatory">
+              {listing.photos.map((u, i) => (
+                <img
+                  key={i}
+                  src={u}
+                  alt={formatCrop(listing.crop)}
+                  className="h-48 w-full min-w-full snap-start object-cover"
+                />
+              ))}
+            </div>
+          </div>
+        )}
+
         {/* Stock summary */}
         <div className="grid grid-cols-3 gap-3">
           <div className="rounded-2xl bg-card border p-4">

@@ -1,11 +1,16 @@
 import { createFileRoute, Link, useNavigate, notFound } from "@tanstack/react-router";
-import { ArrowLeft, Star } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Tooltip } from "recharts";
-import { TrustBadge } from "@/components/hasat/TrustBadge";
+import { LoadingDots } from "@/components/hasat/LoadingDots";
 import { formatTRY, formatCrop } from "@/lib/hasat/format";
-import { useHasat } from "@/lib/hasat/store";
-import { useParcelsByFarmer } from "@/lib/hasat/queries";
-import { cropEmoji } from "@/lib/hasat/crop-config";
+import {
+  useFarmerPublicProfile,
+  useFarmerActiveListings,
+  useFarmerProducerStats,
+  useMyActiveSubscriptionWith,
+  useParcelsByFarmer,
+} from "@/lib/hasat/queries";
+import { useCropConfigMap, findCropConfig, cropEmoji } from "@/lib/hasat/crop-config";
 
 export const Route = createFileRoute("/buyer/producer/$id")({
   head: () => ({ meta: [{ title: "Üretici — Hasat" }] }),
@@ -13,15 +18,56 @@ export const Route = createFileRoute("/buyer/producer/$id")({
   notFoundComponent: () => <div className="p-8 text-center text-hmuted">Üretici bulunamadı.</div>,
 });
 
+const MONTH_NAMES_TR = [
+  "", "Ocak", "Şubat", "Mart", "Nisan", "Mayıs", "Haziran",
+  "Temmuz", "Ağustos", "Eylül", "Ekim", "Kasım", "Aralık",
+];
+
+function monthLabel(m: number | null | undefined): string | null {
+  if (!m || m < 1 || m > 12) return null;
+  return MONTH_NAMES_TR[m];
+}
+
 function ProducerProfile() {
   const { id } = Route.useParams();
   const navigate = useNavigate();
-  const producer = useHasat((s) => s.producers.find((p) => p.id === id));
-  const { data: parcels = [] } = useParcelsByFarmer(producer?.id ?? null);
-  if (!producer) throw notFound();
+  const { data: profile, isLoading: profileLoading } = useFarmerPublicProfile(id);
+  const { data: listings = [] } = useFarmerActiveListings(id);
+  const { data: parcels = [] } = useParcelsByFarmer(id);
+  const { data: stats } = useFarmerProducerStats(id);
+  const { data: subscription } = useMyActiveSubscriptionWith(id);
+  const { map: cropMap } = useCropConfigMap();
+
+  if (profileLoading) return <div className="p-8"><LoadingDots /></div>;
+  if (!profile) throw notFound();
+
   const parcelsWithPhotos = parcels.filter((p) => (p.photos ?? []).length > 0);
 
-  const allBadges = ["organik", "iso", "cografi", "hasat", "premium"] as const;
+  // Primary crop: most-common across parcels (fallback to first active listing's crop)
+  const cropCounts = new Map<string, number>();
+  for (const p of parcels) for (const c of p.crops ?? []) cropCounts.set(c, (cropCounts.get(c) ?? 0) + 1);
+  let primaryCrop: string | null = null;
+  let maxCount = 0;
+  for (const [c, n] of cropCounts) if (n > maxCount) { maxCount = n; primaryCrop = c; }
+  if (!primaryCrop && listings.length > 0) primaryCrop = listings[0].crop;
+
+  const cfg = primaryCrop ? findCropConfig(cropMap, primaryCrop) : null;
+  const startMo = monthLabel(cfg?.harvest_window_start_month ?? null);
+  const endMo = monthLabel(cfg?.harvest_window_end_month ?? null);
+  const fallbackWindow = startMo && endMo ? `${startMo} – ${endMo}` : "—";
+
+  const nextHarvestLabel = subscription?.nextHarvestDate
+    ? new Date(subscription.nextHarvestDate).toLocaleDateString("tr-TR")
+    : fallbackWindow;
+  const estimatedQtyLabel = subscription?.estimatedQty != null
+    ? `${subscription.estimatedQty}`
+    : "—";
+
+  const totalLand = stats ? `${stats.totalLandDonum} dönüm` : "—";
+  const avgQuality = stats?.modalQuality ?? "—";
+  const orderCount = stats?.orderCount ?? 0;
+  const yieldHistory = stats?.yieldHistory ?? [];
+
   return (
     <div>
       <div className="relative h-52" style={{
@@ -32,80 +78,91 @@ function ProducerProfile() {
           <ArrowLeft className="h-4 w-4" />
         </Link>
         <div className="absolute bottom-5 left-5 right-5 text-white">
-          <h1 className="font-serif text-2xl md:text-3xl">{producer.name}</h1>
-          <div className="text-sm opacity-90">📍 {producer.city} · GPS doğrulandı ✓</div>
+          <h1 className="font-serif text-2xl md:text-3xl">{profile.name ?? "Üretici"}</h1>
+          {profile.city && <div className="text-sm opacity-90">📍 {profile.city}</div>}
         </div>
       </div>
 
       <div className="p-4 md:p-8 space-y-6">
-        <div className="flex flex-wrap gap-1.5">
-          {allBadges.map((b) => <TrustBadge key={b} type={b} />)}
-        </div>
-
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          {[
-            { l: "Toplam Arazi", v: producer.totalLand },
-            { l: "Tecrübe", v: producer.experience },
-            { l: "Ort. Kalite", v: producer.avgQuality },
-            { l: "Yanıt Süresi", v: producer.responseTime },
-          ].map((s) => (
-            <div key={s.l} className="rounded-2xl bg-card border p-4">
-              <div className="text-xs text-hmuted">{s.l}</div>
-              <div className="font-serif text-lg mt-1">{s.v}</div>
-            </div>
-          ))}
+        <div className="grid grid-cols-3 gap-3">
+          <div className="rounded-2xl bg-card border p-4">
+            <div className="text-xs text-hmuted">Toplam Arazi</div>
+            <div className="font-serif text-lg mt-1">{totalLand}</div>
+          </div>
+          <div className="rounded-2xl bg-card border p-4">
+            <div className="text-xs text-hmuted">Ort. Kalite</div>
+            <div className="font-serif text-lg mt-1">{avgQuality}</div>
+          </div>
+          <div className="rounded-2xl bg-card border p-4">
+            <div className="text-xs text-hmuted">Sipariş</div>
+            <div className="font-serif text-lg mt-1">{orderCount}</div>
+          </div>
         </div>
 
         <div className="flex flex-wrap items-center gap-3">
-          <div className="flex items-center gap-1 text-sm"><Star className="h-4 w-4 fill-gold text-gold" /> <b>{producer.rating}</b> · {producer.ordersCount} sipariş</div>
-          <span className="rounded-full px-2.5 py-0.5 text-[11px]" style={{ background: "color-mix(in oklab, var(--sage) 22%, transparent)", color: "var(--sage)" }}>0 Anlaşmazlık</span>
-          <span className="rounded-full px-2.5 py-0.5 text-[11px]" style={{ background: "color-mix(in oklab, var(--lav) 25%, transparent)", color: "var(--lav)" }}>{producer.responseTime} Yanıt</span>
+          <span className="rounded-full px-2.5 py-0.5 text-[11px]" style={{ background: "color-mix(in oklab, var(--lav) 25%, transparent)", color: "var(--lav)" }}>
+            Genellikle 24 saat içinde yanıtlar
+          </span>
         </div>
 
         <div>
           <h2 className="font-serif text-lg mb-3">Verim Geçmişi</h2>
-          <div className="rounded-2xl bg-card border p-4">
-            <ResponsiveContainer width="100%" height={220}>
-              <BarChart data={producer.yieldHistory}>
-                <XAxis dataKey="year" tick={{ fontSize: 12 }} />
-                <YAxis tick={{ fontSize: 12 }} />
-                <Tooltip />
-                <Bar dataKey="value" radius={[6, 6, 0, 0]} fill="var(--saffron)" />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-          <div className="text-xs text-hmuted mt-2">Birim: g</div>
+          {yieldHistory.length === 0 ? (
+            <div className="rounded-2xl bg-card border p-6 text-sm text-hmuted text-center">
+              Henüz hasat kaydı yok.
+            </div>
+          ) : (
+            <>
+              <div className="rounded-2xl bg-card border p-4">
+                <ResponsiveContainer width="100%" height={220}>
+                  <BarChart data={yieldHistory}>
+                    <XAxis dataKey="year" tick={{ fontSize: 12 }} />
+                    <YAxis tick={{ fontSize: 12 }} />
+                    <Tooltip />
+                    <Bar dataKey="value" radius={[6, 6, 0, 0]} fill="var(--saffron)" />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+              <div className="text-xs text-hmuted mt-2">Birim: miktar (tüm ürünler)</div>
+            </>
+          )}
         </div>
 
         <div>
           <h2 className="font-serif text-lg mb-3">Aktif Ürünler</h2>
-          <div className="grid gap-3 md:grid-cols-2">
-            {producer.listings.filter((l) => l.status === "active").map((l) => (
-              <div key={l.id} className="rounded-2xl bg-card border overflow-hidden">
-                {l.photos && l.photos.length > 0 && (
-                  <div className="flex gap-1 overflow-x-auto snap-x snap-mandatory">
-                    {l.photos.map((u, i) => (
-                      <img key={i} src={u} alt={l.crop}
-                        className="h-40 w-full min-w-full snap-start object-cover" />
-                    ))}
-                  </div>
-                )}
-                <div className="p-4">
-                  <div className="flex items-start justify-between">
-                    <div>
-                      <div className="font-medium">{cropEmoji(l.crop)} {formatCrop(l.crop)}</div>
-                      <div className="text-xs text-hmuted mt-1">{l.quantity} {l.unit} · Min {l.minOrder} {l.unit} · Kalite {l.quality}</div>
+          {listings.length === 0 ? (
+            <div className="rounded-2xl bg-card border p-6 text-sm text-hmuted text-center">
+              Şu anda aktif ürün yok.
+            </div>
+          ) : (
+            <div className="grid gap-3 md:grid-cols-2">
+              {listings.map((l) => (
+                <div key={l.id} className="rounded-2xl bg-card border overflow-hidden">
+                  {l.photos && l.photos.length > 0 && (
+                    <div className="flex gap-1 overflow-x-auto snap-x snap-mandatory">
+                      {l.photos.map((u, i) => (
+                        <img key={i} src={u} alt={l.crop}
+                          className="h-40 w-full min-w-full snap-start object-cover" />
+                      ))}
                     </div>
-                    <div style={{ fontFamily: "Courier New, monospace", color: "var(--saffron)" }} className="text-sm">
-                      {formatTRY(l.pricePerUnit)}<span className="text-xs text-hmuted">/{l.unit}</span>
+                  )}
+                  <div className="p-4">
+                    <div className="flex items-start justify-between">
+                      <div>
+                        <div className="font-medium">{cropEmoji(l.crop)} {formatCrop(l.crop)}</div>
+                        <div className="text-xs text-hmuted mt-1">{l.quantity} {l.unit} · Min {l.minOrder} {l.unit} · Kalite {l.quality}</div>
+                      </div>
+                      <div style={{ fontFamily: "Courier New, monospace", color: "var(--saffron)" }} className="text-sm">
+                        {formatTRY(l.pricePerUnit)}<span className="text-xs text-hmuted">/{l.unit}</span>
+                      </div>
                     </div>
+                    <button onClick={() => navigate({ to: "/buyer/offer/$listingId", params: { listingId: l.id } })}
+                      className="mt-3 w-full rounded-xl bg-saffron py-2 text-sm text-white">Teklif Ver →</button>
                   </div>
-                  <button onClick={() => navigate({ to: "/buyer/offer/$listingId", params: { listingId: l.id } })}
-                    className="mt-3 w-full rounded-xl bg-saffron py-2 text-sm text-white">Teklif Ver →</button>
                 </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
         </div>
 
         {parcelsWithPhotos.length > 0 && (
@@ -129,29 +186,20 @@ function ProducerProfile() {
           </div>
         )}
 
-        <div>
-          <h2 className="font-serif text-lg mb-3">Alıcı Yorumları</h2>
-          <div className="grid gap-3 md:grid-cols-2">
-            {producer.reviews.map((r) => (
-              <div key={r.id} className="rounded-2xl bg-card border p-4">
-                <div className="text-sm italic">"{r.quote}"</div>
-                <div className="mt-2 flex items-center gap-2 text-xs text-hmuted">
-                  <span className="text-gold">{"★".repeat(r.rating)}</span>
-                  <span>{r.buyer}</span><span>·</span><span>{r.date}</span>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-
         <div className="rounded-2xl p-5 border" style={{ background: "color-mix(in oklab, var(--gold) 12%, transparent)", borderColor: "var(--gold)" }}>
           <h3 className="font-serif text-lg">Hasat Aboneliği</h3>
           <p className="text-sm text-hmuted mt-1">Bu üreticinin gelecek hasatından önceden pay alın.</p>
           <div className="grid grid-cols-2 gap-3 mt-3">
-            <div className="rounded-xl bg-card p-3"><div className="text-xs text-hmuted">Sonraki Hasat</div><div className="font-medium mt-0.5">{producer.nextHarvest.date}</div></div>
-            <div className="rounded-xl bg-card p-3"><div className="text-xs text-hmuted">Tahmini Miktar</div><div className="font-medium mt-0.5">{producer.nextHarvest.estimatedQty}</div></div>
+            <div className="rounded-xl bg-card p-3">
+              <div className="text-xs text-hmuted">Sonraki Hasat</div>
+              <div className="font-medium mt-0.5">{nextHarvestLabel}</div>
+            </div>
+            <div className="rounded-xl bg-card p-3">
+              <div className="text-xs text-hmuted">Tahmini Miktar</div>
+              <div className="font-medium mt-0.5">{estimatedQtyLabel}</div>
+            </div>
           </div>
-          <button onClick={() => navigate({ to: "/buyer/subscription/$producerId", params: { producerId: producer.id } })}
+          <button onClick={() => navigate({ to: "/buyer/subscription/$producerId", params: { producerId: profile.id } })}
             className="mt-4 w-full rounded-xl py-3 text-sm font-medium" style={{ background: "var(--gold)", color: "var(--dark)" }}>Hasat Aboneliği Oluştur →</button>
         </div>
       </div>
