@@ -69,6 +69,7 @@ function NewEntry() {
         unit: submitUnit,
         quality: healthToQuality(health),
         photos: [],
+        photoFile: photoFile ?? undefined,
         notes: encodeNotes({ work, health, text: notes }),
         costs: { ...ZERO_COSTS },
         pricePerUnit: 0,
