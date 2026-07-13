@@ -215,11 +215,23 @@ export function useEntry(entryId: string) {
   });
 }
 
+async function uploadHarvestPhotos(userId: string, entryId: string, files: File[]): Promise<string[]> {
+  const out: string[] = [];
+  for (const file of files) {
+    const path = `${userId}/${entryId}/${Date.now()}-${file.name}`;
+    const up = await supabase.storage.from("harvest-photos").upload(path, file, { upsert: false });
+    if (up.error) throw up.error;
+    const { data } = supabase.storage.from("harvest-photos").getPublicUrl(path);
+    out.push(data.publicUrl);
+  }
+  return out;
+}
+
 export function useCreateEntry() {
   const qc = useQueryClient();
   const userId = useAuthUserId();
   return useMutation({
-    mutationFn: async (e: Omit<HarvestEntry, "id">) => {
+    mutationFn: async (e: Omit<HarvestEntry, "id"> & { photoFile?: File }) => {
       if (!userId) throw new Error("Oturum bulunamadı");
       const { data, error } = await supabase.from("harvest_entries").insert({
         farmer_id: userId,
@@ -235,7 +247,19 @@ export function useCreateEntry() {
         step_key: e.step_key ?? null,
       }).select("*").single();
       if (error) throw error;
-      return dbToEntry(data);
+      let row = data;
+      if (e.photoFile) {
+        const urls = await uploadHarvestPhotos(userId, data.id, [e.photoFile]);
+        const upd = await supabase
+          .from("harvest_entries")
+          .update({ photo_urls: urls })
+          .eq("id", data.id)
+          .select("*")
+          .single();
+        if (upd.error) throw upd.error;
+        row = upd.data;
+      }
+      return dbToEntry(row);
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["entries", userId] });
