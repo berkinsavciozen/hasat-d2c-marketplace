@@ -677,6 +677,24 @@ export type Database = {
           },
         ]
       }
+      mcp_tool_calls: {
+        Row: {
+          called_at: string
+          id: number
+          user_id: string
+        }
+        Insert: {
+          called_at?: string
+          id?: number
+          user_id: string
+        }
+        Update: {
+          called_at?: string
+          id?: number
+          user_id?: string
+        }
+        Relationships: []
+      }
       notif_prefs: {
         Row: {
           community_push: boolean
@@ -1455,6 +1473,7 @@ export type Database = {
     }
     Functions: {
       can_send_ai_message: { Args: { _user_id: string }; Returns: boolean }
+      check_and_record_mcp_call: { Args: never; Returns: boolean }
       create_draft_listings_for_parcel: {
         Args: { _crops: string[]; _farmer_id: string; _parcel_id: string }
         Returns: undefined
