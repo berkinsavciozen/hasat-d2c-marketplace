@@ -1,5 +1,6 @@
 import { createClient } from "@supabase/supabase-js";
 import { defineTool, type ToolContext } from "@lovable.dev/mcp-js";
+import { enforceMcpRateLimit } from "./_rate-limit";
 import { z } from "zod";
 
 function supabaseForUser(ctx: ToolContext) {
@@ -48,6 +49,8 @@ export default defineTool({
     }
     const userId = ctx.getUserId()!;
     const sb = supabaseForUser(ctx);
+    const limited = await enforceMcpRateLimit(sb);
+    if (limited) return limited;
 
     if (input.action === "counter" && input.counter_price == null) {
       return {
