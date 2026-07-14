@@ -55,5 +55,10 @@ export default defineMcp({
     listMyOffersTool,
     markTransferSentTool,
     listMyOrdersTool,
+    createCommunityPostTool,
+    listCommunityPostsTool,
+    createSubscriptionTool,
+    listMySubscriptionsTool,
+    cancelSubscriptionTool,
   ],
 });

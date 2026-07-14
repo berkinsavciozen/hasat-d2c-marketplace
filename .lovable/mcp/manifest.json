@@ -582,6 +582,162 @@
           }
         },
         "outputSchema": null
+      },
+      {
+        "name": "create_community_post",
+        "title": "Create community post",
+        "description": "Publish a new post to the Hasat community feed as the signed-in user. Posts that mention money together with coordination language are auto-flagged for moderator review.",
+        "annotations": {
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "type": "object",
+          "properties": {
+            "content": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 2000
+            },
+            "category": {
+              "default": "Genel",
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "required": [
+            "content"
+          ]
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "list_community_posts",
+        "title": "List community posts",
+        "description": "List recent top-level community posts (replies excluded), newest first. Visibility follows RLS — the caller sees exactly what the real Hasat feed would show them.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "type": "object",
+          "properties": {
+            "limit": {
+              "default": 20,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            }
+          }
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "create_subscription",
+        "title": "Create harvest subscription",
+        "description": "SENSITIVE — as the signed-in buyer, commit to an ongoing harvest subscription with a farmer. Cannot be reversed via this tool (use cancel_subscription). Requires confirm=true.",
+        "annotations": {
+          "readOnlyHint": false,
+          "destructiveHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "type": "object",
+          "properties": {
+            "farmer_id": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "volume_commitment": {
+              "type": "number",
+              "exclusiveMinimum": 0,
+              "description": "Committed volume (in the farmer's default unit)."
+            },
+            "price_lock": {
+              "type": "boolean",
+              "description": "If true, lock the per-unit price at locked_price."
+            },
+            "locked_price": {
+              "description": "Required when price_lock=true — per-unit locked price.",
+              "type": "number",
+              "exclusiveMinimum": 0
+            },
+            "next_harvest_date": {
+              "description": "ISO date YYYY-MM-DD.",
+              "type": "string",
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+            },
+            "estimated_qty": {
+              "type": "number",
+              "exclusiveMinimum": 0
+            },
+            "confirm": {
+              "type": "boolean",
+              "const": true,
+              "description": "Must be true — safety guard."
+            }
+          },
+          "required": [
+            "farmer_id",
+            "volume_commitment",
+            "price_lock",
+            "confirm"
+          ]
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "list_my_subscriptions",
+        "title": "List my subscriptions",
+        "description": "List the signed-in buyer's harvest subscriptions (all statuses), newest first. Includes the linked farmer's public profile.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "type": "object",
+          "properties": {}
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "cancel_subscription",
+        "title": "Cancel subscription",
+        "description": "SENSITIVE — cancel one of the signed-in buyer's harvest subscriptions. Only the buyer who created the subscription can cancel it. Requires confirm=true.",
+        "annotations": {
+          "readOnlyHint": false,
+          "destructiveHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "type": "object",
+          "properties": {
+            "subscription_id": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "confirm": {
+              "type": "boolean",
+              "const": true,
+              "description": "Must be true — safety guard."
+            }
+          },
+          "required": [
+            "subscription_id",
+            "confirm"
+          ]
+        },
+        "outputSchema": null
       }
     ]
   }
