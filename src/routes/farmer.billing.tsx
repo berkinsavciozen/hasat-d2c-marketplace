@@ -57,8 +57,8 @@ function Billing() {
           style={{ background: "color-mix(in oklab, var(--saffron) 14%, var(--card))", border: "1px solid var(--saffron)" }}>
           <div className="text-xs opacity-70">Seçilen Plan</div>
           <div className="flex items-baseline justify-between mt-1">
-            <div className="font-serif text-2xl">{PLANS[plan].name}</div>
-            <div className="font-mono text-lg" style={{ color: "var(--saffron)" }}>{PLANS[plan].price}</div>
+            <div className="font-serif text-2xl">{PLAN.name}</div>
+            <div className="font-mono text-lg" style={{ color: "var(--saffron)" }}>{PLAN.price}</div>
           </div>
         </div>
 
