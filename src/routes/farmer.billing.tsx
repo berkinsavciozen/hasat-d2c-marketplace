@@ -1,11 +1,14 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import { z } from "zod";
+import { toast } from "sonner";
 import { FarmerHeader } from "./farmer";
 import { useHasat } from "@/lib/hasat/store";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { activatePremium } from "@/lib/api/premium.functions";
+import { useQueryClient } from "@tanstack/react-query";
 
 const search = z.object({ plan: z.enum(["premium", "elite"]).catch("premium") });
 
@@ -23,8 +26,30 @@ function Billing() {
   const { plan } = Route.useSearch() as { plan: "premium" | "elite" };
   const navigate = useNavigate();
   const setPremium = useHasat((s) => s.setPremium);
+  const qc = useQueryClient();
   const [card, setCard] = useState({ num: "", exp: "", cvv: "", name: "" });
   const [done, setDone] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+
+  const activate = async () => {
+    if (submitting) return;
+    setSubmitting(true);
+    try {
+      await activatePremium();
+      setPremium(true);
+      qc.invalidateQueries({ queryKey: ["profile"] });
+      setDone(true);
+    } catch (e) {
+      toast.error("Premium aktif edilemedi: " + (e as Error).message);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const finish = () => {
+    setDone(false);
+    navigate({ to: "/farmer/home" });
+  };
 
   const formatCard = (v: string) => v.replace(/\D/g, "").slice(0, 16).replace(/(\d{4})(?=\d)/g, "$1 ");
   const formatExp = (v: string) => {
@@ -89,14 +114,14 @@ function Billing() {
           </TabsContent>
         </Tabs>
 
-        <button onClick={() => setDone(true)}
-          className="w-full rounded-xl py-3 text-sm font-medium"
+        <button onClick={activate} disabled={submitting}
+          className="w-full rounded-xl py-3 text-sm font-medium disabled:opacity-60"
           style={{ background: "var(--saffron)", color: "var(--hwhite)" }}>
-          Aboneliği Başlat ✓
+          {submitting ? "İşleniyor..." : "Aboneliği Başlat ✓"}
         </button>
       </div>
 
-      <Dialog open={done} onOpenChange={(o) => !o && (setPremium(true), navigate({ to: "/farmer/home" }))}>
+      <Dialog open={done} onOpenChange={(o) => { if (!o) finish(); }}>
         <DialogContent className="text-center">
           <DialogHeader>
             <DialogTitle className="flex flex-col items-center gap-3">
@@ -105,7 +130,7 @@ function Billing() {
             </DialogTitle>
           </DialogHeader>
           <p className="text-sm text-muted-foreground">Tüm özelliklere erişimin var. Hoş geldin!</p>
-          <button onClick={() => { setPremium(true); navigate({ to: "/farmer/home" }); }}
+          <button onClick={finish}
             className="w-full rounded-xl py-2.5 text-sm font-medium"
             style={{ background: "var(--saffron)", color: "var(--hwhite)" }}>Devam</button>
         </DialogContent>

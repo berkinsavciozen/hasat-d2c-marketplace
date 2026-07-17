@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { supabase } from "@/integrations/supabase/client";
 import { CropChips } from "@/components/hasat/CropChips";
+import { activatePremium } from "@/lib/api/premium.functions";
 
 export const Route = createFileRoute("/onboarding/buyer")({
   head: () => ({ meta: [{ title: "Kayıt — Hasat Alıcı" }] }),
@@ -105,7 +106,15 @@ function BuyerOnboarding() {
         crops: interests,
         company: { name: company, type: buyerType as never, address, volume },
       });
-      if (trial) setPremium(true);
+      if (trial) {
+        try {
+          await activatePremium();
+          setPremium(true);
+        } catch (e) {
+          toast.error("Premium deneme başlatılamadı: " + (e as Error).message);
+          return;
+        }
+      }
       navigate({ to: "/buyer/discover" });
     } catch (e) {
       toast.error((e as Error).message);
