@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { supabase } from "@/integrations/supabase/client";
 import { CropChips } from "@/components/hasat/CropChips";
+import { activatePremium } from "@/lib/api/premium.functions";
 
 export const Route = createFileRoute("/onboarding/buyer")({
   head: () => ({ meta: [{ title: "Kayıt — Hasat Alıcı" }] }),
