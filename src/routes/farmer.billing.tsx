@@ -114,14 +114,14 @@ function Billing() {
           </TabsContent>
         </Tabs>
 
-        <button onClick={() => setDone(true)}
-          className="w-full rounded-xl py-3 text-sm font-medium"
+        <button onClick={activate} disabled={submitting}
+          className="w-full rounded-xl py-3 text-sm font-medium disabled:opacity-60"
           style={{ background: "var(--saffron)", color: "var(--hwhite)" }}>
-          Aboneliği Başlat ✓
+          {submitting ? "İşleniyor..." : "Aboneliği Başlat ✓"}
         </button>
       </div>
 
-      <Dialog open={done} onOpenChange={(o) => !o && (setPremium(true), navigate({ to: "/farmer/home" }))}>
+      <Dialog open={done} onOpenChange={(o) => { if (!o) finish(); }}>
         <DialogContent className="text-center">
           <DialogHeader>
             <DialogTitle className="flex flex-col items-center gap-3">
@@ -130,7 +130,7 @@ function Billing() {
             </DialogTitle>
           </DialogHeader>
           <p className="text-sm text-muted-foreground">Tüm özelliklere erişimin var. Hoş geldin!</p>
-          <button onClick={() => { setPremium(true); navigate({ to: "/farmer/home" }); }}
+          <button onClick={finish}
             className="w-full rounded-xl py-2.5 text-sm font-medium"
             style={{ background: "var(--saffron)", color: "var(--hwhite)" }}>Devam</button>
         </DialogContent>
