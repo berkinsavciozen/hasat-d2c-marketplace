@@ -1,11 +1,14 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import { z } from "zod";
+import { toast } from "sonner";
 import { FarmerHeader } from "./farmer";
 import { useHasat } from "@/lib/hasat/store";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { activatePremium } from "@/lib/api/premium.functions";
+import { useQueryClient } from "@tanstack/react-query";
 
 const search = z.object({ plan: z.enum(["premium", "elite"]).catch("premium") });
 
