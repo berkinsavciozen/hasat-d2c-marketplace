@@ -1,6 +1,5 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
-import { z } from "zod";
 import { toast } from "sonner";
 import { FarmerHeader } from "./farmer";
 import { useHasat } from "@/lib/hasat/store";
@@ -10,20 +9,13 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { activatePremium } from "@/lib/api/premium.functions";
 import { useQueryClient } from "@tanstack/react-query";
 
-const search = z.object({ plan: z.enum(["premium", "elite"]).catch("premium") });
-
 export const Route = createFileRoute("/farmer/billing")({
-  validateSearch: (s) => search.parse(s),
   component: Billing,
 });
 
-const PLANS: Record<"premium" | "elite", { name: string; price: string }> = {
-  premium: { name: "Premium", price: "₺299/ay" },
-  elite: { name: "Elite", price: "₺799/ay" },
-};
+const PLAN = { name: "Premium", price: "₺149/ay" };
 
 function Billing() {
-  const { plan } = Route.useSearch() as { plan: "premium" | "elite" };
   const navigate = useNavigate();
   const setPremium = useHasat((s) => s.setPremium);
   const qc = useQueryClient();
@@ -65,8 +57,8 @@ function Billing() {
           style={{ background: "color-mix(in oklab, var(--saffron) 14%, var(--card))", border: "1px solid var(--saffron)" }}>
           <div className="text-xs opacity-70">Seçilen Plan</div>
           <div className="flex items-baseline justify-between mt-1">
-            <div className="font-serif text-2xl">{PLANS[plan].name}</div>
-            <div className="font-mono text-lg" style={{ color: "var(--saffron)" }}>{PLANS[plan].price}</div>
+            <div className="font-serif text-2xl">{PLAN.name}</div>
+            <div className="font-mono text-lg" style={{ color: "var(--saffron)" }}>{PLAN.price}</div>
           </div>
         </div>
 
