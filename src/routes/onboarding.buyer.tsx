@@ -106,7 +106,15 @@ function BuyerOnboarding() {
         crops: interests,
         company: { name: company, type: buyerType as never, address, volume },
       });
-      if (trial) setPremium(true);
+      if (trial) {
+        try {
+          await activatePremium();
+          setPremium(true);
+        } catch (e) {
+          toast.error("Premium deneme başlatılamadı: " + (e as Error).message);
+          return;
+        }
+      }
       navigate({ to: "/buyer/discover" });
     } catch (e) {
       toast.error((e as Error).message);
