@@ -26,8 +26,30 @@ function Billing() {
   const { plan } = Route.useSearch() as { plan: "premium" | "elite" };
   const navigate = useNavigate();
   const setPremium = useHasat((s) => s.setPremium);
+  const qc = useQueryClient();
   const [card, setCard] = useState({ num: "", exp: "", cvv: "", name: "" });
   const [done, setDone] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+
+  const activate = async () => {
+    if (submitting) return;
+    setSubmitting(true);
+    try {
+      await activatePremium();
+      setPremium(true);
+      qc.invalidateQueries({ queryKey: ["profile"] });
+      setDone(true);
+    } catch (e) {
+      toast.error("Premium aktif edilemedi: " + (e as Error).message);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const finish = () => {
+    setDone(false);
+    navigate({ to: "/farmer/home" });
+  };
 
   const formatCard = (v: string) => v.replace(/\D/g, "").slice(0, 16).replace(/(\d{4})(?=\d)/g, "$1 ");
   const formatExp = (v: string) => {
