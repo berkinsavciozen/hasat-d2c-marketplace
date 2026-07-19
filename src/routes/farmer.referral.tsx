@@ -1,8 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { Copy, Link2, MessageCircle, Users } from "lucide-react";
+import { Copy, Link2, MessageCircle, Users, Gift, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 import { FarmerHeader } from "./farmer";
-import { useProfile, useReferredFarmers } from "@/lib/hasat/queries";
+import { useProfile, useReferredFarmers, useReferralQualifications, isEffectivelyPremium } from "@/lib/hasat/queries";
 import { LoadingDots } from "@/components/hasat/LoadingDots";
 
 export const Route = createFileRoute("/farmer/referral")({
@@ -15,7 +15,9 @@ const PUBLIC_BASE = "https://hasat.lovable.app";
 function ReferralPage() {
   const { data: profile, isLoading } = useProfile();
   const { data: referred = [] } = useReferredFarmers();
+  const { data: quals = [] } = useReferralQualifications();
   const code = profile?.referral_code ?? "";
+
   const link = `${PUBLIC_BASE}/join?ref=${code}`;
   const waMessage = `Hasat'ta ürünlerini D2C satmaya başla! Davet kodum: ${code} — ${link}`;
   const waUrl = `https://wa.me/?text=${encodeURIComponent(waMessage)}`;
