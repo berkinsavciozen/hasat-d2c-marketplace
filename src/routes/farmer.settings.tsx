@@ -248,7 +248,7 @@ function Settings() {
 
         <Section title="AI Asistan">
           {(() => {
-            const isPremium = profile?.tier === "premium";
+            const isPremium = isEffectivelyPremium(profile);
             const count = aiUsage?.count ?? 0;
             const pct = Math.min(100, (count / 50) * 100);
             const color = count <= 35 ? "#16a34a" : count <= 45 ? "#d97706" : "#dc2626";
