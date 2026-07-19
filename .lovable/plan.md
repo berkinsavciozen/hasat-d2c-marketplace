@@ -1,102 +1,117 @@
-## Investigation findings
+# Referral Reward Mechanism
 
-- **Existing tool pattern** (`create-offer.ts`, `mark-transfer-sent.ts`, etc.): each file exports one `defineTool`; uses a local `supabaseForUser(ctx)` helper (RLS-only, no service-role); write tools call `enforceMcpRateLimit(sb)` first; sensitive/destructive ones require `confirm: z.literal(true)` and set `destructiveHint: true`.
-- **`useCreatePost`** (queries.ts:1844) inserts `{ author_id, content, category, flagged_for_review: looksLikePriceCoordination(content) }`. Category column defaults to `'Genel'` in DB. Note: JS layer sets `flagged_for_review` client-side; the DB `enforce_community_moderation` trigger will also re-compute it — safe either way. I'll set it client-side to match the real mutation exactly.
-- **`useMySubscriptions`** (queries.ts:1685) is **buyer-only** — filters strictly by `buyer_id = auth.uid()`. There is NO farmer-side variant. I'll mirror this exactly: the MCP tool returns the caller's own subscriptions as a buyer. If the caller is a farmer with no rows as buyer, they get an empty list. (Flagging this: user asked "whichever role" but the real hook only scopes to buyer — I'm mirroring real behavior, not inventing a farmer path.)
-- **`useCreateSubscription`** (queries.ts:1702) — exact insert shape captured below.
-- **`useCancelSubscription`** (queries.ts:1733) — **buyer-only** (`update status='cancelled' WHERE id=? AND buyer_id=auth.uid()`). No farmer cancel path exists. MCP tool will mirror this: only the buyer who owns it can cancel.
+## Verified current state
+- `profiles.referred_by` is set by `applyStoredReferral` in `queries.ts`; nothing consumes it.
+- Tier is enforced in two places: **server** via `can_send_ai_message(_user_id)` RPC (source of truth for AI quota) and **client** via `fetchTier()` in `useAIChat.ts` (drives usage-meter UI). Display-only reads in `farmer.settings.tsx` (TierBadge). No other gates exist (confirmed by prior audit).
+- Existing offer triggers on paid transition: `record_order_price_history` (SECURITY DEFINER, updates profiles-adjacent tables) and `enforce_offer_transitions`. Both left untouched — new trigger added additively.
+- `enforce_profile_self_update_restrictions` only enforces when `auth.uid() = NEW.id`; a SECURITY DEFINER trigger running in the offer-update context has `auth.uid()` = the paying buyer, not the referrer, so writes to the referrer's profile pass through cleanly. This matches the pattern `record_order_price_history` already relies on.
 
-## Files to add (5 new tool files)
+## 1. Migration
 
-All under `src/lib/mcp/tools/`, all import `enforceMcpRateLimit` from `./_rate-limit` for writes, all use the standard `supabaseForUser` helper.
+```sql
+-- Column
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS premium_until timestamptz;
 
-### 1. `create-community-post.ts` (write, rate-limited)
+-- Table
+CREATE TABLE public.referral_qualifications (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  referred_user_id uuid NOT NULL UNIQUE REFERENCES public.profiles(id) ON DELETE CASCADE,
+  referrer_id uuid NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
+  qualified_at timestamptz NOT NULL DEFAULT now()
+);
+GRANT SELECT ON public.referral_qualifications TO authenticated;
+GRANT ALL ON public.referral_qualifications TO service_role;
+ALTER TABLE public.referral_qualifications ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Referrer can see own qualifications"
+  ON public.referral_qualifications FOR SELECT TO authenticated
+  USING (auth.uid() = referrer_id);
+CREATE INDEX ON public.referral_qualifications(referrer_id);
+
+-- Trigger function
+CREATE OR REPLACE FUNCTION public.process_referral_qualification()
+RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+DECLARE
+  candidate uuid;
+  ref_by uuid;
+  inserted boolean;
+  q_count int;
+BEGIN
+  IF NEW.payment_status <> 'paid' OR OLD.payment_status IS NOT DISTINCT FROM 'paid' THEN
+    RETURN NEW;
+  END IF;
+
+  FOREACH candidate IN ARRAY ARRAY[NEW.buyer_id, NEW.farmer_id] LOOP
+    SELECT referred_by INTO ref_by FROM public.profiles WHERE id = candidate;
+    IF ref_by IS NULL OR ref_by = candidate THEN CONTINUE; END IF;
+
+    WITH ins AS (
+      INSERT INTO public.referral_qualifications (referred_user_id, referrer_id)
+      VALUES (candidate, ref_by)
+      ON CONFLICT (referred_user_id) DO NOTHING
+      RETURNING referrer_id
+    )
+    SELECT true INTO inserted FROM ins;
+
+    IF COALESCE(inserted, false) THEN
+      SELECT count(*) INTO q_count
+        FROM public.referral_qualifications WHERE referrer_id = ref_by;
+      IF q_count > 0 AND q_count % 3 = 0 THEN
+        UPDATE public.profiles
+           SET premium_until = GREATEST(COALESCE(premium_until, now()), now()) + interval '12 months',
+               tier = 'premium'
+         WHERE id = ref_by;
+      END IF;
+    END IF;
+    inserted := NULL;
+  END LOOP;
+  RETURN NEW;
+END;
+$$;
+
+CREATE TRIGGER trg_offers_referral_qualification
+  AFTER UPDATE OF payment_status ON public.offers
+  FOR EACH ROW EXECUTE FUNCTION public.process_referral_qualification();
 ```
-name: "create_community_post"
-title: "Create community post"
-description: "Publish a new post to the Hasat community feed as the signed-in user."
-inputSchema:
-  content: z.string().trim().min(1).max(2000)
-  category: z.string().trim().min(1).default("Genel")
-annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: false }
-```
-Handler: auth check → rate limit → `sb.from("community_posts").insert({ author_id: userId, content, category, flagged_for_review: looksLikePriceCoordination(content) })`. Import `looksLikePriceCoordination` from `@/lib/hasat/queries`.
 
-### 2. `list-community-posts.ts` (read)
-```
-name: "list_community_posts"
-title: "List community posts"
-description: "List recent top-level community posts (replies excluded), newest first."
-inputSchema:
-  limit: z.number().int().min(1).max(100).default(20)
-annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false }
-```
-Handler: query top-level posts (`parent_id IS NULL`), order by `created_at desc`, limit. Mirror the real UI's behavior for `flagged_for_review`: the real `useCommunityPosts` returns them and the UI decides — RLS already governs visibility, so I'll return the same fields (`id, author_id, content, category, likes_count, comments_count, created_at, flagged_for_review`). No client-side masking beyond what RLS does — matches real app.
+Also update `can_send_ai_message` so premium expiry is honored server-side:
 
-### 3. `create-subscription.ts` (write, rate-limited, SENSITIVE)
-```
-name: "create_subscription"
-title: "Create harvest subscription"
-description: "SENSITIVE — commit as the signed-in buyer to an ongoing harvest subscription with a farmer. Cannot be reversed via this tool (use cancel_subscription). Requires confirm=true."
-inputSchema:
-  farmer_id: z.string().uuid()
-  volume_commitment: z.number().positive()
-  price_lock: z.boolean()
-  locked_price: z.number().positive().optional()
-  next_harvest_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional()
-  estimated_qty: z.number().positive().optional()
-  confirm: z.literal(true)
-annotations: { readOnlyHint: false, destructiveHint: true, openWorldHint: false }
-```
-Handler mirrors `useCreateSubscription` exactly:
-```
-insert({
-  buyer_id: userId,
-  farmer_id,
-  volume_commitment,
-  price_lock,
-  locked_price: price_lock ? (locked_price ?? null) : null,
-  locked_at: price_lock ? new Date().toISOString() : null,
-  next_harvest_date: next_harvest_date ?? null,
-  estimated_qty: estimated_qty ?? null,
-  status: "active",
-})
+```sql
+CREATE OR REPLACE FUNCTION public.can_send_ai_message(_user_id uuid)
+RETURNS boolean LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path = public AS $$
+DECLARE _tier public.user_tier; _pu timestamptz; _count int;
+  _month text := to_char(now(), 'YYYY-MM'); _free_limit constant int := 50;
+BEGIN
+  IF current_setting('request.jwt.claims', true)::jsonb->>'role' = 'authenticated'
+     AND _user_id <> auth.uid() THEN
+    RAISE EXCEPTION 'Cross-user access not allowed';
+  END IF;
+  SELECT tier, premium_until INTO _tier, _pu FROM public.profiles WHERE id = _user_id;
+  IF _tier IS NULL THEN RETURN false; END IF;
+  IF _tier = 'premium' AND (_pu IS NULL OR _pu > now()) THEN RETURN true; END IF;
+  SELECT COALESCE(message_count,0) INTO _count FROM public.ai_usage_tracking
+    WHERE user_id = _user_id AND month = _month;
+  RETURN COALESCE(_count,0) < _free_limit;
+END; $$;
 ```
 
-### 4. `list-my-subscriptions.ts` (read)
-```
-name: "list_my_subscriptions"
-title: "List my subscriptions"
-description: "List the signed-in buyer's harvest subscriptions (all statuses), newest first."
-inputSchema: { } (no params)
-annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false }
-```
-Handler mirrors `useMySubscriptions`: `select("*, farmer:profiles!harvest_subscriptions_farmer_id_fkey(id,name,city)").eq("buyer_id", userId).order("created_at", desc)`. Buyer-only — flagged above.
+## 2. Client tier expiry check
+- `queries.ts` `useProfile` select: add `premium_until`.
+- `useAIChat.ts` `fetchTier()`: also select `premium_until`; return `'free'` when `tier='premium' && premium_until && premium_until < now()`.
+- `farmer.settings.tsx` `isPremium`: compute using same rule (helper `isEffectivelyPremium(profile)` in `queries.ts`).
 
-### 5. `cancel-subscription.ts` (write, rate-limited, SENSITIVE)
-```
-name: "cancel_subscription"
-title: "Cancel subscription"
-description: "SENSITIVE — cancel one of the signed-in buyer's harvest subscriptions. Only the buyer who created the subscription can cancel it. Requires confirm=true."
-inputSchema:
-  subscription_id: z.string().uuid()
-  confirm: z.literal(true)
-annotations: { readOnlyHint: false, destructiveHint: true, openWorldHint: false }
-```
-Handler mirrors `useCancelSubscription`: `update({ status: "cancelled" }).eq("id", subscription_id).eq("buyer_id", userId).select().maybeSingle()`. If null → "Subscription not found or not owned by you." error.
+## 3. UI progress on `farmer.referral.tsx`
+Add a small card between the code card and the "Davet Ettiğin Çiftçiler" list:
+- New hook `useReferralQualifications()` → count of rows where `referrer_id = auth.uid()`.
+- Line: `"{count}/3 arkadaşın gerçek sipariş tamamladı — sonraki ödülüne {3 - count%3} kaldı"` with a 3-dot progress bar (mod 3). When a milestone was hit (premium_until in future), show "🎉 12 ay Premium kazandın — {formatDate(premium_until)} tarihine kadar geçerli".
 
-## Files to edit (1)
+## 4. Verification
+- Create two disposable profiles B1, B2, B3 with `referred_by = R` (test referrer, existing test farmer). Create/borrow a disposable listing + insert 3 offers (buyer_id = B1/B2/B3) with `payment_status='unpaid'`, then update each to `'paid'`. Confirm 3 `referral_qualifications` rows and `profiles.premium_until` for R = ~now()+12mo, tier='premium'. Delete all test rows and revert R.
+- Also verify a 2nd paid offer from the same buyer does NOT create a duplicate qualification (ON CONFLICT).
+- `tsgo --noEmit`.
 
-- `src/lib/mcp/index.ts` — import the 5 new tools and append to the `tools: []` array.
-
-## Post-build steps
-
-1. Run `app_mcp_server--extract_mcp_manifest` to regenerate `.lovable/mcp/manifest.json` (auto-generated, never hand-edited).
-2. `bunx tsgo --noEmit` — expect clean.
-3. Quick verification via `supabase--insert` seeding 30 `mcp_tool_calls` rows for a test user + one live-shape SQL call is unnecessary since rate-limit path is already verified from the previous turn; instead spot-check by SQL: confirm a manual `INSERT INTO harvest_subscriptions` with the exact shape above succeeds under RLS, and confirm `UPDATE harvest_subscriptions SET status='cancelled' WHERE id=? AND buyer_id=?` matches the RLS policy currently on the table.
-
-## Confirmations for you before I build
-
-- **Farmer-side list/cancel not included** — real app has no such mutation; I'm not inventing one. If you want farmers to be able to view/cancel-on-their-side via MCP, that needs a matching real-app mutation first — say the word and I'll flag it as out-of-scope for this pass.
-- **`category` defaults to `"Genel"`** to match the DB column default.
-- **No moderation logic added** — trigger + client-side rule mirror each other, safe.
+## Files touched
+- migration (new)
+- `src/lib/hasat/queries.ts` (profile select + `useReferralQualifications`, `isEffectivelyPremium`)
+- `src/components/hasat/ai-chat/useAIChat.ts` (`fetchTier` expiry)
+- `src/routes/farmer.settings.tsx` (use helper)
+- `src/routes/farmer.referral.tsx` (progress card)
