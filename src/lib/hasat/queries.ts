@@ -367,7 +367,15 @@ export interface ProfileRow {
   iban: string | null;
   bank_account_name: string | null;
   referral_code?: string | null;
+  premium_until?: string | null;
 }
+
+export function isEffectivelyPremium(p: Pick<ProfileRow, "tier" | "premium_until"> | null | undefined): boolean {
+  if (!p || p.tier !== "premium") return false;
+  if (!p.premium_until) return true;
+  return new Date(p.premium_until).getTime() > Date.now();
+}
+
 
 export function useReferredFarmers() {
   const userId = useAuthUserId();
@@ -417,13 +425,31 @@ export function useProfile() {
     enabled: !!userId,
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("profiles").select("id, name, city, role, phone, tier, iban, bank_account_name, referral_code")
+        .from("profiles").select("id, name, city, role, phone, tier, iban, bank_account_name, referral_code, premium_until")
         .eq("id", userId!).maybeSingle();
       if (error) throw error;
       return (data ?? null) as ProfileRow | null;
     },
   });
 }
+
+export function useReferralQualifications() {
+  const userId = useAuthUserId();
+  return useQuery({
+    queryKey: ["referralQualifications", userId],
+    enabled: !!userId,
+    queryFn: async () => {
+      const { data, error } = await (supabase as any)
+        .from("referral_qualifications")
+        .select("id, qualified_at, referred_user_id")
+        .eq("referrer_id", userId!)
+        .order("qualified_at", { ascending: false });
+      if (error) throw error;
+      return (data ?? []) as { id: string; qualified_at: string; referred_user_id: string }[];
+    },
+  });
+}
+
 
 export function useAIUsageThisMonth() {
   const userId = useAuthUserId();

@@ -2,7 +2,7 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { FarmerHeader } from "./farmer";
 import { useHasat } from "@/lib/hasat/store";
-import { useParcels, useCreateParcel, useUpdateParcel, useDeleteParcel, useCertifications, useProfile, useUpdateProfile, useUploadCertification, useDeleteCertification, getCertificationSignedUrl, useAIUsageThisMonth, CERT_TYPES, type CertType } from "@/lib/hasat/queries";
+import { useParcels, useCreateParcel, useUpdateParcel, useDeleteParcel, useCertifications, useProfile, useUpdateProfile, useUploadCertification, useDeleteCertification, getCertificationSignedUrl, useAIUsageThisMonth, isEffectivelyPremium, CERT_TYPES, type CertType } from "@/lib/hasat/queries";
 import { ProgressDots } from "@/components/hasat/ProgressDots";
 import { Input } from "@/components/ui/input";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
@@ -191,7 +191,8 @@ function Settings() {
               style={{ background: "var(--saffron)", color: "var(--hwhite)" }}>{name[0] ?? "?"}</div>
             <div className="flex flex-col gap-1">
               <button className="text-xs text-muted-foreground underline text-left">Değiştir</button>
-              <TierBadge tier={profile?.tier ?? "free"} />
+              <TierBadge tier={isEffectivelyPremium(profile) ? "premium" : "free"} />
+
             </div>
           </div>
           <label className="text-xs text-muted-foreground">Ad Soyad</label>
@@ -248,7 +249,7 @@ function Settings() {
 
         <Section title="AI Asistan">
           {(() => {
-            const isPremium = profile?.tier === "premium";
+            const isPremium = isEffectivelyPremium(profile);
             const count = aiUsage?.count ?? 0;
             const pct = Math.min(100, (count / 50) * 100);
             const color = count <= 35 ? "#16a34a" : count <= 45 ? "#d97706" : "#dc2626";
@@ -259,7 +260,7 @@ function Settings() {
                     <Sparkles className="h-4 w-4" style={{ color: "var(--lav)" }} />
                     <span>Üyelik</span>
                   </div>
-                  <TierBadge tier={profile?.tier ?? "free"} />
+                  <TierBadge tier={isPremium ? "premium" : "free"} />
                 </div>
                 {isPremium ? (
                   <div className="text-sm font-medium" style={{ color: "var(--sage, #4f8a4f)" }}>

@@ -1274,6 +1274,7 @@ export type Database = {
           name: string | null
           phone: string | null
           premium: boolean
+          premium_until: string | null
           referral_code: string | null
           referred_by: string | null
           role: Database["public"]["Enums"]["user_role"]
@@ -1290,6 +1291,7 @@ export type Database = {
           name?: string | null
           phone?: string | null
           premium?: boolean
+          premium_until?: string | null
           referral_code?: string | null
           referred_by?: string | null
           role: Database["public"]["Enums"]["user_role"]
@@ -1306,6 +1308,7 @@ export type Database = {
           name?: string | null
           phone?: string | null
           premium?: boolean
+          premium_until?: string | null
           referral_code?: string | null
           referred_by?: string | null
           role?: Database["public"]["Enums"]["user_role"]
@@ -1323,6 +1326,56 @@ export type Database = {
           {
             foreignKeyName: "profiles_referred_by_fkey"
             columns: ["referred_by"]
+            isOneToOne: false
+            referencedRelation: "public_farmer_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      referral_qualifications: {
+        Row: {
+          id: string
+          qualified_at: string
+          referred_user_id: string
+          referrer_id: string
+        }
+        Insert: {
+          id?: string
+          qualified_at?: string
+          referred_user_id: string
+          referrer_id: string
+        }
+        Update: {
+          id?: string
+          qualified_at?: string
+          referred_user_id?: string
+          referrer_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "referral_qualifications_referred_user_id_fkey"
+            columns: ["referred_user_id"]
+            isOneToOne: true
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "referral_qualifications_referred_user_id_fkey"
+            columns: ["referred_user_id"]
+            isOneToOne: true
+            referencedRelation: "public_farmer_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "referral_qualifications_referrer_id_fkey"
+            columns: ["referrer_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "referral_qualifications_referrer_id_fkey"
+            columns: ["referrer_id"]
             isOneToOne: false
             referencedRelation: "public_farmer_profiles"
             referencedColumns: ["id"]
