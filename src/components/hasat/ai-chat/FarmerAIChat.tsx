@@ -18,6 +18,14 @@ import { HASAT_WHATSAPP_NUMBER } from "@/lib/hasat/constants";
 
 const COACH_KEY = "hasat_ai_chat_coach_dismissed";
 const FREE_LIMIT = 50;
+const PREMIUM_LIMIT = 500;
+const SOFT_WARN_THRESHOLD = 45;
+
+function nextMonthResetLabel(): string {
+  const d = new Date();
+  const next = new Date(d.getFullYear(), d.getMonth() + 1, 1);
+  return next.toLocaleDateString("tr-TR", { day: "numeric", month: "long" }) + "'de";
+}
 
 function fmtTime(iso: string) {
   try { return new Date(iso).toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit" }); }
@@ -98,6 +106,7 @@ export function FarmerAIChat() {
   const [sessions, setSessions] = useState<{ sessionId: string; preview: string; date: string }[]>([]);
   const [draft, setDraft] = useState("");
   const [online, setOnline] = useState(typeof navigator === "undefined" ? true : navigator.onLine);
+  const [softWarnDismissed, setSoftWarnDismissed] = useState(false);
   const listEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
@@ -133,7 +142,7 @@ export function FarmerAIChat() {
   useEffect(() => {
     if (open && userId) {
       chat.loadLatestSession();
-      if (tier === "free") chat.loadUsage();
+      chat.loadUsage();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, userId, tier]);
@@ -175,8 +184,17 @@ export function FarmerAIChat() {
     setHistoryOpen(true);
   };
 
-  const limited = tier === "free" && chat.usageCount >= FREE_LIMIT;
-  const inputDisabled = !online || limited || chat.sending || chat.limitReached;
+  const freeLimited = tier === "free" && chat.usageCount >= FREE_LIMIT;
+  const premiumLimited = tier === "premium" && chat.usageCount >= PREMIUM_LIMIT;
+  const limited = freeLimited || premiumLimited || chat.limitReached;
+  const showSoftWarn =
+    tier === "free" &&
+    !freeLimited &&
+    !softWarnDismissed &&
+    chat.usageCount >= SOFT_WARN_THRESHOLD &&
+    chat.usageCount < FREE_LIMIT;
+  const remainingFree = Math.max(0, FREE_LIMIT - chat.usageCount);
+  const inputDisabled = !online || limited || chat.sending;
 
   const submit = () => {
     const t = draft.trim();
@@ -279,20 +297,32 @@ export function FarmerAIChat() {
           </div>
 
           {/* Input */}
-          <div className="border-t px-3 py-2 pb-[env(safe-area-inset-bottom)]" style={{ background: "white" }}>
-            {limited || chat.limitReached ? (
-              <div className="text-xs text-center py-2">
-                Mesaj limitine ulaştınız.{" "}
+          <div className="border-t px-3 py-2 pb-[env(safe-area-inset-bottom)] space-y-2" style={{ background: "white" }}>
+            {showSoftWarn && (
+              <div className="flex items-start gap-2 rounded-md bg-muted/60 px-3 py-2 text-xs">
+                <span className="flex-1 text-foreground/80">
+                  {remainingFree} mesajın kaldı — ay sonunda sıfırlanacak.{" "}
+                  <button
+                    type="button"
+                    onClick={() => setUpgradeOpen(true)}
+                    className="underline font-medium"
+                    style={{ color: "var(--saffron)" }}
+                  >
+                    Sınırsız sohbet için Premium'a geç →
+                  </button>
+                </span>
                 <button
                   type="button"
-                  onClick={() => setUpgradeOpen(true)}
-                  className="underline font-medium"
-                  style={{ color: "var(--saffron)" }}
+                  onClick={() => setSoftWarnDismissed(true)}
+                  className="text-muted-foreground hover:text-foreground"
+                  aria-label="Kapat"
                 >
-                  Premium'a geç →
+                  <X className="h-3.5 w-3.5" />
                 </button>
               </div>
-            ) : !online ? (
+            )}
+
+            {!online && !limited ? (
               <div className="text-xs text-center py-2 text-muted-foreground">Bağlantı yok</div>
             ) : (
               <div className="flex items-end gap-2">
@@ -307,7 +337,7 @@ export function FarmerAIChat() {
                     }
                   }}
                   disabled={inputDisabled}
-                  placeholder="Mesaj yaz…"
+                  placeholder={limited ? "Taslağın burada kalıyor — kopyalayabilirsin" : "Mesaj yaz…"}
                   rows={1}
                   className="min-h-[40px] max-h-32 resize-none"
                 />
@@ -315,6 +345,71 @@ export function FarmerAIChat() {
                   style={{ background: "var(--lav)", color: "white" }}>
                   <Send className="h-4 w-4" />
                 </Button>
+              </div>
+            )}
+
+            {limited && (
+              <div className="rounded-md bg-muted px-3 py-3 space-y-3 text-sm">
+                {freeLimited ? (
+                  <>
+                    <div className="text-foreground">
+                      Bu ay için {FREE_LIMIT} mesaj hakkını kullandın.
+                      <div className="text-xs text-muted-foreground mt-0.5">
+                        Kotan {nextMonthResetLabel()} sıfırlanacak.
+                      </div>
+                    </div>
+                    <Button
+                      onClick={() => setUpgradeOpen(true)}
+                      className="w-full"
+                      style={{ background: "var(--saffron)", color: "white" }}
+                    >
+                      Premium'a geç — ₺149/ay, sınırsız sohbet
+                    </Button>
+                    <div className="text-xs text-muted-foreground text-center">
+                      Acil bir konu mu var?{" "}
+                      <a
+                        href={`https://wa.me/${HASAT_WHATSAPP_NUMBER}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="underline"
+                      >
+                        İnsan desteğine WhatsApp'tan yazabilirsin
+                      </a>
+                    </div>
+                  </>
+                ) : premiumLimited ? (
+                  <>
+                    <div className="text-foreground">
+                      Bu ay {PREMIUM_LIMIT} mesaj sınırına ulaştın — çok yoğun bir ay geçirmiş olmalısın! 🌾
+                      <div className="text-xs text-muted-foreground mt-0.5">
+                        Kotan {nextMonthResetLabel()} sıfırlanacak.
+                      </div>
+                    </div>
+                    <div className="text-xs text-muted-foreground text-center">
+                      Acil bir konu mu var?{" "}
+                      <a
+                        href={`https://wa.me/${HASAT_WHATSAPP_NUMBER}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="underline"
+                      >
+                        İnsan desteğine WhatsApp'tan yazabilirsin
+                      </a>
+                    </div>
+                  </>
+                ) : (
+                  <div className="text-foreground">
+                    Mesaj limitine ulaştınız.{" "}
+                    <button
+                      type="button"
+                      onClick={() => setUpgradeOpen(true)}
+                      className="underline font-medium"
+                      style={{ color: "var(--saffron)" }}
+                    >
+                      Premium'a geç →
+                    </button>
+                  </div>
+                )}
               </div>
             )}
           </div>
