@@ -142,7 +142,7 @@ export function FarmerAIChat() {
   useEffect(() => {
     if (open && userId) {
       chat.loadLatestSession();
-      if (tier === "free") chat.loadUsage();
+      chat.loadUsage();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, userId, tier]);
