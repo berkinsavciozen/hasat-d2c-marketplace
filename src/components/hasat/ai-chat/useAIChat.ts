@@ -310,6 +310,10 @@ export async function hasAnyMessage(userId: string): Promise<boolean> {
 }
 
 export async function fetchTier(userId: string): Promise<"free" | "premium"> {
-  const { data } = await supabase.from("profiles").select("tier").eq("id", userId).maybeSingle();
-  return ((data as any)?.tier === "premium" ? "premium" : "free");
+  const { data } = await supabase.from("profiles").select("tier, premium_until").eq("id", userId).maybeSingle();
+  const d = data as { tier?: string | null; premium_until?: string | null } | null;
+  if (d?.tier !== "premium") return "free";
+  if (d.premium_until && new Date(d.premium_until).getTime() <= Date.now()) return "free";
+  return "premium";
 }
+
