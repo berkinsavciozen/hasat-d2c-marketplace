@@ -184,8 +184,17 @@ export function FarmerAIChat() {
     setHistoryOpen(true);
   };
 
-  const limited = tier === "free" && chat.usageCount >= FREE_LIMIT;
-  const inputDisabled = !online || limited || chat.sending || chat.limitReached;
+  const freeLimited = tier === "free" && chat.usageCount >= FREE_LIMIT;
+  const premiumLimited = tier === "premium" && chat.usageCount >= PREMIUM_LIMIT;
+  const limited = freeLimited || premiumLimited || chat.limitReached;
+  const showSoftWarn =
+    tier === "free" &&
+    !freeLimited &&
+    !softWarnDismissed &&
+    chat.usageCount >= SOFT_WARN_THRESHOLD &&
+    chat.usageCount < FREE_LIMIT;
+  const remainingFree = Math.max(0, FREE_LIMIT - chat.usageCount);
+  const inputDisabled = !online || limited || chat.sending;
 
   const submit = () => {
     const t = draft.trim();
