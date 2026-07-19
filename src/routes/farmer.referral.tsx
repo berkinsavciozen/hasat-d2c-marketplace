@@ -70,6 +70,49 @@ function ReferralPage() {
               </a>
             </div>
 
+            {/* Reward progress */}
+            {(() => {
+              const count = quals.length;
+              const inCycle = count % 3;
+              const remaining = inCycle === 0 && count > 0 ? 3 : 3 - inCycle;
+              const premiumActive = isEffectivelyPremium(profile);
+              return (
+                <div className="mt-6 rounded-2xl border bg-card p-5">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Gift className="h-5 w-5" style={{ color: "var(--saffron)" }} />
+                    <h2 className="font-serif text-base">Ödül İlerlemen</h2>
+                  </div>
+                  <p className="text-sm text-hmuted mb-3">
+                    Her <strong>3 gerçek sipariş</strong> tamamlayan davetin için sana <strong>12 ay Premium</strong> hediye.
+                  </p>
+                  <div className="flex items-center gap-2 mb-2">
+                    {[0, 1, 2].map((i) => (
+                      <div
+                        key={i}
+                        className="h-2 flex-1 rounded-full"
+                        style={{ background: i < inCycle || (inCycle === 0 && count > 0) ? "var(--saffron)" : "color-mix(in oklab, var(--saffron) 15%, transparent)" }}
+                      />
+                    ))}
+                  </div>
+                  <div className="text-xs text-hmuted">
+                    {count} nitelikli davet · sonraki ödüle {remaining} kaldı
+                  </div>
+                  {premiumActive && profile?.premium_until && (
+                    <div className="mt-3 flex items-start gap-2 rounded-xl bg-saffron/10 p-3 text-sm">
+                      <Sparkles className="h-4 w-4 mt-0.5" style={{ color: "var(--saffron)" }} />
+                      <div>
+                        🎉 Premium aktif —{" "}
+                        <strong>{new Date(profile.premium_until).toLocaleDateString("tr-TR", { day: "2-digit", month: "long", year: "numeric" })}</strong>{" "}
+                        tarihine kadar geçerli.
+                      </div>
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
+
+
+
             <section className="mt-8">
               <h2 className="font-serif text-lg flex items-center gap-2">
                 <Users className="h-5 w-5" /> Davet Ettiğin Çiftçiler
