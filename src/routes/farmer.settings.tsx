@@ -2,7 +2,7 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { FarmerHeader } from "./farmer";
 import { useHasat } from "@/lib/hasat/store";
-import { useParcels, useCreateParcel, useUpdateParcel, useDeleteParcel, useCertifications, useProfile, useUpdateProfile, useUploadCertification, useDeleteCertification, getCertificationSignedUrl, useAIUsageThisMonth, CERT_TYPES, type CertType } from "@/lib/hasat/queries";
+import { useParcels, useCreateParcel, useUpdateParcel, useDeleteParcel, useCertifications, useProfile, useUpdateProfile, useUploadCertification, useDeleteCertification, getCertificationSignedUrl, useAIUsageThisMonth, isEffectivelyPremium, CERT_TYPES, type CertType } from "@/lib/hasat/queries";
 import { ProgressDots } from "@/components/hasat/ProgressDots";
 import { Input } from "@/components/ui/input";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
