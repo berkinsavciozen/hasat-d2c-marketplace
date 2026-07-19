@@ -2386,3 +2386,91 @@ export function useMyActiveSubscriptionWith(farmerId: string | null | undefined)
     },
   });
 }
+
+// =====================================================================
+// NOTIFICATION PREFERENCES
+// =====================================================================
+
+export interface NotifPrefsRow {
+  new_offer_whatsapp: boolean;
+  new_offer_push: boolean;
+  new_offer_sms: boolean;
+  price_alert_whatsapp: boolean;
+  price_alert_push: boolean;
+  price_alert_sms: boolean;
+  harvest_time_whatsapp: boolean;
+  harvest_time_push: boolean;
+  harvest_time_sms: boolean;
+  community_push: boolean;
+}
+
+export type NotifPrefKey = keyof NotifPrefsRow;
+
+const NOTIF_PREF_DEFAULTS: NotifPrefsRow = {
+  new_offer_whatsapp: true,
+  new_offer_push: true,
+  new_offer_sms: true,
+  price_alert_whatsapp: true,
+  price_alert_push: false,
+  price_alert_sms: false,
+  harvest_time_whatsapp: true,
+  harvest_time_push: true,
+  harvest_time_sms: false,
+  community_push: false,
+};
+
+export function useNotifPrefs() {
+  const userId = useAuthUserId();
+  return useQuery({
+    queryKey: ["notifPrefs", userId],
+    enabled: !!userId,
+    queryFn: async (): Promise<NotifPrefsRow> => {
+      const { data, error } = await supabase
+        .from("notif_prefs")
+        .select("*")
+        .eq("user_id", userId!)
+        .maybeSingle();
+      if (error) throw error;
+      if (!data) {
+        // Self-heal: seed a default row if the trigger/backfill missed this user.
+        const insertRow = { user_id: userId!, new_offer_sms: true };
+        await supabase.from("notif_prefs").insert(insertRow);
+        return { ...NOTIF_PREF_DEFAULTS };
+      }
+      const r = data as Record<string, unknown>;
+      const out = { ...NOTIF_PREF_DEFAULTS };
+      (Object.keys(out) as NotifPrefKey[]).forEach((k) => {
+        if (typeof r[k] === "boolean") out[k] = r[k] as boolean;
+      });
+      return out;
+    },
+  });
+}
+
+export function useUpdateNotifPrefs() {
+  const qc = useQueryClient();
+  const userId = useAuthUserId();
+  return useMutation({
+    mutationFn: async (patch: Partial<NotifPrefsRow>) => {
+      if (!userId) throw new Error("Oturum bulunamadı");
+      const { error } = await supabase
+        .from("notif_prefs")
+        .update(patch as any)
+        .eq("user_id", userId);
+      if (error) throw error;
+    },
+    onMutate: async (patch) => {
+      await qc.cancelQueries({ queryKey: ["notifPrefs", userId] });
+      const prev = qc.getQueryData<NotifPrefsRow>(["notifPrefs", userId]);
+      if (prev) {
+        qc.setQueryData<NotifPrefsRow>(["notifPrefs", userId], { ...prev, ...patch });
+      }
+      return { prev };
+    },
+    onError: (_e, _v, ctx) => {
+      if (ctx?.prev) qc.setQueryData(["notifPrefs", userId], ctx.prev);
+    },
+    onSettled: () => qc.invalidateQueries({ queryKey: ["notifPrefs", userId] }),
+  });
+}
+
