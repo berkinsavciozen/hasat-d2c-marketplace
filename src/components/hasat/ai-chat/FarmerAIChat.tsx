@@ -106,6 +106,7 @@ export function FarmerAIChat() {
   const [sessions, setSessions] = useState<{ sessionId: string; preview: string; date: string }[]>([]);
   const [draft, setDraft] = useState("");
   const [online, setOnline] = useState(typeof navigator === "undefined" ? true : navigator.onLine);
+  const [softWarnDismissed, setSoftWarnDismissed] = useState(false);
   const listEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
