@@ -191,7 +191,8 @@ function Settings() {
               style={{ background: "var(--saffron)", color: "var(--hwhite)" }}>{name[0] ?? "?"}</div>
             <div className="flex flex-col gap-1">
               <button className="text-xs text-muted-foreground underline text-left">Değiştir</button>
-              <TierBadge tier={profile?.tier ?? "free"} />
+              <TierBadge tier={isEffectivelyPremium(profile) ? "premium" : "free"} />
+
             </div>
           </div>
           <label className="text-xs text-muted-foreground">Ad Soyad</label>
