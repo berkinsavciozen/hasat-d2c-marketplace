@@ -260,7 +260,7 @@ function Settings() {
                     <Sparkles className="h-4 w-4" style={{ color: "var(--lav)" }} />
                     <span>Üyelik</span>
                   </div>
-                  <TierBadge tier={profile?.tier ?? "free"} />
+                  <TierBadge tier={isPremium ? "premium" : "free"} />
                 </div>
                 {isPremium ? (
                   <div className="text-sm font-medium" style={{ color: "var(--sage, #4f8a4f)" }}>
