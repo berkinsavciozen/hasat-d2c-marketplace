@@ -367,7 +367,15 @@ export interface ProfileRow {
   iban: string | null;
   bank_account_name: string | null;
   referral_code?: string | null;
+  premium_until?: string | null;
 }
+
+export function isEffectivelyPremium(p: Pick<ProfileRow, "tier" | "premium_until"> | null | undefined): boolean {
+  if (!p || p.tier !== "premium") return false;
+  if (!p.premium_until) return true;
+  return new Date(p.premium_until).getTime() > Date.now();
+}
+
 
 export function useReferredFarmers() {
   const userId = useAuthUserId();
