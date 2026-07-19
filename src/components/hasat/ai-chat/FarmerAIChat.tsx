@@ -18,6 +18,14 @@ import { HASAT_WHATSAPP_NUMBER } from "@/lib/hasat/constants";
 
 const COACH_KEY = "hasat_ai_chat_coach_dismissed";
 const FREE_LIMIT = 50;
+const PREMIUM_LIMIT = 500;
+const SOFT_WARN_THRESHOLD = 45;
+
+function nextMonthResetLabel(): string {
+  const d = new Date();
+  const next = new Date(d.getFullYear(), d.getMonth() + 1, 1);
+  return next.toLocaleDateString("tr-TR", { day: "numeric", month: "long" }) + "'de";
+}
 
 function fmtTime(iso: string) {
   try { return new Date(iso).toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit" }); }
