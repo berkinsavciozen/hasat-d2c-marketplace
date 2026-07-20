@@ -45,12 +45,12 @@ function Discover() {
         <div className="relative mt-4">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-hmuted" />
           <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Ürün, üretici veya bölge ara..."
-            className="w-full rounded-full bg-white/10 pl-10 pr-3 py-2.5 text-sm placeholder:text-hwhite/40 outline-none focus:bg-white/15" />
+            className="w-full rounded-full bg-white/10 pl-10 pr-3 py-2.5 text-sm placeholder:text-hwhite/40 outline-none focus:bg-white/15 min-h-[48px]" />
         </div>
         {filters.length > 0 && (
           <div className="mt-3 flex gap-1.5 overflow-x-auto">
             {filters.map((f) => (
-              <button key={f} onClick={() => dropFilter(f)} className="shrink-0 inline-flex items-center gap-1 rounded-full bg-white/10 px-3 py-1 text-xs">
+              <button key={f} onClick={() => dropFilter(f)} className="shrink-0 inline-flex items-center gap-1 rounded-full bg-white/10 px-3 py-1 text-xs min-h-[48px]">
                 {f} <X className="h-3 w-3" />
               </button>
             ))}
@@ -59,7 +59,7 @@ function Discover() {
         <div className="mt-3 flex gap-1.5 overflow-x-auto">
           {SORTS.map((s) => (
             <button key={s} onClick={() => setSort(s)}
-              className="shrink-0 rounded-full px-3 py-1 text-xs transition"
+              className="shrink-0 rounded-full px-4 py-1 text-xs transition min-h-[48px]"
               style={{ background: sort === s ? "var(--gold)" : "rgba(255,255,255,0.1)", color: sort === s ? "var(--dark)" : "var(--hwhite)" }}>
               {s}
             </button>
@@ -185,7 +185,7 @@ function ListingCard({ listing: l, onOpen }: { listing: ListingRow; onOpen: () =
             {formatTRY(l.pricePerUnit)}<span className="text-xs text-hmuted">/{l.unit}</span>
           </div>
           <span
-            className="shrink-0 rounded-full px-3 py-1.5 text-xs text-white"
+            className="shrink-0 inline-flex items-center rounded-full px-4 py-1.5 text-xs text-white min-h-[48px]"
             style={{ background: soldOut ? "var(--hmuted)" : "var(--saffron)" }}
           >
             {soldOut ? "Tükendi" : "Teklif Ver →"}

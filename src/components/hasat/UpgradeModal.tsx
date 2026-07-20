@@ -10,7 +10,7 @@ export function UpgradeModal({ open, onOpenChange }: { open: boolean; onOpenChan
       <SheetContent side="bottom" className="rounded-t-2xl">
         <SheetHeader>
           <SheetTitle className="flex items-center gap-2">
-            <Sparkles className="h-5 w-5" style={{ color: "var(--lav)" }} />
+            <Sparkles className="h-5 w-5" style={{ color: "var(--gold)" }} />
             Bu ay AI limitine ulaştınız
           </SheetTitle>
         </SheetHeader>

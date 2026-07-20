@@ -82,21 +82,21 @@ export function AIBox({ page }: { page: AIBoxPage }) {
   if (data?.error) return null;
 
   const cardStyle = {
-    background: "color-mix(in oklab, var(--lav) 10%, var(--card))",
-    borderLeft: "3px solid var(--lav)",
+    background: "color-mix(in oklab, var(--gold) 10%, var(--card))",
+    borderLeft: "3px solid var(--gold)",
   } as const;
 
   if (isLoading) {
     return (
       <div className="rounded-xl p-3 md:p-4 mb-4" style={cardStyle}>
         <div className="flex items-center gap-2 mb-3">
-          <Sparkles className="h-4 w-4 animate-pulse" style={{ color: "var(--lav)" }} />
+          <Sparkles className="h-4 w-4 animate-pulse" style={{ color: "var(--gold)" }} />
           <div className="text-sm font-medium animate-pulse">AI Analiz</div>
         </div>
         <div className="space-y-2">
-          <div className="h-3 rounded animate-pulse" style={{ background: "color-mix(in oklab, var(--lav) 22%, transparent)", width: "92%" }} />
-          <div className="h-3 rounded animate-pulse" style={{ background: "color-mix(in oklab, var(--lav) 22%, transparent)", width: "76%" }} />
-          <div className="h-3 rounded animate-pulse" style={{ background: "color-mix(in oklab, var(--lav) 22%, transparent)", width: "84%" }} />
+          <div className="h-3 rounded animate-pulse" style={{ background: "color-mix(in oklab, var(--gold) 22%, transparent)", width: "92%" }} />
+          <div className="h-3 rounded animate-pulse" style={{ background: "color-mix(in oklab, var(--gold) 22%, transparent)", width: "76%" }} />
+          <div className="h-3 rounded animate-pulse" style={{ background: "color-mix(in oklab, var(--gold) 22%, transparent)", width: "84%" }} />
         </div>
       </div>
     );
@@ -106,7 +106,7 @@ export function AIBox({ page }: { page: AIBoxPage }) {
     return (
       <div className="rounded-xl p-3 md:p-4 mb-4" style={cardStyle}>
         <div className="flex items-center gap-2 mb-1">
-          <Sparkles className="h-4 w-4" style={{ color: "var(--lav)" }} />
+          <Sparkles className="h-4 w-4" style={{ color: "var(--gold)" }} />
           <div className="text-sm font-medium">AI Analiz</div>
         </div>
         <div className="text-sm text-muted-foreground">
@@ -129,12 +129,12 @@ export function AIBox({ page }: { page: AIBoxPage }) {
         className="flex w-full items-center gap-2 text-left"
         aria-expanded={!collapsed}
       >
-        <Sparkles className="h-4 w-4 shrink-0" style={{ color: "var(--lav)" }} />
+        <Sparkles className="h-4 w-4 shrink-0" style={{ color: "var(--gold)" }} />
         <div className="text-sm font-medium shrink-0">AI Analiz</div>
         {collapsed && (
           <div className="flex-1 text-xs text-muted-foreground truncate">{teaser}</div>
         )}
-        <span className="ml-auto" style={{ color: "var(--lav)" }}>
+        <span className="ml-auto" style={{ color: "var(--gold)" }}>
           {collapsed ? <ChevronDown className="h-4 w-4" /> : <ChevronUp className="h-4 w-4" />}
         </span>
       </button>
@@ -158,9 +158,9 @@ export function AIBox({ page }: { page: AIBoxPage }) {
                 <button
                   type="button"
                   onClick={() => openChatWithPrefill(line)}
-                  className="flex w-full items-start gap-2 text-left text-sm rounded-md px-2 py-1.5 hover:bg-[color-mix(in_oklab,var(--lav)_15%,transparent)] transition"
+                  className="flex w-full items-start gap-2 text-left text-sm rounded-md px-2 py-1.5 hover:bg-[color-mix(in_oklab,var(--gold)_15%,transparent)] transition"
                 >
-                  <span className="mt-1.5 h-1.5 w-1.5 rounded-full shrink-0" style={{ background: "var(--lav)" }} />
+                  <span className="mt-1.5 h-1.5 w-1.5 rounded-full shrink-0" style={{ background: "var(--gold)" }} />
                   <span className="flex-1">{line}</span>
                 </button>
               </li>

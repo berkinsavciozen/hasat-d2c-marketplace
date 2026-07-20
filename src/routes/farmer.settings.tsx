@@ -257,7 +257,7 @@ function Settings() {
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2 text-sm">
-                    <Sparkles className="h-4 w-4" style={{ color: "var(--lav)" }} />
+                    <Sparkles className="h-4 w-4" style={{ color: "var(--gold)" }} />
                     <span>Üyelik</span>
                   </div>
                   <TierBadge tier={isPremium ? "premium" : "free"} />
