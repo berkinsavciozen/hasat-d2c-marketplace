@@ -62,7 +62,25 @@ function FarmerShell() {
   const pendingCount = offers?.filter((o) => o.status === "pending").length ?? 0;
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const [moreOpen, setMoreOpen] = useState(false);
+  const navigate = useNavigate();
   useRealtimeSync(useAuthUserId());
+
+  const restartTour = () => {
+    if (typeof window !== "undefined") {
+      localStorage.removeItem(FARMER_TOUR_STORAGE_KEY);
+    }
+    setMoreOpen(false);
+    const trigger = () => {
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(new CustomEvent("hasat:tour:restart"));
+      }
+    };
+    if (pathname.startsWith("/farmer/home")) {
+      trigger();
+    } else {
+      navigate({ to: "/farmer/home" }).then(() => setTimeout(trigger, 300));
+    }
+  };
   const totalArea = parcels.reduce((s, p) => s + (p.area ?? 0), 0);
   const allCrops = parcels.flatMap((p) => p.crops ?? []);
   const cropCounts = allCrops.reduce<Record<string, number>>((m, c) => { m[c] = (m[c] ?? 0) + 1; return m; }, {});
