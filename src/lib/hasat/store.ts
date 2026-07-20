@@ -81,8 +81,6 @@ export const useHasat = create<Store>()(
       setPendingOffer: (p) => set({ pendingOffer: p }),
       addOrder: (o) => { const no: Order = { ...o, id: newId() }; set((s) => ({ orders: [no, ...s.orders] })); return no; },
       addSubscription: (s) => { const ns: Subscription = { ...s, id: newId() }; set((st) => ({ subscriptions: [ns, ...st.subscriptions] })); return ns; },
-      setNotifPref: (event, channel, value) =>
-        set((s) => ({ notifPrefs: { ...s.notifPrefs, [event]: { ...s.notifPrefs[event], [channel]: value } } })),
       addPriceAlert: (a) => { const np: PriceAlert = { ...a, id: newId(), createdAt: new Date().toISOString() }; set((s) => ({ priceAlerts: [np, ...s.priceAlerts] })); return np; },
       removePriceAlert: (id) => set((s) => ({ priceAlerts: s.priceAlerts.filter((a) => a.id !== id) })),
       reset: () => set({ user: null }),
