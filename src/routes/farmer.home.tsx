@@ -83,9 +83,6 @@ function Home() {
   const yoyPct =
     prevCount > 0 && prevRevenue > 0 ? ((ytdRevenue - prevRevenue) / prevRevenue) * 100 : null;
 
-  const isEmpty = entries.length === 0 && listings.length === 0;
-
-
   const quickActions = [
     {
       icon: BookOpen,
@@ -96,6 +93,7 @@ function Home() {
     { icon: Store, label: "Vitrine Ekle", to: "/farmer/storefront" as const },
     { icon: Users2, label: "Alıcı Bul", to: "/farmer/community" as const },
   ];
+
 
   return (
     <>
