@@ -32,6 +32,7 @@ import { Route as FarmerBillingRouteImport } from './routes/farmer.billing'
 import { Route as FarmerAnalyticsRouteImport } from './routes/farmer.analytics'
 import { Route as BuyerSubscriptionsRouteImport } from './routes/buyer.subscriptions'
 import { Route as BuyerReportsRouteImport } from './routes/buyer.reports'
+import { Route as BuyerPricesRouteImport } from './routes/buyer.prices'
 import { Route as BuyerPaymentRouteImport } from './routes/buyer.payment'
 import { Route as BuyerOrdersRouteImport } from './routes/buyer.orders'
 import { Route as BuyerMessagesRouteImport } from './routes/buyer.messages'
@@ -170,6 +171,11 @@ const BuyerReportsRoute = BuyerReportsRouteImport.update({
   path: '/reports',
   getParentRoute: () => BuyerRoute,
 } as any)
+const BuyerPricesRoute = BuyerPricesRouteImport.update({
+  id: '/prices',
+  path: '/prices',
+  getParentRoute: () => BuyerRoute,
+} as any)
 const BuyerPaymentRoute = BuyerPaymentRouteImport.update({
   id: '/payment',
   path: '/payment',
@@ -303,6 +309,7 @@ export interface FileRoutesByFullPath {
   '/buyer/messages': typeof BuyerMessagesRoute
   '/buyer/orders': typeof BuyerOrdersRouteWithChildren
   '/buyer/payment': typeof BuyerPaymentRoute
+  '/buyer/prices': typeof BuyerPricesRoute
   '/buyer/reports': typeof BuyerReportsRoute
   '/buyer/subscriptions': typeof BuyerSubscriptionsRoute
   '/farmer/analytics': typeof FarmerAnalyticsRoute
@@ -350,6 +357,7 @@ export interface FileRoutesByTo {
   '/buyer/messages': typeof BuyerMessagesRoute
   '/buyer/orders': typeof BuyerOrdersRouteWithChildren
   '/buyer/payment': typeof BuyerPaymentRoute
+  '/buyer/prices': typeof BuyerPricesRoute
   '/buyer/reports': typeof BuyerReportsRoute
   '/buyer/subscriptions': typeof BuyerSubscriptionsRoute
   '/farmer/analytics': typeof FarmerAnalyticsRoute
@@ -397,6 +405,7 @@ export interface FileRoutesById {
   '/buyer/messages': typeof BuyerMessagesRoute
   '/buyer/orders': typeof BuyerOrdersRouteWithChildren
   '/buyer/payment': typeof BuyerPaymentRoute
+  '/buyer/prices': typeof BuyerPricesRoute
   '/buyer/reports': typeof BuyerReportsRoute
   '/buyer/subscriptions': typeof BuyerSubscriptionsRoute
   '/farmer/analytics': typeof FarmerAnalyticsRoute
@@ -446,6 +455,7 @@ export interface FileRouteTypes {
     | '/buyer/messages'
     | '/buyer/orders'
     | '/buyer/payment'
+    | '/buyer/prices'
     | '/buyer/reports'
     | '/buyer/subscriptions'
     | '/farmer/analytics'
@@ -493,6 +503,7 @@ export interface FileRouteTypes {
     | '/buyer/messages'
     | '/buyer/orders'
     | '/buyer/payment'
+    | '/buyer/prices'
     | '/buyer/reports'
     | '/buyer/subscriptions'
     | '/farmer/analytics'
@@ -539,6 +550,7 @@ export interface FileRouteTypes {
     | '/buyer/messages'
     | '/buyer/orders'
     | '/buyer/payment'
+    | '/buyer/prices'
     | '/buyer/reports'
     | '/buyer/subscriptions'
     | '/farmer/analytics'
@@ -751,6 +763,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof BuyerReportsRouteImport
       parentRoute: typeof BuyerRoute
     }
+    '/buyer/prices': {
+      id: '/buyer/prices'
+      path: '/prices'
+      fullPath: '/buyer/prices'
+      preLoaderRoute: typeof BuyerPricesRouteImport
+      parentRoute: typeof BuyerRoute
+    }
     '/buyer/payment': {
       id: '/buyer/payment'
       path: '/payment'
@@ -927,6 +946,7 @@ interface BuyerRouteChildren {
   BuyerMessagesRoute: typeof BuyerMessagesRoute
   BuyerOrdersRoute: typeof BuyerOrdersRouteWithChildren
   BuyerPaymentRoute: typeof BuyerPaymentRoute
+  BuyerPricesRoute: typeof BuyerPricesRoute
   BuyerReportsRoute: typeof BuyerReportsRoute
   BuyerSubscriptionsRoute: typeof BuyerSubscriptionsRoute
   BuyerNegotiationOfferIdRoute: typeof BuyerNegotiationOfferIdRoute
@@ -943,6 +963,7 @@ const BuyerRouteChildren: BuyerRouteChildren = {
   BuyerMessagesRoute: BuyerMessagesRoute,
   BuyerOrdersRoute: BuyerOrdersRouteWithChildren,
   BuyerPaymentRoute: BuyerPaymentRoute,
+  BuyerPricesRoute: BuyerPricesRoute,
   BuyerReportsRoute: BuyerReportsRoute,
   BuyerSubscriptionsRoute: BuyerSubscriptionsRoute,
   BuyerNegotiationOfferIdRoute: BuyerNegotiationOfferIdRoute,
