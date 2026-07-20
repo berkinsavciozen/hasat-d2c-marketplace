@@ -2260,6 +2260,42 @@ export function usePriceHistorySummary(crop: string | null | undefined) {
   });
 }
 
+export interface PriceHistorySeriesPoint {
+  date: string;
+  avgPrice: number;
+}
+
+export interface PriceHistorySeries {
+  hasat: PriceHistorySeriesPoint[];
+  official: PriceHistorySeriesPoint[] | null;
+}
+
+export function usePriceHistorySeries(crop: string | null | undefined, weeks = 12) {
+  const key = (crop ?? "").trim();
+  return useQuery({
+    queryKey: ["priceHistorySeries", key.toLowerCase(), weeks],
+    enabled: key.length > 0,
+    queryFn: async (): Promise<PriceHistorySeries> => {
+      const { data, error } = await supabase.rpc(
+        "get_price_history_series" as any,
+        { p_crop: key, p_weeks: weeks } as any,
+      );
+      if (error) throw error;
+      const row: any = data ?? {};
+      const mapArr = (arr: any): PriceHistorySeriesPoint[] =>
+        Array.isArray(arr)
+          ? arr
+              .map((r: any) => ({ date: String(r.week_start), avgPrice: Number(r.avg_price) }))
+              .filter((p) => p.date && Number.isFinite(p.avgPrice))
+          : [];
+      const hasat = mapArr(row.hasat_series);
+      const officialArr = row.official_series;
+      const official = officialArr == null ? null : mapArr(officialArr);
+      return { hasat, official };
+    },
+  });
+}
+
 export function useCreateCropRequest() {
   const qc = useQueryClient();
   const userId = useAuthUserId();
