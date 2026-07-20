@@ -199,21 +199,29 @@ function Reports() {
 
             {/* Suppliers */}
             <SectionCard title="Tedarikçi Güveni">
-              <div className="divide-y divide-border">
+              <div className="grid gap-2 sm:grid-cols-2">
                 {suppliers.map((s) => {
                   const onTime = s.orderCount > 0 ? Math.round((s.deliveredCount / s.orderCount) * 100) : 0;
+                  const barColor = onTime >= 90 ? "var(--sage)" : onTime >= 60 ? "var(--gold)" : "var(--hred)";
                   return (
-                    <div key={s.farmerId} className="py-2.5 flex items-center justify-between gap-3">
-                      <div className="min-w-0">
-                        <div className="text-sm font-medium text-dark truncate">{s.name}</div>
-                        <div className="text-[11px] text-hmuted">
-                          {s.orderCount} sipariş · Son: {new Date(s.lastOrderAt).toLocaleDateString("tr-TR")}
-                          {s.city ? ` · ${s.city}` : ""}
+                    <div key={s.farmerId} className="rounded-xl border bg-card p-3 min-h-[96px]">
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="min-w-0">
+                          <div className="text-sm font-medium text-dark truncate">{s.name}</div>
+                          <div className="text-[11px] text-hmuted truncate">
+                            {s.city ? `${s.city} · ` : ""}{s.orderCount} sipariş
+                          </div>
                         </div>
+                        <div className="font-mono text-sm shrink-0" style={{ color: "var(--gold)" }}>{formatTRY(s.spend)}</div>
                       </div>
-                      <div className="text-right shrink-0">
-                        <div className="font-mono text-sm" style={{ color: "var(--gold)" }}>{formatTRY(s.spend)}</div>
-                        <div className="text-[10px] text-hmuted">Teslim %{onTime}</div>
+                      <div className="mt-2 flex items-center gap-2">
+                        <div className="h-1.5 flex-1 rounded-full overflow-hidden" style={{ background: "color-mix(in oklab, var(--hmuted) 15%, transparent)" }}>
+                          <div className="h-full rounded-full" style={{ width: `${onTime}%`, background: barColor }} />
+                        </div>
+                        <span className="text-[10px] font-mono text-hmuted whitespace-nowrap">Teslim %{onTime}</span>
+                      </div>
+                      <div className="mt-1 text-[10px] text-hmuted">
+                        Son: {new Date(s.lastOrderAt).toLocaleDateString("tr-TR")}
                       </div>
                     </div>
                   );
@@ -223,23 +231,24 @@ function Reports() {
 
             {/* Recent orders */}
             <SectionCard title="Son Siparişler">
-              <div className="space-y-2">
+              <div className="grid gap-2 sm:grid-cols-2">
                 {paidRows.slice(0, 10).map((r) => (
                   <button
                     key={r.id}
                     onClick={() => navigate({ to: "/buyer/orders/$orderId", params: { orderId: r.id } })}
-                    className="w-full text-left rounded-xl border p-3 hover:border-saffron transition"
-                    style={{ borderColor: "var(--border)" }}
+                    className="w-full text-left rounded-xl border bg-card p-3 min-h-[92px] hover:border-saffron transition"
                   >
-                    <div className="flex items-start justify-between">
-                      <div>
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0">
                         <div className="font-mono text-[10px] text-hmuted">{r.order_ref}</div>
-                        <div className="font-medium mt-0.5 text-dark text-sm">{formatCrop(r.offer?.listing?.crop) ?? "—"}</div>
+                        <div className="font-medium mt-0.5 text-dark text-sm truncate">{formatCrop(r.offer?.listing?.crop) ?? "—"}</div>
+                        <div className="text-[11px] text-hmuted truncate">{r.farmer?.name ?? "Üretici"}</div>
                       </div>
-                      <span className="font-mono text-sm" style={{ color: "var(--gold)" }}>{formatTRY(orderRowTotal(r))}</span>
+                      <span className="font-mono text-sm shrink-0" style={{ color: "var(--gold)" }}>{formatTRY(orderRowTotal(r))}</span>
                     </div>
-                    <div className="mt-1 text-[11px] text-hmuted">
-                      {r.offer?.current_quantity ?? r.offer?.quantity ?? 0} {r.offer?.listing?.unit ?? ""} · {new Date(r.created_at).toLocaleDateString("tr-TR")}
+                    <div className="mt-2 flex items-center justify-between text-[11px] text-hmuted">
+                      <span>{r.offer?.current_quantity ?? r.offer?.quantity ?? 0} {r.offer?.listing?.unit ?? ""}</span>
+                      <span>{new Date(r.created_at).toLocaleDateString("tr-TR")}</span>
                     </div>
                   </button>
                 ))}

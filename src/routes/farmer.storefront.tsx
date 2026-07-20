@@ -51,9 +51,44 @@ function Storefront() {
       <div className="px-4 md:px-8 py-5 pb-32 md:pb-5">
         <AIBox page="storefront" />
         <div className="mt-3 rounded-xl border bg-card p-3">
+          <div className="flex items-center justify-between gap-2">
+            <div className="text-xs font-medium text-hmuted">Vitrin Önizleme</div>
+            <a
+              href={vUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1 rounded-full px-2 py-1 text-[11px] text-saffron hover:bg-saffron/10"
+            >
+              <Eye className="h-3 w-3" /> Alıcı gibi gör
+            </a>
+          </div>
+          <div className="mt-2 rounded-lg overflow-hidden border" style={{ background: "var(--dark)" }}>
+            <div className="p-3 text-hwhite">
+              <div className="font-serif text-base truncate">{profile?.name ?? "Üreticiniz"}</div>
+              <div className="text-[11px] opacity-80">📍 {profile?.city ?? "—"}</div>
+            </div>
+            {active.length > 0 ? (
+              <div className="flex gap-1.5 overflow-x-auto p-2 bg-card">
+                {active.slice(0, 6).map((l) => (
+                  <div key={l.id} className="shrink-0 w-20">
+                    <div className="h-20 w-20 rounded-md bg-cream overflow-hidden grid place-items-center text-2xl">
+                      {l.photos?.[0] ? (
+                        <img src={l.photos[0]} alt={formatCrop(l.crop)} className="h-full w-full object-cover" />
+                      ) : cropEmoji(l.crop)}
+                    </div>
+                    <div className="mt-1 text-[10px] truncate text-hmuted">{formatCrop(l.crop)}</div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="p-4 text-center text-[11px] text-hmuted bg-card">
+                Aktif ürününüz olmadığı için vitrininiz alıcılara boş görünüyor.
+              </div>
+            )}
+          </div>
           <button
             onClick={() => copyVitrinLink(profile ?? undefined)}
-            className="w-full rounded-lg px-3 py-2 text-sm font-medium"
+            className="mt-2 w-full rounded-lg px-3 py-2 min-h-[48px] text-sm font-medium"
             style={{ background: "var(--saffron)", color: "var(--hwhite)" }}
           >
             Vitrin Linkini Kopyala

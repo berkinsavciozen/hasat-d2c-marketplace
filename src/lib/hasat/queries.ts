@@ -618,7 +618,7 @@ function dbToOrder(r: any, side: "farmer" | "buyer"): Order {
     code: r.order_ref,
     producerId: r.farmer_id,
     producerName: partyName,
-    producerPhone: side === "buyer" ? (r.farmer?.phone ?? undefined) : undefined,
+    producerPhone: side === "buyer" ? (r.farmer?.phone ?? undefined) : (r.buyer?.phone ?? undefined),
     crop: listing.crop ?? "—",
     quantity: qty,
     unit: (listing.unit ?? "kg") as Order["unit"],
@@ -1528,7 +1528,7 @@ export function useFarmerOrders() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("orders")
-        .select(`${ORDER_SELECT}, buyer:profiles!orders_buyer_id_fkey(id,name)`)
+        .select(`${ORDER_SELECT}, buyer:profiles!orders_buyer_id_fkey(id,name,phone)`)
         .eq("farmer_id", userId!)
         .order("created_at", { ascending: false });
       if (error) throw error;
@@ -2256,6 +2256,42 @@ export function usePriceHistorySummary(crop: string | null | undefined) {
           : null,
         lastUpdated: row.last_updated ?? null,
       };
+    },
+  });
+}
+
+export interface PriceHistorySeriesPoint {
+  date: string;
+  avgPrice: number;
+}
+
+export interface PriceHistorySeries {
+  hasat: PriceHistorySeriesPoint[];
+  official: PriceHistorySeriesPoint[] | null;
+}
+
+export function usePriceHistorySeries(crop: string | null | undefined, weeks = 12) {
+  const key = (crop ?? "").trim();
+  return useQuery({
+    queryKey: ["priceHistorySeries", key.toLowerCase(), weeks],
+    enabled: key.length > 0,
+    queryFn: async (): Promise<PriceHistorySeries> => {
+      const { data, error } = await supabase.rpc(
+        "get_price_history_series" as any,
+        { p_crop: key, p_weeks: weeks } as any,
+      );
+      if (error) throw error;
+      const row: any = data ?? {};
+      const mapArr = (arr: any): PriceHistorySeriesPoint[] =>
+        Array.isArray(arr)
+          ? arr
+              .map((r: any) => ({ date: String(r.week_start), avgPrice: Number(r.avg_price) }))
+              .filter((p) => p.date && Number.isFinite(p.avgPrice))
+          : [];
+      const hasat = mapArr(row.hasat_series);
+      const officialArr = row.official_series;
+      const official = officialArr == null ? null : mapArr(officialArr);
+      return { hasat, official };
     },
   });
 }
