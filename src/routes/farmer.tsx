@@ -165,8 +165,13 @@ function FarmerShell() {
         {mobileTabs.map(({ to, label, icon: Icon }) => {
           const active = pathname.startsWith(to);
           return (
-            <Link key={to} to={to} className="flex flex-col items-center gap-0.5 py-2 text-[10px]"
-              style={{ color: active ? "var(--saffron)" : "var(--hwhite)" }}>
+            <Link
+              key={to}
+              to={to}
+              data-tour={to === "/farmer/storefront" ? "tab-storefront" : to === "/farmer/prices" ? "tab-prices" : undefined}
+              className="flex flex-col items-center gap-0.5 py-2 text-[10px]"
+              style={{ color: active ? "var(--saffron)" : "var(--hwhite)" }}
+            >
               <Icon className="h-5 w-5" />
               <span>{label}</span>
             </Link>
