@@ -35,6 +35,61 @@ function Discover() {
   const [filters, setFilters] = useState<string[]>([]);
   const [query, setQuery] = useState("");
 
+  // "Senin İçin" — retention strip (client-side derived)
+  const { data: buyerOffers = [] } = useBuyerOffers();
+  const { data: subs = [] } = useMySubscriptions();
+  const { data: alerts = [] } = usePriceAlerts();
+
+  const pendingOfferCount = buyerOffers.filter(
+    (o) => (o.status === "pending" || o.status === "counter") && o.ballSide === "buyer",
+  ).length;
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const upcomingSubs = subs
+    .filter((s) => s.status === "active" && !!s.nextHarvestDate && new Date(s.nextHarvestDate) >= today)
+    .sort((a, b) => new Date(a.nextHarvestDate!).getTime() - new Date(b.nextHarvestDate!).getTime());
+  const nextSub = upcomingSubs[0] ?? null;
+  const nextSubDate = nextSub?.nextHarvestDate
+    ? new Date(nextSub.nextHarvestDate).toLocaleDateString("tr-TR", { day: "numeric", month: "short" })
+    : null;
+  const nextSubFarmerName = (nextSub as unknown as { farmer?: { name?: string | null } } | null)?.farmer?.name ?? null;
+
+  const activeAlertCount = alerts.filter((a) => a.active).length;
+
+  const forYouCards: Array<{ key: string; icon: typeof MessageSquare; accent: string; label: string; value: string; to: string; params?: Record<string, string> }> = [];
+  if (pendingOfferCount > 0) {
+    forYouCards.push({
+      key: "offers",
+      icon: MessageSquare,
+      accent: "var(--saffron)",
+      label: "Bekleyen teklif",
+      value: `${pendingOfferCount} teklif`,
+      to: "/buyer/messages",
+    });
+  }
+  if (nextSub && nextSubDate) {
+    forYouCards.push({
+      key: "sub",
+      icon: CalendarClock,
+      accent: "var(--gold)",
+      label: "Bir sonraki teslimat",
+      value: nextSubFarmerName ? `${nextSubDate} · ${nextSubFarmerName}` : nextSubDate,
+      to: "/buyer/subscriptions",
+    });
+  }
+  if (activeAlertCount > 0) {
+    forYouCards.push({
+      key: "alerts",
+      icon: Bell,
+      accent: "var(--saffron)",
+      label: "Aktif fiyat alarmı",
+      value: `${activeAlertCount} alarm`,
+      to: "/buyer/reports",
+    });
+  }
+
+
   const dropFilter = (f: string) => setFilters((x) => x.filter((y) => y !== f));
   const filtered = listings.filter((l) => {
     if (!query) return true;
