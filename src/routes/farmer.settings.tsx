@@ -16,6 +16,7 @@ import { vitrinUrl, copyVitrinLink } from "@/lib/hasat/vitrin";
 import { TR_PROVINCES } from "@/lib/hasat/cities";
 import { CropChips } from "@/components/hasat/CropChips";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from "@/components/ui/accordion";
 
 export const Route = createFileRoute("/farmer/settings")({ component: Settings });
 
@@ -180,44 +181,158 @@ function Settings() {
     <>
       <FarmerHeader title="Ayarlar" />
       <div className="p-4 md:p-8 max-w-2xl space-y-5">
-        <Section title="Profil">
-          {!name.trim() && (
-            <div className="mb-4 rounded-xl border border-saffron/40 bg-saffron/10 px-4 py-3 text-sm text-saffron">
-              Profilinizi tamamlayın — alıcılar sizi tanısın.
-            </div>
-          )}
-          <div className="flex items-center gap-3 mb-4">
-            <div className="grid h-14 w-14 place-items-center rounded-full text-lg font-bold"
-              style={{ background: "var(--saffron)", color: "var(--hwhite)" }}>{name[0] ?? "?"}</div>
-            <div className="flex flex-col gap-1">
-              <button className="text-xs text-muted-foreground underline text-left">Değiştir</button>
-              <TierBadge tier={isEffectivelyPremium(profile) ? "premium" : "free"} />
+        <Accordion type="single" collapsible className="rounded-xl border border-border bg-card">
+          <AccordionItem value="farm-info" className="border-b-0">
+            <AccordionTrigger className="px-4 py-3 min-h-[48px] font-medium text-sm hover:no-underline">
+              Çiftlik Bilgileri
+            </AccordionTrigger>
+            <AccordionContent className="px-4 pb-4 pt-0 space-y-5">
+              <Section title="Profil">
+                {!name.trim() && (
+                  <div className="mb-4 rounded-xl border border-saffron/40 bg-saffron/10 px-4 py-3 text-sm text-saffron">
+                    Profilinizi tamamlayın — alıcılar sizi tanısın.
+                  </div>
+                )}
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="grid h-14 w-14 place-items-center rounded-full text-lg font-bold"
+                    style={{ background: "var(--saffron)", color: "var(--hwhite)" }}>{name[0] ?? "?"}</div>
+                  <div className="flex flex-col gap-1">
+                    <button className="text-xs text-muted-foreground underline text-left">Değiştir</button>
+                    <TierBadge tier={isEffectivelyPremium(profile) ? "premium" : "free"} />
+                  </div>
+                </div>
+                <label className="text-xs text-muted-foreground">Ad Soyad</label>
+                <Input value={name} onChange={(e) => setName(e.target.value)} className="mt-1 mb-3" />
+                <label className="text-xs text-muted-foreground">Şehir</label>
+                <Select value={city} onValueChange={setCity}>
+                  <SelectTrigger className="mt-1 mb-3"><SelectValue placeholder="İl seçin" /></SelectTrigger>
+                  <SelectContent>{TR_PROVINCES.map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent>
+                </Select>
+                <button onClick={saveProfile}
+                  className="rounded-lg px-4 py-2 text-sm font-medium min-h-[48px]"
+                  style={{ background: "var(--saffron)", color: "var(--hwhite)" }}>Kaydet</button>
 
-            </div>
-          </div>
-          <label className="text-xs text-muted-foreground">Ad Soyad</label>
-          <Input value={name} onChange={(e) => setName(e.target.value)} className="mt-1 mb-3" />
-          <label className="text-xs text-muted-foreground">Şehir</label>
-          <Select value={city} onValueChange={setCity}>
-            <SelectTrigger className="mt-1 mb-3"><SelectValue placeholder="İl seçin" /></SelectTrigger>
-            <SelectContent>{TR_PROVINCES.map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent>
-          </Select>
-          <button onClick={saveProfile}
-            className="rounded-lg px-4 py-2 text-sm font-medium"
-            style={{ background: "var(--saffron)", color: "var(--hwhite)" }}>Kaydet</button>
+                <div className="mt-4 border-t pt-4">
+                  <button
+                    onClick={() => copyVitrinLink(profile ?? undefined)}
+                    className="rounded-lg border border-border px-4 py-2 text-sm font-medium hover:bg-muted min-h-[48px]"
+                  >
+                    Vitrin Linkini Kopyala
+                  </button>
+                  <div className="mt-2 truncate font-mono text-[11px] text-hmuted">
+                    {vitrinUrl(profile ?? undefined)}
+                  </div>
+                </div>
+              </Section>
 
-          <div className="mt-4 border-t pt-4">
-            <button
-              onClick={() => copyVitrinLink(profile ?? undefined)}
-              className="rounded-lg border border-border px-4 py-2 text-sm font-medium hover:bg-muted"
-            >
-              Vitrin Linkini Kopyala
-            </button>
-            <div className="mt-2 truncate font-mono text-[11px] text-hmuted">
-              {vitrinUrl(profile ?? undefined)}
-            </div>
-          </div>
-        </Section>
+              <Section title="Parsellerim">
+                {parcelsLoading ? (
+                  <div className="py-6"><ProgressDots current={2} total={3} /></div>
+                ) : (
+                  <div className="space-y-2">
+                    {parcels.map((p) => (
+                      <div key={p.id} className="flex items-center justify-between rounded-lg border border-border p-3">
+                        <div>
+                          <div className="text-sm font-medium">{p.name}</div>
+                          <div className="text-xs text-muted-foreground">{p.area} dönüm · {p.location.label}</div>
+                        </div>
+                        <div className="flex gap-1">
+                          <button onClick={() => openEdit(p.id)} className="grid h-12 w-12 place-items-center rounded-md hover:bg-muted">
+                            <Pencil className="h-4 w-4" />
+                          </button>
+                          <button onClick={() => removeParcel(p.id)}
+                            className="grid h-12 w-12 place-items-center rounded-md hover:bg-destructive/10 text-destructive">
+                            <Trash2 className="h-4 w-4" />
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                    {parcels.length === 0 && <div className="text-xs text-muted-foreground py-4 text-center">Henüz parsel yok</div>}
+                    <button onClick={() => setNewParcelOpen(true)}
+                      className="mt-2 self-start rounded-lg px-3 py-2 text-xs font-medium border border-border hover:bg-muted min-h-[48px]">
+                      + Parsel Ekle
+                    </button>
+                  </div>
+                )}
+              </Section>
+
+              <Section title="Sertifikalar">
+                {certsLoading ? (
+                  <div className="py-4"><ProgressDots current={1} total={3} /></div>
+                ) : (
+                  <div className="flex flex-col gap-2">
+                    {certs.length === 0 && (
+                      <div className="text-xs text-muted-foreground">Sertifika eklenmemiş</div>
+                    )}
+                    {certs.map((c) => {
+                      const expiryBadge = (() => {
+                        if (!c.expires_at) return null;
+                        const now = Date.now();
+                        const exp = new Date(c.expires_at).getTime();
+                        if (isNaN(exp)) return null;
+                        const days = Math.floor((exp - now) / 86400000);
+                        if (days < 0) {
+                          return (
+                            <span className="rounded-full px-2 py-0.5 text-[10px] font-medium bg-hred/15 text-hred">
+                              Süresi Geçti
+                            </span>
+                          );
+                        }
+                        if (days <= 30) {
+                          return (
+                            <span className="rounded-full px-2 py-0.5 text-[10px] font-medium" style={{ background: "color-mix(in oklab, var(--gold) 20%, transparent)", color: "var(--gold)" }}>
+                              Yakında Sona Eriyor
+                            </span>
+                          );
+                        }
+                        return null;
+                      })();
+                      return (
+                      <div key={c.id} className="flex items-center justify-between rounded-lg border border-border px-3 py-2">
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={async () => {
+                              if (!c.document_url) return;
+                              try {
+                                const url = await getCertificationSignedUrl(c.document_url);
+                                window.open(url, "_blank");
+                              } catch (e) { toast.error((e as Error).message); }
+                            }}
+                            className="px-2 py-1 text-xs rounded-full hover:opacity-80"
+                            style={{ background: "color-mix(in oklab, var(--sage) 30%, transparent)" }}>
+                            ✓ {c.type}
+                          </button>
+                          {expiryBadge}
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <div className="text-[11px] text-muted-foreground text-right">
+                            <div>{c.verified_at ? `Doğrulandı: ${fmtDate(c.verified_at)}` : "Doğrulama bekleniyor"}</div>
+                            <div>Süre: {fmtDate(c.expires_at)}</div>
+                          </div>
+                          <button
+                            onClick={async () => {
+                              try {
+                                await deleteCert.mutateAsync({ id: c.id, document_url: c.document_url });
+                                toast.success("Sertifika silindi");
+                              } catch (e) { toast.error((e as Error).message); }
+                            }}
+                            className="grid h-12 w-12 place-items-center rounded-md hover:bg-destructive/10 text-destructive">
+                            <Trash2 className="h-4 w-4" />
+                          </button>
+                        </div>
+                      </div>
+                      );
+                    })}
+                    <button onClick={() => setCertSheet(true)}
+                      className="mt-2 self-start rounded-lg px-3 py-2 text-xs font-medium border border-border hover:bg-muted min-h-[48px]">
+                      + Sertifika Ekle
+                    </button>
+                  </div>
+                )}
+              </Section>
+            </AccordionContent>
+          </AccordionItem>
+        </Accordion>
 
         <Section title="Banka Bilgileri">
           <p className="mb-3 text-xs text-hmuted">
@@ -239,13 +354,11 @@ function Settings() {
           />
           <button onClick={saveBank}
             disabled={updateProfile.isPending}
-            className="rounded-lg px-4 py-2 text-sm font-medium disabled:opacity-50"
+            className="rounded-lg px-4 py-2 text-sm font-medium disabled:opacity-50 min-h-[48px]"
             style={{ background: "var(--saffron)", color: "var(--hwhite)" }}>
             {updateProfile.isPending ? "Kaydediliyor…" : "Kaydet"}
           </button>
         </Section>
-
-
 
         <Section title="AI Asistan">
           {(() => {
@@ -278,7 +391,7 @@ function Settings() {
                     <button
                       type="button"
                       onClick={() => setUpgradeOpen(true)}
-                      className="text-sm font-medium underline"
+                      className="text-sm font-medium underline min-h-[48px]"
                       style={{ color: "var(--saffron)" }}
                     >
                       Premium'a Geç →
@@ -291,111 +404,6 @@ function Settings() {
         </Section>
 
 
-        <Section title="Parsellerim">
-          {parcelsLoading ? (
-            <div className="py-6"><ProgressDots current={2} total={3} /></div>
-          ) : (
-            <div className="space-y-2">
-              {parcels.map((p) => (
-                <div key={p.id} className="flex items-center justify-between rounded-lg border border-border p-3">
-                  <div>
-                    <div className="text-sm font-medium">{p.name}</div>
-                    <div className="text-xs text-muted-foreground">{p.area} dönüm · {p.location.label}</div>
-                  </div>
-                  <div className="flex gap-1">
-                    <button onClick={() => openEdit(p.id)} className="grid h-8 w-8 place-items-center rounded-md hover:bg-muted">
-                      <Pencil className="h-4 w-4" />
-                    </button>
-                    <button onClick={() => removeParcel(p.id)}
-                      className="grid h-8 w-8 place-items-center rounded-md hover:bg-destructive/10 text-destructive">
-                      <Trash2 className="h-4 w-4" />
-                    </button>
-                  </div>
-                </div>
-              ))}
-              {parcels.length === 0 && <div className="text-xs text-muted-foreground py-4 text-center">Henüz parsel yok</div>}
-              <button onClick={() => setNewParcelOpen(true)}
-                className="mt-2 self-start rounded-lg px-3 py-1.5 text-xs font-medium border border-border hover:bg-muted">
-                + Parsel Ekle
-              </button>
-            </div>
-          )}
-        </Section>
-
-        <Section title="Sertifikalar">
-          {certsLoading ? (
-            <div className="py-4"><ProgressDots current={1} total={3} /></div>
-          ) : (
-            <div className="flex flex-col gap-2">
-              {certs.length === 0 && (
-                <div className="text-xs text-muted-foreground">Sertifika eklenmemiş</div>
-              )}
-              {certs.map((c) => {
-                const expiryBadge = (() => {
-                  if (!c.expires_at) return null;
-                  const now = Date.now();
-                  const exp = new Date(c.expires_at).getTime();
-                  if (isNaN(exp)) return null;
-                  const days = Math.floor((exp - now) / 86400000);
-                  if (days < 0) {
-                    return (
-                      <span className="rounded-full px-2 py-0.5 text-[10px] font-medium bg-hred/15 text-hred">
-                        Süresi Geçti
-                      </span>
-                    );
-                  }
-                  if (days <= 30) {
-                    return (
-                      <span className="rounded-full px-2 py-0.5 text-[10px] font-medium" style={{ background: "color-mix(in oklab, var(--gold) 20%, transparent)", color: "var(--gold)" }}>
-                        Yakında Sona Eriyor
-                      </span>
-                    );
-                  }
-                  return null;
-                })();
-                return (
-                <div key={c.id} className="flex items-center justify-between rounded-lg border border-border px-3 py-2">
-                  <div className="flex items-center gap-2">
-                    <button
-                      onClick={async () => {
-                        if (!c.document_url) return;
-                        try {
-                          const url = await getCertificationSignedUrl(c.document_url);
-                          window.open(url, "_blank");
-                        } catch (e) { toast.error((e as Error).message); }
-                      }}
-                      className="px-2 py-1 text-xs rounded-full hover:opacity-80"
-                      style={{ background: "color-mix(in oklab, var(--sage) 30%, transparent)" }}>
-                      ✓ {c.type}
-                    </button>
-                    {expiryBadge}
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <div className="text-[11px] text-muted-foreground text-right">
-                      <div>{c.verified_at ? `Doğrulandı: ${fmtDate(c.verified_at)}` : "Doğrulama bekleniyor"}</div>
-                      <div>Süre: {fmtDate(c.expires_at)}</div>
-                    </div>
-                    <button
-                      onClick={async () => {
-                        try {
-                          await deleteCert.mutateAsync({ id: c.id, document_url: c.document_url });
-                          toast.success("Sertifika silindi");
-                        } catch (e) { toast.error((e as Error).message); }
-                      }}
-                      className="grid h-8 w-8 place-items-center rounded-md hover:bg-destructive/10 text-destructive">
-                      <Trash2 className="h-4 w-4" />
-                    </button>
-                  </div>
-                </div>
-                );
-              })}
-              <button onClick={() => setCertSheet(true)}
-                className="mt-2 self-start rounded-lg px-3 py-1.5 text-xs font-medium border border-border hover:bg-muted">
-                + Sertifika Ekle
-              </button>
-            </div>
-          )}
-        </Section>
 
 
         <Link to="/farmer/settings/notifs"
