@@ -61,6 +61,22 @@ function Home() {
   const { data: offers = [] } = useFarmerOffers();
   const { data: orders = [] } = useFarmerOrders();
 
+  const [tourOpen, setTourOpen] = useState(false);
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const shouldOpen = !localStorage.getItem(FARMER_TOUR_STORAGE_KEY);
+    let t: ReturnType<typeof setTimeout> | undefined;
+    if (shouldOpen) {
+      t = setTimeout(() => setTourOpen(true), 600);
+    }
+    const onRestart = () => setTourOpen(true);
+    window.addEventListener("hasat:tour:restart", onRestart);
+    return () => {
+      if (t) clearTimeout(t);
+      window.removeEventListener("hasat:tour:restart", onRestart);
+    };
+  }, []);
+
   const pendingOffers = offers.filter(
     (o) => (o.status === "pending" || o.status === "counter") && o.ballSide === "farmer",
   ).length;
