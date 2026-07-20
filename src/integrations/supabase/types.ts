@@ -704,6 +704,8 @@ export type Database = {
           new_offer_push: boolean
           new_offer_sms: boolean
           new_offer_whatsapp: boolean
+          offer_accepted_sms: boolean
+          payment_confirmed_sms: boolean
           price_alert_push: boolean
           price_alert_sms: boolean
           price_alert_whatsapp: boolean
@@ -717,6 +719,8 @@ export type Database = {
           new_offer_push?: boolean
           new_offer_sms?: boolean
           new_offer_whatsapp?: boolean
+          offer_accepted_sms?: boolean
+          payment_confirmed_sms?: boolean
           price_alert_push?: boolean
           price_alert_sms?: boolean
           price_alert_whatsapp?: boolean
@@ -730,6 +734,8 @@ export type Database = {
           new_offer_push?: boolean
           new_offer_sms?: boolean
           new_offer_whatsapp?: boolean
+          offer_accepted_sms?: boolean
+          payment_confirmed_sms?: boolean
           price_alert_push?: boolean
           price_alert_sms?: boolean
           price_alert_whatsapp?: boolean
