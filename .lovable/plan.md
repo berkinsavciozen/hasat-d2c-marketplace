@@ -1,117 +1,99 @@
-# Referral Reward Mechanism
+# Tema & UI temizlik planı (yalnızca `src/`)
 
-## Verified current state
-- `profiles.referred_by` is set by `applyStoredReferral` in `queries.ts`; nothing consumes it.
-- Tier is enforced in two places: **server** via `can_send_ai_message(_user_id)` RPC (source of truth for AI quota) and **client** via `fetchTier()` in `useAIChat.ts` (drives usage-meter UI). Display-only reads in `farmer.settings.tsx` (TierBadge). No other gates exist (confirmed by prior audit).
-- Existing offer triggers on paid transition: `record_order_price_history` (SECURITY DEFINER, updates profiles-adjacent tables) and `enforce_offer_transitions`. Both left untouched — new trigger added additively.
-- `enforce_profile_self_update_restrictions` only enforces when `auth.uid() = NEW.id`; a SECURITY DEFINER trigger running in the offer-update context has `auth.uid()` = the paying buyer, not the referrer, so writes to the referrer's profile pass through cleanly. This matches the pattern `record_order_price_history` already relies on.
+Kapsam: sunum katmanı. Backend, DB, sorgu ve iş mantığı dokunulmuyor. `supabase/` klasörü hariç.
 
-## 1. Migration
+## 1) `--lav` → `--saffron` / `--gold` (yalnızca AI yüzeyleri)
 
-```sql
--- Column
-ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS premium_until timestamptz;
+AI ile ilgili yüzeylerdeki `var(--lav)` kullanımlarını mevcut sıcak palete taşı. Diğer `--lav` kullanımları (kargo durumu, coğrafi işaret rozeti, kapsama rozeti, lavanta ürün chipi, üretici/abonelik ipuçları) **dokunulmuyor** — bunlar AI değil.
 
--- Table
-CREATE TABLE public.referral_qualifications (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  referred_user_id uuid NOT NULL UNIQUE REFERENCES public.profiles(id) ON DELETE CASCADE,
-  referrer_id uuid NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
-  qualified_at timestamptz NOT NULL DEFAULT now()
-);
-GRANT SELECT ON public.referral_qualifications TO authenticated;
-GRANT ALL ON public.referral_qualifications TO service_role;
-ALTER TABLE public.referral_qualifications ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "Referrer can see own qualifications"
-  ON public.referral_qualifications FOR SELECT TO authenticated
-  USING (auth.uid() = referrer_id);
-CREATE INDEX ON public.referral_qualifications(referrer_id);
+Değiştirilecek dosyalar:
+- `src/components/hasat/ai-chat/FarmerAIChat.tsx` — FAB arka planı (satır 218, 250, 345) ve mesaj balonu sol border (satır 61) `var(--gold)`; hover/aktif tonlar `var(--saffron)`.
+- `src/components/hasat/ai-chat/JournalEntryCard.tsx` — kart border/background/etiket rengi (satır 186, 207–213, 360, 388) `var(--gold)` (yumuşak) + `var(--saffron)` (aksiyon).
+- `src/components/hasat/AIBox.tsx` — Sparkles, sol border, skeleton, hover (satır 85–163) `var(--gold)` bazlı.
+- `src/components/hasat/AIInsightBanner.tsx` — arka plan/border `var(--gold)`.
+- `src/components/hasat/UpgradeModal.tsx` — Sparkles ikon rengi `var(--gold)` (satır 13).
+- `src/routes/farmer.settings.tsx:260` — AI ayarı yanındaki Sparkles rengi `var(--gold)`.
 
--- Trigger function
-CREATE OR REPLACE FUNCTION public.process_referral_qualification()
-RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
-DECLARE
-  candidate uuid;
-  ref_by uuid;
-  inserted boolean;
-  q_count int;
-BEGIN
-  IF NEW.payment_status <> 'paid' OR OLD.payment_status IS NOT DISTINCT FROM 'paid' THEN
-    RETURN NEW;
-  END IF;
+`--lav` token'ı `styles.css` içinde kalır (AI dışı kullanımlar için).
 
-  FOREACH candidate IN ARRAY ARRAY[NEW.buyer_id, NEW.farmer_id] LOOP
-    SELECT referred_by INTO ref_by FROM public.profiles WHERE id = candidate;
-    IF ref_by IS NULL OR ref_by = candidate THEN CONTINUE; END IF;
+## 2) WhatsApp yeşili (`#25D366`) yalnızca gerçek WhatsApp bağlamı
 
-    WITH ins AS (
-      INSERT INTO public.referral_qualifications (referred_user_id, referrer_id)
-      VALUES (candidate, ref_by)
-      ON CONFLICT (referred_user_id) DO NOTHING
-      RETURNING referrer_id
-    )
-    SELECT true INTO inserted FROM ins;
+Denetim: `#25D366` şu an sadece `farmer.referral.tsx:67` (paylaş butonu) ve `FarmerAIChat.tsx:278` (WhatsApp iconu). Referral: `wa.me` bağlantısı — kalır. FarmerAIChat'teki `MessageCircle` ikonunun rengi zaten "WhatsApp'tan da yazabilirsin" satırında ve gerçek WhatsApp linkine ait — kalır. Ek bir yerde WhatsApp yeşili kullanımı yok. Değişiklik: **yok** (sadece doğrulama; başka yere sızmadığından emin olduk).
 
-    IF COALESCE(inserted, false) THEN
-      SELECT count(*) INTO q_count
-        FROM public.referral_qualifications WHERE referrer_id = ref_by;
-      IF q_count > 0 AND q_count % 3 = 0 THEN
-        UPDATE public.profiles
-           SET premium_until = GREATEST(COALESCE(premium_until, now()), now()) + interval '12 months',
-               tier = 'premium'
-         WHERE id = ref_by;
-      END IF;
-    END IF;
-    inserted := NULL;
-  END LOOP;
-  RETURN NEW;
-END;
-$$;
+## 3) 48×48px minimum dokunma alanı
 
-CREATE TRIGGER trg_offers_referral_qualification
-  AFTER UPDATE OF payment_status ON public.offers
-  FOR EACH ROW EXECUTE FUNCTION public.process_referral_qualification();
+Tarama sonrası küçük interaktif elemanlar aşağıdaki yerlerde:
+- `buyer.discover.tsx` — arama input (`py-2.5`), sıralama chip'leri (`py-1`), filtre chipleri (`py-1`), "Teklif Ver →" chip (`py-1.5`). Bunlara `min-h-[48px]` (chip'lerde `min-h-[44px]` yerine 48) + görsel dengesi için padding ayarı.
+- `farmer.settings.notifs.tsx` — geri linki (`ChevronLeft`), Switch hücreleri. Switch bileşeni shadcn varsayılan yükseklikte küçük; hücreyi `min-h-[48px]` yaparak dokunma hedefi büyütülür.
+- `login.tsx` — kanal seçim butonları (WA/SMS), OTP hane input'ları — `min-h-[48px]`.
+- `NotificationBell.tsx`, `RoleSwitcher.tsx`, `BuyerHeader` sıralama/filtre chip'leri, üst nav ikon butonları.
+- `FarmerAIChat.tsx` alt sekme/hızlı komut chip'leri.
+- Herhangi bir `size="sm"` / `size="icon"` shadcn Button için görünürlüğü koruyup `min-h-[48px] min-w-[48px]` (icon buton) veya sadece `min-h-[48px]` ekle.
+
+Yaklaşım: tek satır yardımcı sınıf ile (`min-h-[48px] min-w-[48px]` icon; sadece `min-h-[48px]` metin) noktasal ekleme. Global CSS'te `@utility touch-target` tanımlanmayacak — her yerde açıkça uygulanacak ki başkaları görsün.
+
+Denetim listesi: `rg -n "py-1[^0-9]|py-1\.5|h-8|h-9|size=\"icon\"|size=\"sm\"" src/routes src/components/hasat` çıktısında geçen tüm interaktif düğümlerden gerçekten tıklanabilir olanlar. Salt dekoratif rozetler (TierBadge, StockBadge, TrustBadge, OrderChip) dokunulmaz — bunlar buton değil.
+
+## 4) Ortak componentler — `src/components/hasat/common/`
+
+Sadece oluştur, kullanım yerlerini değiştirme.
+
+- `StatCard.tsx`
+  ```tsx
+  export function StatCard({
+    label, value, accent, className
+  }: { label: string; value: ReactNode; accent?: "saffron" | "gold" | "sage" | "hred"; className?: string })
+  ```
+  Yapı: `rounded-xl border bg-card p-4`. `accent` verilirse sol 3px border rengi veya value rengi `var(--<accent>)`.
+
+- `SectionCard.tsx`
+  ```tsx
+  export function SectionCard({
+    title, action, children, className
+  }: { title: ReactNode; action?: ReactNode; children: ReactNode; className?: string })
+  ```
+  Yapı: `rounded-2xl border bg-card`. Header: `flex items-center justify-between px-4 py-3 border-b`, title serif. Body: `p-4`.
+
+- `PhotoListingCard.tsx`
+  ```tsx
+  export function PhotoListingCard({
+    photo, title, subtitle, price, unit, badge, onClick, disabled
+  }: {
+    photo?: string; title: ReactNode; subtitle?: ReactNode;
+    price: number; unit: string; badge?: ReactNode;
+    onClick?: () => void; disabled?: boolean;
+  })
+  ```
+  `buyer.discover.tsx`'teki `ListingCard`'ın yeniden kullanılabilir hali. Foto yoksa saffron çizgili fallback; overlay + serif başlık + `formatTRY` fiyat. Bu fazda **hiçbir yerde kullanılmıyor** — sonraki fazların hazır bulacağı bir bileşen.
+
+Barrel: `src/components/hasat/common/index.ts` — üçünü re-export.
+
+## 5) `farmer.settings.notifs.tsx` mobil düzen
+
+Mevcut tablo `≥sm` breakpoint'inde aynı kalır. `<sm` (≤640px) için her olay bir kart:
+
+```
+┌─────────────────────────┐
+│ Yeni Teklif             │
+├─────────────────────────┤
+│ WhatsApp        [ ⬤—— ]│
+│ Push            [ ——⬤ ]│
+│ SMS             [ ⬤—— ]│
+└─────────────────────────┘
 ```
 
-Also update `can_send_ai_message` so premium expiry is honored server-side:
+Uygulama: mevcut `<div className="rounded-xl border bg-card">…</div>` bloğunu `hidden sm:block` yap; onun altına `sm:hidden space-y-3` içinde her `EVENTS[i]` için kart. Kart içi her kanal satırı `flex items-center justify-between min-h-[48px] px-4 py-2`; kanal yoksa satır render edilmez. `Switch` aynı `useUpdateNotifPrefs` mutation'a bağlı, iş mantığı değişmiyor.
 
-```sql
-CREATE OR REPLACE FUNCTION public.can_send_ai_message(_user_id uuid)
-RETURNS boolean LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path = public AS $$
-DECLARE _tier public.user_tier; _pu timestamptz; _count int;
-  _month text := to_char(now(), 'YYYY-MM'); _free_limit constant int := 50;
-BEGIN
-  IF current_setting('request.jwt.claims', true)::jsonb->>'role' = 'authenticated'
-     AND _user_id <> auth.uid() THEN
-    RAISE EXCEPTION 'Cross-user access not allowed';
-  END IF;
-  SELECT tier, premium_until INTO _tier, _pu FROM public.profiles WHERE id = _user_id;
-  IF _tier IS NULL THEN RETURN false; END IF;
-  IF _tier = 'premium' AND (_pu IS NULL OR _pu > now()) THEN RETURN true; END IF;
-  SELECT COALESCE(message_count,0) INTO _count FROM public.ai_usage_tracking
-    WHERE user_id = _user_id AND month = _month;
-  RETURN COALESCE(_count,0) < _free_limit;
-END; $$;
-```
+Not: EVENTS dizisinde "Hasat Zamanı" iki kez tekrar ediyor (satır 26–32). Sorulmadı, ama açıkça bug — planın parçası olarak **hayır**, kapsam dışı bırakıldı; istenirse ayrı bir fixte alırım.
 
-## 2. Client tier expiry check
-- `queries.ts` `useProfile` select: add `premium_until`.
-- `useAIChat.ts` `fetchTier()`: also select `premium_until`; return `'free'` when `tier='premium' && premium_until && premium_until < now()`.
-- `farmer.settings.tsx` `isPremium`: compute using same rule (helper `isEffectivelyPremium(profile)` in `queries.ts`).
+## Doğrulama
 
-## 3. UI progress on `farmer.referral.tsx`
-Add a small card between the code card and the "Davet Ettiğin Çiftçiler" list:
-- New hook `useReferralQualifications()` → count of rows where `referrer_id = auth.uid()`.
-- Line: `"{count}/3 arkadaşın gerçek sipariş tamamladı — sonraki ödülüne {3 - count%3} kaldı"` with a 3-dot progress bar (mod 3). When a milestone was hit (premium_until in future), show "🎉 12 ay Premium kazandın — {formatDate(premium_until)} tarihine kadar geçerli".
+- `tsgo` sonda temiz olmalı.
+- Ekran: mobil (375px) ve masaüstü (1280px) genişlikte `/farmer/settings/notifs` görsel doğrulaması (Playwright screenshot) — mobilde kart, masaüstünde tablo görünsün.
+- `rg` ile: AI dosyalarında `var(--lav)` referansı sıfır olmalı; AI-dışı dosyalarda dokunulmamış olmalı. `#25D366` sadece `farmer.referral.tsx` + `FarmerAIChat.tsx`'te olmalı.
 
-## 4. Verification
-- Create two disposable profiles B1, B2, B3 with `referred_by = R` (test referrer, existing test farmer). Create/borrow a disposable listing + insert 3 offers (buyer_id = B1/B2/B3) with `payment_status='unpaid'`, then update each to `'paid'`. Confirm 3 `referral_qualifications` rows and `profiles.premium_until` for R = ~now()+12mo, tier='premium'. Delete all test rows and revert R.
-- Also verify a 2nd paid offer from the same buyer does NOT create a duplicate qualification (ON CONFLICT).
-- `tsgo --noEmit`.
+## Kapsam dışı
 
-## Files touched
-- migration (new)
-- `src/lib/hasat/queries.ts` (profile select + `useReferralQualifications`, `isEffectivelyPremium`)
-- `src/components/hasat/ai-chat/useAIChat.ts` (`fetchTier` expiry)
-- `src/routes/farmer.settings.tsx` (use helper)
-- `src/routes/farmer.referral.tsx` (progress card)
+- `styles.css` `--lav` token silinmez (AI-dışı kullanıcılar var).
+- Backend, `supabase/` migration, RLS, MCP — dokunulmuyor.
+- Yeni common componentlerin çağrı yerine göç ettirilmesi — bir sonraki faza.
