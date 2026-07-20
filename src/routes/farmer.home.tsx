@@ -273,6 +273,11 @@ function Home() {
           </>
         )}
       </div>
+      <OnboardingTour
+        steps={FARMER_TOUR_STEPS}
+        open={tourOpen}
+        onClose={() => setTourOpen(false)}
+      />
     </>
   );
 }
