@@ -166,7 +166,9 @@ function Home() {
           </div>
         )}
 
-        <AIBox page="dashboard" />
+        <div data-tour="ai-box">
+          <AIBox page="dashboard" />
+        </div>
 
 
         {/* Quick actions */}
