@@ -57,7 +57,7 @@ export const useHasat = create<Store>()(
 
       subscriptions: [],
       pendingOffer: null,
-      notifPrefs: seedNotifPrefs,
+      
       priceAlerts: [],
       setRole: (role) =>
         set(() => ({
