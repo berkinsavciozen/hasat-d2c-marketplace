@@ -1546,6 +1546,10 @@ export type Database = {
         Args: { offer_row: Database["public"]["Tables"]["offers"]["Row"] }
         Returns: string
       }
+      get_price_history_series: {
+        Args: { p_crop: string; p_weeks?: number }
+        Returns: Json
+      }
       get_price_history_summary: { Args: { p_crop: string }; Returns: Json }
       increment_ai_usage: { Args: { _user_id: string }; Returns: number }
     }
