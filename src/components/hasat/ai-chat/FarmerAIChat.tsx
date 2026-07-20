@@ -363,7 +363,7 @@ export function FarmerAIChat() {
                       className="w-full"
                       style={{ background: "var(--saffron)", color: "white" }}
                     >
-                      Premium'a geç — ₺149/ay, sınırsız sohbet
+                      Premium'a geç — ₺149/ay, ayda 500 mesaj
                     </Button>
                     <div className="text-xs text-muted-foreground text-center">
                       Acil bir konu mu var?{" "}
