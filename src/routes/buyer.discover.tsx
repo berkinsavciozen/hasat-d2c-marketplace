@@ -1,13 +1,20 @@
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
-import { Search, X } from "lucide-react";
+import { Search, X, MessageSquare, CalendarClock, Bell } from "lucide-react";
 import { useState } from "react";
 import { BuyerHeader } from "@/components/hasat/BuyerHeader";
 import { LoadingDots } from "@/components/hasat/LoadingDots";
 import { CoverageBadge } from "@/components/hasat/CoverageBadge";
 import { formatTRY, formatCrop } from "@/lib/hasat/format";
-import { useActiveListings, useListingStock } from "@/lib/hasat/queries";
+import {
+  useActiveListings,
+  useListingStock,
+  useBuyerOffers,
+  useMySubscriptions,
+  usePriceAlerts,
+} from "@/lib/hasat/queries";
 import { CATEGORY_GROUP_META, cropEmoji, findCropConfig, useCropConfigMap } from "@/lib/hasat/crop-config";
 import { slugifyFarmer } from "@/lib/hasat/vitrin";
+
 
 
 
@@ -27,6 +34,61 @@ function Discover() {
   const [sort, setSort] = useState("Puan");
   const [filters, setFilters] = useState<string[]>([]);
   const [query, setQuery] = useState("");
+
+  // "Senin İçin" — retention strip (client-side derived)
+  const { data: buyerOffers = [] } = useBuyerOffers();
+  const { data: subs = [] } = useMySubscriptions();
+  const { data: alerts = [] } = usePriceAlerts();
+
+  const pendingOfferCount = buyerOffers.filter(
+    (o) => (o.status === "pending" || o.status === "counter") && o.ballSide === "buyer",
+  ).length;
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const upcomingSubs = subs
+    .filter((s) => s.status === "active" && !!s.nextHarvestDate && new Date(s.nextHarvestDate) >= today)
+    .sort((a, b) => new Date(a.nextHarvestDate!).getTime() - new Date(b.nextHarvestDate!).getTime());
+  const nextSub = upcomingSubs[0] ?? null;
+  const nextSubDate = nextSub?.nextHarvestDate
+    ? new Date(nextSub.nextHarvestDate).toLocaleDateString("tr-TR", { day: "numeric", month: "short" })
+    : null;
+  const nextSubFarmerName = (nextSub as unknown as { farmer?: { name?: string | null } } | null)?.farmer?.name ?? null;
+
+  const activeAlertCount = alerts.filter((a) => a.active).length;
+
+  const forYouCards: Array<{ key: string; icon: typeof MessageSquare; accent: string; label: string; value: string; to: string; params?: Record<string, string> }> = [];
+  if (pendingOfferCount > 0) {
+    forYouCards.push({
+      key: "offers",
+      icon: MessageSquare,
+      accent: "var(--saffron)",
+      label: "Bekleyen teklif",
+      value: `${pendingOfferCount} teklif`,
+      to: "/buyer/messages",
+    });
+  }
+  if (nextSub && nextSubDate) {
+    forYouCards.push({
+      key: "sub",
+      icon: CalendarClock,
+      accent: "var(--gold)",
+      label: "Bir sonraki teslimat",
+      value: nextSubFarmerName ? `${nextSubDate} · ${nextSubFarmerName}` : nextSubDate,
+      to: "/buyer/subscriptions",
+    });
+  }
+  if (activeAlertCount > 0) {
+    forYouCards.push({
+      key: "alerts",
+      icon: Bell,
+      accent: "var(--saffron)",
+      label: "Aktif fiyat alarmı",
+      value: `${activeAlertCount} alarm`,
+      to: "/buyer/reports",
+    });
+  }
+
 
   const dropFilter = (f: string) => setFilters((x) => x.filter((y) => y !== f));
   const filtered = listings.filter((l) => {
@@ -68,7 +130,32 @@ function Discover() {
       </BuyerHeader>
 
       <div className="p-4 md:p-8 space-y-6">
+        {forYouCards.length > 0 && (
+          <div>
+            <h2 className="font-serif text-lg mb-3">Senin İçin</h2>
+            <div className="-mx-4 px-4 md:mx-0 md:px-0 flex gap-3 overflow-x-auto pb-1">
+              {forYouCards.map((c) => (
+                <Link
+                  key={c.key}
+                  to={c.to}
+                  className="shrink-0 w-[200px] min-h-[48px] rounded-2xl border bg-card p-4 hover:border-saffron transition"
+                  style={{ borderLeft: `3px solid ${c.accent}` }}
+                >
+                  <div className="flex items-center gap-2">
+                    <c.icon className="h-4 w-4 shrink-0" style={{ color: c.accent }} />
+                    <div className="text-xs text-hmuted truncate">{c.label}</div>
+                  </div>
+                  <div className="mt-1 font-mono text-base truncate" style={{ color: c.accent }}>
+                    {c.value}
+                  </div>
+                </Link>
+              ))}
+            </div>
+          </div>
+        )}
+
         <div>
+
           <h2 className="font-serif text-lg mb-3">Kategoriler</h2>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
             {(() => {

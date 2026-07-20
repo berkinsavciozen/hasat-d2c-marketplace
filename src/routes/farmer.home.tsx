@@ -1,10 +1,10 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useHasat } from "@/lib/hasat/store";
-import { useFarmerListings, useEntries } from "@/lib/hasat/queries";
+import { useFarmerListings, useEntries, useFarmerOffers, useFarmerOrders } from "@/lib/hasat/queries";
 import { AIBox } from "@/components/hasat/AIBox";
 import { FarmerHeader } from "./farmer";
 import { formatTRY, formatCrop } from "@/lib/hasat/format";
-import { BookOpen, LineChart, Store, Users2, MessageCircle, Send } from "lucide-react";
+import { BookOpen, LineChart, Store, Users2, MessageCircle, Inbox, PackageCheck } from "lucide-react";
 import { MarketDeviationAlert } from "@/components/hasat/MarketDeviationAlert";
 import { HASAT_WHATSAPP_NUMBER } from "@/lib/hasat/constants";
 
@@ -53,9 +53,38 @@ function Home() {
   const user = useHasat((s) => s.user);
   const { data: entries = [] } = useEntries();
   const { data: listings = [] } = useFarmerListings();
+  const { data: offers = [] } = useFarmerOffers();
+  const { data: orders = [] } = useFarmerOrders();
 
-  const totalRevenue = entries.reduce((sum, e) => sum + e.quantity * (e.pricePerUnit ?? 0), 0);
+  const pendingOffers = offers.filter(
+    (o) => (o.status === "pending" || o.status === "counter") && o.ballSide === "farmer",
+  ).length;
+  const preparingOrders = orders.filter((o) => o.status === "preparing").length;
+  const showPending = pendingOffers > 0 || preparingOrders > 0;
+
+  // YTD revenue + YoY comparison
+  const now = new Date();
+  const yStart = new Date(now.getFullYear(), 0, 1);
+  const prevStart = new Date(now.getFullYear() - 1, 0, 1);
+  const prevEnd = new Date(now.getFullYear() - 1, now.getMonth(), now.getDate(), 23, 59, 59);
+  let ytdRevenue = 0;
+  let prevRevenue = 0;
+  let prevCount = 0;
+  for (const e of entries) {
+    const d = e.date ? new Date(e.date) : null;
+    if (!d || isNaN(d.getTime())) continue;
+    const rev = e.quantity * (e.pricePerUnit ?? 0);
+    if (d >= yStart && d <= now) ytdRevenue += rev;
+    else if (d >= prevStart && d <= prevEnd) {
+      prevRevenue += rev;
+      prevCount += 1;
+    }
+  }
+  const yoyPct =
+    prevCount > 0 && prevRevenue > 0 ? ((ytdRevenue - prevRevenue) / prevRevenue) * 100 : null;
+
   const isEmpty = entries.length === 0 && listings.length === 0;
+
 
   const quickActions = [
     {
@@ -68,6 +97,7 @@ function Home() {
     { icon: Users2, label: "Alıcı Bul", to: "/farmer/community" as const },
   ];
 
+
   return (
     <>
       <FarmerHeader title={`Merhaba, ${user?.name?.split(" ")[0] ?? "Çiftçi"} 👋`} />
@@ -75,7 +105,48 @@ function Home() {
       <div className="p-4 md:p-8 space-y-4">
         <ChatInputBar />
 
+        {showPending && (
+          <div
+            className="rounded-2xl border bg-card overflow-hidden"
+            style={{ borderLeft: "3px solid var(--saffron)" }}
+          >
+            <div className="grid grid-cols-1 sm:grid-cols-2 divide-y sm:divide-y-0 sm:divide-x">
+              {pendingOffers > 0 ? (
+                <Link
+                  to="/farmer/orders"
+                  className="flex min-h-[48px] items-center gap-3 px-4 py-3 hover:bg-background/60"
+                >
+                  <Inbox className="h-5 w-5 shrink-0" style={{ color: "var(--saffron)" }} />
+                  <div className="min-w-0 flex-1">
+                    <div className="text-xs text-hmuted">Yanıt bekleyen teklif</div>
+                    <div className="font-mono text-lg" style={{ color: "var(--saffron)" }}>
+                      {pendingOffers}
+                    </div>
+                  </div>
+                  <span className="text-sm text-saffron">→</span>
+                </Link>
+              ) : null}
+              {preparingOrders > 0 ? (
+                <Link
+                  to="/farmer/orders"
+                  className="flex min-h-[48px] items-center gap-3 px-4 py-3 hover:bg-background/60"
+                >
+                  <PackageCheck className="h-5 w-5 shrink-0" style={{ color: "var(--gold)" }} />
+                  <div className="min-w-0 flex-1">
+                    <div className="text-xs text-hmuted">Hazırlanan sipariş</div>
+                    <div className="font-mono text-lg" style={{ color: "var(--gold)" }}>
+                      {preparingOrders}
+                    </div>
+                  </div>
+                  <span className="text-sm text-saffron">→</span>
+                </Link>
+              ) : null}
+            </div>
+          </div>
+        )}
+
         <AIBox page="dashboard" />
+
 
         {/* Quick actions */}
         <div className="-mx-4 px-4 md:mx-0 md:px-0 flex gap-2 overflow-x-auto pb-1">
@@ -131,11 +202,28 @@ function Home() {
                 <div>
                   <div className="text-xs text-hwhite/60 uppercase tracking-wide">Bu Sezon</div>
                   <div className="mt-1 font-mono text-3xl md:text-4xl" style={{ color: "var(--gold)" }}>
-                    {formatTRY(totalRevenue)}
+                    {formatTRY(ytdRevenue)}
                   </div>
+                  {yoyPct !== null && (
+                    <div
+                      className="mt-1 text-xs"
+                      style={{
+                        color:
+                          yoyPct > 0
+                            ? "var(--sage)"
+                            : yoyPct < 0
+                            ? "var(--hred)"
+                            : "var(--hmuted)",
+                      }}
+                    >
+                      {yoyPct > 0 ? "+" : ""}
+                      {yoyPct.toFixed(1)}% geçen yıla göre
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
+
 
             {/* Active listings */}
             <div className="rounded-2xl bg-card border p-4">
