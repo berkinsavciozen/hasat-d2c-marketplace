@@ -122,6 +122,7 @@ function FarmerShell() {
               <Link
                 key={to}
                 to={to}
+                data-tour={to === "/farmer/storefront" ? "tab-storefront" : to === "/farmer/prices" ? "tab-prices" : undefined}
                 className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition ${active ? "bg-saffron text-white" : "text-hwhite/70 hover:bg-white/5"}`}
               >
                 <Icon className="h-4 w-4" />
