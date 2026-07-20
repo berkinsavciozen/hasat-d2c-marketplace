@@ -618,7 +618,7 @@ function dbToOrder(r: any, side: "farmer" | "buyer"): Order {
     code: r.order_ref,
     producerId: r.farmer_id,
     producerName: partyName,
-    producerPhone: side === "buyer" ? (r.farmer?.phone ?? undefined) : undefined,
+    producerPhone: side === "buyer" ? (r.farmer?.phone ?? undefined) : (r.buyer?.phone ?? undefined),
     crop: listing.crop ?? "—",
     quantity: qty,
     unit: (listing.unit ?? "kg") as Order["unit"],
