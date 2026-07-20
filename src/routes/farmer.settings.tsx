@@ -16,6 +16,7 @@ import { vitrinUrl, copyVitrinLink } from "@/lib/hasat/vitrin";
 import { TR_PROVINCES } from "@/lib/hasat/cities";
 import { CropChips } from "@/components/hasat/CropChips";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from "@/components/ui/accordion";
 
 export const Route = createFileRoute("/farmer/settings")({ component: Settings });
 
