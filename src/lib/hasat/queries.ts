@@ -1528,7 +1528,7 @@ export function useFarmerOrders() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("orders")
-        .select(`${ORDER_SELECT}, buyer:profiles!orders_buyer_id_fkey(id,name)`)
+        .select(`${ORDER_SELECT}, buyer:profiles!orders_buyer_id_fkey(id,name,phone)`)
         .eq("farmer_id", userId!)
         .order("created_at", { ascending: false });
       if (error) throw error;
