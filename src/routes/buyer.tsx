@@ -26,6 +26,7 @@ const tabs = [
   { to: "/buyer/prices", label: "Fiyatlar", icon: LineChart },
   { to: "/buyer/reports", label: "Raporlar", icon: BarChart3 },
   { to: "/buyer/messages", label: "Mesajlar", icon: MessageCircle },
+  { to: "/buyer/community", label: "Topluluk", icon: Users },
   { to: "/buyer/account", label: "Hesap", icon: User },
 ] as const;
 
@@ -38,6 +39,7 @@ const mobileTabs = [
 
 const moreItems = [
   { to: "/buyer/subscriptions", label: "Abonelikler", icon: Repeat },
+  { to: "/buyer/community", label: "Topluluk", icon: Users },
   { to: "/buyer/reports", label: "Raporlar", icon: BarChart3 },
   { to: "/buyer/account", label: "Hesap", icon: User },
 ] as const;
