@@ -202,11 +202,28 @@ function Home() {
                 <div>
                   <div className="text-xs text-hwhite/60 uppercase tracking-wide">Bu Sezon</div>
                   <div className="mt-1 font-mono text-3xl md:text-4xl" style={{ color: "var(--gold)" }}>
-                    {formatTRY(totalRevenue)}
+                    {formatTRY(ytdRevenue)}
                   </div>
+                  {yoyPct !== null && (
+                    <div
+                      className="mt-1 text-xs"
+                      style={{
+                        color:
+                          yoyPct > 0
+                            ? "var(--sage)"
+                            : yoyPct < 0
+                            ? "var(--hred)"
+                            : "var(--hmuted)",
+                      }}
+                    >
+                      {yoyPct > 0 ? "+" : ""}
+                      {yoyPct.toFixed(1)}% geçen yıla göre
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
+
 
             {/* Active listings */}
             <div className="rounded-2xl bg-card border p-4">
