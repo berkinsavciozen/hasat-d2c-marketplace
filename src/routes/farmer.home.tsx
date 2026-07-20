@@ -1,10 +1,10 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useHasat } from "@/lib/hasat/store";
-import { useFarmerListings, useEntries } from "@/lib/hasat/queries";
+import { useFarmerListings, useEntries, useFarmerOffers, useFarmerOrders } from "@/lib/hasat/queries";
 import { AIBox } from "@/components/hasat/AIBox";
 import { FarmerHeader } from "./farmer";
 import { formatTRY, formatCrop } from "@/lib/hasat/format";
-import { BookOpen, LineChart, Store, Users2, MessageCircle, Send } from "lucide-react";
+import { BookOpen, LineChart, Store, Users2, MessageCircle, Inbox, PackageCheck } from "lucide-react";
 import { MarketDeviationAlert } from "@/components/hasat/MarketDeviationAlert";
 import { HASAT_WHATSAPP_NUMBER } from "@/lib/hasat/constants";
 
