@@ -103,22 +103,62 @@ function PublicStorefront() {
 
   const { profile, listings, parcels, certs } = data;
   const parcelsWithPhotos = parcels.filter((p: Parcel) => (p.photos ?? []).length > 0);
+  const heroPhoto = parcelsWithPhotos[0]?.photos?.[0]
+    ?? listings.find((l) => (l.photos ?? []).length > 0)?.photos?.[0]
+    ?? null;
   const activeCerts = certs.filter((c) => {
     if (!c.expires_at) return true;
     const t = new Date(c.expires_at).getTime();
     return isNaN(t) || t >= Date.now();
   });
 
+  const shareStorefront = async () => {
+    const shareData = {
+      title: `${profile.name ?? "Üretici"} — Hasat`,
+      text: `${profile.name ?? "Üretici"} vitrinini Hasat'ta keşfet.`,
+      url: typeof window !== "undefined" ? window.location.href : "",
+    };
+    try {
+      if (typeof navigator !== "undefined" && (navigator as any).share) {
+        await (navigator as any).share(shareData);
+        return;
+      }
+      if (typeof navigator !== "undefined" && navigator.clipboard) {
+        await navigator.clipboard.writeText(shareData.url);
+        toast.success("Vitrin linki kopyalandı");
+      }
+    } catch { /* user canceled */ }
+  };
+
   return (
     <div className="pb-24">
-      <div className="px-4 pt-5 pb-6 md:px-8" style={{ background: "var(--dark)", color: "var(--hwhite)" }}>
-        <Link to="/buyer/discover" className="inline-grid h-9 w-9 place-items-center rounded-full bg-white/10">
-          <ArrowLeft className="h-4 w-4" />
-        </Link>
-        <h1 className="mt-3 font-serif text-2xl">{profile.name ?? "Üretici"}</h1>
-        <div className="text-sm opacity-80">📍 {profile.city ?? "—"}</div>
-        <div className="mt-3 flex flex-wrap gap-1.5">
-          <TrustBadge type="hasat" />
+      <div
+        className="relative px-4 pt-5 pb-6 md:px-8 overflow-hidden"
+        style={{
+          background: heroPhoto
+            ? `linear-gradient(180deg, color-mix(in oklab, var(--dark) 55%, transparent) 0%, var(--dark) 100%), url(${heroPhoto}) center/cover no-repeat`
+            : "var(--dark)",
+          color: "var(--hwhite)",
+        }}
+      >
+        <div className="relative z-10">
+          <div className="flex items-center justify-between">
+            <Link to="/buyer/discover" className="inline-grid h-11 w-11 place-items-center rounded-full bg-white/10 hover:bg-white/15">
+              <ArrowLeft className="h-4 w-4" />
+            </Link>
+            <button
+              onClick={shareStorefront}
+              aria-label="Vitrini paylaş"
+              className="inline-grid h-11 w-11 place-items-center rounded-full bg-white/10 hover:bg-white/15"
+            >
+              <Share2 className="h-4 w-4" />
+            </button>
+          </div>
+          <h1 className="mt-4 font-serif text-2xl md:text-3xl drop-shadow-sm">{profile.name ?? "Üretici"}</h1>
+          <div className="text-sm opacity-90">📍 {profile.city ?? "—"}</div>
+          <div className="mt-3 flex flex-wrap gap-1.5">
+            <TrustBadge type="hasat" />
+          </div>
         </div>
       </div>
 
