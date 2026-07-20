@@ -130,7 +130,32 @@ function Discover() {
       </BuyerHeader>
 
       <div className="p-4 md:p-8 space-y-6">
+        {forYouCards.length > 0 && (
+          <div>
+            <h2 className="font-serif text-lg mb-3">Senin İçin</h2>
+            <div className="-mx-4 px-4 md:mx-0 md:px-0 flex gap-3 overflow-x-auto pb-1">
+              {forYouCards.map((c) => (
+                <Link
+                  key={c.key}
+                  to={c.to}
+                  className="shrink-0 w-[200px] min-h-[48px] rounded-2xl border bg-card p-4 hover:border-saffron transition"
+                  style={{ borderLeft: `3px solid ${c.accent}` }}
+                >
+                  <div className="flex items-center gap-2">
+                    <c.icon className="h-4 w-4 shrink-0" style={{ color: c.accent }} />
+                    <div className="text-xs text-hmuted truncate">{c.label}</div>
+                  </div>
+                  <div className="mt-1 font-mono text-base truncate" style={{ color: c.accent }}>
+                    {c.value}
+                  </div>
+                </Link>
+              ))}
+            </div>
+          </div>
+        )}
+
         <div>
+
           <h2 className="font-serif text-lg mb-3">Kategoriler</h2>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
             {(() => {
