@@ -1,6 +1,6 @@
 import { createFileRoute, Link, Outlet, redirect, useRouterState } from "@tanstack/react-router";
 import { useState } from "react";
-import { Search, Package, BarChart3, MessageCircle, User, Repeat, MoreHorizontal, LineChart } from "lucide-react";
+import { Search, Package, BarChart3, MessageCircle, User, Repeat, MoreHorizontal, LineChart, Users } from "lucide-react";
 import { useRealtimeSync, useAuthUserId } from "@/lib/hasat/queries";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 
