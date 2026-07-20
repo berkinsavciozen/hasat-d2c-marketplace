@@ -53,9 +53,38 @@ function Home() {
   const user = useHasat((s) => s.user);
   const { data: entries = [] } = useEntries();
   const { data: listings = [] } = useFarmerListings();
+  const { data: offers = [] } = useFarmerOffers();
+  const { data: orders = [] } = useFarmerOrders();
 
-  const totalRevenue = entries.reduce((sum, e) => sum + e.quantity * (e.pricePerUnit ?? 0), 0);
+  const pendingOffers = offers.filter(
+    (o) => (o.status === "pending" || o.status === "counter") && o.ballSide === "farmer",
+  ).length;
+  const preparingOrders = orders.filter((o) => o.status === "preparing").length;
+  const showPending = pendingOffers > 0 || preparingOrders > 0;
+
+  // YTD revenue + YoY comparison
+  const now = new Date();
+  const yStart = new Date(now.getFullYear(), 0, 1);
+  const prevStart = new Date(now.getFullYear() - 1, 0, 1);
+  const prevEnd = new Date(now.getFullYear() - 1, now.getMonth(), now.getDate(), 23, 59, 59);
+  let ytdRevenue = 0;
+  let prevRevenue = 0;
+  let prevCount = 0;
+  for (const e of entries) {
+    const d = e.date ? new Date(e.date) : null;
+    if (!d || isNaN(d.getTime())) continue;
+    const rev = e.quantity * (e.pricePerUnit ?? 0);
+    if (d >= yStart && d <= now) ytdRevenue += rev;
+    else if (d >= prevStart && d <= prevEnd) {
+      prevRevenue += rev;
+      prevCount += 1;
+    }
+  }
+  const yoyPct =
+    prevCount > 0 && prevRevenue > 0 ? ((ytdRevenue - prevRevenue) / prevRevenue) * 100 : null;
+
   const isEmpty = entries.length === 0 && listings.length === 0;
+
 
   const quickActions = [
     {
