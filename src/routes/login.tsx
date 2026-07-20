@@ -211,9 +211,9 @@ function LoginPage() {
             <div className="mt-5">
               <div className="text-xs text-hwhite/60 mb-2">Kod nereye gelsin?</div>
               <div className="grid grid-cols-2 gap-2">
-                <button onClick={() => setChannel("wa")} className="rounded-xl px-3 py-3 text-sm"
+                <button onClick={() => setChannel("wa")} className="rounded-xl px-3 py-3 text-sm min-h-[48px]"
                   style={{ background: channel === "wa" ? "color-mix(in oklab, var(--sage) 30%, var(--dark))" : "rgba(255,255,255,0.05)", border: channel === "wa" ? "1px solid var(--sage)" : "1px solid rgba(255,255,255,0.1)" }}>🟢 WhatsApp</button>
-                <button onClick={() => setChannel("sms")} className="rounded-xl px-3 py-3 text-sm"
+                <button onClick={() => setChannel("sms")} className="rounded-xl px-3 py-3 text-sm min-h-[48px]"
                   style={{ background: channel === "sms" ? "color-mix(in oklab, var(--saffron) 30%, var(--dark))" : "rgba(255,255,255,0.05)", border: channel === "sms" ? "1px solid var(--saffron)" : "1px solid rgba(255,255,255,0.1)" }}>💬 SMS</button>
               </div>
               <p className="text-[11px] text-hwhite/50 mt-2">Çiftçilerin %95'i WhatsApp kullanıyor</p>

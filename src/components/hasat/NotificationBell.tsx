@@ -62,10 +62,10 @@ export function NotificationBell() {
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="relative grid h-9 w-9 place-items-center rounded-full bg-white/10"
+        className="relative grid min-h-[48px] min-w-[48px] place-items-center rounded-full bg-white/10"
         aria-label="Bildirimler"
       >
-        <Bell className="h-4 w-4" />
+        <Bell className="h-5 w-5" />
         {count > 0 ? (
           <span
             className="absolute -top-1 -right-1 grid min-w-[18px] h-[18px] place-items-center rounded-full px-1 text-[10px] font-bold text-white"
