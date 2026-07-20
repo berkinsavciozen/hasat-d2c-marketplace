@@ -1,11 +1,12 @@
 import { createFileRoute, Link, notFound } from "@tanstack/react-router";
-import { ArrowLeft, MessageCircle } from "lucide-react";
+import { ArrowLeft, MessageCircle, Phone } from "lucide-react";
 import { useState } from "react";
 import { OrderTimeline } from "@/components/hasat/OrderTimeline";
 import { LoadingDots } from "@/components/hasat/LoadingDots";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { formatTRY, formatCrop } from "@/lib/hasat/format";
 import { useBuyerOrders, useOrderTimeline } from "@/lib/hasat/queries";
+import { whatsappUrl } from "@/lib/hasat/whatsapp";
 
 export const Route = createFileRoute("/buyer/orders/$orderId")({
   head: () => ({ meta: [{ title: "Sipariş — Hasat" }] }),
@@ -52,11 +53,32 @@ function OrderTracker() {
           <OrderTimeline order={orderWithTimeline} />
         </div>
 
-        <button onClick={() => setChatOpen(true)}
-          className="w-full rounded-xl py-3 text-sm font-medium border-2 flex items-center justify-center gap-2"
-          style={{ borderColor: "var(--saffron)", color: "var(--saffron)" }}>
-          <MessageCircle className="h-4 w-4" /> Satıcıyla Konuş
-        </button>
+        {(() => {
+          const wa = whatsappUrl(order.producerPhone, `Merhaba, ${order.code} numaralı sipariş hakkında bilgi almak istiyorum.`);
+          const tel = order.producerPhone ? `tel:${order.producerPhone}` : null;
+          return (
+            <div className="grid gap-2 sm:grid-cols-2">
+              <button onClick={() => setChatOpen(true)}
+                className="rounded-xl min-h-[48px] px-4 py-3 text-sm font-medium border-2 flex items-center justify-center gap-2"
+                style={{ borderColor: "var(--saffron)", color: "var(--saffron)" }}>
+                <MessageCircle className="h-4 w-4" /> Satıcıyla Konuş
+              </button>
+              {wa ? (
+                <a href={wa} target="_blank" rel="noopener noreferrer"
+                  className="rounded-xl min-h-[48px] px-4 py-3 text-sm font-medium text-white flex items-center justify-center gap-2"
+                  style={{ background: "#25D366" }}>
+                  <MessageCircle className="h-4 w-4" /> WhatsApp'tan sor
+                </a>
+              ) : tel ? (
+                <a href={tel}
+                  className="rounded-xl min-h-[48px] px-4 py-3 text-sm font-medium border flex items-center justify-center gap-2"
+                  style={{ borderColor: "var(--border)", color: "var(--dark)" }}>
+                  <Phone className="h-4 w-4" /> Ara
+                </a>
+              ) : null}
+            </div>
+          );
+        })()}
       </div>
 
       <Sheet open={chatOpen} onOpenChange={setChatOpen}>
