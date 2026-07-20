@@ -83,6 +83,9 @@ function Home() {
   const yoyPct =
     prevCount > 0 && prevRevenue > 0 ? ((ytdRevenue - prevRevenue) / prevRevenue) * 100 : null;
 
+  const isEmpty = entries.length === 0 && listings.length === 0;
+
+
   const quickActions = [
     {
       icon: BookOpen,
