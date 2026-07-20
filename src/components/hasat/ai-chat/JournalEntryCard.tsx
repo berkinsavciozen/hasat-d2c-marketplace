@@ -183,7 +183,7 @@ export function JournalEntryCard({ initial }: Props) {
     return (
       <div
         className="mt-2 rounded-xl border-l-2 px-3 py-2 text-sm flex items-center gap-2"
-        style={{ borderLeftColor: "var(--lav)", background: "color-mix(in oklab, var(--lav) 10%, white)" }}
+        style={{ borderLeftColor: "var(--gold)", background: "color-mix(in oklab, var(--gold) 10%, white)" }}
       >
         <Check className="h-4 w-4" style={{ color: "var(--sage, #16a34a)" }} />
         <span>{saveState.updated ? "Güncellendi" : "Kaydedildi"}</span>
@@ -204,13 +204,13 @@ export function JournalEntryCard({ initial }: Props) {
     <div
       className="mt-2 rounded-xl border-l-2 p-3 space-y-3 text-sm"
       style={{
-        borderLeftColor: "var(--lav)",
-        background: "color-mix(in oklab, var(--lav) 8%, white)",
-        border: "1px solid color-mix(in oklab, var(--lav) 30%, transparent)",
+        borderLeftColor: "var(--gold)",
+        background: "color-mix(in oklab, var(--gold) 8%, white)",
+        border: "1px solid color-mix(in oklab, var(--gold) 30%, transparent)",
       }}
     >
       <div className="flex items-center gap-2">
-        <span className="text-xs font-medium uppercase tracking-wider" style={{ color: "var(--lav)" }}>
+        <span className="text-xs font-medium uppercase tracking-wider" style={{ color: "var(--gold)" }}>
           Günlük Kaydı
         </span>
       </div>
@@ -357,7 +357,7 @@ export function JournalEntryCard({ initial }: Props) {
 }
 
 const inputCls =
-  "w-full rounded-md border bg-white px-2 py-1.5 text-sm outline-none focus:border-[var(--lav)]";
+  "w-full rounded-md border bg-white px-2 py-1.5 text-sm outline-none focus:border-[var(--gold)]";
 
 function Field({
   label, error, children, className,
@@ -385,7 +385,7 @@ function Segmented<T extends string>({
             onClick={() => onChange(o)}
             className="flex-1 px-2 py-1.5 text-xs transition"
             style={active
-              ? { background: "var(--lav)", color: "white" }
+              ? { background: "var(--gold)", color: "white" }
               : { background: "white", color: "var(--dark)" }}
           >
             {o}

@@ -58,7 +58,7 @@ function MessageBubble({ m }: { m: ChatMessage }) {
     <div className="flex justify-start">
       <div className="max-w-[85%]">
         <div className="rounded-2xl rounded-bl-sm px-3 py-2 text-sm bg-card border-l-2 text-foreground"
-          style={{ borderLeftColor: "var(--lav)" }}>
+          style={{ borderLeftColor: "var(--gold)" }}>
           {m.streaming && !m.content ? (
             <span className="inline-flex gap-1">
               <span className="h-1.5 w-1.5 rounded-full bg-foreground/40 animate-pulse" />
@@ -215,7 +215,7 @@ export function FarmerAIChat() {
           aria-label="Hasat AI ile sohbet et"
           className="fixed z-50 grid place-items-center rounded-full shadow-lg transition active:scale-95"
           style={{
-            background: "var(--lav)",
+            background: "var(--gold)",
             color: "white",
             width: 56, height: 56,
             right: 16,
@@ -247,7 +247,7 @@ export function FarmerAIChat() {
         <SheetContent side="bottom" className="h-[80vh] p-0 rounded-t-2xl flex flex-col gap-0">
           {/* Header */}
           <div className="flex items-center gap-2 px-4 py-3 border-b">
-            <div className="grid h-8 w-8 place-items-center rounded-full" style={{ background: "var(--lav)", color: "white" }}>
+            <div className="grid h-8 w-8 place-items-center rounded-full" style={{ background: "var(--gold)", color: "white" }}>
               <Sparkles className="h-4 w-4" />
             </div>
             <div className="flex-1 min-w-0">
@@ -342,7 +342,7 @@ export function FarmerAIChat() {
                   className="min-h-[40px] max-h-32 resize-none"
                 />
                 <Button onClick={submit} disabled={inputDisabled || !draft.trim()} size="icon"
-                  style={{ background: "var(--lav)", color: "white" }}>
+                  style={{ background: "var(--gold)", color: "white" }}>
                   <Send className="h-4 w-4" />
                 </Button>
               </div>
