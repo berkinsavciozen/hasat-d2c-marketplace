@@ -141,6 +141,13 @@ function FarmerShell() {
           >
             <Crown className="h-4 w-4" /> Premium'a Geç
           </Link>
+          <button
+            type="button"
+            onClick={restartTour}
+            className="mt-2 flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-hwhite/70 hover:bg-white/5 min-h-[48px]"
+          >
+            <HelpCircle className="h-4 w-4" /> Nasıl Çalışır?
+          </button>
           <Link to="/farmer/settings" className="mt-3 flex items-center gap-2 rounded-lg bg-white/5 p-2 hover:bg-white/10">
             <div className="grid h-8 w-8 place-items-center rounded-full bg-saffron text-xs font-bold">
               {displayName?.[0] ?? "M"}
