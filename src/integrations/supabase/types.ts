@@ -1531,6 +1531,10 @@ export type Database = {
         Args: { _crops: string[]; _farmer_id: string; _parcel_id: string }
         Returns: undefined
       }
+      dispatch_sms: {
+        Args: { _event: string; _message: string; _user_id: string }
+        Returns: undefined
+      }
       get_my_role: { Args: never; Returns: string }
       get_my_role_for_offer: {
         Args: { offer_row: Database["public"]["Tables"]["offers"]["Row"] }
