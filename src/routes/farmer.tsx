@@ -251,6 +251,15 @@ function FarmerShell() {
               <span className="flex-1">Premium'a Geç</span>
             </Link>
 
+            <button
+              type="button"
+              onClick={restartTour}
+              className="flex w-full items-center gap-3 rounded-lg px-3 py-3 text-sm text-hwhite/80 hover:bg-white/5 min-h-[48px]"
+            >
+              <HelpCircle className="h-4 w-4" />
+              <span className="flex-1 text-left">Nasıl Çalışır?</span>
+            </button>
+
             <Link
               to="/farmer/settings"
               onClick={() => setMoreOpen(false)}
