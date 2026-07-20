@@ -1,7 +1,10 @@
-import { usePriceHistorySummary, useCropsWithPriceData } from "@/lib/hasat/queries";
+import { useMemo, useState } from "react";
+import { usePriceHistorySummary, useCropsWithPriceData, usePriceHistorySeries, usePriceAlerts, useCreatePriceAlert, useTogglePriceAlert } from "@/lib/hasat/queries";
 import { LoadingDots } from "@/components/hasat/LoadingDots";
 import { formatTRY, formatCrop } from "@/lib/hasat/format";
-import { Info } from "lucide-react";
+import { Sparkline } from "@/components/hasat/Sparkline";
+import { Info, Search, Star } from "lucide-react";
+import { toast } from "sonner";
 
 function timeAgo(iso: string | null): string {
   if (!iso) return "";
@@ -17,6 +20,13 @@ function timeAgo(iso: string | null): string {
 
 export function PricesPageBody() {
   const { data: crops = [], isLoading } = useCropsWithPriceData();
+  const [q, setQ] = useState("");
+
+  const filtered = useMemo(() => {
+    const needle = q.trim().toLocaleLowerCase("tr-TR");
+    if (!needle) return crops;
+    return crops.filter((c) => formatCrop(c).toLocaleLowerCase("tr-TR").includes(needle) || c.toLowerCase().includes(needle));
+  }, [crops, q]);
 
   return (
     <div className="px-4 md:px-8 py-5 pb-32 md:pb-5 space-y-3">
@@ -32,6 +42,18 @@ export function PricesPageBody() {
         </div>
       </div>
 
+      {crops.length > 0 && (
+        <div className="relative">
+          <Search className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-hmuted" />
+          <input
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            placeholder="Ürün ara…"
+            className="w-full rounded-xl border bg-card pl-9 pr-3 py-3 min-h-[48px] text-sm outline-none focus:border-saffron"
+          />
+        </div>
+      )}
+
       {isLoading ? (
         <div className="py-12"><LoadingDots /></div>
       ) : crops.length === 0 ? (
@@ -42,26 +64,98 @@ export function PricesPageBody() {
             Platformda aktif ürün ve tamamlanmış sipariş biriktikçe piyasa aralıkları burada görünecek.
           </div>
         </div>
+      ) : filtered.length === 0 ? (
+        <div className="rounded-2xl border border-dashed py-8 text-center text-xs text-hmuted">
+          "{q}" için sonuç yok.
+        </div>
       ) : (
-        crops.map((c) => <PriceSummaryCard key={c} crop={c} />)
+        filtered.map((c) => <PriceSummaryCard key={c} crop={c} />)
       )}
+    </div>
+  );
+}
+
+function WatchStar({ crop }: { crop: string }) {
+  const { data: alerts = [] } = usePriceAlerts();
+  const createAlert = useCreatePriceAlert();
+  const toggleAlert = useTogglePriceAlert();
+  const existing = alerts.find((a) => a.crop.toLowerCase() === crop.toLowerCase());
+  const active = !!existing?.active;
+  const busy = createAlert.isPending || toggleAlert.isPending;
+
+  const onClick = async () => {
+    try {
+      if (!existing) {
+        await createAlert.mutateAsync({
+          crop,
+          target: 0,
+          condition: "above",
+          channels: { whatsapp: false, push: true, sms: false },
+        });
+        toast.success("İzleme listesine eklendi");
+      } else {
+        await toggleAlert.mutateAsync({ id: existing.id, active: !active });
+        toast.success(active ? "İzleme durduruldu" : "İzleme yeniden başlatıldı");
+      }
+    } catch (e: any) {
+      toast.error(e?.message ?? "İşlem başarısız");
+    }
+  };
+
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={busy}
+      aria-label={active ? "İzlemeyi kaldır" : "İzlemeye ekle"}
+      className="grid h-12 w-12 place-items-center rounded-full hover:bg-muted disabled:opacity-50"
+    >
+      <Star
+        className="h-5 w-5"
+        style={{
+          color: active ? "var(--saffron)" : "var(--hmuted)",
+          fill: active ? "var(--saffron)" : "transparent",
+        }}
+      />
+    </button>
+  );
+}
+
+function DistinctFarmerDots({ count }: { count: number }) {
+  const dots = Math.min(5, count);
+  return (
+    <div className="inline-flex items-center gap-1">
+      {Array.from({ length: 5 }).map((_, i) => (
+        <span
+          key={i}
+          className="h-1.5 w-1.5 rounded-full"
+          style={{ background: i < dots ? "var(--sage)" : "color-mix(in oklab, var(--hmuted) 25%, transparent)" }}
+        />
+      ))}
+      <span className="text-[10px] text-hmuted ml-1">{count} üretici</span>
     </div>
   );
 }
 
 function PriceSummaryCard({ crop }: { crop: string }) {
   const { data: summary, isLoading } = usePriceHistorySummary(crop);
+  const { data: series } = usePriceHistorySeries(crop);
   const hasat = summary?.hasat;
   const official = summary?.official ?? null;
+  const hasatSeries = series?.hasat ?? [];
+  const officialSeries = series?.official ?? null;
 
   return (
     <div className="rounded-2xl border bg-card p-4">
-      <div className="font-medium">{formatCrop(crop)}</div>
+      <div className="flex items-start justify-between gap-3">
+        <div className="font-medium">{formatCrop(crop)}</div>
+        <WatchStar crop={crop} />
+      </div>
       {isLoading ? (
         <div className="mt-2 text-xs text-hmuted">Yükleniyor…</div>
       ) : (
         <>
-          <div className="mt-2">
+          <div className="mt-1">
             <div className="text-[11px] font-medium uppercase tracking-wide text-hmuted">
               Hasat topluluk verisi
             </div>
@@ -78,20 +172,25 @@ function PriceSummaryCard({ crop }: { crop: string }) {
                   </span>
                 </div>
                 {hasat.stddevPrice != null && (
-                  <div className="mt-0.5 text-xs text-hmuted">
-                    Piyasa aralığı:{" "}
-                    <span className="font-mono">
-                      {formatTRY(Math.max(0, hasat.avgPrice - hasat.stddevPrice))}
-                    </span>
-                    {" – "}
-                    <span className="font-mono">
-                      {formatTRY(hasat.avgPrice + hasat.stddevPrice)}
+                  <div className="mt-1 flex items-center gap-2">
+                    <span
+                      className="inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium"
+                      style={{ background: "color-mix(in oklab, var(--gold) 15%, transparent)", color: "var(--gold)" }}
+                    >
+                      Aralık: {formatTRY(Math.max(0, hasat.avgPrice - hasat.stddevPrice))} – {formatTRY(hasat.avgPrice + hasat.stddevPrice)}
                     </span>
                   </div>
                 )}
-                <div className="mt-1 text-[11px] text-hmuted">
-                  {hasat.distinctFarmerCount} üretici · {timeAgo(summary?.lastUpdated ?? null)}
+                <div className="mt-2 flex items-center justify-between gap-2">
+                  <DistinctFarmerDots count={hasat.distinctFarmerCount} />
+                  <div className="text-[11px] text-hmuted">{timeAgo(summary?.lastUpdated ?? null)}</div>
                 </div>
+                {hasatSeries.length >= 2 && (
+                  <div className="mt-2">
+                    <Sparkline data={hasatSeries.map((p) => p.avgPrice)} width={220} height={40} color="var(--saffron)" />
+                    <div className="mt-1 text-[10px] text-hmuted">Son {hasatSeries.length} haftalık ortalama</div>
+                  </div>
+                )}
               </>
             )}
           </div>
@@ -107,6 +206,11 @@ function PriceSummaryCard({ crop }: { crop: string }) {
                   {formatTRY(official.avgPrice)}
                 </span>
               </div>
+              {officialSeries && officialSeries.length >= 2 && (
+                <div className="mt-2">
+                  <Sparkline data={officialSeries.map((p) => p.avgPrice)} width={220} height={40} color="var(--gold)" />
+                </div>
+              )}
             </div>
           )}
         </>
