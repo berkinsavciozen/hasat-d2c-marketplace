@@ -1918,6 +1918,50 @@ export function useCreateReply() {
   });
 }
 
+// ---- community post likes ----
+export function useLikedPostIds() {
+  const userId = useAuthUserId();
+  return useQuery({
+    queryKey: ["communityLikedIds", userId],
+    enabled: !!userId,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("community_post_likes")
+        .select("post_id")
+        .eq("user_id", userId!);
+      if (error) throw error;
+      return new Set<string>((data ?? []).map((r: { post_id: string }) => r.post_id));
+    },
+  });
+}
+
+export function useToggleLike() {
+  const qc = useQueryClient();
+  const userId = useAuthUserId();
+  return useMutation({
+    mutationFn: async (input: { postId: string; liked: boolean }) => {
+      if (!userId) throw new Error("Oturum bulunamadı");
+      if (input.liked) {
+        const { error } = await supabase
+          .from("community_post_likes")
+          .delete()
+          .eq("post_id", input.postId)
+          .eq("user_id", userId);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase
+          .from("community_post_likes")
+          .insert({ post_id: input.postId, user_id: userId });
+        if (error) throw error;
+      }
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["communityLikedIds", userId] });
+      qc.invalidateQueries({ queryKey: ["communityPosts"] });
+    },
+  });
+}
+
 
 // =====================================================================
 // REALTIME SYNC (6A)

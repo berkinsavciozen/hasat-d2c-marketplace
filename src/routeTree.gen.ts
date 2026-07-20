@@ -37,6 +37,7 @@ import { Route as BuyerPaymentRouteImport } from './routes/buyer.payment'
 import { Route as BuyerOrdersRouteImport } from './routes/buyer.orders'
 import { Route as BuyerMessagesRouteImport } from './routes/buyer.messages'
 import { Route as BuyerDiscoverRouteImport } from './routes/buyer.discover'
+import { Route as BuyerCommunityRouteImport } from './routes/buyer.community'
 import { Route as BuyerAccountRouteImport } from './routes/buyer.account'
 import { Route as BatchListingIdRouteImport } from './routes/batch.$listingId'
 import { Route as Char91DotwellKnownChar93OauthProtectedResourceRouteImport } from './routes/[.well-known]/oauth-protected-resource'
@@ -195,6 +196,11 @@ const BuyerDiscoverRoute = BuyerDiscoverRouteImport.update({
   path: '/discover',
   getParentRoute: () => BuyerRoute,
 } as any)
+const BuyerCommunityRoute = BuyerCommunityRouteImport.update({
+  id: '/community',
+  path: '/community',
+  getParentRoute: () => BuyerRoute,
+} as any)
 const BuyerAccountRoute = BuyerAccountRouteImport.update({
   id: '/account',
   path: '/account',
@@ -298,6 +304,7 @@ export interface FileRoutesByFullPath {
   '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   '/batch/$listingId': typeof BatchListingIdRoute
   '/buyer/account': typeof BuyerAccountRoute
+  '/buyer/community': typeof BuyerCommunityRoute
   '/buyer/discover': typeof BuyerDiscoverRoute
   '/buyer/messages': typeof BuyerMessagesRoute
   '/buyer/orders': typeof BuyerOrdersRouteWithChildren
@@ -345,6 +352,7 @@ export interface FileRoutesByTo {
   '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   '/batch/$listingId': typeof BatchListingIdRoute
   '/buyer/account': typeof BuyerAccountRoute
+  '/buyer/community': typeof BuyerCommunityRoute
   '/buyer/discover': typeof BuyerDiscoverRoute
   '/buyer/messages': typeof BuyerMessagesRoute
   '/buyer/orders': typeof BuyerOrdersRouteWithChildren
@@ -392,6 +400,7 @@ export interface FileRoutesById {
   '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   '/batch/$listingId': typeof BatchListingIdRoute
   '/buyer/account': typeof BuyerAccountRoute
+  '/buyer/community': typeof BuyerCommunityRoute
   '/buyer/discover': typeof BuyerDiscoverRoute
   '/buyer/messages': typeof BuyerMessagesRoute
   '/buyer/orders': typeof BuyerOrdersRouteWithChildren
@@ -441,6 +450,7 @@ export interface FileRouteTypes {
     | '/.well-known/oauth-protected-resource'
     | '/batch/$listingId'
     | '/buyer/account'
+    | '/buyer/community'
     | '/buyer/discover'
     | '/buyer/messages'
     | '/buyer/orders'
@@ -488,6 +498,7 @@ export interface FileRouteTypes {
     | '/.well-known/oauth-protected-resource'
     | '/batch/$listingId'
     | '/buyer/account'
+    | '/buyer/community'
     | '/buyer/discover'
     | '/buyer/messages'
     | '/buyer/orders'
@@ -534,6 +545,7 @@ export interface FileRouteTypes {
     | '/.well-known/oauth-protected-resource'
     | '/batch/$listingId'
     | '/buyer/account'
+    | '/buyer/community'
     | '/buyer/discover'
     | '/buyer/messages'
     | '/buyer/orders'
@@ -786,6 +798,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof BuyerDiscoverRouteImport
       parentRoute: typeof BuyerRoute
     }
+    '/buyer/community': {
+      id: '/buyer/community'
+      path: '/community'
+      fullPath: '/buyer/community'
+      preLoaderRoute: typeof BuyerCommunityRouteImport
+      parentRoute: typeof BuyerRoute
+    }
     '/buyer/account': {
       id: '/buyer/account'
       path: '/account'
@@ -922,6 +941,7 @@ const BuyerOrdersRouteWithChildren = BuyerOrdersRoute._addFileChildren(
 
 interface BuyerRouteChildren {
   BuyerAccountRoute: typeof BuyerAccountRoute
+  BuyerCommunityRoute: typeof BuyerCommunityRoute
   BuyerDiscoverRoute: typeof BuyerDiscoverRoute
   BuyerMessagesRoute: typeof BuyerMessagesRoute
   BuyerOrdersRoute: typeof BuyerOrdersRouteWithChildren
@@ -938,6 +958,7 @@ interface BuyerRouteChildren {
 
 const BuyerRouteChildren: BuyerRouteChildren = {
   BuyerAccountRoute: BuyerAccountRoute,
+  BuyerCommunityRoute: BuyerCommunityRoute,
   BuyerDiscoverRoute: BuyerDiscoverRoute,
   BuyerMessagesRoute: BuyerMessagesRoute,
   BuyerOrdersRoute: BuyerOrdersRouteWithChildren,
