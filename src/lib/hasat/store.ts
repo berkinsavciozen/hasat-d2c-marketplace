@@ -34,7 +34,6 @@ interface Store {
   setPendingOffer: (p: PendingOffer | null) => void;
   addOrder: (o: Omit<Order, "id">) => Order;
   addSubscription: (s: Omit<Subscription, "id">) => Subscription;
-  setNotifPref: (e: NotifEvent, c: NotifChannel, v: boolean) => void;
   addPriceAlert: (a: Omit<PriceAlert, "id" | "createdAt">) => PriceAlert;
   removePriceAlert: (id: string) => void;
   reset: () => void;
