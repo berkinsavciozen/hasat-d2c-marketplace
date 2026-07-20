@@ -39,12 +39,6 @@ interface Store {
   reset: () => void;
 }
 
-const seedNotifPrefs: NotifPrefs = {
-  offer: { whatsapp: true, push: true, sms: false },
-  price: { whatsapp: true, push: true, sms: false },
-  harvest: { whatsapp: true, push: false, sms: false },
-  community: { whatsapp: false, push: true, sms: false },
-};
 
 
 const newId = () => Math.random().toString(36).slice(2, 10);
