@@ -1,4 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { useEffect, useState } from "react";
 import { useHasat } from "@/lib/hasat/store";
 import { useFarmerListings, useEntries, useFarmerOffers, useFarmerOrders } from "@/lib/hasat/queries";
 import { AIBox } from "@/components/hasat/AIBox";
@@ -7,6 +8,8 @@ import { formatTRY, formatCrop } from "@/lib/hasat/format";
 import { BookOpen, LineChart, Store, Users2, MessageCircle, Inbox, PackageCheck } from "lucide-react";
 import { MarketDeviationAlert } from "@/components/hasat/MarketDeviationAlert";
 import { HASAT_WHATSAPP_NUMBER } from "@/lib/hasat/constants";
+import { OnboardingTour } from "@/components/hasat/OnboardingTour";
+import { FARMER_TOUR_STEPS, FARMER_TOUR_STORAGE_KEY } from "@/lib/hasat/onboarding-tour";
 
 export const Route = createFileRoute("/farmer/home")({
   head: () => ({ meta: [{ title: "Ana Sayfa — Hasat" }] }),
@@ -27,6 +30,7 @@ function ChatInputBar() {
       <button
         type="button"
         onClick={() => openChat()}
+        data-tour="chat-input"
         className="flex min-h-[48px] flex-1 items-center gap-2 px-3 text-left text-sm text-hmuted"
         aria-label="Hasat AI'ye mesaj yaz"
       >
@@ -37,6 +41,7 @@ function ChatInputBar() {
         href={waUrl}
         target="_blank"
         rel="noopener noreferrer"
+        data-tour="whatsapp"
         className="grid h-12 w-12 shrink-0 place-items-center rounded-xl"
         style={{ backgroundColor: "#25D366", color: "white" }}
         aria-label="WhatsApp'tan gönder"
@@ -55,6 +60,22 @@ function Home() {
   const { data: listings = [] } = useFarmerListings();
   const { data: offers = [] } = useFarmerOffers();
   const { data: orders = [] } = useFarmerOrders();
+
+  const [tourOpen, setTourOpen] = useState(false);
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const shouldOpen = !localStorage.getItem(FARMER_TOUR_STORAGE_KEY);
+    let t: ReturnType<typeof setTimeout> | undefined;
+    if (shouldOpen) {
+      t = setTimeout(() => setTourOpen(true), 600);
+    }
+    const onRestart = () => setTourOpen(true);
+    window.addEventListener("hasat:tour:restart", onRestart);
+    return () => {
+      if (t) clearTimeout(t);
+      window.removeEventListener("hasat:tour:restart", onRestart);
+    };
+  }, []);
 
   const pendingOffers = offers.filter(
     (o) => (o.status === "pending" || o.status === "counter") && o.ballSide === "farmer",
@@ -145,7 +166,9 @@ function Home() {
           </div>
         )}
 
-        <AIBox page="dashboard" />
+        <div data-tour="ai-box">
+          <AIBox page="dashboard" />
+        </div>
 
 
         {/* Quick actions */}
@@ -250,6 +273,11 @@ function Home() {
           </>
         )}
       </div>
+      <OnboardingTour
+        steps={FARMER_TOUR_STEPS}
+        open={tourOpen}
+        onClose={() => setTourOpen(false)}
+      />
     </>
   );
 }

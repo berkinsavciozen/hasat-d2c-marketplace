@@ -1,6 +1,7 @@
-import { createFileRoute, Link, Outlet, redirect, useRouterState } from "@tanstack/react-router";
+import { createFileRoute, Link, Outlet, redirect, useRouterState, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
-import { BarChart3, BookOpen, Home, LineChart, Store, Users, Settings, Crown, Handshake, MoreHorizontal, Gift } from "lucide-react";
+import { BarChart3, BookOpen, Home, LineChart, Store, Users, Settings, Crown, Handshake, MoreHorizontal, Gift, HelpCircle } from "lucide-react";
+import { FARMER_TOUR_STORAGE_KEY } from "@/lib/hasat/onboarding-tour";
 import { useProfile, useParcels, useRealtimeSync, useAuthUserId, useFarmerOffers } from "@/lib/hasat/queries";
 import { SeasonBanner } from "@/components/hasat/SeasonBanner";
 import { FarmPill } from "@/components/hasat/FarmPill";
@@ -61,7 +62,25 @@ function FarmerShell() {
   const pendingCount = offers?.filter((o) => o.status === "pending").length ?? 0;
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const [moreOpen, setMoreOpen] = useState(false);
+  const navigate = useNavigate();
   useRealtimeSync(useAuthUserId());
+
+  const restartTour = () => {
+    if (typeof window !== "undefined") {
+      localStorage.removeItem(FARMER_TOUR_STORAGE_KEY);
+    }
+    setMoreOpen(false);
+    const trigger = () => {
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(new CustomEvent("hasat:tour:restart"));
+      }
+    };
+    if (pathname.startsWith("/farmer/home")) {
+      trigger();
+    } else {
+      navigate({ to: "/farmer/home" }).then(() => setTimeout(trigger, 300));
+    }
+  };
   const totalArea = parcels.reduce((s, p) => s + (p.area ?? 0), 0);
   const allCrops = parcels.flatMap((p) => p.crops ?? []);
   const cropCounts = allCrops.reduce<Record<string, number>>((m, c) => { m[c] = (m[c] ?? 0) + 1; return m; }, {});
@@ -103,6 +122,7 @@ function FarmerShell() {
               <Link
                 key={to}
                 to={to}
+                data-tour={to === "/farmer/storefront" ? "tab-storefront" : to === "/farmer/prices" ? "tab-prices" : undefined}
                 className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition ${active ? "bg-saffron text-white" : "text-hwhite/70 hover:bg-white/5"}`}
               >
                 <Icon className="h-4 w-4" />
@@ -121,6 +141,13 @@ function FarmerShell() {
           >
             <Crown className="h-4 w-4" /> Premium'a Geç
           </Link>
+          <button
+            type="button"
+            onClick={restartTour}
+            className="mt-2 flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-hwhite/70 hover:bg-white/5 min-h-[48px]"
+          >
+            <HelpCircle className="h-4 w-4" /> Nasıl Çalışır?
+          </button>
           <Link to="/farmer/settings" className="mt-3 flex items-center gap-2 rounded-lg bg-white/5 p-2 hover:bg-white/10">
             <div className="grid h-8 w-8 place-items-center rounded-full bg-saffron text-xs font-bold">
               {displayName?.[0] ?? "M"}
@@ -145,8 +172,13 @@ function FarmerShell() {
         {mobileTabs.map(({ to, label, icon: Icon }) => {
           const active = pathname.startsWith(to);
           return (
-            <Link key={to} to={to} className="flex flex-col items-center gap-0.5 py-2 text-[10px]"
-              style={{ color: active ? "var(--saffron)" : "var(--hwhite)" }}>
+            <Link
+              key={to}
+              to={to}
+              data-tour={to === "/farmer/storefront" ? "tab-storefront" : to === "/farmer/prices" ? "tab-prices" : undefined}
+              className="flex flex-col items-center gap-0.5 py-2 text-[10px]"
+              style={{ color: active ? "var(--saffron)" : "var(--hwhite)" }}
+            >
               <Icon className="h-5 w-5" />
               <span>{label}</span>
             </Link>
@@ -218,6 +250,15 @@ function FarmerShell() {
               <Crown className="h-4 w-4" />
               <span className="flex-1">Premium'a Geç</span>
             </Link>
+
+            <button
+              type="button"
+              onClick={restartTour}
+              className="flex w-full items-center gap-3 rounded-lg px-3 py-3 text-sm text-hwhite/80 hover:bg-white/5 min-h-[48px]"
+            >
+              <HelpCircle className="h-4 w-4" />
+              <span className="flex-1 text-left">Nasıl Çalışır?</span>
+            </button>
 
             <Link
               to="/farmer/settings"
