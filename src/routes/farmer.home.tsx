@@ -1,4 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { useEffect, useState } from "react";
 import { useHasat } from "@/lib/hasat/store";
 import { useFarmerListings, useEntries, useFarmerOffers, useFarmerOrders } from "@/lib/hasat/queries";
 import { AIBox } from "@/components/hasat/AIBox";
@@ -7,6 +8,8 @@ import { formatTRY, formatCrop } from "@/lib/hasat/format";
 import { BookOpen, LineChart, Store, Users2, MessageCircle, Inbox, PackageCheck } from "lucide-react";
 import { MarketDeviationAlert } from "@/components/hasat/MarketDeviationAlert";
 import { HASAT_WHATSAPP_NUMBER } from "@/lib/hasat/constants";
+import { OnboardingTour } from "@/components/hasat/OnboardingTour";
+import { FARMER_TOUR_STEPS, FARMER_TOUR_STORAGE_KEY } from "@/lib/hasat/onboarding-tour";
 
 export const Route = createFileRoute("/farmer/home")({
   head: () => ({ meta: [{ title: "Ana Sayfa — Hasat" }] }),
