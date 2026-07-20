@@ -5,9 +5,6 @@ import type {
   Producer, Role, Subscription, User,
 } from "./types";
 
-export type NotifEvent = "offer" | "price" | "harvest" | "community";
-export type NotifChannel = "whatsapp" | "push" | "sms";
-export type NotifPrefs = Record<NotifEvent, Record<NotifChannel, boolean>>;
 
 interface Store {
   user: User | null;
@@ -20,7 +17,6 @@ interface Store {
   orders: Order[];
   subscriptions: Subscription[];
   pendingOffer: PendingOffer | null;
-  notifPrefs: NotifPrefs;
   priceAlerts: PriceAlert[];
   setRole: (role: Role | null) => void;
   setPremium: (v: boolean) => void;
@@ -38,18 +34,11 @@ interface Store {
   setPendingOffer: (p: PendingOffer | null) => void;
   addOrder: (o: Omit<Order, "id">) => Order;
   addSubscription: (s: Omit<Subscription, "id">) => Subscription;
-  setNotifPref: (e: NotifEvent, c: NotifChannel, v: boolean) => void;
   addPriceAlert: (a: Omit<PriceAlert, "id" | "createdAt">) => PriceAlert;
   removePriceAlert: (id: string) => void;
   reset: () => void;
 }
 
-const seedNotifPrefs: NotifPrefs = {
-  offer: { whatsapp: true, push: true, sms: false },
-  price: { whatsapp: true, push: true, sms: false },
-  harvest: { whatsapp: true, push: false, sms: false },
-  community: { whatsapp: false, push: true, sms: false },
-};
 
 
 const newId = () => Math.random().toString(36).slice(2, 10);
@@ -68,7 +57,7 @@ export const useHasat = create<Store>()(
 
       subscriptions: [],
       pendingOffer: null,
-      notifPrefs: seedNotifPrefs,
+      
       priceAlerts: [],
       setRole: (role) =>
         set(() => ({
@@ -92,8 +81,6 @@ export const useHasat = create<Store>()(
       setPendingOffer: (p) => set({ pendingOffer: p }),
       addOrder: (o) => { const no: Order = { ...o, id: newId() }; set((s) => ({ orders: [no, ...s.orders] })); return no; },
       addSubscription: (s) => { const ns: Subscription = { ...s, id: newId() }; set((st) => ({ subscriptions: [ns, ...st.subscriptions] })); return ns; },
-      setNotifPref: (event, channel, value) =>
-        set((s) => ({ notifPrefs: { ...s.notifPrefs, [event]: { ...s.notifPrefs[event], [channel]: value } } })),
       addPriceAlert: (a) => { const np: PriceAlert = { ...a, id: newId(), createdAt: new Date().toISOString() }; set((s) => ({ priceAlerts: [np, ...s.priceAlerts] })); return np; },
       removePriceAlert: (id) => set((s) => ({ priceAlerts: s.priceAlerts.filter((a) => a.id !== id) })),
       reset: () => set({ user: null }),

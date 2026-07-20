@@ -253,7 +253,7 @@ export function FarmerAIChat() {
             <div className="flex-1 min-w-0">
               <div className="font-serif text-base leading-tight">✨ Hasat AI</div>
               {tier === "free" ? <UsageMeter count={chat.usageCount} /> : (
-                <div className="text-[11px] text-muted-foreground">Premium • sınırsız sohbet</div>
+                <div className="text-[11px] text-muted-foreground">Premium • ayda 500 mesaj</div>
               )}
             </div>
             <Button variant="ghost" size="sm" onClick={openHistory} aria-label="Geçmiş Sohbetler">
@@ -363,7 +363,7 @@ export function FarmerAIChat() {
                       className="w-full"
                       style={{ background: "var(--saffron)", color: "white" }}
                     >
-                      Premium'a geç — ₺149/ay, sınırsız sohbet
+                      Premium'a geç — ₺149/ay, ayda 500 mesaj
                     </Button>
                     <div className="text-xs text-muted-foreground text-center">
                       Acil bir konu mu var?{" "}
