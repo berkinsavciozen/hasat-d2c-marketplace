@@ -256,14 +256,14 @@ export function FarmerAIChat() {
                 <div className="text-[11px] text-muted-foreground">Premium • ayda 500 mesaj</div>
               )}
             </div>
-            <Button variant="ghost" size="sm" onClick={openHistory} aria-label="Geçmiş Sohbetler">
+            <Button variant="ghost" size="sm" onClick={openHistory} aria-label="Geçmiş Sohbetler" className="min-h-[48px] min-w-[48px]">
               <History className="h-4 w-4" />
             </Button>
-            <Button variant="ghost" size="sm" onClick={chat.newSession} aria-label="Yeni Sohbet">
+            <Button variant="ghost" size="sm" onClick={chat.newSession} aria-label="Yeni Sohbet" className="min-h-[48px] min-w-[48px]">
               <Plus className="h-4 w-4" />
               <span className="hidden sm:inline ml-1 text-xs">Yeni</span>
             </Button>
-            <Button variant="ghost" size="icon" onClick={() => setOpen(false)} aria-label="Kapat">
+            <Button variant="ghost" size="icon" onClick={() => setOpen(false)} aria-label="Kapat" className="min-h-[48px] min-w-[48px]">
               <X className="h-4 w-4" />
             </Button>
           </div>
