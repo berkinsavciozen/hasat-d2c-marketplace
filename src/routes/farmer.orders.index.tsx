@@ -14,6 +14,8 @@ import { toast } from "sonner";
 import type { Offer, BuyerType, Order } from "@/lib/hasat/types";
 import { NegotiationThread } from "@/components/hasat/NegotiationThread";
 import { statusVisual, statusStyle, canAccept } from "@/lib/hasat/offer-status";
+import { whatsappUrl } from "@/lib/hasat/whatsapp";
+import { MessageCircle } from "lucide-react";
 
 export const Route = createFileRoute("/farmer/orders/")({
   head: () => ({ meta: [{ title: "Siparişler — Hasat" }] }),
@@ -291,6 +293,7 @@ function CounterModal({ open, onOpenChange, offer, onSubmit, pending }: {
 
 function OrderCard({ order, muted }: { order: Order; muted?: boolean }) {
   const STATUS_TR: Record<string, string> = { preparing: "Hazırlanıyor", shipped: "Kargoda", delivered: "Teslim Edildi" };
+  const wa = whatsappUrl(order.producerPhone, `Merhaba, ${order.code} numaralı sipariş hakkında yazıyorum.`);
   return (
     <div className={`rounded-2xl border bg-card p-4 ${muted ? "opacity-60" : ""}`}>
       <div className="flex items-start justify-between gap-3">
@@ -307,6 +310,13 @@ function OrderCard({ order, muted }: { order: Order; muted?: boolean }) {
           <span className="text-[10px] text-hmuted">{STATUS_TR[order.status] ?? order.status}</span>
         </div>
       </div>
+      {wa && (
+        <a href={wa} target="_blank" rel="noopener noreferrer"
+          className="mt-3 inline-flex items-center justify-center gap-1.5 rounded-lg min-h-[48px] px-4 py-2 text-xs font-medium text-white w-full sm:w-auto"
+          style={{ background: "#25D366" }}>
+          <MessageCircle className="h-3.5 w-3.5" /> Alıcıya WhatsApp'tan yaz
+        </a>
+      )}
     </div>
   );
 }
