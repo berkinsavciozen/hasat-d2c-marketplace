@@ -285,7 +285,7 @@ export function FarmerAIChat() {
               <div className="text-center text-sm text-muted-foreground py-8">Yükleniyor…</div>
             ) : chat.messages.length === 0 ? (
               <div className="text-center text-sm text-muted-foreground py-8">
-                Hasat AI'ye soru sor — fiyat, hava, ürün önerisi veya günlük kaydı.
+                Hasat AI'ye soru sor — fiyat, pazar önerisi, günlük kaydı veya ürün önerisi.
               </div>
             ) : (
               chat.messages.map((m) => <MessageBubble key={m.id} m={m} />)
