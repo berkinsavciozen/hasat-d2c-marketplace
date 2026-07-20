@@ -105,7 +105,48 @@ function Home() {
       <div className="p-4 md:p-8 space-y-4">
         <ChatInputBar />
 
+        {showPending && (
+          <div
+            className="rounded-2xl border bg-card overflow-hidden"
+            style={{ borderLeft: "3px solid var(--saffron)" }}
+          >
+            <div className="grid grid-cols-1 sm:grid-cols-2 divide-y sm:divide-y-0 sm:divide-x">
+              {pendingOffers > 0 ? (
+                <Link
+                  to="/farmer/orders"
+                  className="flex min-h-[48px] items-center gap-3 px-4 py-3 hover:bg-background/60"
+                >
+                  <Inbox className="h-5 w-5 shrink-0" style={{ color: "var(--saffron)" }} />
+                  <div className="min-w-0 flex-1">
+                    <div className="text-xs text-hmuted">Yanıt bekleyen teklif</div>
+                    <div className="font-mono text-lg" style={{ color: "var(--saffron)" }}>
+                      {pendingOffers}
+                    </div>
+                  </div>
+                  <span className="text-sm text-saffron">→</span>
+                </Link>
+              ) : null}
+              {preparingOrders > 0 ? (
+                <Link
+                  to="/farmer/orders"
+                  className="flex min-h-[48px] items-center gap-3 px-4 py-3 hover:bg-background/60"
+                >
+                  <PackageCheck className="h-5 w-5 shrink-0" style={{ color: "var(--gold)" }} />
+                  <div className="min-w-0 flex-1">
+                    <div className="text-xs text-hmuted">Hazırlanan sipariş</div>
+                    <div className="font-mono text-lg" style={{ color: "var(--gold)" }}>
+                      {preparingOrders}
+                    </div>
+                  </div>
+                  <span className="text-sm text-saffron">→</span>
+                </Link>
+              ) : null}
+            </div>
+          </div>
+        )}
+
         <AIBox page="dashboard" />
+
 
         {/* Quick actions */}
         <div className="-mx-4 px-4 md:mx-0 md:px-0 flex gap-2 overflow-x-auto pb-1">
