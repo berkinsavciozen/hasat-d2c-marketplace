@@ -1091,21 +1091,10 @@ export function useCreateOffer() {
       if (error) throw error;
       return data;
     },
-    onSuccess: (data) => {
+    onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["buyerOffers", userId] });
       qc.invalidateQueries({ queryKey: ["farmerOffers"] });
-      // Best-effort SMS to farmer
-      if (data?.farmer_id) {
-        supabase.functions
-          .invoke("send-sms", {
-            body: {
-              userId: data.farmer_id,
-              message: "Hasat: Yeni bir teklif aldınız.",
-              event: "new_offer",
-            },
-          })
-          .catch((e) => console.warn("[send-sms] offer_received failed", e));
-      }
+      // SMS dispatch now handled DB-side via notify_offer_received → dispatch_sms.
     },
   });
 }
