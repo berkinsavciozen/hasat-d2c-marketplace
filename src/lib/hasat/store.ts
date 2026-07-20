@@ -5,9 +5,6 @@ import type {
   Producer, Role, Subscription, User,
 } from "./types";
 
-export type NotifEvent = "offer" | "price" | "harvest" | "community";
-export type NotifChannel = "whatsapp" | "push" | "sms";
-export type NotifPrefs = Record<NotifEvent, Record<NotifChannel, boolean>>;
 
 interface Store {
   user: User | null;
