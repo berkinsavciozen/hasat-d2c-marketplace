@@ -30,6 +30,7 @@ function ChatInputBar() {
       <button
         type="button"
         onClick={() => openChat()}
+        data-tour="chat-input"
         className="flex min-h-[48px] flex-1 items-center gap-2 px-3 text-left text-sm text-hmuted"
         aria-label="Hasat AI'ye mesaj yaz"
       >
@@ -40,6 +41,7 @@ function ChatInputBar() {
         href={waUrl}
         target="_blank"
         rel="noopener noreferrer"
+        data-tour="whatsapp"
         className="grid h-12 w-12 shrink-0 place-items-center rounded-xl"
         style={{ backgroundColor: "#25D366", color: "white" }}
         aria-label="WhatsApp'tan gönder"
