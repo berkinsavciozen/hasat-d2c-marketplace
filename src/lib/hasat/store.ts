@@ -17,7 +17,6 @@ interface Store {
   orders: Order[];
   subscriptions: Subscription[];
   pendingOffer: PendingOffer | null;
-  notifPrefs: NotifPrefs;
   priceAlerts: PriceAlert[];
   setRole: (role: Role | null) => void;
   setPremium: (v: boolean) => void;
