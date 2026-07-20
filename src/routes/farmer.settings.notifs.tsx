@@ -31,10 +31,6 @@ const EVENTS: EventDef[] = [
     cols: { sms: "offer_accepted_sms" },
   },
   {
-    label: "Teklif Kabul Edildi",
-    cols: { sms: "offer_accepted_sms" },
-  },
-  {
     label: "Ödeme Onaylandı",
     cols: { sms: "payment_confirmed_sms" },
   },
