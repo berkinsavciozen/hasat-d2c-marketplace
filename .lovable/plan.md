@@ -1,99 +1,64 @@
-# Tema & UI temizlik planı (yalnızca `src/`)
+## Hedef
+Hasat'ın tema katmanını sadeleştirmek, dokunma hedeflerini erişilebilirlik standardına çıkarmak, tekrar eden UI parçalarını ortak componentlere ayırmak ve bildirim ayarları tablosunu mobilde okunur hale getirmek. Yalnızca `src/` altında çalışılacak; `supabase/` klasörüne dokunulmayacak.
 
-Kapsam: sunum katmanı. Backend, DB, sorgu ve iş mantığı dokunulmuyor. `supabase/` klasörü hariç.
+---
 
-## 1) `--lav` → `--saffron` / `--gold` (yalnızca AI yüzeyleri)
+## 1) AI vurgu renklerini `--lav`'dan `--gold`/`--saffron`'a taşı
 
-AI ile ilgili yüzeylerdeki `var(--lav)` kullanımlarını mevcut sıcak palete taşı. Diğer `--lav` kullanımları (kargo durumu, coğrafi işaret rozeti, kapsama rozeti, lavanta ürün chipi, üretici/abonelik ipuçları) **dokunulmuyor** — bunlar AI değil.
+`--lav` (lavanta) tokenı `styles.css`'te kalır (AI-dışı rozet/etiketlerde hâlâ meşru kullanımı var), ama AI yüzeylerinden temizlenir.
 
-Değiştirilecek dosyalar:
-- `src/components/hasat/ai-chat/FarmerAIChat.tsx` — FAB arka planı (satır 218, 250, 345) ve mesaj balonu sol border (satır 61) `var(--gold)`; hover/aktif tonlar `var(--saffron)`.
-- `src/components/hasat/ai-chat/JournalEntryCard.tsx` — kart border/background/etiket rengi (satır 186, 207–213, 360, 388) `var(--gold)` (yumuşak) + `var(--saffron)` (aksiyon).
-- `src/components/hasat/AIBox.tsx` — Sparkles, sol border, skeleton, hover (satır 85–163) `var(--gold)` bazlı.
-- `src/components/hasat/AIInsightBanner.tsx` — arka plan/border `var(--gold)`.
-- `src/components/hasat/UpgradeModal.tsx` — Sparkles ikon rengi `var(--gold)` (satır 13).
-- `src/routes/farmer.settings.tsx:260` — AI ayarı yanındaki Sparkles rengi `var(--gold)`.
+Dokunulacak dosyalar:
+- `src/components/hasat/ai-chat/FarmerAIChat.tsx` — FAB arka planı, header sparkles ikonu, assistant mesaj balonu border'ı, gönder butonu → `var(--gold)` / `var(--saffron)`.
+- `src/components/hasat/AIBox.tsx` — AI insight kartındaki lavanta arka plan/border → gold.
+- `src/components/hasat/AIInsightBanner.tsx` — banner arka plan + border → gold.
+- `src/components/hasat/ai-chat/JournalEntryCard.tsx` — AI-özet kart border ve badge → gold.
+- `src/components/hasat/UpgradeModal.tsx` — sparkles ikon rengi → gold.
+- `src/routes/farmer.settings.tsx` — üyelik/AI ikonu → gold.
 
-`--lav` token'ı `styles.css` içinde kalır (AI dışı kullanımlar için).
+WhatsApp yeşili (`#25D366`): audit sonucu sadece `farmer.referral.tsx` (wa.me davet linki) ve `FarmerAIChat.tsx` (WhatsApp ile devam et CTA'sı) içinde geçiyor — dokunulmaz. Başka yerde tespit edilirse kaldırılır.
 
-## 2) WhatsApp yeşili (`#25D366`) yalnızca gerçek WhatsApp bağlamı
+## 2) 48×48px minimum dokunma alanı
 
-Denetim: `#25D366` şu an sadece `farmer.referral.tsx:67` (paylaş butonu) ve `FarmerAIChat.tsx:278` (WhatsApp iconu). Referral: `wa.me` bağlantısı — kalır. FarmerAIChat'teki `MessageCircle` ikonunun rengi zaten "WhatsApp'tan da yazabilirsin" satırında ve gerçek WhatsApp linkine ait — kalır. Ek bir yerde WhatsApp yeşili kullanımı yok. Değişiklik: **yok** (sadece doğrulama; başka yere sızmadığından emin olduk).
+Sistematik audit + hedefli düzeltmeler:
+- `src/components/hasat/NotificationBell.tsx` — `h-9 w-9` → `min-h-[48px] min-w-[48px]`, ikon `h-5 w-5`.
+- `src/routes/login.tsx` — WhatsApp/SMS kanal seçim butonlarına `min-h-[48px]`.
+- `src/routes/buyer.discover.tsx` — arama input, filtre chip'leri, sıralama chip'leri, "Teklif Ver" pill → `min-h-[48px]`.
+- `src/components/hasat/ai-chat/FarmerAIChat.tsx` — header ghost butonları (History/Plus/X) `min-h-[48px] min-w-[48px]`.
+- `RoleSwitcher` dev-only floating switcher olduğu için kapsam dışı bırakılır (kullanıcıya sunulmuyor).
 
-## 3) 48×48px minimum dokunma alanı
+Diğer route'lar (`farmer.*`, `buyer.*`) hızlıca taranır; standart shadcn `Button` default (`h-10`) ve `size="lg"` (`h-11`) olan primary CTA'lar için className ile `min-h-[48px]` eklenir. Zaten `h-12+` olanlara dokunulmaz.
 
-Tarama sonrası küçük interaktif elemanlar aşağıdaki yerlerde:
-- `buyer.discover.tsx` — arama input (`py-2.5`), sıralama chip'leri (`py-1`), filtre chipleri (`py-1`), "Teklif Ver →" chip (`py-1.5`). Bunlara `min-h-[48px]` (chip'lerde `min-h-[44px]` yerine 48) + görsel dengesi için padding ayarı.
-- `farmer.settings.notifs.tsx` — geri linki (`ChevronLeft`), Switch hücreleri. Switch bileşeni shadcn varsayılan yükseklikte küçük; hücreyi `min-h-[48px]` yaparak dokunma hedefi büyütülür.
-- `login.tsx` — kanal seçim butonları (WA/SMS), OTP hane input'ları — `min-h-[48px]`.
-- `NotificationBell.tsx`, `RoleSwitcher.tsx`, `BuyerHeader` sıralama/filtre chip'leri, üst nav ikon butonları.
-- `FarmerAIChat.tsx` alt sekme/hızlı komut chip'leri.
-- Herhangi bir `size="sm"` / `size="icon"` shadcn Button için görünürlüğü koruyup `min-h-[48px] min-w-[48px]` (icon buton) veya sadece `min-h-[48px]` ekle.
+## 3) Ortak componentler — `src/components/hasat/common/`
 
-Yaklaşım: tek satır yardımcı sınıf ile (`min-h-[48px] min-w-[48px]` icon; sadece `min-h-[48px]` metin) noktasal ekleme. Global CSS'te `@utility touch-target` tanımlanmayacak — her yerde açıkça uygulanacak ki başkaları görsün.
+Yeni dosyalar (mevcut kullanım yerleri değiştirilmez):
+- `StatCard.tsx` — props: `label: string`, `value: ReactNode`, `accent?: "saffron" | "gold" | "sage" | "muted"`, `icon?: ReactNode`. `farmer.analytics.tsx`'teki StatCard pattern'ini genelleştirir.
+- `SectionCard.tsx` — props: `title?: ReactNode`, `action?: ReactNode`, `children: ReactNode`, `className?: string`. Başlıklı bordered card wrapper.
+- `PhotoListingCard.tsx` — props: `photo?: string | null`, `title: string`, `subtitle?: string`, `price?: string`, `badge?: ReactNode`, `onClick?: () => void`, `disabled?: boolean`. `buyer.discover.tsx` ListingCard'ın soyutlanmış hali; foto yokken saffron çizgili fallback pattern.
+- `index.ts` — barrel export.
 
-Denetim listesi: `rg -n "py-1[^0-9]|py-1\.5|h-8|h-9|size=\"icon\"|size=\"sm\"" src/routes src/components/hasat` çıktısında geçen tüm interaktif düğümlerden gerçekten tıklanabilir olanlar. Salt dekoratif rozetler (TierBadge, StockBadge, TrustBadge, OrderChip) dokunulmaz — bunlar buton değil.
+Sonraki fazlarda tüketicilere migre edilecek; bu fazda sadece dosyalar oluşur.
 
-## 4) Ortak componentler — `src/components/hasat/common/`
+## 4) `farmer.settings.notifs.tsx` — mobil responsive
 
-Sadece oluştur, kullanım yerlerini değiştirme.
+Mevcut tablo (`grid-cols-[1fr_repeat(3,auto)]`) desktop'ta kalır, `sm:` üzerinden gösterilir. Mobilde (`sm:hidden`) her olay için:
 
-- `StatCard.tsx`
-  ```tsx
-  export function StatCard({
-    label, value, accent, className
-  }: { label: string; value: ReactNode; accent?: "saffron" | "gold" | "sage" | "hred"; className?: string })
-  ```
-  Yapı: `rounded-xl border bg-card p-4`. `accent` verilirse sol 3px border rengi veya value rengi `var(--<accent>)`.
-
-- `SectionCard.tsx`
-  ```tsx
-  export function SectionCard({
-    title, action, children, className
-  }: { title: ReactNode; action?: ReactNode; children: ReactNode; className?: string })
-  ```
-  Yapı: `rounded-2xl border bg-card`. Header: `flex items-center justify-between px-4 py-3 border-b`, title serif. Body: `p-4`.
-
-- `PhotoListingCard.tsx`
-  ```tsx
-  export function PhotoListingCard({
-    photo, title, subtitle, price, unit, badge, onClick, disabled
-  }: {
-    photo?: string; title: ReactNode; subtitle?: ReactNode;
-    price: number; unit: string; badge?: ReactNode;
-    onClick?: () => void; disabled?: boolean;
-  })
-  ```
-  `buyer.discover.tsx`'teki `ListingCard`'ın yeniden kullanılabilir hali. Foto yoksa saffron çizgili fallback; overlay + serif başlık + `formatTRY` fiyat. Bu fazda **hiçbir yerde kullanılmıyor** — sonraki fazların hazır bulacağı bir bileşen.
-
-Barrel: `src/components/hasat/common/index.ts` — üçünü re-export.
-
-## 5) `farmer.settings.notifs.tsx` mobil düzen
-
-Mevcut tablo `≥sm` breakpoint'inde aynı kalır. `<sm` (≤640px) için her olay bir kart:
-
-```
-┌─────────────────────────┐
-│ Yeni Teklif             │
-├─────────────────────────┤
-│ WhatsApp        [ ⬤—— ]│
-│ Push            [ ——⬤ ]│
-│ SMS             [ ⬤—— ]│
-└─────────────────────────┘
+```text
+┌─────────────────────────────────┐
+│ Yeni Teklif                     │
+├─────────────────────────────────┤
+│ WhatsApp              [toggle]  │  ← min-h-[48px]
+│ Push                  [toggle]  │
+│ SMS                   [toggle]  │
+└─────────────────────────────────┘
 ```
 
-Uygulama: mevcut `<div className="rounded-xl border bg-card">…</div>` bloğunu `hidden sm:block` yap; onun altına `sm:hidden space-y-3` içinde her `EVENTS[i]` için kart. Kart içi her kanal satırı `flex items-center justify-between min-h-[48px] px-4 py-2`; kanal yoksa satır render edilmez. `Switch` aynı `useUpdateNotifPrefs` mutation'a bağlı, iş mantığı değişmiyor.
-
-Not: EVENTS dizisinde "Hasat Zamanı" iki kez tekrar ediyor (satır 26–32). Sorulmadı, ama açıkça bug — planın parçası olarak **hayır**, kapsam dışı bırakıldı; istenirse ayrı bir fixte alırım.
+Kartlar `border border-border bg-card rounded-xl`, satırlar `divide-y`. Sadece o olayda tanımlı kanallar render edilir (`e.cols[c.key]` null ise satır atlanır). Ayrıca `EVENTS` dizisindeki duplicate "Hasat Zamanı" satırı temizlenir.
 
 ## Doğrulama
-
-- `tsgo` sonda temiz olmalı.
-- Ekran: mobil (375px) ve masaüstü (1280px) genişlikte `/farmer/settings/notifs` görsel doğrulaması (Playwright screenshot) — mobilde kart, masaüstünde tablo görünsün.
-- `rg` ile: AI dosyalarında `var(--lav)` referansı sıfır olmalı; AI-dışı dosyalarda dokunulmamış olmalı. `#25D366` sadece `farmer.referral.tsx` + `FarmerAIChat.tsx`'te olmalı.
+- `bunx tsgo --noEmit` sıfır hata.
+- Görsel spot-check: preview'da AI FAB gold, notifs sayfası mobil viewport'ta dikey kartlar, NotificationBell parmak dokunuşuna yeter büyüklükte.
 
 ## Kapsam dışı
-
-- `styles.css` `--lav` token silinmez (AI-dışı kullanıcılar var).
-- Backend, `supabase/` migration, RLS, MCP — dokunulmuyor.
-- Yeni common componentlerin çağrı yerine göç ettirilmesi — bir sonraki faza.
+- Backend / DB / RLS / supabase functions.
+- Ortak componentlerin mevcut sayfalara migrasyonu (sonraki faz).
+- `--lav` tokenının kaldırılması (crop tag'lerde kullanımı sürüyor).

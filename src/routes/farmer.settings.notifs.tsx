@@ -27,10 +27,6 @@ const EVENTS: EventDef[] = [
     cols: { whatsapp: "harvest_time_whatsapp", push: "harvest_time_push", sms: "harvest_time_sms" },
   },
   {
-    label: "Hasat Zamanı",
-    cols: { whatsapp: "harvest_time_whatsapp", push: "harvest_time_push", sms: "harvest_time_sms" },
-  },
-  {
     label: "Teklif Kabul Edildi",
     cols: { sms: "offer_accepted_sms" },
   },
