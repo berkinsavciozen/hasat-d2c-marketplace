@@ -112,6 +112,29 @@ function OrderTracker() {
           <OrderTimeline order={orderWithTimeline} />
         </div>
 
+        {canReview && (
+          <div className="rounded-2xl bg-card border p-4">
+            <div className="text-sm font-medium mb-1">Üreticiyi Değerlendir</div>
+            {myReview ? (
+              <div className="flex items-center gap-2 text-sm">
+                <RatingStars rating={myReview.rating} size={18} />
+                <span className="text-hmuted">Değerlendirdiniz ✓ {myReview.rating}/5</span>
+              </div>
+            ) : (
+              <>
+                <p className="text-xs text-hmuted mb-2">Bu sipariş için üreticiyi puanlayın — diğer alıcılara yardımcı olur.</p>
+                <button
+                  onClick={() => setReviewOpen(true)}
+                  className="rounded-xl min-h-[48px] px-4 py-2.5 text-sm font-medium inline-flex items-center gap-2"
+                  style={{ background: "var(--gold)", color: "var(--dark)" }}
+                >
+                  <Star className="h-4 w-4" /> Değerlendir
+                </button>
+              </>
+            )}
+          </div>
+        )}
+
         {(canConfirmDelivery || canOpenDispute) && (
           <div className="grid gap-2 sm:grid-cols-2">
             {canConfirmDelivery && (
