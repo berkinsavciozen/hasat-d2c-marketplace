@@ -71,6 +71,39 @@ export type Database = {
         }
         Relationships: []
       }
+      buyer_addresses: {
+        Row: {
+          address: string
+          buyer_id: string
+          city: string
+          created_at: string
+          id: string
+          is_default: boolean
+          label: string
+          updated_at: string
+        }
+        Insert: {
+          address: string
+          buyer_id: string
+          city: string
+          created_at?: string
+          id?: string
+          is_default?: boolean
+          label: string
+          updated_at?: string
+        }
+        Update: {
+          address?: string
+          buyer_id?: string
+          city?: string
+          created_at?: string
+          id?: string
+          is_default?: boolean
+          label?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       buyer_profiles: {
         Row: {
           company_name: string

@@ -135,6 +135,24 @@ function OrderTracker() {
           </div>
         )}
 
+        {(order.status === "delivered" || order.status === "completed") && order.listingId && (
+          order.listingActive ? (
+            <Link
+              to="/buyer/offer/$listingId"
+              params={{ listingId: order.listingId }}
+              search={{ qty: order.quantity }}
+              className="rounded-xl min-h-[48px] px-4 py-3 text-sm font-medium border-2 flex items-center justify-center gap-2"
+              style={{ borderColor: "var(--saffron)", color: "var(--saffron)" }}
+            >
+              🔁 Tekrar Sipariş Ver
+            </Link>
+          ) : (
+            <div className="rounded-xl border border-dashed p-3 text-center text-xs text-hmuted">
+              Bu ürün artık satışta değil — üreticinin diğer ilanlarına göz atın.
+            </div>
+          )
+        )}
+
         {(canConfirmDelivery || canOpenDispute) && (
           <div className="grid gap-2 sm:grid-cols-2">
             {canConfirmDelivery && (

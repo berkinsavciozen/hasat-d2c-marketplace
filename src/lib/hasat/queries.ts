@@ -636,6 +636,8 @@ function dbToOrder(r: any, side: "farmer" | "buyer"): Order {
     cancelReason: r.cancel_reason ?? undefined,
     cancelledAt: r.cancelled_at ?? undefined,
     disputeWindowExpiresAt: r.dispute_window_expires_at ?? undefined,
+    listingId: (listing.id ?? offer.listing_id) ?? undefined,
+    listingActive: listing.status === "active",
   };
 }
 
@@ -1526,7 +1528,7 @@ export function useBuyerConversations() {
 // ORDERS
 // =====================================================================
 const ORDER_SELECT =
-  "*, offer:offers(quantity,price_per_unit,delivery,delivery_date,listing_id, listing:listings(crop,unit))";
+  "*, offer:offers(quantity,price_per_unit,delivery,delivery_date,listing_id, listing:listings(id,crop,unit,status))";
 
 
 export function useFarmerOrders() {
@@ -2897,6 +2899,85 @@ export function useCreateReview() {
       qc.invalidateQueries({ queryKey: ["farmer-recent-reviews", v.revieweeId] });
       qc.invalidateQueries({ queryKey: ["buyer-rating", v.revieweeId] });
     },
+  });
+}
+
+// =====================================================================
+// BUYER ADDRESSES (P17-F)
+// =====================================================================
+
+function dbToAddress(r: any): import("./types").BuyerAddress {
+  return {
+    id: r.id,
+    label: r.label,
+    address: r.address,
+    city: r.city,
+    isDefault: !!r.is_default,
+    createdAt: r.created_at,
+  };
+}
+
+export function useBuyerAddresses() {
+  const userId = useAuthUserId();
+  return useQuery({
+    queryKey: ["buyerAddresses", userId],
+    enabled: !!userId,
+    queryFn: async (): Promise<import("./types").BuyerAddress[]> => {
+      const { data, error } = await (supabase as any)
+        .from("buyer_addresses")
+        .select("*")
+        .eq("buyer_id", userId!)
+        .order("is_default", { ascending: false })
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      return (data ?? []).map(dbToAddress);
+    },
+  });
+}
+
+export function useCreateAddress() {
+  const qc = useQueryClient();
+  const userId = useAuthUserId();
+  return useMutation({
+    mutationFn: async (input: { label: string; address: string; city: string; isDefault?: boolean }) => {
+      if (!userId) throw new Error("Oturum bulunamadı");
+      const { error } = await (supabase as any).from("buyer_addresses").insert({
+        buyer_id: userId,
+        label: input.label,
+        address: input.address,
+        city: input.city,
+        is_default: !!input.isDefault,
+      });
+      if (error) throw error;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["buyerAddresses", userId] }),
+  });
+}
+
+export function useDeleteAddress() {
+  const qc = useQueryClient();
+  const userId = useAuthUserId();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await (supabase as any).from("buyer_addresses").delete().eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["buyerAddresses", userId] }),
+  });
+}
+
+export function useSetDefaultAddress() {
+  const qc = useQueryClient();
+  const userId = useAuthUserId();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await (supabase as any)
+        .from("buyer_addresses")
+        .update({ is_default: true })
+        .eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["buyerAddresses", userId] }),
   });
 }
 
