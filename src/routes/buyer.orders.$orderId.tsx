@@ -48,6 +48,8 @@ function OrderTracker() {
     : new Date(order.disputeWindowExpiresAt).getTime() > Date.now();
   const canConfirmDelivery = order.status === "shipped";
   const canOpenDispute = (order.status === "shipped" || order.status === "delivered") && windowOpen;
+  const canReview = order.status === "delivered" || order.status === "completed";
+  const myReview = reviews.find((r) => r.reviewerId === userId && r.reviewerRole === "buyer");
 
   const onConfirmDelivery = async () => {
     try {
