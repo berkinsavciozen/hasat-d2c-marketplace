@@ -81,6 +81,7 @@ export function CropDetailBody({ crop }: { crop: string }) {
   const officialSeries = series?.official ?? null;
   const marketSummaries = summary?.marketSources ?? [];
   const marketSeries = series?.marketSources ?? [];
+  const unit = summary?.unit ?? "kg";
 
   const hasatHasSomething = hasat && !hasat.insufficientData && hasat.avgPrice != null;
   const officialHasSomething = !!official;
