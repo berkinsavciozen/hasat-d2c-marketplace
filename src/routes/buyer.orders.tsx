@@ -313,9 +313,24 @@ function DoneOrderRow({ order, onOpen }: { order: Order; onOpen: () => void }) {
         <span className="font-mono" style={{ color: "var(--gold)" }}>{formatTRY(order.total)}</span>
       </div>
 
-      {canReview && (
-        <div className="mt-3 border-t pt-3" onClick={(e) => e.stopPropagation()}>
-          {myReview ? (
+      <div className="mt-3 border-t pt-3 flex flex-wrap items-center justify-between gap-2" onClick={(e) => e.stopPropagation()}>
+        {order.listingId && order.listingActive ? (
+          <Link
+            to="/buyer/offer/$listingId"
+            params={{ listingId: order.listingId }}
+            search={{ qty: order.quantity }}
+            onClick={(e) => e.stopPropagation()}
+            className="inline-flex items-center gap-1.5 rounded-lg min-h-[40px] px-3 py-2 text-xs font-medium"
+            style={{ background: "color-mix(in oklab, var(--saffron) 15%, transparent)", color: "var(--saffron)" }}
+          >
+            🔁 Tekrar Sipariş Ver
+          </Link>
+        ) : (
+          <span className="text-[11px] text-hmuted">Bu ürün artık satışta değil</span>
+        )}
+
+        {canReview && (
+          myReview ? (
             <div className="flex items-center gap-2 text-xs text-hmuted">
               <RatingStars rating={myReview.rating} size={14} />
               <span>Değerlendirdiniz ({myReview.rating}/5)</span>
@@ -328,9 +343,9 @@ function DoneOrderRow({ order, onOpen }: { order: Order; onOpen: () => void }) {
             >
               <Star className="h-3.5 w-3.5" style={{ color: "var(--gold)" }} /> Üreticiyi Değerlendir
             </button>
-          )}
-        </div>
-      )}
+          )
+        )}
+      </div>
 
       <ReviewModal
         open={reviewOpen}

@@ -1,46 +1,45 @@
-# P17-C Follow-ups — Review System Gap Fixes
+# Plan — P17-F Reorder + Şube Adresleri, Buyer Notif Prefs, Account Fixes
 
-Scope: `src/` only. Backend RPC `get_buyer_rating_summary(_buyer_id)` is already deployed and mirrors `get_farmer_rating_summary`.
+Scope: `src/` only. One migration for `buyer_addresses`.
 
-## 1. `src/lib/hasat/queries.ts`
+## 1) Migration — `buyer_addresses`
+- Columns: `id`, `buyer_id → auth.users`, `label`, `address`, `city`, `is_default bool default false`, `created_at`, `updated_at`.
+- GRANT to `authenticated` + `service_role`; RLS `auth.uid() = buyer_id` for all CRUD.
+- `updated_at` trigger.
+- Partial unique index `(buyer_id) WHERE is_default` to guarantee at most one default; setting a new default clears the old one via `BEFORE INSERT/UPDATE` trigger.
 
-- Add `useBuyerRatingSummary(buyerId)` — identical shape to `useFarmerRatingSummary`, calls RPC `get_buyer_rating_summary` with arg `_buyer_id`. Cache key: `["buyer-rating", buyerId]`.
-- Update `useCreateReview` to fire a best-effort notification (mirroring `useCreateReply`):
-  - Skip when `revieweeId === userId` (defensive; DB already prevents self-review).
-  - Fetch reviewer name from `profiles` (`select name where id = userId`).
-  - Insert into `notifications`: `{ user_id: revieweeId, type: 'review', title: 'Yeni değerlendirme', body: '${who} ${rating}/5 puan verdi', related_id: orderId }`, wrapped in try/catch so review success does not depend on notification insert.
-  - Also invalidate `["buyer-rating", revieweeId]` so farmer-role reviews refresh the buyer badge.
+## 2) Queries (`src/lib/hasat/queries.ts`)
+- `useBuyerAddresses()`, `useCreateAddress()`, `useDeleteAddress()`, `useSetDefaultAddress()` (RLS-scoped).
+- Reuse `useFarmerActiveListings(farmerId)` for reorder & subscription-to-order.
+- No new notif hooks — `useNotifPrefs`/`useUpdateNotifPrefs` already role-agnostic.
 
-No type changes needed — `Order.buyerId` and `Offer.buyerId` already exist and are mapped in `dbToOrder`/`dbToOffer`.
+## 3) Reorder buttons
+- **`buyer.orders.tsx` `DoneOrderRow`** and **`buyer.orders.$orderId.tsx`**: add "🔁 Tekrar Sipariş Ver". Query the order's `listingId` from `listings` (or reuse mapped field); if `status='active'` → `<Link to="/buyer/offer/$listingId">` with `search={{ qty: order.qty }}` (price comes from current listing). If inactive → muted note "Bu ürün artık satışta değil".
+- Ensure `buyer.offer.$listingId.tsx` reads `qty` from search and prefills.
 
-## 2. `src/routes/buyer.orders.tsx` — completed list indicator
+## 4) Subscription → order bridge (`buyer.subscriptions.tsx`)
+- On each `active` subscription card: "Şimdi Sipariş Ver" opens a small popover/sheet listing `useFarmerActiveListings(s.farmerId)` results. Selecting a listing navigates to `/buyer/offer/$listingId` with `search={{ qty?: undefined, suggestedPrice: s.priceLock ? s.lockedPrice : undefined }}`.
+- `buyer.offer.$listingId.tsx`: if `suggestedPrice` search param present, prefill offer price field and show hint "Abonelik sabit fiyatı — teyit edin".
 
-In `renderDoneOrders`, extract each row into a small local `DoneOrderRow` component so it can call `useOrderReviews(o.id)` and `useAuthUserId()` at row scope (mirrors the pattern used in `farmer.orders.index.tsx`'s `OrderCard`).
+## 5) Buyer addresses UI (`buyer.account.tsx`)
+- New "Adreslerim" card: list rows (label · address · city, default rozeti), inline "Ekle" form (label/address/city), "Varsayılan yap" and "Sil" actions. No integration into offer flow yet.
 
-- Compute `myReview = reviews.find(r => r.reviewerId === userId && r.reviewerRole === 'buyer')`.
-- If `myReview` exists: render a small inline `⭐ Değerlendirdiniz` chip with `<RatingStars rating={myReview.rating} />` (imported from `@/components/hasat/ReviewModal`).
-- Else if `o.producerId` exists: render a small `⭐ Değerlendir` button. `onClick` calls `e.stopPropagation()` (so the row's navigate does not fire) and opens `ReviewModal` locally with `reviewerRole: "buyer"`, `revieweeId: o.producerId`, `orderId: o.id`. Success calls `useCreateReview` mutation, toasts, and closes.
-- Place the chip/button in the existing bottom row (near the price), keeping visual density consistent with the rest of the list.
+## 6) Buyer notification prefs (new route)
+- `src/routes/buyer.settings.notifs.tsx` mirroring `farmer.settings.notifs.tsx` structure (same EVENTS/CHANNELS, same hooks) with `BuyerHeader` and back link `/buyer/account`.
+- `buyer.account.tsx`: add "Bildirim Tercihleri" row (Bell icon + ChevronRight) → `/buyer/settings/notifs`.
 
-## 3. Farmer-visible buyer rating badge
+## 7) Toast feedback on notif toggles
+- In both `farmer.settings.notifs.tsx` and new buyer route, wrap `update.mutate(...)` with `mutateAsync` + `toast.success("Tercih güncellendi")` / `toast.error(err.message)`.
 
-Small presentational helper (co-located in `farmer.orders.index.tsx` since it is only used there for now):
-
-```tsx
-function BuyerRatingBadge({ buyerId }: { buyerId?: string }) {
-  const { data } = useBuyerRatingSummary(buyerId);
-  if (!buyerId || !data || !data.reviewCount || data.avgRating == null) return null;
-  return <span className="text-[11px] text-hmuted">⭐ {data.avgRating.toFixed(1)} ({data.reviewCount})</span>;
-}
-```
-
-Render `<BuyerRatingBadge buyerId={...} />` next to the buyer name in:
-- `OfferCard` (offer.buyerId)
-- `OrderCard` (order.buyerId)
-
-Renders nothing when there are no reviews — no fake defaults.
+## 8) `buyer.account.tsx` stale-data fix
+- Replace `useHasat` reads for name/phone/premium with `useProfile()`:
+  - Header name → `profile.name ?? "Alıcı"`, initial from `profile.name`.
+  - Location → `profile.city`.
+  - Phone → `profile.phone`.
+  - Premium badge → `isEffectivelyPremium(profile)`.
+- Keep `user?.company?.type` label and `user?.crops` only if profile has no equivalent (they don't exist on `ProfileRow`, so drop the "İlgi Alanları" block for now — no fake source).
+- Keep `useHasat` only for `reset()` on logout.
 
 ## Verification
-
-- Manual sanity: buyer completes → sees "Değerlendir" chip in list; after review, chip flips to "Değerlendirdiniz ⭐⭐⭐⭐⭐". Farmer sees `⭐ x/5 (n)` next to buyer name once at least one farmer→buyer review exists. Reviewee gets a `notifications` row.
-- `tsgo` at the end.
+- `tsgo` typecheck.
+- Manual: create address, mark default (old default clears); reorder from a completed order into offer page with prefilled qty; subscription card lists farmer's live listings; toggle a notif → toast; buyer account shows real profile.

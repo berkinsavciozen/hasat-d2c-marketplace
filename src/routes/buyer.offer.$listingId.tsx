@@ -17,6 +17,14 @@ import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/buyer/offer/$listingId")({
   head: () => ({ meta: [{ title: "Teklif Ver — Hasat" }] }),
+  validateSearch: (s: Record<string, unknown>): { qty?: number; suggestedPrice?: number } => {
+    const out: { qty?: number; suggestedPrice?: number } = {};
+    const q = Number(s.qty);
+    if (Number.isFinite(q) && q > 0) out.qty = q;
+    const p = Number(s.suggestedPrice);
+    if (Number.isFinite(p) && p > 0) out.suggestedPrice = p;
+    return out;
+  },
   component: MakeOffer,
   notFoundComponent: () => <div className="p-8 text-center text-hmuted">Ürün bulunamadı.</div>,
 });
@@ -35,6 +43,7 @@ function MakeOffer() {
   const { data: stock } = useListingStock(listingId);
   const { data: provenance = [] } = useListingProvenanceEntries(listingId);
 
+  const search = Route.useSearch();
 
   const [qty, setQty] = useState(0);
   const [price, setPrice] = useState(0);
@@ -44,10 +53,14 @@ function MakeOffer() {
 
   useEffect(() => {
     if (listing) {
-      setQty((q) => (q === 0 ? listing.minOrder : q));
-      setPrice((p) => (p === 0 ? listing.pricePerUnit : p));
+      const targetQty = search.qty
+        ? Math.max(listing.minOrder, Math.min(listing.quantity, search.qty))
+        : listing.minOrder;
+      const targetPrice = search.suggestedPrice ?? listing.pricePerUnit;
+      setQty((q) => (q === 0 ? targetQty : q));
+      setPrice((p) => (p === 0 ? targetPrice : p));
     }
-  }, [listing]);
+  }, [listing, search.qty, search.suggestedPrice]);
 
   if (isLoading) return <div className="p-8"><LoadingDots /></div>;
   if (!listing) throw notFound();
@@ -55,6 +68,7 @@ function MakeOffer() {
 
   const total = qty * price;
   const negotiated = price !== listing.pricePerUnit;
+  const suggestedFromLock = search.suggestedPrice != null && price === search.suggestedPrice;
   const belowMin = qty < listing.minOrder;
 
   const submit = () => {
@@ -129,6 +143,11 @@ function MakeOffer() {
               className="flex-1 bg-transparent outline-none text-base" style={{ fontFamily: "Courier New, monospace" }} />
             <span className="text-xs text-hmuted">/{listing.unit}</span>
           </div>
+          {suggestedFromLock && (
+            <div className="mt-1 text-[11px]" style={{ color: "var(--gold)" }}>
+              🔒 Abonelik sabit fiyatı öneriliyor — teyit edin.
+            </div>
+          )}
         </div>
 
         <div className="rounded-2xl p-4" style={{ background: "color-mix(in oklab, var(--sage) 18%, transparent)" }}>

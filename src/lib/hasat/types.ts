@@ -182,6 +182,17 @@ export interface Order {
   cancelReason?: string;
   cancelledAt?: string;
   disputeWindowExpiresAt?: string;
+  listingId?: string;
+  listingActive?: boolean;
+}
+
+export interface BuyerAddress {
+  id: string;
+  label: string;
+  address: string;
+  city: string;
+  isDefault: boolean;
+  createdAt: string;
 }
 
 export interface Review {
