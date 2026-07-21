@@ -1817,12 +1817,47 @@ export type Database = {
           },
         ]
       }
+      v_kpi_buyer_activation: {
+        Row: {
+          buyers_with_order: number | null
+          median_days_to_first_order: number | null
+          total_buyers: number | null
+        }
+        Relationships: []
+      }
+      v_kpi_buyer_aov_segment: {
+        Row: {
+          aov: number | null
+          realized_order_count: number | null
+          segment: string | null
+        }
+        Relationships: []
+      }
+      v_kpi_buyer_gmv_retention: {
+        Row: {
+          cohort_buyers: number | null
+          cohort_month: string | null
+          m0_gmv_total: number | null
+          m1_gmv_retention_pct: number | null
+          m1_gmv_total: number | null
+        }
+        Relationships: []
+      }
       v_kpi_buyer_repeat_rate: {
         Row: {
           active_buyers: number | null
           repeat_buyer_rate_pct: number | null
           repeat_buyers: number | null
           segment: string | null
+        }
+        Relationships: []
+      }
+      v_kpi_buyer_seller_ratio: {
+        Row: {
+          active_buyer_count: number | null
+          active_farmer_count: number | null
+          buyer_to_seller_ratio: number | null
+          region: string | null
         }
         Relationships: []
       }
@@ -1835,6 +1870,51 @@ export type Database = {
         }
         Relationships: []
       }
+      v_kpi_farmer_activation: {
+        Row: {
+          farmers_with_listing: number | null
+          median_hours_to_first_listing: number | null
+          pct_listing_within_7d: number | null
+          total_farmers: number | null
+        }
+        Relationships: []
+      }
+      v_kpi_farmer_gmv: {
+        Row: {
+          active_farmers: number | null
+          gmv_per_active_farmer: number | null
+          month: string | null
+          total_gmv: number | null
+        }
+        Relationships: []
+      }
+      v_kpi_farmer_retention: {
+        Row: {
+          cohort_farmers: number | null
+          cohort_month: string | null
+          m1_retention_pct: number | null
+          m3_retention_pct: number | null
+          retained_m1: number | null
+          retained_m3: number | null
+        }
+        Relationships: []
+      }
+      v_kpi_farmer_sellthrough: {
+        Row: {
+          eligible_listings: number | null
+          sellthrough_30d_pct: number | null
+          sold_within_30d: number | null
+        }
+        Relationships: []
+      }
+      v_kpi_farmer_verified_pct: {
+        Row: {
+          active_farmer_count: number | null
+          verified_active_farmer_count: number | null
+          verified_pct: number | null
+        }
+        Relationships: []
+      }
       v_kpi_full_acceptance_rate: {
         Row: {
           delivered_or_completed_orders: number | null
@@ -1844,12 +1924,38 @@ export type Database = {
         }
         Relationships: []
       }
+      v_kpi_horeca_order_frequency: {
+        Row: {
+          avg_weekly_order_frequency: number | null
+          horeca_buyers_with_2plus_orders: number | null
+          median_weekly_order_frequency: number | null
+        }
+        Relationships: []
+      }
+      v_kpi_listing_offer_rate: {
+        Row: {
+          eligible_listings: number | null
+          listings_with_offer_14d: number | null
+          median_hours_to_first_offer: number | null
+          offer_rate_14d_pct: number | null
+        }
+        Relationships: []
+      }
       v_kpi_north_star: {
         Row: {
           dispute_free_gmv: number | null
           dispute_free_share_pct: number | null
           month: string | null
           total_gmv: number | null
+        }
+        Relationships: []
+      }
+      v_kpi_offer_conversion: {
+        Row: {
+          conversion_pct: number | null
+          converted_offers: number | null
+          median_hours_offer_to_order: number | null
+          total_offers: number | null
         }
         Relationships: []
       }
@@ -1909,6 +2015,24 @@ export type Database = {
           },
         ]
       }
+      v_kpi_price_vs_market: {
+        Row: {
+          crop: string | null
+          hasat_avg_price: number | null
+          market_avg_price: number | null
+          month: string | null
+          price_diff_pct: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "price_history_crop_fkey"
+            columns: ["crop"]
+            isOneToOne: false
+            referencedRelation: "crop_config"
+            referencedColumns: ["crop"]
+          },
+        ]
+      }
       v_kpi_review_avg: {
         Row: {
           avg_rating: number | null
@@ -1932,6 +2056,14 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      v_kpi_supply_density: {
+        Row: {
+          dense_cell_pct: number | null
+          dense_cells: number | null
+          total_cells: number | null
+        }
+        Relationships: []
       }
     }
     Functions: {
