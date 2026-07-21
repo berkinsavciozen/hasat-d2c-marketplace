@@ -44,13 +44,37 @@ Deno.serve(async (req) => {
       } catch (e) { console.error("view query threw", e); return null; }
     };
 
-    const [northStar, disputeRate, fullAcc, repeat, reviewAvg, orderBase] = await Promise.all([
+    const first = <T,>(arr: T[] | null): T | null => (arr && arr.length > 0 ? arr[0] : null);
+
+    const [
+      northStar, disputeRate, fullAcc, repeat, reviewAvg, orderBase,
+      farmerActivation, listingOfferRate, farmerSellthrough, farmerVerifiedPct,
+      buyerActivation, horecaOrderFrequency, supplyDensity, offerConversion,
+      farmerGmv, farmerRetention, buyerAovSegment, buyerGmvRetention,
+      buyerSellerRatio, priceVsMarket,
+    ] = await Promise.all([
       safe(supabase.from("v_kpi_north_star").select("*").order("month", { ascending: true })),
       safe(supabase.from("v_kpi_dispute_rate").select("*").order("month", { ascending: true })),
       safe(supabase.from("v_kpi_full_acceptance_rate").select("*").order("month", { ascending: true })),
       safe(supabase.from("v_kpi_buyer_repeat_rate").select("*")),
       safe(supabase.from("v_kpi_review_avg").select("*").is("reviewee_id", null)),
       safe(supabase.from("v_kpi_order_base").select("amount,is_realized_sale").eq("is_realized_sale", true)),
+      // Tek satırlı özet view'lar
+      safe(supabase.from("v_kpi_farmer_activation").select("*")),
+      safe(supabase.from("v_kpi_listing_offer_rate").select("*")),
+      safe(supabase.from("v_kpi_farmer_sellthrough").select("*")),
+      safe(supabase.from("v_kpi_farmer_verified_pct").select("*")),
+      safe(supabase.from("v_kpi_buyer_activation").select("*")),
+      safe(supabase.from("v_kpi_horeca_order_frequency").select("*")),
+      safe(supabase.from("v_kpi_supply_density").select("*")),
+      safe(supabase.from("v_kpi_offer_conversion").select("*")),
+      // Çok satırlı
+      safe(supabase.from("v_kpi_farmer_gmv").select("*").order("month", { ascending: true })),
+      safe(supabase.from("v_kpi_farmer_retention").select("*").order("cohort_month", { ascending: true })),
+      safe(supabase.from("v_kpi_buyer_aov_segment").select("*")),
+      safe(supabase.from("v_kpi_buyer_gmv_retention").select("*").order("cohort_month", { ascending: true })),
+      safe(supabase.from("v_kpi_buyer_seller_ratio").select("*")),
+      safe(supabase.from("v_kpi_price_vs_market").select("*")),
     ]);
 
     const rows = (orderBase as Array<{ amount: number | string | null }> | null) ?? [];
@@ -66,6 +90,22 @@ Deno.serve(async (req) => {
       buyer_repeat_rate: repeat,
       review_avg: reviewAvg,
       totals,
+      // Tek satırlı: ilk satır objesi olarak dön
+      farmer_activation: first(farmerActivation as unknown[] | null),
+      listing_offer_rate: first(listingOfferRate as unknown[] | null),
+      farmer_sellthrough: first(farmerSellthrough as unknown[] | null),
+      farmer_verified_pct: first(farmerVerifiedPct as unknown[] | null),
+      buyer_activation: first(buyerActivation as unknown[] | null),
+      horeca_order_frequency: first(horecaOrderFrequency as unknown[] | null),
+      supply_density: first(supplyDensity as unknown[] | null),
+      offer_conversion: first(offerConversion as unknown[] | null),
+      // Çok satırlı: array
+      farmer_gmv: farmerGmv,
+      farmer_retention: farmerRetention,
+      buyer_aov_segment: buyerAovSegment,
+      buyer_gmv_retention: buyerGmvRetention,
+      buyer_seller_ratio: buyerSellerRatio,
+      price_vs_market: priceVsMarket,
     }), { status: 200, headers: { ...CORS, "content-type": "application/json" } });
   } catch (e) {
     console.error(e);
