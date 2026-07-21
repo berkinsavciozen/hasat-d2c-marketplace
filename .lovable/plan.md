@@ -1,57 +1,76 @@
-# Admin KPI Dashboard Planı
+# Admin KPI Dashboard — 14 Yeni View Entegrasyonu
 
-Kurucu-only iç araç. Mevcut farmer/buyer akışlarına, RLS'ye ve view tanımlarına dokunulmaz.
+Mevcut 6 view/bölüm ve `x-admin-key` mantığı korunacak; sadece ekleme yapılacak.
 
-## 1) Secret
-- `ADMIN_DASHBOARD_KEY` = `Xu1qlPBdOySu8dNjy22-mUi5-zAdfGyHZBBD65NZyQw` olarak Supabase secret'larına eklenir (`secrets--set_secret`).
+## 1) Edge Function: `supabase/functions/admin-kpi/index.ts`
 
-## 2) Edge Function: `admin-kpi`
-- Yeni `supabase/functions/admin-kpi/index.ts` + `supabase/config.toml`'a `verify_jwt = false` girişi.
-- Service role client (`SUPABASE_URL` + `SUPABASE_SERVICE_ROLE_KEY` env'den).
-- `x-admin-key` header'ı `Deno.env.get("ADMIN_DASHBOARD_KEY")` ile karşılaştırılır (timing-safe); yoksa/hatalıysa 401.
-- CORS: `*` origin, `x-admin-key, content-type` header'ları, `GET, OPTIONS` metodları. OPTIONS için 204.
-- Tüm view'lar paralel `Promise.all` ile sorgulanır:
-  - `v_kpi_north_star` → month asc
-  - `v_kpi_dispute_rate` → month asc
-  - `v_kpi_full_acceptance_rate` → month asc
-  - `v_kpi_buyer_repeat_rate`
-  - `v_kpi_review_avg` → `.is('reviewee_id', null)` filtre
-  - `v_kpi_order_base` → `.eq('is_realized_sale', true)` → JS'te count + `sum(gmv)` reduce (all-time totals)
-- Response şekli:
-  ```json
-  {
-    "north_star": [...],
-    "dispute_rate": [...],
-    "full_acceptance_rate": [...],
-    "buyer_repeat_rate": [...],
-    "review_avg": [...],
-    "totals": { "order_count": n, "total_gmv": n }
-  }
-  ```
-- Herhangi bir view sorgusu hata verirse ilgili alan `null` döner (dashboard kısmi göster); üst hata olursa 500 + `{ error }`.
-- Deploy: `supabase--deploy_edge_functions ["admin-kpi"]`.
+`Promise.all` dizisine 14 yeni `safe(supabase.from(...).select("*"))` çağrısı eklenir. Çok satırlı olanlarda anlamlı sıralama:
 
-## 3) Frontend: `/admin/kpi`
-Yeni dosya `src/routes/admin.kpi.tsx` (TanStack Start flat route).
+- `v_kpi_farmer_gmv` → `.order("month", { ascending: true })`
+- `v_kpi_farmer_retention` → `.order("cohort_month", { ascending: true })`
+- `v_kpi_buyer_gmv_retention` → `.order("cohort_month", { ascending: true })`
+- `v_kpi_buyer_aov_segment`, `v_kpi_buyer_seller_ratio`, `v_kpi_price_vs_market` → default sıra
+- Tek satırlı 8 view → filtresiz `select("*")`
 
-- `__root` altında ama farmer/buyer shell'inin dışında; hiçbir nav/menüye eklenmez.
-- `head()`: title "Admin KPI", `robots: noindex`.
-- State: `key` (string), `submittedKey` (string | null). localStorage/sessionStorage yok.
-- Form: tek `<input type="password">` + "Gir" butonu → `setSubmittedKey(key)`.
-- Fetch: `submittedKey` set olunca `useQuery(['admin-kpi', submittedKey], …)`:
-  - `supabase.functions.invoke("admin-kpi", { headers: { "x-admin-key": submittedKey }, method: "GET" })`; 401 gelirse toast "Hatalı anahtar" + `setSubmittedKey(null)`.
-- Render (başarılıysa):
-  a. 3 büyük KPI kartı (`StatCard`): Toplam GMV (`totals.total_gmv`, `formatTRY`), Bu ayki ihtilafsız pay %, Bu ayki tam kabul %. "Bu ay" = sıralı dizideki son satır.
-  b. North Star trend: recharts `LineChart` — X: month, iki `Line` (`total_gmv`, `dispute_free_gmv`, ₺ ekseni).
-  c. Dispute & Full acceptance: tek `LineChart`, ay bazında iki `Line` (`dispute_rate_pct`, `full_acceptance_rate_pct`, % ekseni 0-100).
-  d. Buyer repeat rate: `BarChart` — segment adı TR sözlüğüyle map (`bireysel/restoran/otel/organik_market/ihracatçı/genel`), Y ekseninde `repeat_buyer_rate_pct`.
-  e. Review avg: `SectionCard` içinde küçük kart listesi — role TR ("Çiftçi"/"Alıcı"/"Genel"), `avg_rating` (1 desimal) + `review_count`.
-- Boş dizi/`null` alanlarda "Henüz veri yok" placeholder; grafik render edilmez.
-- `recharts` zaten shadcn ile yüklü; ek paket yok.
+Response JSON'a eklenecek yeni key'ler (view adı → key):
 
-## 4) Doğrulama
-- `bunx tsgo --noEmit` temiz.
-- `supabase--curl_edge_functions` ile hem yanlış hem doğru `x-admin-key` denenir (401 vs 200 doğrulanır).
+```
+farmer_activation, listing_offer_rate, farmer_sellthrough, farmer_verified_pct,
+buyer_activation, horeca_order_frequency, supply_density, offer_conversion,
+farmer_gmv, farmer_retention, buyer_aov_segment, buyer_gmv_retention,
+buyer_seller_ratio, price_vs_market
+```
+
+Tek satırlı özet view'lar için edge function düzeyinde `?.[0] ?? null` ile ilk satır çıkarılıp döner (frontend'de tekrar `.[0]` gerekmesin). Çok satırlı olanlar array olarak döner. Hata → `safe()` `null` yutar.
+
+## 2) Frontend: `src/routes/admin.kpi.tsx`
+
+Mevcut 6 bölüm "Genel" sekmesinde kalır; üstte 4 sekmeli basit tab bar eklenir:
+
+```
+[ Genel | Çiftçi | Alıcı | Platform ]
+```
+
+`useState<"genel"|"ciftci"|"alici"|"platform">("genel")` ile geçiş. Aktif sekme sadece kendi bölümlerini render eder (koşullu render, hepsini DOM'da tutmaya gerek yok).
+
+TAM kolon adları birebir kullanılacak — önceki `gmv` bug'ı tekrarlanmayacak.
+
+### Çiftçi sekmesi
+- 4 `StatCard`:
+  - Aktivasyon: `farmer_activation.median_hours_to_first_listing` sa + `pct_listing_within_7d` %
+  - İlan→Teklif: `listing_offer_rate.offer_rate_14d_pct` % + `median_hours_to_first_offer` sa
+  - Sell-through 30g: `farmer_sellthrough.sellthrough_30d_pct` %
+  - Doğrulanmış üretici: `farmer_verified_pct.verified_pct` % (`verified_active_farmer_count`/`active_farmer_count`)
+- `SectionCard` "Aylık GMV / Aktif Çiftçi" → `LineChart` (X: `month`, Y: `gmv_per_active_farmer`, ₺ ekseni)
+- `SectionCard` "Kohort Retention (M1/M3)" → basit tablo (`cohort_month`, `cohort_farmers`, `m1_retention_pct`, `m3_retention_pct`)
+
+### Alıcı sekmesi
+- 3 `StatCard`:
+  - Aktivasyon medyan gün: `buyer_activation.median_days_to_first_order`
+  - HoReCa haftalık sıklık: `horeca_order_frequency.median_weekly_order_frequency` (alt satırda avg)
+  - HoReCa 2+ siparişli alıcı sayısı: `horeca_order_frequency.horeca_buyers_with_2plus_orders`
+- `SectionCard` "Segment AOV" → `BarChart` (`buyer_aov_segment.filter(r => r.segment !== 'genel')`, mevcut `SEGMENT_LABELS`, Y: `aov`, ₺)
+- `SectionCard` "M0→M1 GMV Retention" → tablo (`cohort_month`, `cohort_buyers`, `m0_gmv_total`, `m1_gmv_total`, `m1_gmv_retention_pct`)
+
+### Platform sekmesi
+- 3 `StatCard`:
+  - Teklif→Sipariş: `offer_conversion.conversion_pct` % + `median_hours_offer_to_order` sa
+  - Tedarik yoğunluğu (il×ürün): `supply_density.dense_cell_pct` % (`dense_cells`/`total_cells`)
+  - Toplam teklif: `offer_conversion.total_offers`
+- `SectionCard` "Alıcı:Satıcı Oranı (il)" → `BarChart` (`buyer_seller_ratio.filter(r => r.region !== 'genel')`, Y: `buyer_to_seller_ratio`)
+- `SectionCard` "Hal Fiyatı Karşılaştırması" → tablo (`crop`, `month`, `hasat_avg_price`, `market_avg_price`, `price_diff_pct`). Boşsa özel not: "Henüz veri yok — yalnızca İzmir pilot ürünlerinde (domates/elma/patates) satır oluşur."
+
+Tüm array/null durumları için mevcut `EmptyState`. `SEGMENT_LABELS` yeniden kullanılır. `₺` biçimlendirme `formatTRY`, `%` için mevcut `fmtPct`.
+
+## 3) Doğrulama
+
+- `supabase--deploy_edge_functions ["admin-kpi"]`
+- Doğru `x-admin-key` ile `supabase--curl_edge_functions` GET
+- Response body'sinden:
+  - Tek satırlı 8 alanın (`farmer_activation`, `listing_offer_rate`, ...) obje olarak dolu geldiği gösterilir
+  - Çok satırlı 6 alanın array uzunluğu + ilk satırı örnek olarak yapıştırılır (özellikle `farmer_gmv`, `farmer_retention`, `buyer_aov_segment`, `buyer_seller_ratio`)
+  - `price_vs_market` boşsa boş array olarak raporlanır (bug değil)
+- `bunx tsgo --noEmit` temiz
 
 ## Dokunulmayacaklar
-Mevcut farmer/buyer route'ları, navigasyon, RLS, `v_kpi_*` view tanımları, diğer edge function'lar.
+Mevcut 6 view'a bağlı bölümler (Genel sekmesine taşınacak ama JSX değiştirilmeyecek), `x-admin-key` doğrulama, CORS, farmer/buyer route'ları, RLS, view tanımları.
