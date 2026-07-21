@@ -166,6 +166,7 @@ export interface Order {
   producerId: string;
   producerName: string;
   producerPhone?: string;
+  buyerId?: string;
   crop: string;
   quantity: number;
   unit: "g" | "kg" | "L";
@@ -181,6 +182,22 @@ export interface Order {
   cancelReason?: string;
   cancelledAt?: string;
   disputeWindowExpiresAt?: string;
+}
+
+export interface Review {
+  id: string;
+  orderId: string;
+  reviewerId: string;
+  revieweeId: string;
+  reviewerRole: "farmer" | "buyer";
+  rating: number;
+  comment: string | null;
+  createdAt: string;
+}
+
+export interface FarmerRatingSummary {
+  avgRating: number | null;
+  reviewCount: number;
 }
 
 export interface Dispute {
