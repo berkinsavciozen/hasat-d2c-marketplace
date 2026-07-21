@@ -356,6 +356,7 @@ function Hero({ onRole }: { onRole: (r: "farmer" | "buyer") => void }) {
             <ShieldCheck className="w-3.5 h-3.5" /> Türkiye'nin izlenebilir tarım pazarı
           </div>
           <h1 className="mt-5 font-serif leading-[1.05] text-4xl sm:text-5xl md:text-6xl">
+            <span className="sr-only">Hasat — Specialty Üretici-Alıcı Platformu. </span>
             Ürününü değil,{" "}
             <span style={{ color: "#CFE8D3" }}>güveni</span>{" "}
             satıyoruz.

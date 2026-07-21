@@ -1,0 +1,11 @@
+# Hasat
+
+> Türkiye'nin izlenebilir tarım pazarı — çiftçileri doğrudan restoran ve perakendecilere bağlayan, fotoğrafla belgelenmiş hasat kayıtları ve şeffaf fiyat pazarlığı sunan platform.
+
+## Pages
+
+- [Ana Sayfa](/): Platformun tanıtımı, çiftçi ve alıcılar için genel bakış.
+- [Katıl](/join): Yeni kullanıcı kaydı ve rol seçimi.
+- [Giriş](/login): Mevcut kullanıcılar için oturum açma.
+- [Gizlilik](/privacy): Gizlilik politikası.
+- [Şartlar](/terms): Kullanım koşulları ve rekabet hukuku uyumu.

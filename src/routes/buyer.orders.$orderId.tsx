@@ -64,7 +64,7 @@ function OrderTracker() {
   return (
     <div>
       <div className="px-4 pt-5 pb-4 md:px-8 flex items-center gap-3" style={{ background: "var(--dark)", color: "var(--hwhite)" }}>
-        <Link to="/buyer/orders" className="grid h-9 w-9 place-items-center rounded-full bg-white/10">
+        <Link to="/buyer/orders" aria-label="Geri" className="grid h-9 w-9 place-items-center rounded-full bg-white/10">
           <ArrowLeft className="h-4 w-4" />
         </Link>
         <div>
