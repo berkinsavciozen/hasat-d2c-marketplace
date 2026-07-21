@@ -20,7 +20,12 @@ const EVENTS: EventDef[] = [
   { label: "Hasat Zamanı", cols: { whatsapp: "harvest_time_whatsapp", push: "harvest_time_push", sms: "harvest_time_sms" } },
   { label: "Teklif Kabul Edildi", cols: { sms: "offer_accepted_sms" } },
   { label: "Ödeme Onaylandı", cols: { sms: "payment_confirmed_sms" } },
+  { label: "Kargoya Verildi", cols: { sms: "order_shipped_sms" } },
+  { label: "Teslim Edildi", cols: { sms: "order_delivered_sms" } },
+  { label: "Sipariş İptal Edildi", cols: { sms: "order_cancelled_sms" } },
+  { label: "İhtilaf Açıldı", cols: { sms: "dispute_opened_sms" } },
   { label: "Topluluk", cols: { push: "community_push" } },
+
 ];
 
 const CHANNELS: { key: Channel; label: string }[] = [
