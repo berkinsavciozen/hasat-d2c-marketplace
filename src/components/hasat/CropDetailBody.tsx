@@ -155,12 +155,12 @@ export function CropDetailBody({ crop }: { crop: string }) {
               <div className="flex flex-wrap items-baseline gap-3">
                 <div>
                   <div className="text-[10px] text-hmuted">Ortalama</div>
-                  <div className="font-mono text-xl font-semibold">{formatTRY(official.avgPrice)}</div>
+                  <div className="font-mono text-xl font-semibold">{priceWithUnit(official.avgPrice, unit)}</div>
                 </div>
               </div>
               {officialSeries && officialSeries.length >= 2 && (
                 <div className="mt-3">
-                  <PriceChart data={officialSeries} color="var(--gold)" />
+                  <PriceChart data={officialSeries} color="var(--gold)" unit={unit} />
                 </div>
               )}
             </SectionCard>
@@ -175,13 +175,13 @@ export function CropDetailBody({ crop }: { crop: string }) {
                   <div className="flex flex-wrap items-baseline gap-3">
                     <div>
                       <div className="text-[10px] text-hmuted">Ortalama</div>
-                      <div className="font-mono text-xl font-semibold">{formatTRY(src.avgPrice)}</div>
+                      <div className="font-mono text-xl font-semibold">{priceWithUnit(src.avgPrice, unit)}</div>
                     </div>
                   </div>
                 )}
                 {ser.length >= 2 && (
                   <div className="mt-3">
-                    <PriceChart data={ser} color="var(--sage)" />
+                    <PriceChart data={ser} color="var(--sage)" unit={unit} />
                   </div>
                 )}
               </SectionCard>
