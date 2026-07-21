@@ -372,6 +372,26 @@ function OrderCard({ order, muted }: { order: Order; muted?: boolean }) {
         </a>
       )}
 
+      {canReview && (
+        <div className="mt-3 border-t pt-3">
+          {myReview ? (
+            <div className="flex items-center gap-2 text-xs text-hmuted">
+              <RatingStars rating={myReview.rating} size={14} />
+              <span>Alıcıyı değerlendirdiniz ({myReview.rating}/5)</span>
+            </div>
+          ) : (
+            <button
+              onClick={() => setReviewOpen(true)}
+              className="inline-flex items-center gap-1.5 rounded-lg min-h-[40px] px-3 py-2 text-xs font-medium"
+              style={{ background: "color-mix(in oklab, var(--gold) 15%, transparent)", color: "var(--dark)" }}
+            >
+              <Star className="h-3.5 w-3.5" style={{ color: "var(--gold)" }} /> Alıcıyı Değerlendir
+            </button>
+          )}
+        </div>
+      )}
+
+
       <Dialog open={shipOpen} onOpenChange={setShipOpen}>
         <DialogContent>
           <DialogHeader><DialogTitle>Kargoya Ver</DialogTitle></DialogHeader>
