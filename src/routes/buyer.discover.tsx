@@ -203,6 +203,13 @@ function Discover() {
                 <div className="text-6xl mb-3">🌾</div>
                 <div className="font-serif text-lg">Sonuç bulunamadı</div>
                 <div className="text-sm text-hmuted mt-1">Farklı bir ürün veya üretici adı deneyin.</div>
+                <button
+                  onClick={() => setRequestOpen(true)}
+                  className="mt-4 inline-flex items-center rounded-full px-4 py-2 text-xs font-medium min-h-[44px]"
+                  style={{ background: "var(--saffron)", color: "#fff" }}
+                >
+                  Bu ürünü talep et
+                </button>
               </div>
             ) : (
               <div className="rounded-2xl border border-dashed p-8 text-center text-hmuted">Henüz aktif ilan yok.</div>
