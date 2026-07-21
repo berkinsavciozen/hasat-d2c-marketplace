@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
 
 import { FarmerHeader } from "./farmer";
-import { useFarmerOffers, useUpdateOfferStatus, useFarmerOrders, useCounterOffer, useConfirmTransferReceived, useMarkShipped, useCancelOrder } from "@/lib/hasat/queries";
+import { useFarmerOffers, useUpdateOfferStatus, useFarmerOrders, useCounterOffer, useConfirmTransferReceived, useMarkShipped, useCancelOrder, useOrderReviews, useCreateReview, useAuthUserId } from "@/lib/hasat/queries";
 import { WaitingBanner } from "@/components/hasat/WaitingBanner";
 import { LoadingDots } from "@/components/hasat/LoadingDots";
 import { formatTRY, formatCrop } from "@/lib/hasat/format";
@@ -16,7 +16,8 @@ import type { Offer, BuyerType, Order } from "@/lib/hasat/types";
 import { NegotiationThread } from "@/components/hasat/NegotiationThread";
 import { statusVisual, statusStyle, canAccept } from "@/lib/hasat/offer-status";
 import { whatsappUrl } from "@/lib/hasat/whatsapp";
-import { MessageCircle } from "lucide-react";
+import { ReviewModal, RatingStars } from "@/components/hasat/ReviewModal";
+import { MessageCircle, Star } from "lucide-react";
 
 export const Route = createFileRoute("/farmer/orders/")({
   head: () => ({ meta: [{ title: "Siparişler — Hasat" }] }),
