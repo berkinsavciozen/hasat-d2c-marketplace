@@ -11,7 +11,7 @@ import {
   useCreatePriceAlert,
   useTogglePriceAlert,
 } from "@/lib/hasat/queries";
-import { formatCrop, formatTRY } from "@/lib/hasat/format";
+import { formatCrop, formatTRY, priceWithUnit } from "@/lib/hasat/format";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 const RANGES = [
