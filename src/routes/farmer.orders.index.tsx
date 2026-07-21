@@ -293,16 +293,47 @@ function CounterModal({ open, onOpenChange, offer, onSubmit, pending }: {
 }
 
 function OrderCard({ order, muted }: { order: Order; muted?: boolean }) {
-  const STATUS_TR: Record<string, string> = { preparing: "Hazırlanıyor", shipped: "Kargoda", delivered: "Teslim Edildi" };
+  const STATUS_TR: Record<string, string> = { preparing: "Hazırlanıyor", shipped: "Kargoda", delivered: "Teslim Edildi", disputed: "İhtilaflı", cancelled: "İptal Edildi" };
   const wa = whatsappUrl(order.producerPhone, `Merhaba, ${order.code} numaralı sipariş hakkında yazıyorum.`);
+  const shipMut = useMarkShipped();
+  const cancelMut = useCancelOrder();
+  const [shipOpen, setShipOpen] = useState(false);
+  const [cancelOpen, setCancelOpen] = useState(false);
+  const [tracking, setTracking] = useState("");
+  const [carrier, setCarrier] = useState("");
+  const [cancelReason, setCancelReason] = useState("");
+
+  const onShip = async () => {
+    try {
+      await shipMut.mutateAsync({ orderId: order.id, trackingNumber: tracking.trim(), carrier: carrier.trim() });
+      toast.success("Sipariş kargoya verildi olarak işaretlendi.");
+      setShipOpen(false);
+    } catch (e: any) { toast.error(e.message ?? "İşlem başarısız"); }
+  };
+  const onCancel = async () => {
+    try {
+      await cancelMut.mutateAsync({ orderId: order.id, reason: cancelReason || undefined });
+      toast("Sipariş iptal edildi");
+      setCancelOpen(false);
+    } catch (e: any) { toast.error(e.message ?? "İşlem başarısız"); }
+  };
+
   return (
     <div className={`rounded-2xl border bg-card p-4 ${muted ? "opacity-60" : ""}`}>
       <div className="flex items-start justify-between gap-3">
         <div className="flex-1 min-w-0">
           <div className="font-mono text-xs text-hmuted">{order.code}</div>
           <div className="mt-1 font-medium truncate">{order.producerName}</div>
-          <div className="text-xs text-hmuted">{formatCrop(order.crop)} · {order.quantity} {order.unit}</div>
+          <div className="text-xs text-hmuted">{formatCrop(order.crop)} · {order.quantity} {order.unit} · {order.delivery}</div>
           <div className="mt-1.5 font-mono text-lg font-semibold">{formatTRY(order.total)}</div>
+          {order.status === "shipped" && order.trackingNumber && (
+            <div className="mt-1 text-xs text-hmuted">
+              📦 {order.carrier ?? "Kargo"} · <span className="font-mono">{order.trackingNumber}</span>
+            </div>
+          )}
+          {order.status === "cancelled" && order.cancelReason && (
+            <div className="mt-1 text-xs text-hred">İptal: {order.cancelReason}</div>
+          )}
         </div>
         <div className="flex flex-col items-end gap-1.5 shrink-0">
           <span className="rounded-full px-2.5 py-0.5 text-[11px] font-medium" style={{ background: "color-mix(in oklab, var(--sage) 22%, transparent)", color: "var(--sage)" }}>
@@ -311,6 +342,21 @@ function OrderCard({ order, muted }: { order: Order; muted?: boolean }) {
           <span className="text-[10px] text-hmuted">{STATUS_TR[order.status] ?? order.status}</span>
         </div>
       </div>
+
+      {order.status === "preparing" && (
+        <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-2">
+          <button onClick={() => setShipOpen(true)}
+            className="rounded-lg min-h-[48px] px-4 py-2.5 text-sm font-medium text-white"
+            style={{ background: "var(--saffron)" }}>
+            📦 Kargoya Ver
+          </button>
+          <button onClick={() => setCancelOpen(true)}
+            className="rounded-lg min-h-[48px] px-4 py-2.5 text-sm font-medium border border-hred/40 text-hred hover:bg-hred/5">
+            İptal Et
+          </button>
+        </div>
+      )}
+
       {wa && (
         <a href={wa} target="_blank" rel="noopener noreferrer"
           className="mt-3 inline-flex items-center justify-center gap-1.5 rounded-lg min-h-[48px] px-4 py-2 text-xs font-medium text-white w-full sm:w-auto"
@@ -318,6 +364,44 @@ function OrderCard({ order, muted }: { order: Order; muted?: boolean }) {
           <MessageCircle className="h-3.5 w-3.5" /> Alıcıya WhatsApp'tan yaz
         </a>
       )}
+
+      <Dialog open={shipOpen} onOpenChange={setShipOpen}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>Kargoya Ver</DialogTitle></DialogHeader>
+          <div className="space-y-3">
+            <div>
+              <label className="text-xs text-hmuted">Kargo firması</label>
+              <Input value={carrier} onChange={(e) => setCarrier(e.target.value)} placeholder="Yurtiçi Kargo, Aras, MNG..." />
+            </div>
+            <div>
+              <label className="text-xs text-hmuted">Takip numarası</label>
+              <Input value={tracking} onChange={(e) => setTracking(e.target.value)} className="font-mono" />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShipOpen(false)}>Vazgeç</Button>
+            <Button onClick={onShip} disabled={shipMut.isPending || !tracking.trim() || !carrier.trim()}
+              style={{ background: "var(--saffron)", color: "var(--hwhite)" }}>
+              {shipMut.isPending ? "..." : "Onayla"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={cancelOpen} onOpenChange={setCancelOpen}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>Siparişi İptal Et</DialogTitle></DialogHeader>
+          <p className="text-sm text-hmuted">Bu siparişi iptal etmek istediğinize emin misiniz? Bu işlem geri alınamaz.</p>
+          <Textarea value={cancelReason} onChange={(e) => setCancelReason(e.target.value)} rows={3} placeholder="İptal nedeni (opsiyonel)" />
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setCancelOpen(false)}>Vazgeç</Button>
+            <Button onClick={onCancel} disabled={cancelMut.isPending} variant="destructive">
+              {cancelMut.isPending ? "..." : "İptal Et"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
+
