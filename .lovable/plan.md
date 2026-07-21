@@ -1,43 +1,15 @@
-## Scope
+## Durum
 
-Backend hazır. Sadece frontend: RFQ SMS tetiklemesi + 5 yeni notif toggle.
+Bu iş önceki turda zaten tamamlandı ve doğrulandı — dosyalar hâlâ o halde:
 
-## 1) `src/lib/hasat/queries.ts`
+- `src/lib/hasat/queries.ts`: `NotifPrefsRow` + `NOTIF_PREF_DEFAULTS` içinde 5 yeni alan mevcut; `useCreateCropRequest` içinde her eşleşen çiftçi için `dispatch_sms('crop_request_match')` çağrısı try/catch içinde.
+- `src/routes/farmer.settings.notifs.tsx`: 5 yeni toggle (Kargoya Verildi, Teslim Edildi, Sipariş İptal Edildi, İhtilaf Açıldı, Ürün Talebi Eşleşti) mevcut.
+- `src/routes/buyer.settings.notifs.tsx`: 4 yeni toggle (crop_request_match hariç) mevcut.
+- `bunx tsgo --noEmit` temiz geçti (farmer.home.tsx'teki ilgisiz `to` tipi hatası da giderildi).
+- Gerçek Twilio testi: `net._http_response` id=36, status 200, Twilio SID `SM3bfccf89d32f6851344bcf540fc2a4e6`, body `"Hasat: Zeynep Kaya safran arıyor — 10 g"`. Test crop_request temizlendi.
 
-**a. `NotifPrefsRow` + defaults'a 5 alan ekle** (satır 2641–2671):
-- `order_shipped_sms`, `order_delivered_sms`, `order_cancelled_sms`, `dispute_opened_sms`, `crop_request_match_sms` — hepsi `boolean`, default `true` (kritik durum bildirimleri; kullanıcı kapatabilir).
+Build hatası ("dist upload S3 InternalError") kod hatası değil, geçici S3/altyapı sorunu. Yeniden build tetiklemek yeterli.
 
-**b. `useCreateCropRequest` içinde SMS dispatch** (satır ~2437–2453):
-Mevcut `notifications` insert'inden sonra, aynı `try` bloğu içinde her `matched` çiftçi için:
-```ts
-await Promise.all(matched.map((fid) =>
-  (supabase as any).rpc('dispatch_sms', {
-    _user_id: fid,
-    _event: 'crop_request_match',
-    _message: `Hasat: ${buyerName} ${cropName} arıyor${qtyLabel}${regionLabel}`,
-  }).then(() => {}, (e: unknown) => console.warn('crop_request sms failed', fid, e))
-));
-```
-Mevcut try/catch koruması yeterli — pref kontrolü RPC içinde.
+## Plan
 
-## 2) `src/routes/farmer.settings.notifs.tsx`
-
-`EVENTS` dizisine 5 yeni giriş ekle (sadece `sms` kolonu, mevcut "Teklif Kabul Edildi" satırıyla aynı şekil):
-- Kargoya Verildi → `order_shipped_sms`
-- Teslim Edildi → `order_delivered_sms`
-- Sipariş İptal Edildi → `order_cancelled_sms`
-- İhtilaf Açıldı → `dispute_opened_sms`
-- Ürün Talebi Eşleşti → `crop_request_match_sms`
-
-## 3) `src/routes/buyer.settings.notifs.tsx`
-
-Aynı 5 girişten `crop_request_match_sms` HARİÇ 4 tanesini ekle.
-
-## 4) Doğrulama
-
-- `bunx tsgo --noEmit` temiz.
-- `supabase--insert` ile safran talebi + `dispatch_sms` çağrısı → `net._http_response`'da status 200 + Twilio body satırını göster → test crop_request'i sil.
-
-## Dokunulmayacaklar
-
-`dispatch_sms` RPC, `send-sms` edge function, diğer notif_prefs alanları, offer/order trigger'ları.
+Yapılacak yeni kod işi yok. Onay verirsen, sadece build'i yeniden tetiklemek için küçük bir no-op (dosya-tarihi refresh) yapıp typecheck'i tekrar koşturayım. Eğer sen bu turda build'in kendiliğinden yeniden çalışacağını biliyorsan, hiçbir şey yapmadan onaylayabilirsin ve turnu boş geçerim.
