@@ -46,6 +46,8 @@ function Subscriptions() {
   const { data: subs = [], isLoading } = useMySubscriptions();
   const cancel = useCancelSubscription();
   const [pendingId, setPendingId] = useState<string | null>(null);
+  const [orderSub, setOrderSub] = useState<null | { farmerId: string; farmerName: string | null; priceLock: boolean; lockedPrice: number | null; crop: string | null }>(null);
+  const { data: farmerListings = [], isLoading: listingsLoading } = useFarmerActiveListings(orderSub?.farmerId ?? null);
 
   const onConfirmCancel = async () => {
     if (!pendingId) return;
