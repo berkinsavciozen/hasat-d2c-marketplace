@@ -2329,7 +2329,7 @@ export function usePriceHistorySeries(crop: string | null | undefined, weeks = 1
           series: mapArr(s?.series),
         }))
         .filter((s: MarketSourceSeries) => !!s.sourceCode);
-      return { hasat, official, marketSources };
+      return { hasat, official, marketSources, unit: row.unit == null ? null : String(row.unit) };
     },
   });
 }
