@@ -36,7 +36,7 @@ Aynı 5 girişten `crop_request_match_sms` HARİÇ 4 tanesini ekle.
 ## 4) Doğrulama
 
 - `bunx tsgo --noEmit` temiz.
-- Playwright veya `supabase--read_query` ile: buyer olarak safran talebi oluştur → `net._http_response` tablosunda son 1 dk içindeki `send-sms` çağrısını göster (URL + status) → oluşturulan `crop_requests` satırını sil.
+- `supabase--insert` ile safran talebi + `dispatch_sms` çağrısı → `net._http_response`'da status 200 + Twilio body satırını göster → test crop_request'i sil.
 
 ## Dokunulmayacaklar
 
