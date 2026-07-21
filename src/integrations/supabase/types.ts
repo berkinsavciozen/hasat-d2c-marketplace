@@ -298,6 +298,29 @@ export type Database = {
         }
         Relationships: []
       }
+      crop_market_sources: {
+        Row: {
+          crop: string
+          source_code: string
+        }
+        Insert: {
+          crop: string
+          source_code: string
+        }
+        Update: {
+          crop?: string
+          source_code?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "crop_market_sources_source_code_fkey"
+            columns: ["source_code"]
+            isOneToOne: false
+            referencedRelation: "market_sources"
+            referencedColumns: ["code"]
+          },
+        ]
+      }
       crop_requests: {
         Row: {
           created_at: string
@@ -676,6 +699,27 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      market_sources: {
+        Row: {
+          code: string
+          created_at: string
+          display_name: string
+          region: string | null
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          display_name: string
+          region?: string | null
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          display_name?: string
+          region?: string | null
+        }
+        Relationships: []
       }
       mcp_tool_calls: {
         Row: {
@@ -1174,6 +1218,7 @@ export type Database = {
           crop: string
           farmer_id: string | null
           id: string
+          market_source_code: string | null
           order_id: string | null
           price_per_unit: number
           recorded_date: string
@@ -1186,6 +1231,7 @@ export type Database = {
           crop: string
           farmer_id?: string | null
           id?: string
+          market_source_code?: string | null
           order_id?: string | null
           price_per_unit: number
           recorded_date: string
@@ -1198,6 +1244,7 @@ export type Database = {
           crop?: string
           farmer_id?: string | null
           id?: string
+          market_source_code?: string | null
           order_id?: string | null
           price_per_unit?: number
           recorded_date?: string
@@ -1226,6 +1273,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "public_farmer_profiles"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "price_history_market_source_code_fkey"
+            columns: ["market_source_code"]
+            isOneToOne: false
+            referencedRelation: "market_sources"
+            referencedColumns: ["code"]
           },
           {
             foreignKeyName: "price_history_order_id_fkey"

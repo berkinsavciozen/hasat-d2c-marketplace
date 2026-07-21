@@ -2220,9 +2220,24 @@ export interface PriceHistoryOfficialSegment {
   officialSourceName: string;
 }
 
+export interface MarketSourceSummary {
+  sourceCode: string;
+  displayName: string;
+  region: string | null;
+  avgPrice: number | null;
+}
+
+export interface MarketSourceSeries {
+  sourceCode: string;
+  displayName: string;
+  region: string | null;
+  series: PriceHistorySeriesPoint[];
+}
+
 export interface PriceHistorySummary {
   hasat: PriceHistoryHasatSegment;
   official: PriceHistoryOfficialSegment | null;
+  marketSources: MarketSourceSummary[];
   lastUpdated: string | null;
 }
 
@@ -2241,6 +2256,15 @@ export function usePriceHistorySummary(crop: string | null | undefined) {
       if (!row) return null;
       const h = row.hasat_data ?? {};
       const o = row.official_data ?? null;
+      const rawSources = Array.isArray(row.market_sources) ? row.market_sources : [];
+      const marketSources: MarketSourceSummary[] = rawSources
+        .map((s: any) => ({
+          sourceCode: String(s?.source_code ?? ""),
+          displayName: String(s?.display_name ?? s?.source_code ?? "Kaynak"),
+          region: s?.region == null ? null : String(s.region),
+          avgPrice: s?.avg_price == null ? null : Number(s.avg_price),
+        }))
+        .filter((s: MarketSourceSummary) => !!s.sourceCode);
       return {
         hasat: {
           insufficientData: !!h.insufficient_data,
@@ -2254,6 +2278,7 @@ export function usePriceHistorySummary(crop: string | null | undefined) {
               officialSourceName: String(o.official_source_name ?? "Resmi kaynak"),
             }
           : null,
+        marketSources,
         lastUpdated: row.last_updated ?? null,
       };
     },
@@ -2268,6 +2293,7 @@ export interface PriceHistorySeriesPoint {
 export interface PriceHistorySeries {
   hasat: PriceHistorySeriesPoint[];
   official: PriceHistorySeriesPoint[] | null;
+  marketSources: MarketSourceSeries[];
 }
 
 export function usePriceHistorySeries(crop: string | null | undefined, weeks = 12) {
@@ -2291,10 +2317,20 @@ export function usePriceHistorySeries(crop: string | null | undefined, weeks = 1
       const hasat = mapArr(row.hasat_series);
       const officialArr = row.official_series;
       const official = officialArr == null ? null : mapArr(officialArr);
-      return { hasat, official };
+      const rawSources = Array.isArray(row.market_series) ? row.market_series : [];
+      const marketSources: MarketSourceSeries[] = rawSources
+        .map((s: any) => ({
+          sourceCode: String(s?.source_code ?? ""),
+          displayName: String(s?.display_name ?? s?.source_code ?? "Kaynak"),
+          region: s?.region == null ? null : String(s.region),
+          series: mapArr(s?.series),
+        }))
+        .filter((s: MarketSourceSeries) => !!s.sourceCode);
+      return { hasat, official, marketSources };
     },
   });
 }
+
 
 export function useCreateCropRequest() {
   const qc = useQueryClient();
