@@ -36,9 +36,30 @@ const EVENTS: EventDef[] = [
     cols: { sms: "payment_confirmed_sms" },
   },
   {
+    label: "Kargoya Verildi",
+    cols: { sms: "order_shipped_sms" },
+  },
+  {
+    label: "Teslim Edildi",
+    cols: { sms: "order_delivered_sms" },
+  },
+  {
+    label: "Sipariş İptal Edildi",
+    cols: { sms: "order_cancelled_sms" },
+  },
+  {
+    label: "İhtilaf Açıldı",
+    cols: { sms: "dispute_opened_sms" },
+  },
+  {
+    label: "Ürün Talebi Eşleşti",
+    cols: { sms: "crop_request_match_sms" },
+  },
+  {
     label: "Topluluk",
     cols: { push: "community_push" },
   },
+
 ];
 
 const CHANNELS: { key: Channel; label: string }[] = [

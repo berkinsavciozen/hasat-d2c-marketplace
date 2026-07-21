@@ -1,76 +1,43 @@
-# Admin KPI Dashboard — 14 Yeni View Entegrasyonu
+## Scope
 
-Mevcut 6 view/bölüm ve `x-admin-key` mantığı korunacak; sadece ekleme yapılacak.
+Backend hazır. Sadece frontend: RFQ SMS tetiklemesi + 5 yeni notif toggle.
 
-## 1) Edge Function: `supabase/functions/admin-kpi/index.ts`
+## 1) `src/lib/hasat/queries.ts`
 
-`Promise.all` dizisine 14 yeni `safe(supabase.from(...).select("*"))` çağrısı eklenir. Çok satırlı olanlarda anlamlı sıralama:
+**a. `NotifPrefsRow` + defaults'a 5 alan ekle** (satır 2641–2671):
+- `order_shipped_sms`, `order_delivered_sms`, `order_cancelled_sms`, `dispute_opened_sms`, `crop_request_match_sms` — hepsi `boolean`, default `true` (kritik durum bildirimleri; kullanıcı kapatabilir).
 
-- `v_kpi_farmer_gmv` → `.order("month", { ascending: true })`
-- `v_kpi_farmer_retention` → `.order("cohort_month", { ascending: true })`
-- `v_kpi_buyer_gmv_retention` → `.order("cohort_month", { ascending: true })`
-- `v_kpi_buyer_aov_segment`, `v_kpi_buyer_seller_ratio`, `v_kpi_price_vs_market` → default sıra
-- Tek satırlı 8 view → filtresiz `select("*")`
-
-Response JSON'a eklenecek yeni key'ler (view adı → key):
-
+**b. `useCreateCropRequest` içinde SMS dispatch** (satır ~2437–2453):
+Mevcut `notifications` insert'inden sonra, aynı `try` bloğu içinde her `matched` çiftçi için:
+```ts
+await Promise.all(matched.map((fid) =>
+  (supabase as any).rpc('dispatch_sms', {
+    _user_id: fid,
+    _event: 'crop_request_match',
+    _message: `Hasat: ${buyerName} ${cropName} arıyor${qtyLabel}${regionLabel}`,
+  }).then(() => {}, (e: unknown) => console.warn('crop_request sms failed', fid, e))
+));
 ```
-farmer_activation, listing_offer_rate, farmer_sellthrough, farmer_verified_pct,
-buyer_activation, horeca_order_frequency, supply_density, offer_conversion,
-farmer_gmv, farmer_retention, buyer_aov_segment, buyer_gmv_retention,
-buyer_seller_ratio, price_vs_market
-```
+Mevcut try/catch koruması yeterli — pref kontrolü RPC içinde.
 
-Tek satırlı özet view'lar için edge function düzeyinde `?.[0] ?? null` ile ilk satır çıkarılıp döner (frontend'de tekrar `.[0]` gerekmesin). Çok satırlı olanlar array olarak döner. Hata → `safe()` `null` yutar.
+## 2) `src/routes/farmer.settings.notifs.tsx`
 
-## 2) Frontend: `src/routes/admin.kpi.tsx`
+`EVENTS` dizisine 5 yeni giriş ekle (sadece `sms` kolonu, mevcut "Teklif Kabul Edildi" satırıyla aynı şekil):
+- Kargoya Verildi → `order_shipped_sms`
+- Teslim Edildi → `order_delivered_sms`
+- Sipariş İptal Edildi → `order_cancelled_sms`
+- İhtilaf Açıldı → `dispute_opened_sms`
+- Ürün Talebi Eşleşti → `crop_request_match_sms`
 
-Mevcut 6 bölüm "Genel" sekmesinde kalır; üstte 4 sekmeli basit tab bar eklenir:
+## 3) `src/routes/buyer.settings.notifs.tsx`
 
-```
-[ Genel | Çiftçi | Alıcı | Platform ]
-```
+Aynı 5 girişten `crop_request_match_sms` HARİÇ 4 tanesini ekle.
 
-`useState<"genel"|"ciftci"|"alici"|"platform">("genel")` ile geçiş. Aktif sekme sadece kendi bölümlerini render eder (koşullu render, hepsini DOM'da tutmaya gerek yok).
+## 4) Doğrulama
 
-TAM kolon adları birebir kullanılacak — önceki `gmv` bug'ı tekrarlanmayacak.
-
-### Çiftçi sekmesi
-- 4 `StatCard`:
-  - Aktivasyon: `farmer_activation.median_hours_to_first_listing` sa + `pct_listing_within_7d` %
-  - İlan→Teklif: `listing_offer_rate.offer_rate_14d_pct` % + `median_hours_to_first_offer` sa
-  - Sell-through 30g: `farmer_sellthrough.sellthrough_30d_pct` %
-  - Doğrulanmış üretici: `farmer_verified_pct.verified_pct` % (`verified_active_farmer_count`/`active_farmer_count`)
-- `SectionCard` "Aylık GMV / Aktif Çiftçi" → `LineChart` (X: `month`, Y: `gmv_per_active_farmer`, ₺ ekseni)
-- `SectionCard` "Kohort Retention (M1/M3)" → basit tablo (`cohort_month`, `cohort_farmers`, `m1_retention_pct`, `m3_retention_pct`)
-
-### Alıcı sekmesi
-- 3 `StatCard`:
-  - Aktivasyon medyan gün: `buyer_activation.median_days_to_first_order`
-  - HoReCa haftalık sıklık: `horeca_order_frequency.median_weekly_order_frequency` (alt satırda avg)
-  - HoReCa 2+ siparişli alıcı sayısı: `horeca_order_frequency.horeca_buyers_with_2plus_orders`
-- `SectionCard` "Segment AOV" → `BarChart` (`buyer_aov_segment.filter(r => r.segment !== 'genel')`, mevcut `SEGMENT_LABELS`, Y: `aov`, ₺)
-- `SectionCard` "M0→M1 GMV Retention" → tablo (`cohort_month`, `cohort_buyers`, `m0_gmv_total`, `m1_gmv_total`, `m1_gmv_retention_pct`)
-
-### Platform sekmesi
-- 3 `StatCard`:
-  - Teklif→Sipariş: `offer_conversion.conversion_pct` % + `median_hours_offer_to_order` sa
-  - Tedarik yoğunluğu (il×ürün): `supply_density.dense_cell_pct` % (`dense_cells`/`total_cells`)
-  - Toplam teklif: `offer_conversion.total_offers`
-- `SectionCard` "Alıcı:Satıcı Oranı (il)" → `BarChart` (`buyer_seller_ratio.filter(r => r.region !== 'genel')`, Y: `buyer_to_seller_ratio`)
-- `SectionCard` "Hal Fiyatı Karşılaştırması" → tablo (`crop`, `month`, `hasat_avg_price`, `market_avg_price`, `price_diff_pct`). Boşsa özel not: "Henüz veri yok — yalnızca İzmir pilot ürünlerinde (domates/elma/patates) satır oluşur."
-
-Tüm array/null durumları için mevcut `EmptyState`. `SEGMENT_LABELS` yeniden kullanılır. `₺` biçimlendirme `formatTRY`, `%` için mevcut `fmtPct`.
-
-## 3) Doğrulama
-
-- `supabase--deploy_edge_functions ["admin-kpi"]`
-- Doğru `x-admin-key` ile `supabase--curl_edge_functions` GET
-- Response body'sinden:
-  - Tek satırlı 8 alanın (`farmer_activation`, `listing_offer_rate`, ...) obje olarak dolu geldiği gösterilir
-  - Çok satırlı 6 alanın array uzunluğu + ilk satırı örnek olarak yapıştırılır (özellikle `farmer_gmv`, `farmer_retention`, `buyer_aov_segment`, `buyer_seller_ratio`)
-  - `price_vs_market` boşsa boş array olarak raporlanır (bug değil)
-- `bunx tsgo --noEmit` temiz
+- `bunx tsgo --noEmit` temiz.
+- Playwright veya `supabase--read_query` ile: buyer olarak safran talebi oluştur → `net._http_response` tablosunda son 1 dk içindeki `send-sms` çağrısını göster (URL + status) → oluşturulan `crop_requests` satırını sil.
 
 ## Dokunulmayacaklar
-Mevcut 6 view'a bağlı bölümler (Genel sekmesine taşınacak ama JSX değiştirilmeyecek), `x-admin-key` doğrulama, CORS, farmer/buyer route'ları, RLS, view tanımları.
+
+`dispatch_sms` RPC, `send-sms` edge function, diğer notif_prefs alanları, offer/order trigger'ları.
