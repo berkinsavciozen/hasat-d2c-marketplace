@@ -11,7 +11,8 @@ function Prices() {
   return (
     <>
       <BuyerHeader title="Fiyatlar" subtitle="Sipariş temelli topluluk fiyat özeti" />
-      <PricesPageBody />
+      <PricesPageBody role="buyer" />
     </>
+
   );
 }

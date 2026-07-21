@@ -11,7 +11,8 @@ function Prices() {
   return (
     <>
       <FarmerHeader title="Fiyat Takibi" subtitle="Sipariş temelli topluluk fiyat özeti" />
-      <PricesPageBody />
+      <PricesPageBody role="farmer" />
     </>
+
   );
 }
