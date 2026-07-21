@@ -458,3 +458,8 @@ function OrderCard({ order, muted }: { order: Order; muted?: boolean }) {
   );
 }
 
+function BuyerRatingBadge({ buyerId }: { buyerId?: string }) {
+  const { data } = useBuyerRatingSummary(buyerId);
+  if (!buyerId || !data || !data.reviewCount || data.avgRating == null) return null;
+  return <span className="text-[11px] text-hmuted">⭐ {data.avgRating.toFixed(1)} ({data.reviewCount})</span>;
+}
