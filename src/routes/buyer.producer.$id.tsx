@@ -40,6 +40,8 @@ function ProducerProfile() {
   const { data: stats } = useFarmerProducerStats(id);
   const { data: subscription } = useMyActiveSubscriptionWith(id);
   const { map: cropMap } = useCropConfigMap();
+  const { data: ratingSummary } = useFarmerRatingSummary(id);
+  const { data: recentReviews = [] } = useFarmerRecentReviews(id, 5);
 
   if (profileLoading) return <div className="p-8"><LoadingDots /></div>;
   if (!profile) throw notFound();
