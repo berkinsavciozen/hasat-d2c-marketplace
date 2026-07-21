@@ -101,6 +101,17 @@ function Account() {
           <ChevronRight className="h-4 w-4 text-hmuted" />
         </Link>
 
+        <Link
+          to="/buyer/requests"
+          className="flex items-center justify-between rounded-2xl bg-card border p-4 min-h-[56px]"
+        >
+          <div className="flex items-center gap-3">
+            <ClipboardList className="h-4 w-4 text-hmuted" />
+            <span className="text-sm font-medium">Taleplerim</span>
+          </div>
+          <ChevronRight className="h-4 w-4 text-hmuted" />
+        </Link>
+
         <div className="rounded-2xl bg-card border p-5">
           <div className="flex items-center justify-between mb-3">
             <div className="font-serif text-base">Adreslerim</div>
