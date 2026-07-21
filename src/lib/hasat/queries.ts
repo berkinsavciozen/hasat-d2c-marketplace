@@ -611,7 +611,8 @@ function dbToOrder(r: any, side: "farmer" | "buyer"): Order {
     shipped: "shipped",
     delivered: "delivered",
     completed: "delivered",
-    disputed: "preparing",
+    disputed: "disputed",
+    cancelled: "cancelled",
   };
   return {
     id: r.id,
@@ -624,13 +625,19 @@ function dbToOrder(r: any, side: "farmer" | "buyer"): Order {
     unit: (listing.unit ?? "kg") as Order["unit"],
     pricePerUnit: price,
     total: qty * price,
-    delivery: "Kargo",
+    delivery: deliveryLabel(offer.delivery),
     deliveryDate: offer.delivery_date ?? "",
     status: statusMap[r.status] ?? "preparing",
     createdAt: r.created_at,
     timeline: [],
+    trackingNumber: r.tracking_number ?? undefined,
+    carrier: r.carrier ?? undefined,
+    cancelReason: r.cancel_reason ?? undefined,
+    cancelledAt: r.cancelled_at ?? undefined,
+    disputeWindowExpiresAt: r.dispute_window_expires_at ?? undefined,
   };
 }
+
 
 const TIMELINE_DEFAULT: { key: OrderStatus; label: string }[] = [
   { key: "sent", label: "Teklif Gönderildi" },
