@@ -221,22 +221,6 @@ function ProducerProfile() {
         </div>
 
 
-        <div className="rounded-2xl p-5 border" style={{ background: "color-mix(in oklab, var(--gold) 12%, transparent)", borderColor: "var(--gold)" }}>
-          <h3 className="font-serif text-lg">Hasat Aboneliği</h3>
-          <p className="text-sm text-hmuted mt-1">Bu üreticinin gelecek hasatından önceden pay alın.</p>
-          <div className="grid grid-cols-2 gap-3 mt-3">
-            <div className="rounded-xl bg-card p-3">
-              <div className="text-xs text-hmuted">Sonraki Hasat</div>
-              <div className="font-medium mt-0.5">{nextHarvestLabel}</div>
-            </div>
-            <div className="rounded-xl bg-card p-3">
-              <div className="text-xs text-hmuted">Tahmini Miktar</div>
-              <div className="font-medium mt-0.5">{estimatedQtyLabel}</div>
-            </div>
-          </div>
-          <button onClick={() => navigate({ to: "/buyer/subscription/$producerId", params: { producerId: profile.id } })}
-            className="mt-4 w-full rounded-xl py-3 text-sm font-medium" style={{ background: "var(--gold)", color: "var(--dark)" }}>Hasat Aboneliği Oluştur →</button>
-        </div>
       </div>
     </div>
   );
