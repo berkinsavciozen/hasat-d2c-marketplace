@@ -37,6 +37,7 @@ function Discover() {
   const [sort, setSort] = useState("Puan");
   const [filters, setFilters] = useState<string[]>([]);
   const [query, setQuery] = useState("");
+  const [requestOpen, setRequestOpen] = useState(false);
 
   // "Senin İçin" — retention strip (client-side derived)
   const { data: buyerOffers = [] } = useBuyerOffers();
