@@ -295,11 +295,17 @@ function CounterModal({ open, onOpenChange, offer, onSubmit, pending }: {
 
 function OrderCard({ order, muted }: { order: Order; muted?: boolean }) {
   const STATUS_TR: Record<string, string> = { preparing: "Hazırlanıyor", shipped: "Kargoda", delivered: "Teslim Edildi", disputed: "İhtilaflı", cancelled: "İptal Edildi" };
+  const userId = useAuthUserId();
   const wa = whatsappUrl(order.producerPhone, `Merhaba, ${order.code} numaralı sipariş hakkında yazıyorum.`);
   const shipMut = useMarkShipped();
   const cancelMut = useCancelOrder();
+  const createReview = useCreateReview();
+  const { data: reviews = [] } = useOrderReviews(order.id);
+  const myReview = reviews.find((r) => r.reviewerId === userId && r.reviewerRole === "farmer");
+  const canReview = (order.status === "delivered" || order.status === "completed") && !!order.buyerId;
   const [shipOpen, setShipOpen] = useState(false);
   const [cancelOpen, setCancelOpen] = useState(false);
+  const [reviewOpen, setReviewOpen] = useState(false);
   const [tracking, setTracking] = useState("");
   const [carrier, setCarrier] = useState("");
   const [cancelReason, setCancelReason] = useState("");
