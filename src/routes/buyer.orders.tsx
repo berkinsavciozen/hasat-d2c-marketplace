@@ -280,3 +280,79 @@ function OfferCard({ offer, onAccept, onReject, onCounter, onPay, pending }: {
     </div>
   );
 }
+
+function DoneOrderRow({ order, onOpen }: { order: Order; onOpen: () => void }) {
+  const userId = useAuthUserId();
+  const { data: reviews = [] } = useOrderReviews(order.id);
+  const createReview = useCreateReview();
+  const [reviewOpen, setReviewOpen] = useState(false);
+  const myReview = reviews.find((r) => r.reviewerId === userId && r.reviewerRole === "buyer");
+  const canReview = (order.status === "delivered" || order.status === "completed") && !!order.producerId;
+  const slug = farmerSlugOf(order.producerName, order.producerId);
+  const s = ORDER_STATUS_LABEL[order.status];
+
+  return (
+    <div role="button" tabIndex={0}
+      onClick={onOpen}
+      onKeyDown={(e) => { if (e.key === "Enter") onOpen(); }}
+      className="w-full text-left rounded-2xl bg-card border p-4 hover:border-saffron transition cursor-pointer">
+      <div className="flex items-start justify-between">
+        <div>
+          <div className="font-mono text-xs text-hmuted">{order.code}</div>
+          <div className="font-medium mt-1">{order.crop}</div>
+          <div className="text-xs text-hmuted">
+            {slug
+              ? <Link to="/s/$slug" params={{ slug }} onClick={(e) => e.stopPropagation()} className="hover:underline">{order.producerName}</Link>
+              : order.producerName}
+          </div>
+        </div>
+        <span className="rounded-full px-2.5 py-0.5 text-[11px]" style={{ background: s.bg, color: s.fg }}>{s.label}</span>
+      </div>
+      <div className="mt-3 flex items-center justify-between text-xs">
+        <span className="text-hmuted">{order.quantity} {order.unit} · {order.delivery}</span>
+        <span className="font-mono" style={{ color: "var(--gold)" }}>{formatTRY(order.total)}</span>
+      </div>
+
+      {canReview && (
+        <div className="mt-3 border-t pt-3" onClick={(e) => e.stopPropagation()}>
+          {myReview ? (
+            <div className="flex items-center gap-2 text-xs text-hmuted">
+              <RatingStars rating={myReview.rating} size={14} />
+              <span>Değerlendirdiniz ({myReview.rating}/5)</span>
+            </div>
+          ) : (
+            <button
+              onClick={(e) => { e.stopPropagation(); setReviewOpen(true); }}
+              className="inline-flex items-center gap-1.5 rounded-lg min-h-[40px] px-3 py-2 text-xs font-medium"
+              style={{ background: "color-mix(in oklab, var(--gold) 15%, transparent)", color: "var(--dark)" }}
+            >
+              <Star className="h-3.5 w-3.5" style={{ color: "var(--gold)" }} /> Üreticiyi Değerlendir
+            </button>
+          )}
+        </div>
+      )}
+
+      <ReviewModal
+        open={reviewOpen}
+        onOpenChange={setReviewOpen}
+        title="Üreticiyi Değerlendir"
+        subtitle={`Sipariş ${order.code}`}
+        pending={createReview.isPending}
+        onSubmit={async ({ rating, comment }) => {
+          if (!order.producerId) return;
+          try {
+            await createReview.mutateAsync({
+              orderId: order.id,
+              revieweeId: order.producerId,
+              reviewerRole: "buyer",
+              rating,
+              comment,
+            });
+            toast.success("Değerlendirmeniz kaydedildi.");
+            setReviewOpen(false);
+          } catch (e: any) { toast.error(e.message ?? "Gönderilemedi"); }
+        }}
+      />
+    </div>
+  );
+}
