@@ -2450,7 +2450,16 @@ export function useCreateCropRequest() {
             related_id: inserted?.id ?? null,
           }));
           await (supabase as any).from("notifications").insert(rows);
+
+          await Promise.all(matched.map((fid) =>
+            (supabase as any).rpc('dispatch_sms', {
+              _user_id: fid,
+              _event: 'crop_request_match',
+              _message: `Hasat: ${buyerName} ${cropName} arıyor${qtyLabel}${regionLabel}`,
+            }).then(() => {}, (e: unknown) => console.warn('crop_request sms failed', fid, e))
+          ));
         }
+
       } catch (e) {
         console.warn("crop_request notify failed", e);
       }
