@@ -36,6 +36,9 @@ const ORDER_STATUS_LABEL: Record<Order["status"], { label: string; bg: string; f
   shipped: { label: "Kargoda", bg: "color-mix(in oklab, var(--lav) 25%, transparent)", fg: "var(--lav)" },
   delivered: { label: "Teslim Edildi", bg: "color-mix(in oklab, var(--hmuted) 18%, transparent)", fg: "var(--hmuted)" },
   completed: { label: "Tamamlandı", bg: "color-mix(in oklab, var(--hmuted) 18%, transparent)", fg: "var(--hmuted)" },
+  disputed: { label: "İhtilaflı", bg: "color-mix(in oklab, var(--hred) 18%, transparent)", fg: "var(--hred)" },
+  cancelled: { label: "İptal Edildi", bg: "color-mix(in oklab, var(--hmuted) 18%, transparent)", fg: "var(--hmuted)" },
+
 };
 
 function formatTRDate(iso: string): string {

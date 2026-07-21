@@ -363,6 +363,67 @@ export type Database = {
           },
         ]
       }
+      disputes: {
+        Row: {
+          created_at: string
+          evidence_photo_urls: string[]
+          id: string
+          opened_by: string
+          order_id: string
+          reason: string
+          resolution: string | null
+          resolved_at: string | null
+          status: string
+          window_expires_at: string | null
+        }
+        Insert: {
+          created_at?: string
+          evidence_photo_urls?: string[]
+          id?: string
+          opened_by: string
+          order_id: string
+          reason: string
+          resolution?: string | null
+          resolved_at?: string | null
+          status?: string
+          window_expires_at?: string | null
+        }
+        Update: {
+          created_at?: string
+          evidence_photo_urls?: string[]
+          id?: string
+          opened_by?: string
+          order_id?: string
+          reason?: string
+          resolution?: string | null
+          resolved_at?: string | null
+          status?: string
+          window_expires_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "disputes_opened_by_fkey"
+            columns: ["opened_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "disputes_opened_by_fkey"
+            columns: ["opened_by"]
+            isOneToOne: false
+            referencedRelation: "public_farmer_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "disputes_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       farms: {
         Row: {
           created_at: string
@@ -1028,32 +1089,47 @@ export type Database = {
       orders: {
         Row: {
           buyer_id: string
+          cancel_reason: string | null
+          cancelled_at: string | null
+          carrier: string | null
           created_at: string
+          dispute_window_expires_at: string | null
           farmer_id: string
           id: string
           offer_id: string
           order_ref: string
           status: Database["public"]["Enums"]["order_status"]
+          tracking_number: string | null
           updated_at: string
         }
         Insert: {
           buyer_id: string
+          cancel_reason?: string | null
+          cancelled_at?: string | null
+          carrier?: string | null
           created_at?: string
+          dispute_window_expires_at?: string | null
           farmer_id: string
           id?: string
           offer_id: string
           order_ref: string
           status?: Database["public"]["Enums"]["order_status"]
+          tracking_number?: string | null
           updated_at?: string
         }
         Update: {
           buyer_id?: string
+          cancel_reason?: string | null
+          cancelled_at?: string | null
+          carrier?: string | null
           created_at?: string
+          dispute_window_expires_at?: string | null
           farmer_id?: string
           id?: string
           offer_id?: string
           order_ref?: string
           status?: Database["public"]["Enums"]["order_status"]
+          tracking_number?: string | null
           updated_at?: string
         }
         Relationships: [
@@ -1639,6 +1715,7 @@ export type Database = {
         | "delivered"
         | "disputed"
         | "completed"
+        | "cancelled"
       price_alert_condition: "above" | "below"
       quality_grade: "A" | "B" | "C"
       subscription_status: "active" | "cancelled" | "fulfilled"
@@ -1806,6 +1883,7 @@ export const Constants = {
         "delivered",
         "disputed",
         "completed",
+        "cancelled",
       ],
       price_alert_condition: ["above", "below"],
       quality_grade: ["A", "B", "C"],
