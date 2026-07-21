@@ -1,38 +1,34 @@
-Plan: Add unit display to all price UI surfaces
-Scope: only `src/`. Backend already returns `unit` from `get_price_history_summary`/`get_price_history_series`.
+Scope: `src/components/hasat/PricesPageBody.tsx` only. Backend and `queries.ts` already expose `hasat`, `official`, `marketSources`, and `unit` on `usePriceHistorySummary`.
 
-1. Type + data mapping (`src/lib/hasat/queries.ts`)
-   - Add `unit: string | null` to `PriceHistorySummary` and `PriceHistorySeries` interfaces.
-   - In `usePriceHistorySummary`: read `row.unit` and include it in the returned object.
-   - In `usePriceHistorySeries`: read `row.unit` and include it in the returned object.
-   - Keep all existing fields unchanged.
+## 1) `PriceSummaryCard` — compact multi-source chips
 
-2. Format helper (`src/lib/hasat/format.ts`)
-   - Add a small helper `priceWithUnit(n: number, unit: string | null | undefined)` that returns `formatTRY(n) + "/" + (unit ?? "kg")`.
-   - This keeps unit rendering consistent and avoids repeating the fallback logic in every component.
+Rewrite the card body so every available source shows its price in a single wrap-friendly chip row directly under the crop name:
 
-3. Price list cards (`src/components/hasat/PricesPageBody.tsx`)
-   - In `PriceSummaryCard`, replace the average display with `priceWithUnit(hasat.avgPrice, summary?.unit)`.
-   - Use the `summary.unit` returned by `usePriceHistorySummary`; fallback to `"kg"`.
+- Build a `chips: { label: string; text: string }[]` from `summary`:
+  - `hasat`: if `!insufficientData && avgPrice != null` → `"Hasat"` + `priceWithUnit(hasat.avgPrice, summary.unit)`. Else a muted chip `"Hasat: yetersiz veri"`.
+  - `official`: `official.sourceLabel ?? "Resmi"` + `priceWithUnit(official.avgPrice, summary.unit)` (only when `avgPrice != null`).
+  - each entry in `marketSources`: `source.label` + `priceWithUnit(source.avgPrice, summary.unit)` (only when `avgPrice != null`).
+- Render as inline-flex wrap of small chips (`rounded-full border px-2 py-1 text-[11px]`). Source label in `text-hmuted`, price in `font-mono font-medium`. The "insufficient" hasat chip gets dashed border + muted text — never dropped.
+- Remove from the card: `Sparkline`, `DistinctFarmerDots`, the `"Hasat topluluk verisi"` section title, the big "Ortalama ₺X" line, the `+N kaynak` mini-label, and `timeAgo` — that detail lives on `/prices/$crop`.
+- Keep: crop name (truncate), `WatchStar`, whole-card `Link` to `/farmer|buyer/prices/$crop`, loading state ("Yükleniyor…"), and the empty state when no source has a price at all → single chip "Fiyat verisi yok".
+- Card padding drops to `p-3` for compactness; min tap height stays ≥48px via the star button.
 
-4. Crop detail cards (`src/components/hasat/CropDetailBody.tsx`)
-   - Read `unit` from the `summary` object (all sources for the same crop share this unit).
-   - Update the "Ortalama" row in the Hasat card, the official source card, and every market source card to use `priceWithUnit(..., unit)`.
+## 2) Shorter, watch-first list layout
 
-5. Large chart component (`src/components/hasat/PriceChart.tsx`)
-   - Add optional `unit?: string` prop.
-   - Append `/${unit ?? "kg"}` to the "Son" value and the "Aralık" min–max range.
+In `PricesPageBody`:
 
-6. Wire unit into chart consumers (`src/components/hasat/CropDetailBody.tsx`)
-   - Pass `unit={unit}` to each `<PriceChart>` instance so the large-format charts also show ₺/kg or ₺/g.
+- Cap tier1 (own crops) rendering to `TIER1_LIMIT = 4`. Compute `tier1Visible = tier1.slice(0, 4)` and `tier1Hidden = tier1.length - 4`.
+- If `tier1Hidden > 0` and not searching, render a small text button under tier1 that opens the "Tüm Piyasa" accordion: `+{tier1Hidden} tane daha` — implement by lifting the accordion `value` into local state (`const [allOpen, setAllOpen] = useState<string | undefined>()`) and passing `value`/`onValueChange` to the controlled `<Accordion type="single" collapsible>`. Search still force-opens it via `useEffect` setting `"all"` when `searching`.
+- Tier2 (watchlist) and tier3 (all market) stay unlimited / accordion as today. Section order unchanged: tier1 → tier2 → tier3 accordion.
 
-7. Verification
-   - Run `tsgo` (or `bunx tsc --noEmit`) to confirm type safety.
-   - No `supabase/` changes, no backend RPC changes.
+## 3) Watchlist auto-refresh check
 
-Files to edit:
-- `src/lib/hasat/queries.ts`
-- `src/lib/hasat/format.ts`
-- `src/components/hasat/PricesPageBody.tsx`
-- `src/components/hasat/CropDetailBody.tsx`
-- `src/components/hasat/PriceChart.tsx`
+`useCreatePriceAlert` / `useTogglePriceAlert` already `invalidateQueries({ queryKey: ["priceAlerts"] })` (queries.ts L1634, L1648, L1661), and `PricesPageBody` derives tier2 from `usePriceAlerts()`. So starring an "all market" crop already re-renders it into tier2 automatically — no change needed. Confirmed; noted here so the plan doesn't ship unused code.
+
+## Files to edit
+- `src/components/hasat/PricesPageBody.tsx` (only)
+
+## Out of scope
+- `supabase/`, RPC changes
+- `CropDetailBody`, `PriceChart`, detail routes
+- New shared components — chip markup is small and local to this file
