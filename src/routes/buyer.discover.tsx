@@ -1,6 +1,7 @@
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { Search, X, MessageSquare, CalendarClock, Bell } from "lucide-react";
 import { useState } from "react";
+import { toast } from "sonner";
 import { BuyerHeader } from "@/components/hasat/BuyerHeader";
 import { LoadingDots } from "@/components/hasat/LoadingDots";
 import { CoverageBadge } from "@/components/hasat/CoverageBadge";
@@ -11,9 +12,11 @@ import {
   useBuyerOffers,
   useMySubscriptions,
   usePriceAlerts,
+  useCreateCropRequest,
 } from "@/lib/hasat/queries";
 import { CATEGORY_GROUP_META, cropEmoji, findCropConfig, useCropConfigMap } from "@/lib/hasat/crop-config";
 import { slugifyFarmer } from "@/lib/hasat/vitrin";
+import { TR_PROVINCES } from "@/lib/hasat/cities";
 
 
 
@@ -34,6 +37,7 @@ function Discover() {
   const [sort, setSort] = useState("Puan");
   const [filters, setFilters] = useState<string[]>([]);
   const [query, setQuery] = useState("");
+  const [requestOpen, setRequestOpen] = useState(false);
 
   // "Senin İçin" — retention strip (client-side derived)
   const { data: buyerOffers = [] } = useBuyerOffers();
@@ -199,6 +203,13 @@ function Discover() {
                 <div className="text-6xl mb-3">🌾</div>
                 <div className="font-serif text-lg">Sonuç bulunamadı</div>
                 <div className="text-sm text-hmuted mt-1">Farklı bir ürün veya üretici adı deneyin.</div>
+                <button
+                  onClick={() => setRequestOpen(true)}
+                  className="mt-4 inline-flex items-center rounded-full px-4 py-2 text-xs font-medium min-h-[44px]"
+                  style={{ background: "var(--saffron)", color: "#fff" }}
+                >
+                  Bu ürünü talep et
+                </button>
               </div>
             ) : (
               <div className="rounded-2xl border border-dashed p-8 text-center text-hmuted">Henüz aktif ilan yok.</div>
@@ -213,7 +224,129 @@ function Discover() {
           )}
         </div>
       </div>
+      {requestOpen && (
+        <CropRequestModal
+          initialCrop={query}
+          onClose={() => setRequestOpen(false)}
+        />
+      )}
     </>
+  );
+}
+
+function CropRequestModal({ initialCrop, onClose }: { initialCrop: string; onClose: () => void }) {
+  const create = useCreateCropRequest();
+  const [cropName, setCropName] = useState(initialCrop);
+  const [quantity, setQuantity] = useState("");
+  const [unit, setUnit] = useState<"kg" | "g" | "L">("kg");
+  const [region, setRegion] = useState("");
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
+  const [targetPrice, setTargetPrice] = useState("");
+  const [note, setNote] = useState("");
+
+  const submit = async () => {
+    if (!cropName.trim()) { toast.error("Ürün adı gerekli"); return; }
+    try {
+      await create.mutateAsync({
+        cropName: cropName.trim(),
+        note: note.trim() || undefined,
+        quantity: quantity ? Number(quantity) : null,
+        unit: quantity ? unit : null,
+        region: region || null,
+        targetDateStart: startDate || null,
+        targetDateEnd: endDate || null,
+        targetPrice: targetPrice ? Number(targetPrice) : null,
+      });
+      toast.success("Talebiniz alındı — eşleşen üreticilere bildirim gönderildi");
+      onClose();
+    } catch (e) {
+      toast.error((e as Error).message);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center bg-black/60 p-0 md:p-4" onClick={onClose}>
+      <div
+        className="w-full md:max-w-md rounded-t-2xl md:rounded-2xl bg-card p-5 max-h-[90vh] overflow-y-auto"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-center justify-between mb-4">
+          <div className="font-serif text-lg">Ürün Talep Et</div>
+          <button onClick={onClose} aria-label="Kapat" className="grid h-9 w-9 place-items-center rounded-lg hover:bg-muted">
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+
+        <div className="space-y-3">
+          <div>
+            <label className="text-xs text-hmuted">Ürün *</label>
+            <input value={cropName} onChange={(e) => setCropName(e.target.value)} placeholder="Ör. safran, zeytinyağı"
+              className="mt-1 w-full rounded-lg border px-3 py-2 text-sm min-h-[44px]" />
+          </div>
+
+          <div className="grid grid-cols-3 gap-2">
+            <div className="col-span-2">
+              <label className="text-xs text-hmuted">Miktar</label>
+              <input value={quantity} onChange={(e) => setQuantity(e.target.value)} type="number" min="0" placeholder="Opsiyonel"
+                className="mt-1 w-full rounded-lg border px-3 py-2 text-sm min-h-[44px]" />
+            </div>
+            <div>
+              <label className="text-xs text-hmuted">Birim</label>
+              <select value={unit} onChange={(e) => setUnit(e.target.value as "kg" | "g" | "L")}
+                className="mt-1 w-full rounded-lg border px-2 py-2 text-sm min-h-[44px] bg-card">
+                <option value="kg">kg</option>
+                <option value="g">g</option>
+                <option value="L">L</option>
+              </select>
+            </div>
+          </div>
+
+          <div>
+            <label className="text-xs text-hmuted">Bölge</label>
+            <select value={region} onChange={(e) => setRegion(e.target.value)}
+              className="mt-1 w-full rounded-lg border px-2 py-2 text-sm min-h-[44px] bg-card">
+              <option value="">Farketmez</option>
+              {TR_PROVINCES.map((p) => <option key={p} value={p}>{p}</option>)}
+            </select>
+          </div>
+
+          <div className="grid grid-cols-2 gap-2">
+            <div>
+              <label className="text-xs text-hmuted">Hedef tarih (başlangıç)</label>
+              <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)}
+                className="mt-1 w-full rounded-lg border px-3 py-2 text-sm min-h-[44px]" />
+            </div>
+            <div>
+              <label className="text-xs text-hmuted">Bitiş</label>
+              <input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)}
+                className="mt-1 w-full rounded-lg border px-3 py-2 text-sm min-h-[44px]" />
+            </div>
+          </div>
+
+          <div>
+            <label className="text-xs text-hmuted">Hedef fiyat (₺{quantity && unit ? `/${unit}` : ""})</label>
+            <input value={targetPrice} onChange={(e) => setTargetPrice(e.target.value)} type="number" min="0" placeholder="Opsiyonel"
+              className="mt-1 w-full rounded-lg border px-3 py-2 text-sm min-h-[44px]" />
+          </div>
+
+          <div>
+            <label className="text-xs text-hmuted">Not</label>
+            <textarea value={note} onChange={(e) => setNote(e.target.value)} rows={2} placeholder="Kalite, teslim koşulu vb."
+              className="mt-1 w-full rounded-lg border px-3 py-2 text-sm resize-none" />
+          </div>
+
+          <button
+            onClick={submit}
+            disabled={create.isPending}
+            className="w-full rounded-full py-3 text-sm font-medium min-h-[48px]"
+            style={{ background: "var(--saffron)", color: "#fff" }}
+          >
+            {create.isPending ? "Gönderiliyor…" : "Talep Oluştur"}
+          </button>
+        </div>
+      </div>
+    </div>
   );
 }
 

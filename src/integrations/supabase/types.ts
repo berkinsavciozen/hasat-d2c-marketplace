@@ -360,24 +360,42 @@ export type Database = {
           crop_name_free_text: string
           id: string
           note: string | null
+          quantity: number | null
+          region: string | null
           requested_by: string | null
           status: string
+          target_date_end: string | null
+          target_date_start: string | null
+          target_price: number | null
+          unit: string | null
         }
         Insert: {
           created_at?: string
           crop_name_free_text: string
           id?: string
           note?: string | null
+          quantity?: number | null
+          region?: string | null
           requested_by?: string | null
           status?: string
+          target_date_end?: string | null
+          target_date_start?: string | null
+          target_price?: number | null
+          unit?: string | null
         }
         Update: {
           created_at?: string
           crop_name_free_text?: string
           id?: string
           note?: string | null
+          quantity?: number | null
+          region?: string | null
           requested_by?: string | null
           status?: string
+          target_date_end?: string | null
+          target_date_start?: string | null
+          target_price?: number | null
+          unit?: string | null
         }
         Relationships: [
           {

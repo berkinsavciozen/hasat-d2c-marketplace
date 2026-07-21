@@ -12,7 +12,7 @@ import {
 } from "@/lib/hasat/queries";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Bell, ChevronRight, Trash2, Star, Plus } from "lucide-react";
+import { Bell, ChevronRight, Trash2, Star, Plus, ClipboardList } from "lucide-react";
 
 export const Route = createFileRoute("/buyer/account")({
   head: () => ({ meta: [{ title: "Hesap — Hasat" }] }),
@@ -97,6 +97,17 @@ function Account() {
           <div className="flex items-center gap-3">
             <Bell className="h-4 w-4 text-hmuted" />
             <span className="text-sm font-medium">Bildirim Tercihleri</span>
+          </div>
+          <ChevronRight className="h-4 w-4 text-hmuted" />
+        </Link>
+
+        <Link
+          to="/buyer/requests"
+          className="flex items-center justify-between rounded-2xl bg-card border p-4 min-h-[56px]"
+        >
+          <div className="flex items-center gap-3">
+            <ClipboardList className="h-4 w-4 text-hmuted" />
+            <span className="text-sm font-medium">Taleplerim</span>
           </div>
           <ChevronRight className="h-4 w-4 text-hmuted" />
         </Link>
