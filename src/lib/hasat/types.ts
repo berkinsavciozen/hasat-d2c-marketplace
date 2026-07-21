@@ -186,6 +186,7 @@ export interface Order {
   disputeWindowExpiresAt?: string;
   listingId?: string;
   listingActive?: boolean;
+  subscriptionId?: string | null;
 }
 
 export interface BuyerAddress {
