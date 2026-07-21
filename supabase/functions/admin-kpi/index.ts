@@ -53,10 +53,10 @@ Deno.serve(async (req) => {
       safe(supabase.from("v_kpi_order_base").select("amount,is_realized_sale").eq("is_realized_sale", true)),
     ]);
 
-    const rows = (orderBase as Array<{ gmv: number | string | null }> | null) ?? [];
+    const rows = (orderBase as Array<{ amount: number | string | null }> | null) ?? [];
     const totals = {
       order_count: rows.length,
-      total_gmv: rows.reduce((s, r) => s + (Number(r.gmv) || 0), 0),
+      total_gmv: rows.reduce((s, r) => s + (Number(r.amount) || 0), 0),
     };
 
     return new Response(JSON.stringify({
