@@ -199,6 +199,28 @@ function ProducerProfile() {
           </div>
         )}
 
+        <div>
+          <h2 className="font-serif text-lg mb-3">Değerlendirmeler</h2>
+          {recentReviews.length === 0 ? (
+            <div className="rounded-2xl bg-card border p-6 text-sm text-hmuted text-center">
+              Henüz değerlendirme yok.
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {recentReviews.map((r) => (
+                <div key={r.id} className="rounded-2xl bg-card border p-4">
+                  <div className="flex items-center justify-between">
+                    <RatingStars rating={r.rating} size={14} />
+                    <span className="text-xs text-hmuted">{new Date(r.createdAt).toLocaleDateString("tr-TR")}</span>
+                  </div>
+                  {r.comment && <p className="text-sm mt-2 text-hmuted">{r.comment}</p>}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+
         <div className="rounded-2xl p-5 border" style={{ background: "color-mix(in oklab, var(--gold) 12%, transparent)", borderColor: "var(--gold)" }}>
           <h3 className="font-serif text-lg">Hasat Aboneliği</h3>
           <p className="text-sm text-hmuted mt-1">Bu üreticinin gelecek hasatından önceden pay alın.</p>
