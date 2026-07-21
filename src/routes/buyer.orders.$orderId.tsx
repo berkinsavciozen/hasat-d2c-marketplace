@@ -22,16 +22,20 @@ export const Route = createFileRoute("/buyer/orders/$orderId")({
 
 function OrderTracker() {
   const { orderId } = Route.useParams();
+  const userId = useAuthUserId();
   const { data: orders = [], isLoading } = useBuyerOrders();
   const { data: timeline = [] } = useOrderTimeline(orderId);
   const { data: dispute } = useOrderDispute(orderId);
+  const { data: reviews = [] } = useOrderReviews(orderId);
   const [deliverOpen, setDeliverOpen] = useState(false);
   const [disputeOpen, setDisputeOpen] = useState(false);
+  const [reviewOpen, setReviewOpen] = useState(false);
   const [photoFile, setPhotoFile] = useState<File | null>(null);
   const [disputeReason, setDisputeReason] = useState("");
   const [disputeFiles, setDisputeFiles] = useState<File[]>([]);
   const confirmDelivery = useConfirmDelivery();
   const openDispute = useOpenDispute();
+  const createReview = useCreateReview();
 
   if (isLoading) return <div className="p-8"><LoadingDots /></div>;
   const order = orders.find((o) => o.id === orderId);
