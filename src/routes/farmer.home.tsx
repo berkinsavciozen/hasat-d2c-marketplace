@@ -174,7 +174,7 @@ function Home() {
         {/* Quick actions */}
         <div className="-mx-4 px-4 md:mx-0 md:px-0 flex gap-2 overflow-x-auto pb-1">
           {quickActions.map((a) =>
-            "to" in a ? (
+            "to" in a && a.to ? (
               <Link
                 key={a.label}
                 to={a.to}
