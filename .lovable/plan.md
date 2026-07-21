@@ -1,85 +1,46 @@
-# P17-C: Karşılıklı Değerlendirme (Rating/Review) Sistemi
+# P17-C Follow-ups — Review System Gap Fixes
 
-Guardrail: migration additive — mevcut tablolar/RLS/veri değişmez.
+Scope: `src/` only. Backend RPC `get_buyer_rating_summary(_buyer_id)` is already deployed and mirrors `get_farmer_rating_summary`.
 
-## 1) DB Migration (tek dosya, additive)
+## 1. `src/lib/hasat/queries.ts`
 
-**`public.reviews` tablosu:**
-- `id uuid pk default gen_random_uuid()`
-- `order_id uuid not null references public.orders(id) on delete cascade`
-- `reviewer_id uuid not null references public.profiles(id) on delete cascade`
-- `reviewee_id uuid not null references public.profiles(id) on delete cascade`
-- `reviewer_role text not null check (reviewer_role in ('farmer','buyer'))`
-- `rating int not null check (rating between 1 and 5)`
-- `comment text`
-- `created_at timestamptz not null default now()`
-- `unique (order_id, reviewer_id)` — bir siparişe bir taraf tek review.
-- Index: `(reviewee_id)` — profil özet sorguları için.
+- Add `useBuyerRatingSummary(buyerId)` — identical shape to `useFarmerRatingSummary`, calls RPC `get_buyer_rating_summary` with arg `_buyer_id`. Cache key: `["buyer-rating", buyerId]`.
+- Update `useCreateReview` to fire a best-effort notification (mirroring `useCreateReply`):
+  - Skip when `revieweeId === userId` (defensive; DB already prevents self-review).
+  - Fetch reviewer name from `profiles` (`select name where id = userId`).
+  - Insert into `notifications`: `{ user_id: revieweeId, type: 'review', title: 'Yeni değerlendirme', body: '${who} ${rating}/5 puan verdi', related_id: orderId }`, wrapped in try/catch so review success does not depend on notification insert.
+  - Also invalidate `["buyer-rating", revieweeId]` so farmer-role reviews refresh the buyer badge.
 
-**GRANT:**
-- `grant select on public.reviews to anon, authenticated;` (public okuma — pazaryeri şeffaflığı)
-- `grant insert on public.reviews to authenticated;`
-- `grant all on public.reviews to service_role;`
+No type changes needed — `Order.buyerId` and `Offer.buyerId` already exist and are mapped in `dbToOrder`/`dbToOffer`.
 
-**RLS (enable + policies):**
-- `select`: `to public using (true)` — herkes okuyabilir.
-- `insert`: `to authenticated with check (auth.uid() = reviewer_id AND exists (select 1 from public.orders o where o.id = order_id AND o.status in ('delivered','completed') AND ((reviewer_role='buyer' AND o.buyer_id = auth.uid() AND o.farmer_id = reviewee_id) OR (reviewer_role='farmer' AND o.farmer_id = auth.uid() AND o.buyer_id = reviewee_id))))`
-- Update/Delete policy yok — review'lar immutable (v1 için basit).
+## 2. `src/routes/buyer.orders.tsx` — completed list indicator
 
-**RPC `public.get_farmer_rating_summary(_farmer_id uuid)`:**
-- `returns table(avg_rating numeric, review_count int)`
-- `security definer`, `set search_path = public`, `stable`
-- Body: `select avg(rating)::numeric, count(*)::int from reviews where reviewee_id = _farmer_id and reviewer_role = 'buyer'`
-- `grant execute to anon, authenticated;`
+In `renderDoneOrders`, extract each row into a small local `DoneOrderRow` component so it can call `useOrderReviews(o.id)` and `useAuthUserId()` at row scope (mirrors the pattern used in `farmer.orders.index.tsx`'s `OrderCard`).
 
-## 2) Types (`src/lib/hasat/types.ts`)
+- Compute `myReview = reviews.find(r => r.reviewerId === userId && r.reviewerRole === 'buyer')`.
+- If `myReview` exists: render a small inline `⭐ Değerlendirdiniz` chip with `<RatingStars rating={myReview.rating} />` (imported from `@/components/hasat/ReviewModal`).
+- Else if `o.producerId` exists: render a small `⭐ Değerlendir` button. `onClick` calls `e.stopPropagation()` (so the row's navigate does not fire) and opens `ReviewModal` locally with `reviewerRole: "buyer"`, `revieweeId: o.producerId`, `orderId: o.id`. Success calls `useCreateReview` mutation, toasts, and closes.
+- Place the chip/button in the existing bottom row (near the price), keeping visual density consistent with the rest of the list.
 
-Yeni tip:
-```ts
-export interface Review {
-  id: string;
-  orderId: string;
-  reviewerId: string;
-  revieweeId: string;
-  reviewerRole: 'farmer' | 'buyer';
-  rating: number;
-  comment: string | null;
-  createdAt: string;
+## 3. Farmer-visible buyer rating badge
+
+Small presentational helper (co-located in `farmer.orders.index.tsx` since it is only used there for now):
+
+```tsx
+function BuyerRatingBadge({ buyerId }: { buyerId?: string }) {
+  const { data } = useBuyerRatingSummary(buyerId);
+  if (!buyerId || !data || !data.reviewCount || data.avgRating == null) return null;
+  return <span className="text-[11px] text-hmuted">⭐ {data.avgRating.toFixed(1)} ({data.reviewCount})</span>;
 }
-export interface FarmerRatingSummary { avgRating: number | null; reviewCount: number }
 ```
 
-## 3) Queries (`src/lib/hasat/queries.ts`)
+Render `<BuyerRatingBadge buyerId={...} />` next to the buyer name in:
+- `OfferCard` (offer.buyerId)
+- `OrderCard` (order.buyerId)
 
-- **`useCreateReview()`** → `{ orderId, revieweeId, reviewerRole, rating, comment? }`
-  - `reviews` insert (auth.uid() reviewer_id olarak).
-  - Invalidate: `["order-reviews", orderId]`, `["farmer-rating", revieweeId]`, `["orders","buyer"]` veya `["orders","farmer"]`.
-- **`useOrderReviews(orderId)`** — o siparişteki 0-2 review'ı döner.
-- **`useFarmerRatingSummary(farmerId)`** — RPC çağırır, `{avgRating, reviewCount}`.
+Renders nothing when there are no reviews — no fake defaults.
 
-## 4) UI
+## Verification
 
-**`buyer.orders.$orderId.tsx`:**
-- `order.status === 'delivered' || 'completed'` iken:
-  - Kullanıcının verdiği review varsa → "Değerlendirdiniz ✓ ⭐ {rating}/5" pill.
-  - Yoksa → "⭐ Değerlendir" butonu; modal (1-5 yıldız seçici + opsiyonel yorum textarea) → `useCreateReview({ reviewerRole: 'buyer', revieweeId: order.producerId })`.
-
-**`farmer.orders.index.tsx` (`OrderCard`):**
-- `delivered/completed` iken aynı desen: "⭐ Alıcıyı Değerlendir" veya "Değerlendirdiniz ✓" — reviewerRole `'farmer'`, revieweeId order'ın buyer_id'si (mevcut `Order` tipinde yoksa `queries.ts`'de map'e ekle).
-- Not: `Order` tipinde `buyerId` alanı olup olmadığını kontrol edip yoksa `dbToOrder`'a ekle (`offers.buyer_id`'den).
-
-**`buyer.producer.$id.tsx`:**
-- Profil kartında yıldız + ortalama + review sayısı gösterimi (`useFarmerRatingSummary(id)`).
-- Aşağı yeni bir "Değerlendirmeler" bölümü: son 5 buyer→farmer yorumu (yeni bir `useFarmerRecentReviews(farmerId, limit=5)` ile — bu 4. hook olur, plan içine dahil).
-- Veri yoksa "Henüz değerlendirme yok" hint.
-
-## 5) Doğrulama
-
-- `tsgo` clean.
-- Manuel: bir `delivered` sipariş üzerinden buyer değerlendirir → producer profile ortalama güncellenir; ikinci review denemesi unique constraint ile engellenir.
-
-## Notlar
-
-- Review'lar public SELECT — buyer yorumları rakip çiftçilere de görünür; bu bilinçli (pazaryeri şeffaflığı) ve mevcut community post pattern'i ile tutarlı.
-- Immutable review kararı v1 için — düzenleme/silme ileride ayrı bir feature.
-- RLS check sipariş durumunu ve tarafların doğru eşleşmesini DB seviyesinde zorlar — client validation ek katman.
+- Manual sanity: buyer completes → sees "Değerlendir" chip in list; after review, chip flips to "Değerlendirdiniz ⭐⭐⭐⭐⭐". Farmer sees `⭐ x/5 (n)` next to buyer name once at least one farmer→buyer review exists. Reviewee gets a `notifications` row.
+- `tsgo` at the end.

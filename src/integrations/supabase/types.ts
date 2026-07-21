@@ -1740,6 +1740,13 @@ export type Database = {
         Args: { _event: string; _message: string; _user_id: string }
         Returns: undefined
       }
+      get_buyer_rating_summary: {
+        Args: { _buyer_id: string }
+        Returns: {
+          avg_rating: number
+          review_count: number
+        }[]
+      }
       get_farmer_rating_summary: {
         Args: { _farmer_id: string }
         Returns: {

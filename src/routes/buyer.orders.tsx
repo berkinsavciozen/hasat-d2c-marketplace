@@ -4,13 +4,15 @@ import { BuyerHeader } from "@/components/hasat/BuyerHeader";
 import { LoadingDots } from "@/components/hasat/LoadingDots";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { formatTRY } from "@/lib/hasat/format";
-import { useBuyerOrders, useBuyerOffers, useUpdateOfferStatus } from "@/lib/hasat/queries";
+import { useBuyerOrders, useBuyerOffers, useUpdateOfferStatus, useOrderReviews, useCreateReview, useAuthUserId } from "@/lib/hasat/queries";
 import { toast } from "sonner";
 import type { Order, Offer } from "@/lib/hasat/types";
 import { NegotiationThread } from "@/components/hasat/NegotiationThread";
 import { statusVisual, statusStyle, canAccept } from "@/lib/hasat/offer-status";
 import { WaitingBanner } from "@/components/hasat/WaitingBanner";
 import { slugifyFarmer } from "@/lib/hasat/vitrin";
+import { ReviewModal, RatingStars } from "@/components/hasat/ReviewModal";
+import { Star } from "lucide-react";
 
 function farmerSlugOf(name: string | null | undefined, id: string | undefined): string | null {
   if (name) {
@@ -164,33 +166,9 @@ function OrdersList() {
       <div className="rounded-2xl border border-dashed p-8 text-center text-hmuted">Henüz tamamlanmış sipariş yok.</div>
     ) : (
       <div className="space-y-3">
-        {list.map((o) => {
-          const s = ORDER_STATUS_LABEL[o.status];
-          const slug = farmerSlugOf(o.producerName, o.producerId);
-          return (
-            <div key={o.id} role="button" tabIndex={0}
-              onClick={() => navigate({ to: "/buyer/orders/$orderId", params: { orderId: o.id } })}
-              onKeyDown={(e) => { if (e.key === "Enter") navigate({ to: "/buyer/orders/$orderId", params: { orderId: o.id } }); }}
-              className="w-full text-left rounded-2xl bg-card border p-4 hover:border-saffron transition cursor-pointer">
-              <div className="flex items-start justify-between">
-                <div>
-                  <div className="font-mono text-xs text-hmuted">{o.code}</div>
-                  <div className="font-medium mt-1">{o.crop}</div>
-                  <div className="text-xs text-hmuted">
-                    {slug
-                      ? <Link to="/s/$slug" params={{ slug }} onClick={(e) => e.stopPropagation()} className="hover:underline">{o.producerName}</Link>
-                      : o.producerName}
-                  </div>
-                </div>
-                <span className="rounded-full px-2.5 py-0.5 text-[11px]" style={{ background: s.bg, color: s.fg }}>{s.label}</span>
-              </div>
-              <div className="mt-3 flex items-center justify-between text-xs">
-                <span className="text-hmuted">{o.quantity} {o.unit} · {o.delivery}</span>
-                <span className="font-mono" style={{ color: "var(--gold)" }}>{formatTRY(o.total)}</span>
-              </div>
-            </div>
-          );
-        })}
+        {list.map((o) => (
+          <DoneOrderRow key={o.id} order={o} onOpen={() => navigate({ to: "/buyer/orders/$orderId", params: { orderId: o.id } })} />
+        ))}
       </div>
     );
 
@@ -299,6 +277,82 @@ function OfferCard({ offer, onAccept, onReject, onCounter, onPay, pending }: {
       ) : (
         <WaitingBanner offer={offer} viewer="buyer" />
       )}
+    </div>
+  );
+}
+
+function DoneOrderRow({ order, onOpen }: { order: Order; onOpen: () => void }) {
+  const userId = useAuthUserId();
+  const { data: reviews = [] } = useOrderReviews(order.id);
+  const createReview = useCreateReview();
+  const [reviewOpen, setReviewOpen] = useState(false);
+  const myReview = reviews.find((r) => r.reviewerId === userId && r.reviewerRole === "buyer");
+  const canReview = (order.status === "delivered" || order.status === "completed") && !!order.producerId;
+  const slug = farmerSlugOf(order.producerName, order.producerId);
+  const s = ORDER_STATUS_LABEL[order.status];
+
+  return (
+    <div role="button" tabIndex={0}
+      onClick={onOpen}
+      onKeyDown={(e) => { if (e.key === "Enter") onOpen(); }}
+      className="w-full text-left rounded-2xl bg-card border p-4 hover:border-saffron transition cursor-pointer">
+      <div className="flex items-start justify-between">
+        <div>
+          <div className="font-mono text-xs text-hmuted">{order.code}</div>
+          <div className="font-medium mt-1">{order.crop}</div>
+          <div className="text-xs text-hmuted">
+            {slug
+              ? <Link to="/s/$slug" params={{ slug }} onClick={(e) => e.stopPropagation()} className="hover:underline">{order.producerName}</Link>
+              : order.producerName}
+          </div>
+        </div>
+        <span className="rounded-full px-2.5 py-0.5 text-[11px]" style={{ background: s.bg, color: s.fg }}>{s.label}</span>
+      </div>
+      <div className="mt-3 flex items-center justify-between text-xs">
+        <span className="text-hmuted">{order.quantity} {order.unit} · {order.delivery}</span>
+        <span className="font-mono" style={{ color: "var(--gold)" }}>{formatTRY(order.total)}</span>
+      </div>
+
+      {canReview && (
+        <div className="mt-3 border-t pt-3" onClick={(e) => e.stopPropagation()}>
+          {myReview ? (
+            <div className="flex items-center gap-2 text-xs text-hmuted">
+              <RatingStars rating={myReview.rating} size={14} />
+              <span>Değerlendirdiniz ({myReview.rating}/5)</span>
+            </div>
+          ) : (
+            <button
+              onClick={(e) => { e.stopPropagation(); setReviewOpen(true); }}
+              className="inline-flex items-center gap-1.5 rounded-lg min-h-[40px] px-3 py-2 text-xs font-medium"
+              style={{ background: "color-mix(in oklab, var(--gold) 15%, transparent)", color: "var(--dark)" }}
+            >
+              <Star className="h-3.5 w-3.5" style={{ color: "var(--gold)" }} /> Üreticiyi Değerlendir
+            </button>
+          )}
+        </div>
+      )}
+
+      <ReviewModal
+        open={reviewOpen}
+        onOpenChange={setReviewOpen}
+        title="Üreticiyi Değerlendir"
+        subtitle={`Sipariş ${order.code}`}
+        pending={createReview.isPending}
+        onSubmit={async ({ rating, comment }) => {
+          if (!order.producerId) return;
+          try {
+            await createReview.mutateAsync({
+              orderId: order.id,
+              revieweeId: order.producerId,
+              reviewerRole: "buyer",
+              rating,
+              comment,
+            });
+            toast.success("Değerlendirmeniz kaydedildi.");
+            setReviewOpen(false);
+          } catch (e: any) { toast.error(e.message ?? "Gönderilemedi"); }
+        }}
+      />
     </div>
   );
 }

@@ -2837,6 +2837,22 @@ export function useFarmerRecentReviews(farmerId: string | undefined | null, limi
   });
 }
 
+export function useBuyerRatingSummary(buyerId: string | undefined | null) {
+  return useQuery({
+    queryKey: ["buyer-rating", buyerId],
+    enabled: !!buyerId,
+    queryFn: async (): Promise<FarmerRatingSummary> => {
+      const { data, error } = await (supabase as any).rpc("get_buyer_rating_summary", { _buyer_id: buyerId });
+      if (error) throw error;
+      const row = Array.isArray(data) ? data[0] : data;
+      return {
+        avgRating: row?.avg_rating != null ? Number(row.avg_rating) : null,
+        reviewCount: Number(row?.review_count ?? 0),
+      };
+    },
+  });
+}
+
 export function useCreateReview() {
   const qc = useQueryClient();
   const userId = useAuthUserId();
@@ -2859,12 +2875,28 @@ export function useCreateReview() {
         comment: input.comment?.trim() || null,
       });
       if (error) throw error;
+      // Best-effort notification to the reviewee.
+      if (input.revieweeId && input.revieweeId !== userId) {
+        try {
+          const { data: me } = await supabase.from("profiles").select("name").eq("id", userId).maybeSingle();
+          const who = me?.name ?? (input.reviewerRole === "buyer" ? "Bir alıcı" : "Bir üretici");
+          await supabase.from("notifications").insert({
+            user_id: input.revieweeId,
+            type: "review",
+            title: "Yeni değerlendirme",
+            body: `${who} ${input.rating}/5 puan verdi`,
+            related_id: input.orderId,
+          });
+        } catch { /* notifications table optional — ignore */ }
+      }
       return input;
     },
     onSuccess: (v) => {
       qc.invalidateQueries({ queryKey: ["order-reviews", v.orderId] });
       qc.invalidateQueries({ queryKey: ["farmer-rating", v.revieweeId] });
       qc.invalidateQueries({ queryKey: ["farmer-recent-reviews", v.revieweeId] });
+      qc.invalidateQueries({ queryKey: ["buyer-rating", v.revieweeId] });
     },
   });
 }
+
