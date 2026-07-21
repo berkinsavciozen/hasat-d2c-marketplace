@@ -861,6 +861,8 @@ export type Database = {
       notif_prefs: {
         Row: {
           community_push: boolean
+          crop_request_match_sms: boolean
+          dispute_opened_sms: boolean
           harvest_time_push: boolean
           harvest_time_sms: boolean
           harvest_time_whatsapp: boolean
@@ -868,6 +870,9 @@ export type Database = {
           new_offer_sms: boolean
           new_offer_whatsapp: boolean
           offer_accepted_sms: boolean
+          order_cancelled_sms: boolean
+          order_delivered_sms: boolean
+          order_shipped_sms: boolean
           payment_confirmed_sms: boolean
           price_alert_push: boolean
           price_alert_sms: boolean
@@ -876,6 +881,8 @@ export type Database = {
         }
         Insert: {
           community_push?: boolean
+          crop_request_match_sms?: boolean
+          dispute_opened_sms?: boolean
           harvest_time_push?: boolean
           harvest_time_sms?: boolean
           harvest_time_whatsapp?: boolean
@@ -883,6 +890,9 @@ export type Database = {
           new_offer_sms?: boolean
           new_offer_whatsapp?: boolean
           offer_accepted_sms?: boolean
+          order_cancelled_sms?: boolean
+          order_delivered_sms?: boolean
+          order_shipped_sms?: boolean
           payment_confirmed_sms?: boolean
           price_alert_push?: boolean
           price_alert_sms?: boolean
@@ -891,6 +901,8 @@ export type Database = {
         }
         Update: {
           community_push?: boolean
+          crop_request_match_sms?: boolean
+          dispute_opened_sms?: boolean
           harvest_time_push?: boolean
           harvest_time_sms?: boolean
           harvest_time_whatsapp?: boolean
@@ -898,6 +910,9 @@ export type Database = {
           new_offer_sms?: boolean
           new_offer_whatsapp?: boolean
           offer_accepted_sms?: boolean
+          order_cancelled_sms?: boolean
+          order_delivered_sms?: boolean
+          order_shipped_sms?: boolean
           payment_confirmed_sms?: boolean
           price_alert_push?: boolean
           price_alert_sms?: boolean
