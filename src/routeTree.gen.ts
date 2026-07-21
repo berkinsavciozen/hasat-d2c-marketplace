@@ -50,6 +50,7 @@ import { Route as FarmerPricesCropRouteImport } from './routes/farmer.prices.$cr
 import { Route as FarmerJournalNewRouteImport } from './routes/farmer.journal.new'
 import { Route as FarmerJournalEntryIdRouteImport } from './routes/farmer.journal.$entryId'
 import { Route as BuyerSubscriptionProducerIdRouteImport } from './routes/buyer.subscription.$producerId'
+import { Route as BuyerSettingsNotifsRouteImport } from './routes/buyer.settings.notifs'
 import { Route as BuyerProducerIdRouteImport } from './routes/buyer.producer.$id'
 import { Route as BuyerPricesCropRouteImport } from './routes/buyer.prices.$crop'
 import { Route as BuyerPayOfferIdRouteImport } from './routes/buyer.pay.$offerId'
@@ -267,6 +268,11 @@ const BuyerSubscriptionProducerIdRoute =
     path: '/subscription/$producerId',
     getParentRoute: () => BuyerRoute,
   } as any)
+const BuyerSettingsNotifsRoute = BuyerSettingsNotifsRouteImport.update({
+  id: '/settings/notifs',
+  path: '/settings/notifs',
+  getParentRoute: () => BuyerRoute,
+} as any)
 const BuyerProducerIdRoute = BuyerProducerIdRouteImport.update({
   id: '/producer/$id',
   path: '/producer/$id',
@@ -350,6 +356,7 @@ export interface FileRoutesByFullPath {
   '/buyer/pay/$offerId': typeof BuyerPayOfferIdRoute
   '/buyer/prices/$crop': typeof BuyerPricesCropRoute
   '/buyer/producer/$id': typeof BuyerProducerIdRoute
+  '/buyer/settings/notifs': typeof BuyerSettingsNotifsRoute
   '/buyer/subscription/$producerId': typeof BuyerSubscriptionProducerIdRoute
   '/farmer/journal/$entryId': typeof FarmerJournalEntryIdRoute
   '/farmer/journal/new': typeof FarmerJournalNewRoute
@@ -400,6 +407,7 @@ export interface FileRoutesByTo {
   '/buyer/pay/$offerId': typeof BuyerPayOfferIdRoute
   '/buyer/prices/$crop': typeof BuyerPricesCropRoute
   '/buyer/producer/$id': typeof BuyerProducerIdRoute
+  '/buyer/settings/notifs': typeof BuyerSettingsNotifsRoute
   '/buyer/subscription/$producerId': typeof BuyerSubscriptionProducerIdRoute
   '/farmer/journal/$entryId': typeof FarmerJournalEntryIdRoute
   '/farmer/journal/new': typeof FarmerJournalNewRoute
@@ -452,6 +460,7 @@ export interface FileRoutesById {
   '/buyer/pay/$offerId': typeof BuyerPayOfferIdRoute
   '/buyer/prices/$crop': typeof BuyerPricesCropRoute
   '/buyer/producer/$id': typeof BuyerProducerIdRoute
+  '/buyer/settings/notifs': typeof BuyerSettingsNotifsRoute
   '/buyer/subscription/$producerId': typeof BuyerSubscriptionProducerIdRoute
   '/farmer/journal/$entryId': typeof FarmerJournalEntryIdRoute
   '/farmer/journal/new': typeof FarmerJournalNewRoute
@@ -505,6 +514,7 @@ export interface FileRouteTypes {
     | '/buyer/pay/$offerId'
     | '/buyer/prices/$crop'
     | '/buyer/producer/$id'
+    | '/buyer/settings/notifs'
     | '/buyer/subscription/$producerId'
     | '/farmer/journal/$entryId'
     | '/farmer/journal/new'
@@ -555,6 +565,7 @@ export interface FileRouteTypes {
     | '/buyer/pay/$offerId'
     | '/buyer/prices/$crop'
     | '/buyer/producer/$id'
+    | '/buyer/settings/notifs'
     | '/buyer/subscription/$producerId'
     | '/farmer/journal/$entryId'
     | '/farmer/journal/new'
@@ -606,6 +617,7 @@ export interface FileRouteTypes {
     | '/buyer/pay/$offerId'
     | '/buyer/prices/$crop'
     | '/buyer/producer/$id'
+    | '/buyer/settings/notifs'
     | '/buyer/subscription/$producerId'
     | '/farmer/journal/$entryId'
     | '/farmer/journal/new'
@@ -926,6 +938,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof BuyerSubscriptionProducerIdRouteImport
       parentRoute: typeof BuyerRoute
     }
+    '/buyer/settings/notifs': {
+      id: '/buyer/settings/notifs'
+      path: '/settings/notifs'
+      fullPath: '/buyer/settings/notifs'
+      preLoaderRoute: typeof BuyerSettingsNotifsRouteImport
+      parentRoute: typeof BuyerRoute
+    }
     '/buyer/producer/$id': {
       id: '/buyer/producer/$id'
       path: '/producer/$id'
@@ -1011,6 +1030,7 @@ interface BuyerRouteChildren {
   BuyerPayOfferIdRoute: typeof BuyerPayOfferIdRoute
   BuyerPricesCropRoute: typeof BuyerPricesCropRoute
   BuyerProducerIdRoute: typeof BuyerProducerIdRoute
+  BuyerSettingsNotifsRoute: typeof BuyerSettingsNotifsRoute
   BuyerSubscriptionProducerIdRoute: typeof BuyerSubscriptionProducerIdRoute
   BuyerPricesIndexRoute: typeof BuyerPricesIndexRoute
 }
@@ -1029,6 +1049,7 @@ const BuyerRouteChildren: BuyerRouteChildren = {
   BuyerPayOfferIdRoute: BuyerPayOfferIdRoute,
   BuyerPricesCropRoute: BuyerPricesCropRoute,
   BuyerProducerIdRoute: BuyerProducerIdRoute,
+  BuyerSettingsNotifsRoute: BuyerSettingsNotifsRoute,
   BuyerSubscriptionProducerIdRoute: BuyerSubscriptionProducerIdRoute,
   BuyerPricesIndexRoute: BuyerPricesIndexRoute,
 }
