@@ -251,7 +251,7 @@ function Home() {
             {/* Active listings */}
             <div className="rounded-2xl bg-card border p-4">
               <div className="flex items-center justify-between">
-                <h3 className="font-serif text-lg">Aktif Ürünler: {listings.length}</h3>
+                <h2 className="font-serif text-lg">Aktif Ürünler: {listings.length}</h2>
                 <Link to="/farmer/storefront" className="text-sm text-saffron">Vitrin →</Link>
               </div>
               {listings.length === 0 ? (
