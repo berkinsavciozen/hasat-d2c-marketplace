@@ -130,21 +130,21 @@ export function CropDetailBody({ crop }: { crop: string }) {
               <div className="flex flex-wrap items-baseline gap-3">
                 <div>
                   <div className="text-[10px] text-hmuted">Ortalama</div>
-                  <div className="font-mono text-xl font-semibold">{formatTRY(hasat!.avgPrice!)}</div>
+                  <div className="font-mono text-xl font-semibold">{priceWithUnit(hasat!.avgPrice!, unit)}</div>
                 </div>
                 {hasat!.stddevPrice != null && (
                   <span
                     className="inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium"
                     style={{ background: "color-mix(in oklab, var(--gold) 15%, transparent)", color: "var(--gold)" }}
                   >
-                    Aralık: {formatTRY(Math.max(0, hasat!.avgPrice! - hasat!.stddevPrice))} – {formatTRY(hasat!.avgPrice! + hasat!.stddevPrice)}
+                    Aralık: {priceWithUnit(Math.max(0, hasat!.avgPrice! - hasat!.stddevPrice), unit)} – {priceWithUnit(hasat!.avgPrice! + hasat!.stddevPrice, unit)}
                   </span>
                 )}
                 <span className="text-[11px] text-hmuted">{hasat!.distinctFarmerCount} üretici</span>
               </div>
               {hasatSeries.length >= 2 && (
                 <div className="mt-3">
-                  <PriceChart data={hasatSeries} color="var(--saffron)" />
+                  <PriceChart data={hasatSeries} color="var(--saffron)" unit={unit} />
                 </div>
               )}
             </SectionCard>
