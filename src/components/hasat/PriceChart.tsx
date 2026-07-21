@@ -44,10 +44,10 @@ export function PriceChart({ data, color = "var(--saffron)", height = 180, label
       <div className="flex flex-wrap items-baseline gap-3">
         <div>
           <div className="text-[10px] text-hmuted">Son</div>
-          <div className="font-mono text-lg font-semibold" style={{ color }}>{formatTRY(last.avgPrice)}</div>
+          <div className="font-mono text-lg font-semibold" style={{ color }}>{priceWithUnit(last.avgPrice, unit)}</div>
         </div>
         <div className="text-[10px] text-hmuted">
-          Aralık {formatTRY(min)} – {formatTRY(max)}
+          Aralık {priceWithUnit(min, unit)} – {priceWithUnit(max, unit)}
         </div>
       </div>
       <svg
