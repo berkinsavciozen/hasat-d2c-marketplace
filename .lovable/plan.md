@@ -1,41 +1,57 @@
-## P17-E Frontend — RFQ (Talep Akışı)
+# Admin KPI Dashboard Planı
 
-Not: Şema (kolonlar + RLS) zaten canlı. Bu plan sadece `src/` içinde ilerler.
+Kurucu-only iç araç. Mevcut farmer/buyer akışlarına, RLS'ye ve view tanımlarına dokunulmaz.
 
-### 1) `src/lib/hasat/queries.ts`
+## 1) Secret
+- `ADMIN_DASHBOARD_KEY` = `Xu1qlPBdOySu8dNjy22-mUi5-zAdfGyHZBBD65NZyQw` olarak Supabase secret'larına eklenir (`secrets--set_secret`).
 
-**`useCreateCropRequest` güncellemesi**
-- `CreateCropRequestInput` tipi: `cropName`, `note?`, `quantity? | null`, `unit? | null`, `region? | null`, `targetDateStart? | null`, `targetDateEnd? | null`, `targetPrice? | null`.
-- Insert: `crop_requests`'e yeni kolonlarla birlikte `requested_by = auth.uid()`.
-- Best-effort eşleşme + bildirim (try/catch, `useCreateReply` deseniyle):
-  1. `crop_config`'ten canonical crop adını bul (`crop` veya `display_name` `ilike`).
-  2. `listings` (status in ('active','draft')) — canonical `ilike` — ve `parcels.crops @> [canonical]` birleşiminden `farmer_id` seti.
-  3. `region` doluysa: `profiles` üzerinden `city = region` olanlara filtre uygula.
-  4. Her eşleşen çiftçiye `notifications` insert: `{type:'crop_request', title:'Yeni ürün talebi', body:'{buyerName} {ürün} arıyor — {miktar} {birim} · {region}'}`, `related_id = request.id`.
-- `onSuccess`: `["cropRequests"]` ve `["myCropRequests"]` invalidate.
+## 2) Edge Function: `admin-kpi`
+- Yeni `supabase/functions/admin-kpi/index.ts` + `supabase/config.toml`'a `verify_jwt = false` girişi.
+- Service role client (`SUPABASE_URL` + `SUPABASE_SERVICE_ROLE_KEY` env'den).
+- `x-admin-key` header'ı `Deno.env.get("ADMIN_DASHBOARD_KEY")` ile karşılaştırılır (timing-safe); yoksa/hatalıysa 401.
+- CORS: `*` origin, `x-admin-key, content-type` header'ları, `GET, OPTIONS` metodları. OPTIONS için 204.
+- Tüm view'lar paralel `Promise.all` ile sorgulanır:
+  - `v_kpi_north_star` → month asc
+  - `v_kpi_dispute_rate` → month asc
+  - `v_kpi_full_acceptance_rate` → month asc
+  - `v_kpi_buyer_repeat_rate`
+  - `v_kpi_review_avg` → `.is('reviewee_id', null)` filtre
+  - `v_kpi_order_base` → `.eq('is_realized_sale', true)` → JS'te count + `sum(gmv)` reduce (all-time totals)
+- Response şekli:
+  ```json
+  {
+    "north_star": [...],
+    "dispute_rate": [...],
+    "full_acceptance_rate": [...],
+    "buyer_repeat_rate": [...],
+    "review_avg": [...],
+    "totals": { "order_count": n, "total_gmv": n }
+  }
+  ```
+- Herhangi bir view sorgusu hata verirse ilgili alan `null` döner (dashboard kısmi göster); üst hata olursa 500 + `{ error }`.
+- Deploy: `supabase--deploy_edge_functions ["admin-kpi"]`.
 
-**Yeni `useMyCropRequests()`**
-- `crop_requests` — `requested_by = auth.uid()` — kolonlar: `id, crop_name_free_text, note, quantity, unit, region, target_date_start, target_date_end, target_price, status, created_at`, `created_at desc`.
-- `MyCropRequest` DTO'ya map.
+## 3) Frontend: `/admin/kpi`
+Yeni dosya `src/routes/admin.kpi.tsx` (TanStack Start flat route).
 
-### 2) `src/routes/buyer.discover.tsx`
+- `__root` altında ama farmer/buyer shell'inin dışında; hiçbir nav/menüye eklenmez.
+- `head()`: title "Admin KPI", `robots: noindex`.
+- State: `key` (string), `submittedKey` (string | null). localStorage/sessionStorage yok.
+- Form: tek `<input type="password">` + "Gir" butonu → `setSubmittedKey(key)`.
+- Fetch: `submittedKey` set olunca `useQuery(['admin-kpi', submittedKey], …)`:
+  - `supabase.functions.invoke("admin-kpi", { headers: { "x-admin-key": submittedKey }, method: "GET" })`; 401 gelirse toast "Hatalı anahtar" + `setSubmittedKey(null)`.
+- Render (başarılıysa):
+  a. 3 büyük KPI kartı (`StatCard`): Toplam GMV (`totals.total_gmv`, `formatTRY`), Bu ayki ihtilafsız pay %, Bu ayki tam kabul %. "Bu ay" = sıralı dizideki son satır.
+  b. North Star trend: recharts `LineChart` — X: month, iki `Line` (`total_gmv`, `dispute_free_gmv`, ₺ ekseni).
+  c. Dispute & Full acceptance: tek `LineChart`, ay bazında iki `Line` (`dispute_rate_pct`, `full_acceptance_rate_pct`, % ekseni 0-100).
+  d. Buyer repeat rate: `BarChart` — segment adı TR sözlüğüyle map (`bireysel/restoran/otel/organik_market/ihracatçı/genel`), Y ekseninde `repeat_buyer_rate_pct`.
+  e. Review avg: `SectionCard` içinde küçük kart listesi — role TR ("Çiftçi"/"Alıcı"/"Genel"), `avg_rating` (1 desimal) + `review_count`.
+- Boş dizi/`null` alanlarda "Henüz veri yok" placeholder; grafik render edilmez.
+- `recharts` zaten shadcn ile yüklü; ek paket yok.
 
-- Yeni `requestOpen` state + `CropRequestModal` bileşeni (aynı dosyada).
-- "Sonuç bulunamadı" boş durumuna "Bu ürünü talep et" butonu.
-- Modal alanları: crop (query'den prefill), miktar + birim (kg/g/L), bölge (`TR_PROVINCES`), tarih başlangıç/bitiş, hedef fiyat, not.
-- Gönderim `useCreateCropRequest.mutateAsync` + sonner toast.
-- `TR_PROVINCES` importu `@/lib/hasat/cities`.
+## 4) Doğrulama
+- `bunx tsgo --noEmit` temiz.
+- `supabase--curl_edge_functions` ile hem yanlış hem doğru `x-admin-key` denenir (401 vs 200 doğrulanır).
 
-### 3) `src/routes/buyer.requests.tsx` (yeni)
-
-- `createFileRoute("/buyer/requests")`, `head()` ile "Taleplerim — Hasat".
-- `BuyerHeader` başlık + `/buyer/account`'a geri linki.
-- `useMyCropRequests()` ile liste; boş durum CTA ("Keşfet'e git").
-- Kart: ürün, tarih, durum rozeti, grid (miktar/bölge/tarih aralığı/hedef fiyat), varsa not.
-
-### 4) `src/routes/buyer.account.tsx`
-
-- Bildirim Tercihleri satırının hemen altına "Taleplerim" linki (`ClipboardList` + `ChevronRight`, mevcut satırlarla aynı görsel desen).
-
-### 5) Doğrulama
-- `bunx tsgo --noEmit` temiz olmalı.
+## Dokunulmayacaklar
+Mevcut farmer/buyer route'ları, navigasyon, RLS, `v_kpi_*` view tanımları, diğer edge function'lar.

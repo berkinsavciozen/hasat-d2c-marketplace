@@ -473,6 +473,13 @@ export type Database = {
             referencedRelation: "orders"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "disputes_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "v_kpi_order_base"
+            referencedColumns: ["order_id"]
+          },
         ]
       }
       farms: {
@@ -1145,6 +1152,13 @@ export type Database = {
             referencedRelation: "orders"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "order_timeline_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "v_kpi_order_base"
+            referencedColumns: ["order_id"]
+          },
         ]
       }
       orders: {
@@ -1425,6 +1439,13 @@ export type Database = {
             referencedRelation: "orders"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "price_history_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "v_kpi_order_base"
+            referencedColumns: ["order_id"]
+          },
         ]
       }
       price_points: {
@@ -1619,6 +1640,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "reviews_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "v_kpi_order_base"
+            referencedColumns: ["order_id"]
+          },
+          {
             foreignKeyName: "reviews_reviewee_id_fkey"
             columns: ["reviewee_id"]
             isOneToOne: false
@@ -1783,6 +1811,122 @@ export type Database = {
           {
             foreignKeyName: "parcels_farmer_id_fkey"
             columns: ["farmer_id"]
+            isOneToOne: false
+            referencedRelation: "public_farmer_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      v_kpi_buyer_repeat_rate: {
+        Row: {
+          active_buyers: number | null
+          repeat_buyer_rate_pct: number | null
+          repeat_buyers: number | null
+          segment: string | null
+        }
+        Relationships: []
+      }
+      v_kpi_dispute_rate: {
+        Row: {
+          delivered_or_completed_orders: number | null
+          dispute_rate_pct: number | null
+          disputed_orders: number | null
+          month: string | null
+        }
+        Relationships: []
+      }
+      v_kpi_full_acceptance_rate: {
+        Row: {
+          delivered_or_completed_orders: number | null
+          full_acceptance_rate_pct: number | null
+          fully_accepted_orders: number | null
+          month: string | null
+        }
+        Relationships: []
+      }
+      v_kpi_north_star: {
+        Row: {
+          dispute_free_gmv: number | null
+          dispute_free_share_pct: number | null
+          month: string | null
+          total_gmv: number | null
+        }
+        Relationships: []
+      }
+      v_kpi_order_base: {
+        Row: {
+          amount: number | null
+          buyer_company_type: Database["public"]["Enums"]["company_type"] | null
+          buyer_id: string | null
+          created_at: string | null
+          crop: string | null
+          farmer_city: string | null
+          farmer_id: string | null
+          has_dispute: boolean | null
+          is_realized_sale: boolean | null
+          offer_id: string | null
+          order_id: string | null
+          order_ref: string | null
+          order_status: Database["public"]["Enums"]["order_status"] | null
+          payment_status: string | null
+          reached_delivery: boolean | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "orders_buyer_id_fkey"
+            columns: ["buyer_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "orders_buyer_id_fkey"
+            columns: ["buyer_id"]
+            isOneToOne: false
+            referencedRelation: "public_farmer_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "orders_farmer_id_fkey"
+            columns: ["farmer_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "orders_farmer_id_fkey"
+            columns: ["farmer_id"]
+            isOneToOne: false
+            referencedRelation: "public_farmer_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "orders_offer_id_fkey"
+            columns: ["offer_id"]
+            isOneToOne: false
+            referencedRelation: "offers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      v_kpi_review_avg: {
+        Row: {
+          avg_rating: number | null
+          review_count: number | null
+          reviewee_id: string | null
+          reviewee_role: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "reviews_reviewee_id_fkey"
+            columns: ["reviewee_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "reviews_reviewee_id_fkey"
+            columns: ["reviewee_id"]
             isOneToOne: false
             referencedRelation: "public_farmer_profiles"
             referencedColumns: ["id"]
