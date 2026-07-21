@@ -99,7 +99,7 @@ function Notifs() {
                           <Switch
                             checked={prefs[col]}
                             disabled={update.isPending}
-                            onCheckedChange={(v) => update.mutate({ [col]: v } as any)}
+                            onCheckedChange={(v) => onToggle(col, v)}
                           />
                         ) : (
                           <span className="text-xs text-muted-foreground">—</span>
