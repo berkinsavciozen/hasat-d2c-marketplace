@@ -100,11 +100,35 @@ function AdminKpiPage() {
         headers: { "x-admin-key": submittedKey! },
       });
       if (error) {
-        const status = (error as { context?: { status?: number } }).context?.status;
-        if (status === 401) {
-          toast.error("Hatalı anahtar");
-          setSubmittedKey(null);
+        console.log(
+          "[admin-kpi] invoke error:",
+          JSON.stringify(error, Object.getOwnPropertyNames(error), 2),
+        );
+        const anyErr = error as {
+          context?: { status?: number; response?: { status?: number } } & Partial<Response>;
+          status?: number;
+          message?: string;
+        };
+        let status: number | undefined =
+          anyErr.context?.status ??
+          anyErr.status ??
+          anyErr.context?.response?.status;
+        if (!status && anyErr.context && typeof anyErr.context.status === "number") {
+          status = anyErr.context.status;
         }
+        if (!status && typeof anyErr.message === "string") {
+          const m = anyErr.message.match(/\b(4\d{2}|5\d{2})\b/);
+          if (m) status = Number(m[1]);
+        }
+
+        if (status === 401 || status === 403) {
+          toast.error("Hatalı anahtar");
+        } else if (status && status >= 500) {
+          toast.error(`Sunucu hatası (${status}): ${anyErr.message ?? "bilinmiyor"}`);
+        } else {
+          toast.error(`Bağlantı hatası: ${anyErr.message ?? "bilinmiyor"}`);
+        }
+        setSubmittedKey(null);
         throw error;
       }
       return data as KpiResponse;
