@@ -1,73 +1,41 @@
-## P17-E: Yapılandırılmış RFQ (talep akışı)
+## P17-E Frontend — RFQ (Talep Akışı)
 
-Alıcının arama sonucu boşken bir talep bırakabilmesi, çiftçilerin bu talepten haberdar olması ve alıcının kendi taleplerini takip edebilmesi için uçtan uca akış.
+Not: Şema (kolonlar + RLS) zaten canlı. Bu plan sadece `src/` içinde ilerler.
 
-### 1) Şema (migration — sadece ekleme, mevcut veriyi bozmaz)
+### 1) `src/lib/hasat/queries.ts`
 
-`public.crop_requests`'e opsiyonel kolonlar:
-- `quantity numeric`
-- `unit text`
-- `region text` (şehir)
-- `target_date_start date`
-- `target_date_end date`
-- `target_price numeric`
+**`useCreateCropRequest` güncellemesi**
+- `CreateCropRequestInput` tipi: `cropName`, `note?`, `quantity? | null`, `unit? | null`, `region? | null`, `targetDateStart? | null`, `targetDateEnd? | null`, `targetPrice? | null`.
+- Insert: `crop_requests`'e yeni kolonlarla birlikte `requested_by = auth.uid()`.
+- Best-effort eşleşme + bildirim (try/catch, `useCreateReply` deseniyle):
+  1. `crop_config`'ten canonical crop adını bul (`crop` veya `display_name` `ilike`).
+  2. `listings` (status in ('active','draft')) — canonical `ilike` — ve `parcels.crops @> [canonical]` birleşiminden `farmer_id` seti.
+  3. `region` doluysa: `profiles` üzerinden `city = region` olanlara filtre uygula.
+  4. Her eşleşen çiftçiye `notifications` insert: `{type:'crop_request', title:'Yeni ürün talebi', body:'{buyerName} {ürün} arıyor — {miktar} {birim} · {region}'}`, `related_id = request.id`.
+- `onSuccess`: `["cropRequests"]` ve `["myCropRequests"]` invalidate.
 
-Mevcut RLS/policy'lere dokunulmaz. Yeni kolonların hepsi NULLable, default yok — eski satırlar geçerli kalır.
+**Yeni `useMyCropRequests()`**
+- `crop_requests` — `requested_by = auth.uid()` — kolonlar: `id, crop_name_free_text, note, quantity, unit, region, target_date_start, target_date_end, target_price, status, created_at`, `created_at desc`.
+- `MyCropRequest` DTO'ya map.
 
-### 2) `queries.ts` — hook genişletmesi
+### 2) `src/routes/buyer.discover.tsx`
 
-`useCreateCropRequest` girişini genişlet:
-```
-{ cropName, note?, quantity?, unit?, region?, targetDateStart?, targetDateEnd?, targetPrice? }
-```
-Insert bu alanları da yazar (boşlar `null`).
+- Yeni `requestOpen` state + `CropRequestModal` bileşeni (aynı dosyada).
+- "Sonuç bulunamadı" boş durumuna "Bu ürünü talep et" butonu.
+- Modal alanları: crop (query'den prefill), miktar + birim (kg/g/L), bölge (`TR_PROVINCES`), tarih başlangıç/bitiş, hedef fiyat, not.
+- Gönderim `useCreateCropRequest.mutateAsync` + sonner toast.
+- `TR_PROVINCES` importu `@/lib/hasat/cities`.
 
-Yeni: `useMyCropRequests()` — `requested_by = auth.uid()` ile kendi taleplerini `created_at desc` çeker (RLS zaten kısıtlıyor). Dönen tipi ekranın ihtiyacı olan alanlarla map'ler.
+### 3) `src/routes/buyer.requests.tsx` (yeni)
 
-### 3) Talep oluşturma UI'sı — `buyer.discover.tsx`
+- `createFileRoute("/buyer/requests")`, `head()` ile "Taleplerim — Hasat".
+- `BuyerHeader` başlık + `/buyer/account`'a geri linki.
+- `useMyCropRequests()` ile liste; boş durum CTA ("Keşfet'e git").
+- Kart: ürün, tarih, durum rozeti, grid (miktar/bölge/tarih aralığı/hedef fiyat), varsa not.
 
-"Sonuç bulunamadı" boş durumuna **"Bu ürünü talep et"** butonu. Tıklayınca modal:
-- Ürün adı (`query`'den prefill, editable)
-- Miktar + birim (birim: `g/kg/L` select)
-- Bölge/şehir (opsiyonel, `TR_PROVINCES` select, "Farketmez" seçeneği)
-- Tarih aralığı (opsiyonel, iki `<input type="date">`)
-- Hedef fiyat (opsiyonel, ₺/birim)
-- Not (opsiyonel textarea)
+### 4) `src/routes/buyer.account.tsx`
 
-Başarıda toast + modal kapanır. Var olan `CropChips.tsx` içindeki `CropRequestDialog` daha basit; ondan bağımsız yeni modal (dolu form) `discover` içine inline yerleştirilir — mevcut dialog davranışı bozulmaz.
+- Bildirim Tercihleri satırının hemen altına "Taleplerim" linki (`ClipboardList` + `ChevronRight`, mevcut satırlarla aynı görsel desen).
 
-### 4) Eşleşme + bildirim (best-effort)
-
-`useCreateCropRequest` içinde insert başarılı olduktan sonra, ayrı bir try/catch bloğu:
-1. `crop_config`'ten `display_name`/`crop` case-insensitive lookup → canonical crop.
-2. `listings` (status in `active`,`draft`) ve `parcels.crops` array'inden bu ürünü üreten `farmer_id`'leri union'la.
-3. `region` doluysa `profiles.city = region` filtresi; boşsa filtre yok.
-4. Her benzersiz çiftçi için `notifications` insert:
-   - `type: 'crop_request'`
-   - `title: 'Yeni ürün talebi'`
-   - `body: '{buyer_name veya "Bir alıcı"} {ürün} arıyor{ · miktar varsa " — {qty} {unit}"}{ · region varsa " · {region}"}'`
-   - `related_id: request.id`
-
-`useCreateReview`/`useCreateReply`'daki desende — hata olursa sessizce log, ana mutation başarılı kalır. Tek insert için tek `.insert(rows)` çağrısı.
-
-### 5) Alıcı — "Taleplerim" sayfası
-
-Yeni route `src/routes/buyer.requests.tsx`:
-- `BuyerHeader` (başlık: "Taleplerim", geri `/buyer/account`).
-- `useMyCropRequests()` sonuçlarını kart listesi olarak:
-  - Ürün adı + status chip (`open`/`matched`/`closed` — mevcut değerler)
-  - Miktar+birim / bölge / tarih aralığı / hedef fiyat satırları (dolu olanlar)
-  - Not (varsa)
-  - Oluşturulma tarihi
-- Boş durum: "Henüz talep oluşturmadın. Keşfet'te aradığın ürün yoksa 'Bu ürünü talep et' ile buraya ekleyebilirsin."
-
-`buyer.account.tsx`'e bir menü satırı: "Taleplerim" (ClipboardList veya Search ikon + ChevronRight), diğer account link'leriyle aynı görsel desende. Alıcı shell nav'ına eklenmez.
-
-### 6) Doğrulama
-
-`tsgo` typecheck. Manuel akış: discover'da olmayan bir ürün ara → "Bu ürünü talep et" → form doldur → gönder → `buyer.account`'tan "Taleplerim" → kart görünür.
-
-### Kapsam dışı (bu tur)
-- Çiftçi tarafında "Talepler" gelen kutusu (bildirim yeterli, ayrı sayfa sonraki tur).
-- Talep kapatma/silme UI'sı.
-- Eşleşme kalitesi skorlaması / otomatik teklif önerisi.
+### 5) Doğrulama
+- `bunx tsgo --noEmit` temiz olmalı.
