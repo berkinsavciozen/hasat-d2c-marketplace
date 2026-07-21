@@ -2651,6 +2651,11 @@ export interface NotifPrefsRow {
   community_push: boolean;
   offer_accepted_sms: boolean;
   payment_confirmed_sms: boolean;
+  order_shipped_sms: boolean;
+  order_delivered_sms: boolean;
+  order_cancelled_sms: boolean;
+  dispute_opened_sms: boolean;
+  crop_request_match_sms: boolean;
 }
 
 export type NotifPrefKey = keyof NotifPrefsRow;
@@ -2668,7 +2673,13 @@ const NOTIF_PREF_DEFAULTS: NotifPrefsRow = {
   community_push: false,
   offer_accepted_sms: false,
   payment_confirmed_sms: false,
+  order_shipped_sms: true,
+  order_delivered_sms: true,
+  order_cancelled_sms: true,
+  dispute_opened_sms: true,
+  crop_request_match_sms: true,
 };
+
 
 export function useNotifPrefs() {
   const userId = useAuthUserId();
