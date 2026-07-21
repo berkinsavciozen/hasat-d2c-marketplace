@@ -134,6 +134,7 @@ function OfferCard({ offer }: { offer: Offer }) {
               {BUYER_TYPE_EMOJI[offer.buyerType]} {BUYER_TYPE_LABEL[offer.buyerType]}
             </span>
             <BuyerRatingBadge buyerId={offer.buyerId} />
+            {offer.subscriptionId && <SubscriptionOrderBadge />}
           </div>
           <div className="mt-1 text-sm text-hmuted">{formatCrop(offer.crop)} · {offer.quantity} {offer.unit}</div>
           <div className="mt-1.5 flex items-baseline gap-2 flex-wrap">
@@ -334,6 +335,7 @@ function OrderCard({ order, muted }: { order: Order; muted?: boolean }) {
           <div className="mt-1 flex flex-wrap items-center gap-2">
             <span className="font-medium truncate">{order.producerName}</span>
             <BuyerRatingBadge buyerId={order.buyerId} />
+            {order.subscriptionId && <SubscriptionOrderBadge />}
           </div>
           <div className="text-xs text-hmuted">{formatCrop(order.crop)} · {order.quantity} {order.unit} · {order.delivery}</div>
           <div className="mt-1.5 font-mono text-lg font-semibold">{formatTRY(order.total)}</div>
@@ -462,4 +464,16 @@ function BuyerRatingBadge({ buyerId }: { buyerId?: string }) {
   const { data } = useBuyerRatingSummary(buyerId);
   if (!buyerId || !data || !data.reviewCount || data.avgRating == null) return null;
   return <span className="text-[11px] text-hmuted">⭐ {data.avgRating.toFixed(1)} ({data.reviewCount})</span>;
+}
+
+function SubscriptionOrderBadge() {
+  return (
+    <span
+      className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium"
+      style={{ background: "color-mix(in oklab, var(--gold) 20%, transparent)", color: "var(--gold)" }}
+      title="Bu sipariş bir Sürekli Tedarik aboneliğinden geldi"
+    >
+      🔁 Abonelik Siparişi
+    </span>
+  );
 }

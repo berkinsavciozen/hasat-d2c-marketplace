@@ -44,6 +44,7 @@ function Payment() {
         delivery: pending.delivery,
         deliveryDate: pending.deliveryDate,
         note: pending.notes,
+        subscriptionId: pending.subscriptionId ?? null,
       });
       const ref = `HT-${new Date().getFullYear()}-${String(Math.floor(Math.random() * 9000) + 1000)}`;
       setPendingOffer(null);

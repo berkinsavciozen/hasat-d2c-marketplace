@@ -123,6 +123,8 @@ export interface Offer {
   farmerIban?: string;
   /** Farmer bank account holder name. */
   farmerBankAccountName?: string;
+  /** When set, this offer was placed to fulfill a harvest subscription. */
+  subscriptionId?: string | null;
 }
 
 export interface PriceAlert {
@@ -184,6 +186,7 @@ export interface Order {
   disputeWindowExpiresAt?: string;
   listingId?: string;
   listingActive?: boolean;
+  subscriptionId?: string | null;
 }
 
 export interface BuyerAddress {
@@ -234,6 +237,7 @@ export interface PendingOffer {
   deliveryDate: string;
   notes?: string;
   total: number;
+  subscriptionId?: string | null;
 }
 
 export interface Subscription {

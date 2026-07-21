@@ -137,7 +137,7 @@ function SubscriptionPage() {
         </div>
 
         <div className="rounded-xl p-3 text-xs" style={{ background: "color-mix(in oklab, var(--lav) 14%, transparent)", color: "var(--lav)" }}>
-          ℹ️ Ödeme hasattan 2 hafta önce alınır (escrow).
+          ℹ️ Hasat yaklaştığında üreticiyle mevcut ödeme akışı (havale/kart) üzerinden iletişime geçilecek.
         </div>
 
         <div className="rounded-2xl p-4" style={{ background: "color-mix(in oklab, var(--gold) 14%, transparent)" }}>

@@ -46,7 +46,7 @@ function Subscriptions() {
   const { data: subs = [], isLoading } = useMySubscriptions();
   const cancel = useCancelSubscription();
   const [pendingId, setPendingId] = useState<string | null>(null);
-  const [orderSub, setOrderSub] = useState<null | { farmerId: string; farmerName: string | null; priceLock: boolean; lockedPrice: number | null; crop: string | null }>(null);
+  const [orderSub, setOrderSub] = useState<null | { subscriptionId: string; farmerId: string; farmerName: string | null; priceLock: boolean; lockedPrice: number | null; crop: string | null }>(null);
   const { data: farmerListings = [], isLoading: listingsLoading } = useFarmerActiveListings(orderSub?.farmerId ?? null);
 
   const onConfirmCancel = async () => {
@@ -146,7 +146,7 @@ function Subscriptions() {
                 {s.status === "active" && (
                   <div className="mt-3 flex items-center justify-between gap-2">
                     <button
-                      onClick={() => setOrderSub({ farmerId: s.farmerId, farmerName: s.farmerName, priceLock: s.priceLock, lockedPrice: s.lockedPrice, crop: null })}
+                      onClick={() => setOrderSub({ subscriptionId: s.id, farmerId: s.farmerId, farmerName: s.farmerName, priceLock: s.priceLock, lockedPrice: s.lockedPrice, crop: null })}
                       className="inline-flex items-center gap-1.5 rounded-lg min-h-[40px] px-3 py-2 text-xs font-medium"
                       style={{ background: "var(--saffron)", color: "#fff" }}
                     >
@@ -181,7 +181,7 @@ function Subscriptions() {
             <div className="space-y-2 max-h-[60vh] overflow-y-auto">
               {farmerListings.map((l) => {
                 const useLock = !!(orderSub?.priceLock && orderSub?.lockedPrice);
-                const searchArgs: { qty?: number; suggestedPrice?: number } = { qty: l.minOrder };
+                const searchArgs: { qty?: number; suggestedPrice?: number; subscriptionId?: string } = { qty: l.minOrder, subscriptionId: orderSub!.subscriptionId };
                 if (useLock) searchArgs.suggestedPrice = orderSub!.lockedPrice!;
                 return (
                   <Link
