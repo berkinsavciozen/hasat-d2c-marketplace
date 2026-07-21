@@ -89,7 +89,7 @@ function OfferCard({ offer }: { offer: Offer }) {
   const updateStatus = useUpdateOfferStatus();
   const counterMut = useCounterOffer();
   const confirmTransfer = useConfirmTransferReceived();
-  const navigate = useNavigate();
+  
   const [acceptOpen, setAcceptOpen] = useState(false);
   const [rejectOpen, setRejectOpen] = useState(false);
   const [counterOpen, setCounterOpen] = useState(false);
