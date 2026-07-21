@@ -140,7 +140,7 @@ function AdminKpiPage() {
                   <CartesianGrid strokeDasharray="3 3" opacity={0.2} />
                   <XAxis dataKey="month" tick={{ fontSize: 11 }} />
                   <YAxis tick={{ fontSize: 11 }} tickFormatter={(v) => formatTRY(Number(v))} width={80} />
-                  <Tooltip formatter={(v: number) => formatTRY(Number(v))} />
+                  <Tooltip formatter={(v) => formatTRY(Number(v))} />
                   <Legend />
                   <Line type="monotone" dataKey="total_gmv" name="Toplam GMV" stroke="var(--gold)" strokeWidth={2} dot={false} />
                   <Line type="monotone" dataKey="dispute_free_gmv" name="İhtilafsız GMV" stroke="var(--sage)" strokeWidth={2} dot={false} />
@@ -158,7 +158,7 @@ function AdminKpiPage() {
                   <CartesianGrid strokeDasharray="3 3" opacity={0.2} />
                   <XAxis dataKey="month" tick={{ fontSize: 11 }} />
                   <YAxis tick={{ fontSize: 11 }} domain={[0, 100]} tickFormatter={(v) => `${v}%`} />
-                  <Tooltip formatter={(v: number) => `${Number(v).toFixed(1)}%`} />
+                  <Tooltip formatter={(v) => `${Number(v).toFixed(1)}%`} />
                   <Legend />
                   <Line type="monotone" dataKey="dispute_rate_pct" name="İhtilaf oranı" stroke="var(--hred)" strokeWidth={2} dot={false} />
                   <Line type="monotone" dataKey="full_acceptance_rate_pct" name="Tam kabul oranı" stroke="var(--sage)" strokeWidth={2} dot={false} />
@@ -179,7 +179,7 @@ function AdminKpiPage() {
                   <CartesianGrid strokeDasharray="3 3" opacity={0.2} />
                   <XAxis dataKey="label" tick={{ fontSize: 11 }} />
                   <YAxis tick={{ fontSize: 11 }} tickFormatter={(v) => `${v}%`} domain={[0, 100]} />
-                  <Tooltip formatter={(v: number) => `${Number(v).toFixed(1)}%`} />
+                  <Tooltip formatter={(v) => `${Number(v).toFixed(1)}%`} />
                   <Bar dataKey="repeat_buyer_rate_pct" name="Tekrar oranı" fill="var(--saffron)" />
                 </BarChart>
               </ResponsiveContainer>
