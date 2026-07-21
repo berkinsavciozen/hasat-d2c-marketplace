@@ -287,7 +287,7 @@ function PriceSummaryCard({ crop, role }: { crop: string; role: Role }) {
             <>
               <div className="mt-1 flex items-baseline gap-2">
                 <span className="text-xs text-hmuted">Ortalama</span>
-                <span className="font-mono text-lg font-semibold">{formatTRY(hasat.avgPrice)}</span>
+                <span className="font-mono text-lg font-semibold">{priceWithUnit(hasat.avgPrice, summary?.unit)}</span>
               </div>
               <div className="mt-2 flex items-center justify-between gap-2">
                 <DistinctFarmerDots count={hasat.distinctFarmerCount} />
