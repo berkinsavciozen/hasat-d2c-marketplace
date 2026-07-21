@@ -4,13 +4,15 @@ import { BuyerHeader } from "@/components/hasat/BuyerHeader";
 import { LoadingDots } from "@/components/hasat/LoadingDots";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { formatTRY } from "@/lib/hasat/format";
-import { useBuyerOrders, useBuyerOffers, useUpdateOfferStatus } from "@/lib/hasat/queries";
+import { useBuyerOrders, useBuyerOffers, useUpdateOfferStatus, useOrderReviews, useCreateReview, useAuthUserId } from "@/lib/hasat/queries";
 import { toast } from "sonner";
 import type { Order, Offer } from "@/lib/hasat/types";
 import { NegotiationThread } from "@/components/hasat/NegotiationThread";
 import { statusVisual, statusStyle, canAccept } from "@/lib/hasat/offer-status";
 import { WaitingBanner } from "@/components/hasat/WaitingBanner";
 import { slugifyFarmer } from "@/lib/hasat/vitrin";
+import { ReviewModal, RatingStars } from "@/components/hasat/ReviewModal";
+import { Star } from "lucide-react";
 
 function farmerSlugOf(name: string | null | undefined, id: string | undefined): string | null {
   if (name) {
