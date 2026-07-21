@@ -2239,6 +2239,7 @@ export interface PriceHistorySummary {
   official: PriceHistoryOfficialSegment | null;
   marketSources: MarketSourceSummary[];
   lastUpdated: string | null;
+  unit: string | null;
 }
 
 export function usePriceHistorySummary(crop: string | null | undefined) {
