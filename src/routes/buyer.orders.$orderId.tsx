@@ -214,6 +214,27 @@ function OrderTracker() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <ReviewModal
+        open={reviewOpen}
+        onOpenChange={setReviewOpen}
+        title="Üreticiyi Değerlendir"
+        subtitle={`${order.producerName} — ${formatCrop(order.crop)}`}
+        pending={createReview.isPending}
+        onSubmit={async ({ rating, comment }) => {
+          try {
+            await createReview.mutateAsync({
+              orderId: order.id,
+              revieweeId: order.producerId,
+              reviewerRole: "buyer",
+              rating,
+              comment,
+            });
+            toast.success("Değerlendirmeniz için teşekkürler.");
+            setReviewOpen(false);
+          } catch (e: any) { toast.error(e.message ?? "Gönderilemedi"); }
+        }}
+      />
     </div>
   );
 }
