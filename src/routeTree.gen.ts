@@ -40,6 +40,7 @@ import { Route as BuyerDiscoverRouteImport } from './routes/buyer.discover'
 import { Route as BuyerCommunityRouteImport } from './routes/buyer.community'
 import { Route as BuyerAccountRouteImport } from './routes/buyer.account'
 import { Route as BatchListingIdRouteImport } from './routes/batch.$listingId'
+import { Route as AdminKpiRouteImport } from './routes/admin.kpi'
 import { Route as Char91DotwellKnownChar93OauthProtectedResourceRouteImport } from './routes/[.well-known]/oauth-protected-resource'
 import { Route as Char91DotmcpChar93ListToolsRouteImport } from './routes/[.mcp]/list-tools'
 import { Route as FarmerPricesIndexRouteImport } from './routes/farmer.prices.index'
@@ -216,6 +217,11 @@ const BatchListingIdRoute = BatchListingIdRouteImport.update({
   path: '/batch/$listingId',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AdminKpiRoute = AdminKpiRouteImport.update({
+  id: '/admin/kpi',
+  path: '/admin/kpi',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const Char91DotwellKnownChar93OauthProtectedResourceRoute =
   Char91DotwellKnownChar93OauthProtectedResourceRouteImport.update({
     id: '/.well-known/oauth-protected-resource',
@@ -333,6 +339,7 @@ export interface FileRoutesByFullPath {
   '/terms': typeof TermsRoute
   '/.mcp/list-tools': typeof Char91DotmcpChar93ListToolsRoute
   '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
+  '/admin/kpi': typeof AdminKpiRoute
   '/batch/$listingId': typeof BatchListingIdRoute
   '/buyer/account': typeof BuyerAccountRoute
   '/buyer/community': typeof BuyerCommunityRoute
@@ -386,6 +393,7 @@ export interface FileRoutesByTo {
   '/terms': typeof TermsRoute
   '/.mcp/list-tools': typeof Char91DotmcpChar93ListToolsRoute
   '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
+  '/admin/kpi': typeof AdminKpiRoute
   '/batch/$listingId': typeof BatchListingIdRoute
   '/buyer/account': typeof BuyerAccountRoute
   '/buyer/community': typeof BuyerCommunityRoute
@@ -439,6 +447,7 @@ export interface FileRoutesById {
   '/terms': typeof TermsRoute
   '/.mcp/list-tools': typeof Char91DotmcpChar93ListToolsRoute
   '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
+  '/admin/kpi': typeof AdminKpiRoute
   '/batch/$listingId': typeof BatchListingIdRoute
   '/buyer/account': typeof BuyerAccountRoute
   '/buyer/community': typeof BuyerCommunityRoute
@@ -494,6 +503,7 @@ export interface FileRouteTypes {
     | '/terms'
     | '/.mcp/list-tools'
     | '/.well-known/oauth-protected-resource'
+    | '/admin/kpi'
     | '/batch/$listingId'
     | '/buyer/account'
     | '/buyer/community'
@@ -547,6 +557,7 @@ export interface FileRouteTypes {
     | '/terms'
     | '/.mcp/list-tools'
     | '/.well-known/oauth-protected-resource'
+    | '/admin/kpi'
     | '/batch/$listingId'
     | '/buyer/account'
     | '/buyer/community'
@@ -599,6 +610,7 @@ export interface FileRouteTypes {
     | '/terms'
     | '/.mcp/list-tools'
     | '/.well-known/oauth-protected-resource'
+    | '/admin/kpi'
     | '/batch/$listingId'
     | '/buyer/account'
     | '/buyer/community'
@@ -653,6 +665,7 @@ export interface RootRouteChildren {
   TermsRoute: typeof TermsRoute
   Char91DotmcpChar93ListToolsRoute: typeof Char91DotmcpChar93ListToolsRoute
   Char91DotwellKnownChar93OauthProtectedResourceRoute: typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
+  AdminKpiRoute: typeof AdminKpiRoute
   BatchListingIdRoute: typeof BatchListingIdRoute
   OnboardingBuyerRoute: typeof OnboardingBuyerRoute
   OnboardingFarmerRoute: typeof OnboardingFarmerRoute
@@ -878,6 +891,13 @@ declare module '@tanstack/react-router' {
       path: '/batch/$listingId'
       fullPath: '/batch/$listingId'
       preLoaderRoute: typeof BatchListingIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin/kpi': {
+      id: '/admin/kpi'
+      path: '/admin/kpi'
+      fullPath: '/admin/kpi'
+      preLoaderRoute: typeof AdminKpiRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/.well-known/oauth-protected-resource': {
@@ -1151,6 +1171,7 @@ const rootRouteChildren: RootRouteChildren = {
   Char91DotmcpChar93ListToolsRoute: Char91DotmcpChar93ListToolsRoute,
   Char91DotwellKnownChar93OauthProtectedResourceRoute:
     Char91DotwellKnownChar93OauthProtectedResourceRoute,
+  AdminKpiRoute: AdminKpiRoute,
   BatchListingIdRoute: BatchListingIdRoute,
   OnboardingBuyerRoute: OnboardingBuyerRoute,
   OnboardingFarmerRoute: OnboardingFarmerRoute,
