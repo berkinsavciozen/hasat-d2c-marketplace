@@ -428,6 +428,28 @@ function OrderCard({ order, muted }: { order: Order; muted?: boolean }) {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <ReviewModal
+        open={reviewOpen}
+        onOpenChange={setReviewOpen}
+        title="Alıcıyı Değerlendir"
+        subtitle={`Sipariş ${order.code}`}
+        pending={createReview.isPending}
+        onSubmit={async ({ rating, comment }) => {
+          if (!order.buyerId) return;
+          try {
+            await createReview.mutateAsync({
+              orderId: order.id,
+              revieweeId: order.buyerId,
+              reviewerRole: "farmer",
+              rating,
+              comment,
+            });
+            toast.success("Değerlendirmeniz kaydedildi.");
+            setReviewOpen(false);
+          } catch (e: any) { toast.error(e.message ?? "Gönderilemedi"); }
+        }}
+      />
     </div>
   );
 }
