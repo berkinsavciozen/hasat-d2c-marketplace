@@ -465,3 +465,15 @@ function BuyerRatingBadge({ buyerId }: { buyerId?: string }) {
   if (!buyerId || !data || !data.reviewCount || data.avgRating == null) return null;
   return <span className="text-[11px] text-hmuted">⭐ {data.avgRating.toFixed(1)} ({data.reviewCount})</span>;
 }
+
+function SubscriptionOrderBadge() {
+  return (
+    <span
+      className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium"
+      style={{ background: "color-mix(in oklab, var(--gold) 20%, transparent)", color: "var(--gold)" }}
+      title="Bu sipariş bir Sürekli Tedarik aboneliğinden geldi"
+    >
+      🔁 Abonelik Siparişi
+    </span>
+  );
+}
