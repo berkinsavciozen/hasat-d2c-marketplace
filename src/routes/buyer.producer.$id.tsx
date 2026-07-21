@@ -84,7 +84,15 @@ function ProducerProfile() {
         </Link>
         <div className="absolute bottom-5 left-5 right-5 text-white">
           <h1 className="font-serif text-2xl md:text-3xl">{profile.name ?? "Üretici"}</h1>
-          {profile.city && <div className="text-sm opacity-90">📍 {profile.city}</div>}
+          <div className="flex items-center gap-3 text-sm opacity-90 mt-1">
+            {profile.city && <span>📍 {profile.city}</span>}
+            {ratingSummary && ratingSummary.reviewCount > 0 && ratingSummary.avgRating != null && (
+              <span className="inline-flex items-center gap-1">
+                <Star className="h-4 w-4" style={{ color: "var(--gold)", fill: "var(--gold)" }} />
+                {ratingSummary.avgRating.toFixed(1)} · {ratingSummary.reviewCount} değerlendirme
+              </span>
+            )}
+          </div>
         </div>
       </div>
 
