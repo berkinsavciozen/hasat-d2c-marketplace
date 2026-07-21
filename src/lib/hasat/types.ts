@@ -152,7 +152,7 @@ export interface Producer {
   nextHarvest: { date: string; estimatedQty: string; pricePerUnit: number; unit: string };
 }
 
-export type OrderStatus = "sent" | "accepted" | "preparing" | "shipped" | "delivered" | "completed";
+export type OrderStatus = "sent" | "accepted" | "preparing" | "shipped" | "delivered" | "completed" | "disputed" | "cancelled";
 
 export interface OrderTimelineStep {
   key: OrderStatus;
@@ -176,7 +176,23 @@ export interface Order {
   status: OrderStatus;
   createdAt: string;
   timeline: OrderTimelineStep[];
+  trackingNumber?: string;
+  carrier?: string;
+  cancelReason?: string;
+  cancelledAt?: string;
+  disputeWindowExpiresAt?: string;
 }
+
+export interface Dispute {
+  id: string;
+  orderId: string;
+  openedBy: string;
+  reason: string;
+  evidencePhotoUrls: string[];
+  status: "open" | "resolved";
+  createdAt: string;
+}
+
 
 export interface PendingOffer {
   listingId: string;
