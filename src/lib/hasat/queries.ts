@@ -2594,3 +2594,176 @@ export function useUpdateNotifPrefs() {
   });
 }
 
+// =====================================================================
+// POST-ORDER FLOW (shipment / delivery / cancel / dispute)
+// =====================================================================
+
+export function useMarkShipped() {
+  const qc = useQueryClient();
+  const userId = useAuthUserId();
+  return useMutation({
+    mutationFn: async ({ orderId, trackingNumber, carrier }: { orderId: string; trackingNumber: string; carrier: string }) => {
+      if (!userId) throw new Error("Oturum bulunamadı");
+      const { data, error } = await supabase
+        .from("orders")
+        .update({ status: "shipped", tracking_number: trackingNumber, carrier } as any)
+        .eq("id", orderId)
+        .eq("farmer_id", userId)
+        .eq("status", "preparing")
+        .select("id")
+        .single();
+      if (error) throw error;
+      await supabase.from("order_timeline").insert({
+        order_id: data.id,
+        step: "shipped",
+        label: "Kargoya Verildi",
+        completed_at: new Date().toISOString(),
+      });
+      return data;
+    },
+    onSuccess: (_d, v) => {
+      qc.invalidateQueries({ queryKey: ["farmerOrders", userId] });
+      qc.invalidateQueries({ queryKey: ["buyerOrders"] });
+      qc.invalidateQueries({ queryKey: ["orderTimeline", v.orderId] });
+    },
+  });
+}
+
+export function useConfirmDelivery() {
+  const qc = useQueryClient();
+  const userId = useAuthUserId();
+  return useMutation({
+    mutationFn: async ({ orderId, photoFile }: { orderId: string; photoFile?: File | null }) => {
+      if (!userId) throw new Error("Oturum bulunamadı");
+      if (photoFile) {
+        const ext = photoFile.name.split(".").pop() || "jpg";
+        const path = `${orderId}/${Date.now()}.${ext}`;
+        const { error: upErr } = await supabase.storage
+          .from("delivery-photos")
+          .upload(path, photoFile, { upsert: false });
+        if (upErr) throw upErr;
+      }
+      const windowExpires = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
+      const { data, error } = await supabase
+        .from("orders")
+        .update({ status: "delivered", dispute_window_expires_at: windowExpires } as any)
+        .eq("id", orderId)
+        .eq("buyer_id", userId)
+        .eq("status", "shipped")
+        .select("id")
+        .single();
+      if (error) throw error;
+      await supabase.from("order_timeline").insert({
+        order_id: data.id,
+        step: "delivered",
+        label: "Teslim Edildi",
+        completed_at: new Date().toISOString(),
+      });
+      return data;
+    },
+    onSuccess: (_d, v) => {
+      qc.invalidateQueries({ queryKey: ["farmerOrders"] });
+      qc.invalidateQueries({ queryKey: ["buyerOrders", userId] });
+      qc.invalidateQueries({ queryKey: ["orderTimeline", v.orderId] });
+    },
+  });
+}
+
+export function useCancelOrder() {
+  const qc = useQueryClient();
+  const userId = useAuthUserId();
+  return useMutation({
+    mutationFn: async ({ orderId, reason }: { orderId: string; reason?: string }) => {
+      if (!userId) throw new Error("Oturum bulunamadı");
+      const { data, error } = await supabase
+        .from("orders")
+        .update({
+          status: "cancelled",
+          cancelled_at: new Date().toISOString(),
+          cancel_reason: reason ?? null,
+        } as any)
+        .eq("id", orderId)
+        .eq("status", "preparing")
+        .or(`buyer_id.eq.${userId},farmer_id.eq.${userId}`)
+        .select("id")
+        .single();
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["farmerOrders", userId] });
+      qc.invalidateQueries({ queryKey: ["buyerOrders", userId] });
+    },
+  });
+}
+
+export function useOpenDispute() {
+  const qc = useQueryClient();
+  const userId = useAuthUserId();
+  return useMutation({
+    mutationFn: async ({ orderId, reason, photoFiles }: { orderId: string; reason: string; photoFiles?: File[] }) => {
+      if (!userId) throw new Error("Oturum bulunamadı");
+      // Verify order + membership + window
+      const { data: order, error: oErr } = await supabase
+        .from("orders")
+        .select("id,buyer_id,farmer_id,status,dispute_window_expires_at")
+        .eq("id", orderId)
+        .single();
+      if (oErr) throw oErr;
+      if (order.buyer_id !== userId && order.farmer_id !== userId) {
+        throw new Error("Bu sipariş için itiraz açamazsınız");
+      }
+      if (order.dispute_window_expires_at && new Date(order.dispute_window_expires_at).getTime() < Date.now()) {
+        throw new Error("İtiraz penceresi kapandı");
+      }
+      const urls: string[] = [];
+      if (photoFiles?.length) {
+        for (const f of photoFiles) {
+          const ext = f.name.split(".").pop() || "jpg";
+          const path = `${orderId}/dispute-${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
+          const { error: upErr } = await supabase.storage.from("delivery-photos").upload(path, f);
+          if (upErr) throw upErr;
+          urls.push(path);
+        }
+      }
+      const { error: dErr } = await supabase.from("disputes").insert({
+        order_id: orderId,
+        opened_by: userId,
+        reason,
+        evidence_photo_urls: urls,
+        window_expires_at: order.dispute_window_expires_at,
+      } as any);
+      if (dErr) throw dErr;
+      const { error: sErr } = await supabase
+        .from("orders")
+        .update({ status: "disputed" } as any)
+        .eq("id", orderId);
+      if (sErr) throw sErr;
+    },
+    onSuccess: (_d, v) => {
+      qc.invalidateQueries({ queryKey: ["farmerOrders"] });
+      qc.invalidateQueries({ queryKey: ["buyerOrders"] });
+      qc.invalidateQueries({ queryKey: ["orderDispute", v.orderId] });
+    },
+  });
+}
+
+export function useOrderDispute(orderId: string) {
+  return useQuery({
+    queryKey: ["orderDispute", orderId],
+    enabled: !!orderId,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("disputes")
+        .select("*")
+        .eq("order_id", orderId)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (error) throw error;
+      return data;
+    },
+  });
+}
+
+
