@@ -1,7 +1,8 @@
 import { createFileRoute, Link, useNavigate, notFound } from "@tanstack/react-router";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Star } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Tooltip } from "recharts";
 import { LoadingDots } from "@/components/hasat/LoadingDots";
+import { RatingStars } from "@/components/hasat/ReviewModal";
 import { formatTRY, formatCrop } from "@/lib/hasat/format";
 import {
   useFarmerPublicProfile,
@@ -9,6 +10,8 @@ import {
   useFarmerProducerStats,
   useMyActiveSubscriptionWith,
   useParcelsByFarmer,
+  useFarmerRatingSummary,
+  useFarmerRecentReviews,
 } from "@/lib/hasat/queries";
 import { useCropConfigMap, findCropConfig, cropEmoji } from "@/lib/hasat/crop-config";
 
