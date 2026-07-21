@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://hasat.lovable.app/sitemap.xml

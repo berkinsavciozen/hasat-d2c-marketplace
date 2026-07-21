@@ -77,16 +77,17 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Hasat" },
-      { name: "description", content: "Hasat, çiftçileri doğrudan restoran ve perakendecilere bağlayan bir tarım pazar yeridir." },
+      { title: "Hasat — Çiftçi & Alıcı Platformu" },
+      { name: "description", content: "Hasat, çiftçileri doğrudan restoran ve perakendecilere bağlayan izlenebilir tarım pazar yeridir." },
       { name: "author", content: "Lovable" },
-      { property: "og:title", content: "Hasat" },
-      { property: "og:description", content: "Hasat, çiftçileri doğrudan restoran ve perakendecilere bağlayan bir tarım pazar yeridir." },
+      { property: "og:title", content: "Hasat — Çiftçi & Alıcı Platformu" },
+      { property: "og:description", content: "Hasat, çiftçileri doğrudan restoran ve perakendecilere bağlayan izlenebilir tarım pazar yeridir." },
       { property: "og:type", content: "website" },
+      { property: "og:url", content: "https://hasat.lovable.app/" },
       { name: "twitter:card", content: "summary" },
       { name: "twitter:site", content: "@Lovable" },
-      { name: "twitter:title", content: "Hasat" },
-      { name: "twitter:description", content: "Hasat, çiftçileri doğrudan restoran ve perakendecilere bağlayan bir tarım pazar yeridir." },
+      { name: "twitter:title", content: "Hasat — Çiftçi & Alıcı Platformu" },
+      { name: "twitter:description", content: "Hasat, çiftçileri doğrudan restoran ve perakendecilere bağlayan izlenebilir tarım pazar yeridir." },
       { property: "og:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/a4aef110-8537-4306-8849-45326916aaee/id-preview-91b0abdf--0618c152-09fd-4b12-bfeb-a933f5cc1238.lovable.app-1781172310882.png" },
       { name: "twitter:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/a4aef110-8537-4306-8849-45326916aaee/id-preview-91b0abdf--0618c152-09fd-4b12-bfeb-a933f5cc1238.lovable.app-1781172310882.png" },
     ],
@@ -176,7 +177,9 @@ function RootComponent() {
   return (
     <QueryClientProvider client={queryClient}>
       <AuthBootstrap />
-      <Outlet />
+      <main>
+        <Outlet />
+      </main>
       <Toaster position="top-center" richColors className="z-[9999]" />
       <RoleSwitcher />
     </QueryClientProvider>
