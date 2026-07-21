@@ -1,0 +1,2 @@
+ALTER TABLE public.offers ADD COLUMN IF NOT EXISTS subscription_id uuid NULL REFERENCES public.harvest_subscriptions(id) ON DELETE SET NULL;
+CREATE INDEX IF NOT EXISTS offers_subscription_id_idx ON public.offers(subscription_id);

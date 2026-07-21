@@ -1004,6 +1004,7 @@ export type Database = {
           price_per_unit: number
           quantity: number
           status: Database["public"]["Enums"]["offer_status"]
+          subscription_id: string | null
           updated_at: string
         }
         Insert: {
@@ -1024,6 +1025,7 @@ export type Database = {
           price_per_unit: number
           quantity: number
           status?: Database["public"]["Enums"]["offer_status"]
+          subscription_id?: string | null
           updated_at?: string
         }
         Update: {
@@ -1044,6 +1046,7 @@ export type Database = {
           price_per_unit?: number
           quantity?: number
           status?: Database["public"]["Enums"]["offer_status"]
+          subscription_id?: string | null
           updated_at?: string
         }
         Relationships: [
@@ -1080,6 +1083,13 @@ export type Database = {
             columns: ["listing_id"]
             isOneToOne: false
             referencedRelation: "listings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "offers_subscription_id_fkey"
+            columns: ["subscription_id"]
+            isOneToOne: false
+            referencedRelation: "harvest_subscriptions"
             referencedColumns: ["id"]
           },
         ]
