@@ -144,10 +144,17 @@ function Subscriptions() {
                 </div>
 
                 {s.status === "active" && (
-                  <div className="mt-3 flex justify-end">
+                  <div className="mt-3 flex items-center justify-between gap-2">
+                    <button
+                      onClick={() => setOrderSub({ farmerId: s.farmerId, farmerName: s.farmerName, priceLock: s.priceLock, lockedPrice: s.lockedPrice, crop: null })}
+                      className="inline-flex items-center gap-1.5 rounded-lg min-h-[40px] px-3 py-2 text-xs font-medium"
+                      style={{ background: "var(--saffron)", color: "#fff" }}
+                    >
+                      <ShoppingBag className="h-3.5 w-3.5" /> Şimdi Sipariş Ver
+                    </button>
                     <button
                       onClick={() => setPendingId(s.id)}
-                      className="text-xs font-medium text-hred hover:underline"
+                      className="text-xs font-medium text-hred hover:underline min-h-[40px] px-2"
                     >
                       İptal Et
                     </button>
@@ -158,6 +165,59 @@ function Subscriptions() {
           })
         )}
       </div>
+
+      <Dialog open={!!orderSub} onOpenChange={(o) => !o && setOrderSub(null)}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>{orderSub?.farmerName ?? "Üretici"} — Aktif İlanlar</DialogTitle>
+          </DialogHeader>
+          {listingsLoading ? (
+            <LoadingDots />
+          ) : farmerListings.length === 0 ? (
+            <div className="py-6 text-center text-sm text-hmuted">
+              Şu an aktif ilan yok. Yeni hasat için üreticiyle iletişime geçebilirsiniz.
+            </div>
+          ) : (
+            <div className="space-y-2 max-h-[60vh] overflow-y-auto">
+              {farmerListings.map((l) => {
+                const useLock = !!(orderSub?.priceLock && orderSub?.lockedPrice);
+                const searchArgs: { qty?: number; suggestedPrice?: number } = { qty: l.minOrder };
+                if (useLock) searchArgs.suggestedPrice = orderSub!.lockedPrice!;
+                return (
+                  <Link
+                    key={l.id}
+                    to="/buyer/offer/$listingId"
+                    params={{ listingId: l.id }}
+                    search={searchArgs}
+                    onClick={() => setOrderSub(null)}
+                    className="block rounded-xl border p-3 hover:bg-muted/40"
+                    style={{ borderColor: "var(--border)" }}
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="min-w-0">
+                        <div className="font-medium text-dark truncate">{formatCrop(l.crop)}</div>
+                        <div className="text-[11px] text-hmuted">
+                          Min. {l.minOrder} {l.unit} · Stok {l.quantity} {l.unit}
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <div className="font-mono text-sm" style={{ color: "var(--gold)" }}>
+                          {formatTRY(l.pricePerUnit)}/{l.unit}
+                        </div>
+                        {useLock && (
+                          <div className="text-[10px]" style={{ color: "var(--saffron)" }}>
+                            🔒 Sabit {formatTRY(orderSub!.lockedPrice!)} önerilecek
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </Link>
+                );
+              })}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
 
       <AlertDialog open={!!pendingId} onOpenChange={(o) => !o && setPendingId(null)}>
         <AlertDialogContent>
