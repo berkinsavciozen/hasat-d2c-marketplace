@@ -133,6 +133,7 @@ function OfferCard({ offer }: { offer: Offer }) {
             <span className="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-hmuted">
               {BUYER_TYPE_EMOJI[offer.buyerType]} {BUYER_TYPE_LABEL[offer.buyerType]}
             </span>
+            <BuyerRatingBadge buyerId={offer.buyerId} />
           </div>
           <div className="mt-1 text-sm text-hmuted">{formatCrop(offer.crop)} · {offer.quantity} {offer.unit}</div>
           <div className="mt-1.5 flex items-baseline gap-2 flex-wrap">
@@ -330,7 +331,10 @@ function OrderCard({ order, muted }: { order: Order; muted?: boolean }) {
       <div className="flex items-start justify-between gap-3">
         <div className="flex-1 min-w-0">
           <div className="font-mono text-xs text-hmuted">{order.code}</div>
-          <div className="mt-1 font-medium truncate">{order.producerName}</div>
+          <div className="mt-1 flex flex-wrap items-center gap-2">
+            <span className="font-medium truncate">{order.producerName}</span>
+            <BuyerRatingBadge buyerId={order.buyerId} />
+          </div>
           <div className="text-xs text-hmuted">{formatCrop(order.crop)} · {order.quantity} {order.unit} · {order.delivery}</div>
           <div className="mt-1.5 font-mono text-lg font-semibold">{formatTRY(order.total)}</div>
           {order.status === "shipped" && order.trackingNumber && (
