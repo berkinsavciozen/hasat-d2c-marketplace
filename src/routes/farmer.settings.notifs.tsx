@@ -2,6 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { FarmerHeader } from "./farmer";
 import { Switch } from "@/components/ui/switch";
 import { ChevronLeft } from "lucide-react";
+import { toast } from "sonner";
 import { useNotifPrefs, useUpdateNotifPrefs, type NotifPrefKey } from "@/lib/hasat/queries";
 import { LoadingDots } from "@/components/hasat/LoadingDots";
 
