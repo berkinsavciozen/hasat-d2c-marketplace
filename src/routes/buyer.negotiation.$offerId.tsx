@@ -70,7 +70,7 @@ function Negotiation() {
   return (
     <div>
       <div className="px-4 pt-5 pb-4 md:px-8 flex items-center gap-3" style={{ background: "var(--dark)", color: "var(--hwhite)" }}>
-        <button onClick={() => router.history.back()} className="grid h-9 w-9 place-items-center rounded-full bg-white/10">
+        <button onClick={() => router.history.back()} aria-label="Geri" className="grid h-9 w-9 place-items-center rounded-full bg-white/10">
           <ArrowLeft className="h-4 w-4" />
         </button>
         <div>
