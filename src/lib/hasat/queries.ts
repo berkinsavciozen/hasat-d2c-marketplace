@@ -2768,3 +2768,103 @@ export function useOrderDispute(orderId: string) {
 }
 
 
+
+// ============================================================
+// P17-C: Reviews (mutual rating system)
+// ============================================================
+
+import type { Review, FarmerRatingSummary } from "@/lib/hasat/types";
+
+function dbToReview(r: any): Review {
+  return {
+    id: r.id,
+    orderId: r.order_id,
+    reviewerId: r.reviewer_id,
+    revieweeId: r.reviewee_id,
+    reviewerRole: r.reviewer_role,
+    rating: r.rating,
+    comment: r.comment ?? null,
+    createdAt: r.created_at,
+  };
+}
+
+export function useOrderReviews(orderId: string) {
+  return useQuery({
+    queryKey: ["order-reviews", orderId],
+    enabled: !!orderId,
+    queryFn: async (): Promise<Review[]> => {
+      const { data, error } = await (supabase as any)
+        .from("reviews")
+        .select("*")
+        .eq("order_id", orderId);
+      if (error) throw error;
+      return (data ?? []).map(dbToReview);
+    },
+  });
+}
+
+export function useFarmerRatingSummary(farmerId: string | undefined | null) {
+  return useQuery({
+    queryKey: ["farmer-rating", farmerId],
+    enabled: !!farmerId,
+    queryFn: async (): Promise<FarmerRatingSummary> => {
+      const { data, error } = await (supabase as any).rpc("get_farmer_rating_summary", { _farmer_id: farmerId });
+      if (error) throw error;
+      const row = Array.isArray(data) ? data[0] : data;
+      return {
+        avgRating: row?.avg_rating != null ? Number(row.avg_rating) : null,
+        reviewCount: Number(row?.review_count ?? 0),
+      };
+    },
+  });
+}
+
+export function useFarmerRecentReviews(farmerId: string | undefined | null, limit = 5) {
+  return useQuery({
+    queryKey: ["farmer-recent-reviews", farmerId, limit],
+    enabled: !!farmerId,
+    queryFn: async (): Promise<Review[]> => {
+      const { data, error } = await (supabase as any)
+        .from("reviews")
+        .select("*")
+        .eq("reviewee_id", farmerId)
+        .eq("reviewer_role", "buyer")
+        .order("created_at", { ascending: false })
+        .limit(limit);
+      if (error) throw error;
+      return (data ?? []).map(dbToReview);
+    },
+  });
+}
+
+export function useCreateReview() {
+  const qc = useQueryClient();
+  const userId = useAuthUserId();
+  return useMutation({
+    mutationFn: async (input: {
+      orderId: string;
+      revieweeId: string;
+      reviewerRole: "farmer" | "buyer";
+      rating: number;
+      comment?: string;
+    }) => {
+      if (!userId) throw new Error("Oturum bulunamadı");
+      if (input.rating < 1 || input.rating > 5) throw new Error("Puan 1-5 arasında olmalı");
+      const { error } = await (supabase as any).from("reviews").insert({
+        order_id: input.orderId,
+        reviewer_id: userId,
+        reviewee_id: input.revieweeId,
+        reviewer_role: input.reviewerRole,
+        rating: input.rating,
+        comment: input.comment?.trim() || null,
+      });
+      if (error) throw error;
+      return input;
+    },
+    onSuccess: (v) => {
+      qc.invalidateQueries({ queryKey: ["order-reviews", v.orderId] });
+      qc.invalidateQueries({ queryKey: ["farmer-rating", v.revieweeId] });
+      qc.invalidateQueries({ queryKey: ["farmer-recent-reviews", v.revieweeId] });
+    },
+  });
+}
