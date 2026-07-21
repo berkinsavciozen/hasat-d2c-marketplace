@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { FarmerHeader } from "./farmer";
 import { PricesPageBody } from "@/components/hasat/PricesPageBody";
 
-export const Route = createFileRoute("/farmer/prices")({
+export const Route = createFileRoute("/farmer/prices/")({
   head: () => ({ meta: [{ title: "Fiyat Takibi | Hasat" }] }),
   component: Prices,
 });
