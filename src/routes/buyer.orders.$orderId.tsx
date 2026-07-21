@@ -1,15 +1,17 @@
 import { createFileRoute, Link, notFound } from "@tanstack/react-router";
-import { ArrowLeft, MessageCircle, Phone, PackageCheck, AlertTriangle } from "lucide-react";
+import { ArrowLeft, MessageCircle, Phone, PackageCheck, AlertTriangle, Star } from "lucide-react";
 import { useState } from "react";
 import { OrderTimeline } from "@/components/hasat/OrderTimeline";
 import { LoadingDots } from "@/components/hasat/LoadingDots";
+import { ReviewModal, RatingStars } from "@/components/hasat/ReviewModal";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import { formatTRY, formatCrop } from "@/lib/hasat/format";
-import { useBuyerOrders, useOrderTimeline, useConfirmDelivery, useOpenDispute, useOrderDispute } from "@/lib/hasat/queries";
+import { useBuyerOrders, useOrderTimeline, useConfirmDelivery, useOpenDispute, useOrderDispute, useOrderReviews, useCreateReview } from "@/lib/hasat/queries";
+import { useAuthUserId } from "@/lib/hasat/queries";
 import { whatsappUrl } from "@/lib/hasat/whatsapp";
 
 export const Route = createFileRoute("/buyer/orders/$orderId")({
