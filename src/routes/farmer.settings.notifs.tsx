@@ -131,7 +131,7 @@ function Notifs() {
                           <Switch
                             checked={prefs[col]}
                             disabled={update.isPending}
-                            onCheckedChange={(v) => update.mutate({ [col]: v } as any)}
+                            onCheckedChange={(v) => onToggle(col, v)}
                           />
                         </div>
                       );
