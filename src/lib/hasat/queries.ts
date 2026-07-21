@@ -2296,6 +2296,7 @@ export interface PriceHistorySeries {
   hasat: PriceHistorySeriesPoint[];
   official: PriceHistorySeriesPoint[] | null;
   marketSources: MarketSourceSeries[];
+  unit: string | null;
 }
 
 export function usePriceHistorySeries(crop: string | null | undefined, weeks = 12) {
