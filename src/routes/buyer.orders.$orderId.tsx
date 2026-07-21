@@ -41,7 +41,7 @@ function OrderTracker() {
     ? order.status === "delivered"
     : new Date(order.disputeWindowExpiresAt).getTime() > Date.now();
   const canConfirmDelivery = order.status === "shipped";
-  const canOpenDispute = (order.status === "shipped" || order.status === "delivered") && windowOpen && order.status !== "disputed";
+  const canOpenDispute = (order.status === "shipped" || order.status === "delivered") && windowOpen;
 
   const onConfirmDelivery = async () => {
     try {
