@@ -596,6 +596,7 @@ function dbToOffer(r: any, side: "farmer" | "buyer"): Offer {
     paymentStatus: (r.payment_status ?? "unpaid") as "unpaid" | "pending" | "pending_transfer" | "paid",
     farmerIban: r.farmer?.iban ?? undefined,
     farmerBankAccountName: r.farmer?.bank_account_name ?? undefined,
+    subscriptionId: r.subscription_id ?? null,
   };
 }
 
