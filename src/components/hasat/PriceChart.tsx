@@ -17,7 +17,7 @@ function fmtDate(iso: string): string {
   return DATE_FMT.format(d);
 }
 
-export function PriceChart({ data, color = "var(--saffron)", height = 180, label }: Props) {
+export function PriceChart({ data, color = "var(--saffron)", height = 180, label, unit }: Props) {
   const gradId = useId().replace(/:/g, "");
   if (!data || data.length < 2) return null;
   const values = data.map((p) => p.avgPrice);
