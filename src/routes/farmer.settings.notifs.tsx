@@ -51,6 +51,13 @@ function Notifs() {
   const { data: prefs, isLoading } = useNotifPrefs();
   const update = useUpdateNotifPrefs();
 
+  const onToggle = (col: NotifPrefKey, v: boolean) => {
+    update.mutate({ [col]: v } as any, {
+      onSuccess: () => toast.success("Tercih güncellendi"),
+      onError: (e) => toast.error((e as Error).message ?? "Kaydedilemedi"),
+    });
+  };
+
   return (
     <>
       <FarmerHeader title="Bildirim Tercihleri">
