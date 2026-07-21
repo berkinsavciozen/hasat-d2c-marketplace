@@ -1525,7 +1525,8 @@ export function useBuyerConversations() {
 // ORDERS
 // =====================================================================
 const ORDER_SELECT =
-  "*, offer:offers(quantity,price_per_unit,delivery_date,listing_id, listing:listings(crop,unit))";
+  "*, offer:offers(quantity,price_per_unit,delivery,delivery_date,listing_id, listing:listings(crop,unit))";
+
 
 export function useFarmerOrders() {
   const userId = useAuthUserId();
