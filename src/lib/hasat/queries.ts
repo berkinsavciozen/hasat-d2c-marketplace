@@ -2350,20 +2350,144 @@ export function usePriceHistorySeries(crop: string | null | undefined, weeks = 1
 }
 
 
+export interface CreateCropRequestInput {
+  cropName: string;
+  note?: string;
+  quantity?: number | null;
+  unit?: string | null;
+  region?: string | null;
+  targetDateStart?: string | null;
+  targetDateEnd?: string | null;
+  targetPrice?: number | null;
+}
+
+export interface MyCropRequest {
+  id: string;
+  cropName: string;
+  note: string | null;
+  quantity: number | null;
+  unit: string | null;
+  region: string | null;
+  targetDateStart: string | null;
+  targetDateEnd: string | null;
+  targetPrice: number | null;
+  status: string;
+  createdAt: string;
+}
+
 export function useCreateCropRequest() {
   const qc = useQueryClient();
   const userId = useAuthUserId();
   return useMutation({
-    mutationFn: async (input: { cropName: string; note?: string }) => {
+    mutationFn: async (input: CreateCropRequestInput) => {
       if (!userId) throw new Error("Oturum bulunamadı");
-      const { error } = await supabase.from("crop_requests" as any).insert({
-        requested_by: userId,
-        crop_name_free_text: input.cropName.trim(),
-        note: input.note?.trim() || null,
-      } as any);
+      const cropName = input.cropName.trim();
+      if (!cropName) throw new Error("Ürün adı gerekli");
+      const { data: inserted, error } = await (supabase as any)
+        .from("crop_requests")
+        .insert({
+          requested_by: userId,
+          crop_name_free_text: cropName,
+          note: input.note?.trim() || null,
+          quantity: input.quantity ?? null,
+          unit: input.unit?.trim() || null,
+          region: input.region?.trim() || null,
+          target_date_start: input.targetDateStart || null,
+          target_date_end: input.targetDateEnd || null,
+          target_price: input.targetPrice ?? null,
+        })
+        .select("id")
+        .single();
       if (error) throw error;
+
+      // Best-effort matching + notifications. Never fail the mutation on this.
+      try {
+        const { data: cfg } = await (supabase as any)
+          .from("crop_config")
+          .select("crop, display_name")
+          .or(`crop.ilike.${cropName},display_name.ilike.${cropName}`)
+          .limit(1)
+          .maybeSingle();
+        const canonical: string = cfg?.crop ?? cfg?.display_name ?? cropName;
+
+        const farmerIds = new Set<string>();
+        const { data: listingRows } = await (supabase as any)
+          .from("listings")
+          .select("farmer_id, crop, status")
+          .in("status", ["active", "draft"])
+          .ilike("crop", canonical);
+        for (const r of listingRows ?? []) if (r?.farmer_id) farmerIds.add(r.farmer_id);
+
+        const { data: parcelRows } = await (supabase as any)
+          .from("parcels")
+          .select("farmer_id, crops")
+          .contains("crops", [canonical]);
+        for (const r of parcelRows ?? []) if (r?.farmer_id) farmerIds.add(r.farmer_id);
+
+        let matched = Array.from(farmerIds);
+        if (input.region?.trim() && matched.length > 0) {
+          const { data: profs } = await (supabase as any)
+            .from("profiles")
+            .select("id, city")
+            .in("id", matched)
+            .eq("city", input.region.trim());
+          matched = (profs ?? []).map((p: { id: string }) => p.id);
+        }
+
+        if (matched.length > 0) {
+          const { data: me } = await (supabase as any)
+            .from("profiles").select("name").eq("id", userId).maybeSingle();
+          const buyerName = (me?.name as string | undefined) || "Bir alıcı";
+          const qtyLabel = input.quantity != null && input.unit
+            ? ` — ${input.quantity} ${input.unit}` : "";
+          const regionLabel = input.region?.trim() ? ` · ${input.region.trim()}` : "";
+          const body = `${buyerName} ${cropName} arıyor${qtyLabel}${regionLabel}`;
+          const rows = matched.map((fid) => ({
+            user_id: fid,
+            type: "crop_request",
+            title: "Yeni ürün talebi",
+            body,
+            related_id: inserted?.id ?? null,
+          }));
+          await (supabase as any).from("notifications").insert(rows);
+        }
+      } catch (e) {
+        console.warn("crop_request notify failed", e);
+      }
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["cropRequests"] }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["cropRequests"] });
+      qc.invalidateQueries({ queryKey: ["myCropRequests"] });
+    },
+  });
+}
+
+export function useMyCropRequests() {
+  const userId = useAuthUserId();
+  return useQuery({
+    queryKey: ["myCropRequests", userId],
+    enabled: !!userId,
+    queryFn: async (): Promise<MyCropRequest[]> => {
+      const { data, error } = await (supabase as any)
+        .from("crop_requests")
+        .select("id, crop_name_free_text, note, quantity, unit, region, target_date_start, target_date_end, target_price, status, created_at")
+        .eq("requested_by", userId!)
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      return (data ?? []).map((r: any) => ({
+        id: r.id,
+        cropName: r.crop_name_free_text,
+        note: r.note,
+        quantity: r.quantity == null ? null : Number(r.quantity),
+        unit: r.unit,
+        region: r.region,
+        targetDateStart: r.target_date_start,
+        targetDateEnd: r.target_date_end,
+        targetPrice: r.target_price == null ? null : Number(r.target_price),
+        status: r.status ?? "open",
+        createdAt: r.created_at,
+      }));
+    },
   });
 }
 
