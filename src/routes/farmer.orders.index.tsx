@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
 
 import { FarmerHeader } from "./farmer";
-import { useFarmerOffers, useUpdateOfferStatus, useFarmerOrders, useCounterOffer, useConfirmTransferReceived, useMarkShipped, useCancelOrder } from "@/lib/hasat/queries";
+import { useFarmerOffers, useUpdateOfferStatus, useFarmerOrders, useCounterOffer, useConfirmTransferReceived, useMarkShipped, useCancelOrder, useOrderReviews, useCreateReview, useAuthUserId } from "@/lib/hasat/queries";
 import { WaitingBanner } from "@/components/hasat/WaitingBanner";
 import { LoadingDots } from "@/components/hasat/LoadingDots";
 import { formatTRY, formatCrop } from "@/lib/hasat/format";
@@ -16,7 +16,8 @@ import type { Offer, BuyerType, Order } from "@/lib/hasat/types";
 import { NegotiationThread } from "@/components/hasat/NegotiationThread";
 import { statusVisual, statusStyle, canAccept } from "@/lib/hasat/offer-status";
 import { whatsappUrl } from "@/lib/hasat/whatsapp";
-import { MessageCircle } from "lucide-react";
+import { ReviewModal, RatingStars } from "@/components/hasat/ReviewModal";
+import { MessageCircle, Star } from "lucide-react";
 
 export const Route = createFileRoute("/farmer/orders/")({
   head: () => ({ meta: [{ title: "Siparişler — Hasat" }] }),
@@ -294,11 +295,17 @@ function CounterModal({ open, onOpenChange, offer, onSubmit, pending }: {
 
 function OrderCard({ order, muted }: { order: Order; muted?: boolean }) {
   const STATUS_TR: Record<string, string> = { preparing: "Hazırlanıyor", shipped: "Kargoda", delivered: "Teslim Edildi", disputed: "İhtilaflı", cancelled: "İptal Edildi" };
+  const userId = useAuthUserId();
   const wa = whatsappUrl(order.producerPhone, `Merhaba, ${order.code} numaralı sipariş hakkında yazıyorum.`);
   const shipMut = useMarkShipped();
   const cancelMut = useCancelOrder();
+  const createReview = useCreateReview();
+  const { data: reviews = [] } = useOrderReviews(order.id);
+  const myReview = reviews.find((r) => r.reviewerId === userId && r.reviewerRole === "farmer");
+  const canReview = (order.status === "delivered" || order.status === "completed") && !!order.buyerId;
   const [shipOpen, setShipOpen] = useState(false);
   const [cancelOpen, setCancelOpen] = useState(false);
+  const [reviewOpen, setReviewOpen] = useState(false);
   const [tracking, setTracking] = useState("");
   const [carrier, setCarrier] = useState("");
   const [cancelReason, setCancelReason] = useState("");
@@ -365,6 +372,26 @@ function OrderCard({ order, muted }: { order: Order; muted?: boolean }) {
         </a>
       )}
 
+      {canReview && (
+        <div className="mt-3 border-t pt-3">
+          {myReview ? (
+            <div className="flex items-center gap-2 text-xs text-hmuted">
+              <RatingStars rating={myReview.rating} size={14} />
+              <span>Alıcıyı değerlendirdiniz ({myReview.rating}/5)</span>
+            </div>
+          ) : (
+            <button
+              onClick={() => setReviewOpen(true)}
+              className="inline-flex items-center gap-1.5 rounded-lg min-h-[40px] px-3 py-2 text-xs font-medium"
+              style={{ background: "color-mix(in oklab, var(--gold) 15%, transparent)", color: "var(--dark)" }}
+            >
+              <Star className="h-3.5 w-3.5" style={{ color: "var(--gold)" }} /> Alıcıyı Değerlendir
+            </button>
+          )}
+        </div>
+      )}
+
+
       <Dialog open={shipOpen} onOpenChange={setShipOpen}>
         <DialogContent>
           <DialogHeader><DialogTitle>Kargoya Ver</DialogTitle></DialogHeader>
@@ -401,6 +428,28 @@ function OrderCard({ order, muted }: { order: Order; muted?: boolean }) {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <ReviewModal
+        open={reviewOpen}
+        onOpenChange={setReviewOpen}
+        title="Alıcıyı Değerlendir"
+        subtitle={`Sipariş ${order.code}`}
+        pending={createReview.isPending}
+        onSubmit={async ({ rating, comment }) => {
+          if (!order.buyerId) return;
+          try {
+            await createReview.mutateAsync({
+              orderId: order.id,
+              revieweeId: order.buyerId,
+              reviewerRole: "farmer",
+              rating,
+              comment,
+            });
+            toast.success("Değerlendirmeniz kaydedildi.");
+            setReviewOpen(false);
+          } catch (e: any) { toast.error(e.message ?? "Gönderilemedi"); }
+        }}
+      />
     </div>
   );
 }

@@ -1,77 +1,85 @@
-# P17-B: Sipariş Sonrası Akış (Kargo/Teslim/İptal/İhtilaf)
+# P17-C: Karşılıklı Değerlendirme (Rating/Review) Sistemi
 
-Guardrail: migration'lar sadece ADD/CREATE — hiçbir tablo, RLS, kolon veya veri silinmez/değiştirilmez.
+Guardrail: migration additive — mevcut tablolar/RLS/veri değişmez.
 
 ## 1) DB Migration (tek dosya, additive)
 
-- `alter type public.order_status add value if not exists 'cancelled';` (mevcut `disputed` zaten var.)
-- `orders` tablosuna kolonlar (hepsi nullable):
-  - `tracking_number text`, `carrier text`
-  - `cancelled_at timestamptz`, `cancel_reason text`
-  - `dispute_window_expires_at timestamptz` (teslim onayında set edilir, now()+24h)
-- Yeni `public.disputes` tablosu:
-  - Kolonlar: `id`, `order_id fk orders`, `opened_by fk profiles`, `reason text not null`, `evidence_photo_urls text[] default '{}'`, `status text default 'open' check in ('open','resolved')`, `resolution text`, `resolved_at timestamptz`, `window_expires_at timestamptz`, `created_at timestamptz default now()`.
-  - GRANT: `select, insert, update` → `authenticated`; `all` → `service_role`.
-  - RLS enable + policy: SELECT/INSERT/UPDATE ancak `exists (select 1 from orders o where o.id = disputes.order_id and (o.buyer_id = auth.uid() or o.farmer_id = auth.uid()))`.
-- Yeni storage bucket: `delivery-photos` (private). storage.objects üzerine RLS: siparişin buyer/farmer'ı okuyabilir/yazabilir (path prefix `<order_id>/`).
+**`public.reviews` tablosu:**
+- `id uuid pk default gen_random_uuid()`
+- `order_id uuid not null references public.orders(id) on delete cascade`
+- `reviewer_id uuid not null references public.profiles(id) on delete cascade`
+- `reviewee_id uuid not null references public.profiles(id) on delete cascade`
+- `reviewer_role text not null check (reviewer_role in ('farmer','buyer'))`
+- `rating int not null check (rating between 1 and 5)`
+- `comment text`
+- `created_at timestamptz not null default now()`
+- `unique (order_id, reviewer_id)` — bir siparişe bir taraf tek review.
+- Index: `(reviewee_id)` — profil özet sorguları için.
 
-## 2) Type güncellemeleri (`src/lib/hasat/types.ts`)
+**GRANT:**
+- `grant select on public.reviews to anon, authenticated;` (public okuma — pazaryeri şeffaflığı)
+- `grant insert on public.reviews to authenticated;`
+- `grant all on public.reviews to service_role;`
 
-- `OrderStatus`'a `"disputed"` ve `"cancelled"` ekle.
-- `Order`'a opsiyonel alanlar: `trackingNumber?`, `carrier?`, `cancelReason?`, `disputeWindowExpiresAt?`, `deliveryPhotoUrl?`.
-- Yeni tip: `Dispute { id, orderId, openedBy, reason, evidencePhotoUrls[], status, createdAt }`.
+**RLS (enable + policies):**
+- `select`: `to public using (true)` — herkes okuyabilir.
+- `insert`: `to authenticated with check (auth.uid() = reviewer_id AND exists (select 1 from public.orders o where o.id = order_id AND o.status in ('delivered','completed') AND ((reviewer_role='buyer' AND o.buyer_id = auth.uid() AND o.farmer_id = reviewee_id) OR (reviewer_role='farmer' AND o.farmer_id = auth.uid() AND o.buyer_id = reviewee_id))))`
+- Update/Delete policy yok — review'lar immutable (v1 için basit).
 
-## 3) `src/lib/hasat/queries.ts`
+**RPC `public.get_farmer_rating_summary(_farmer_id uuid)`:**
+- `returns table(avg_rating numeric, review_count int)`
+- `security definer`, `set search_path = public`, `stable`
+- Body: `select avg(rating)::numeric, count(*)::int from reviews where reviewee_id = _farmer_id and reviewer_role = 'buyer'`
+- `grant execute to anon, authenticated;`
 
-**Bug fix'ler (aynı turda):**
-- `statusMap.disputed` → `"disputed"` (artık `preparing`'e ezilmiyor); yeni `cancelled: "cancelled"` map'i eklenir.
-- `dbToOrder`'daki sabit `delivery: "Kargo"` → `deliveryLabel(offer.delivery)`; `useFarmerOrders`/`useBuyerOrders` select stringine `offer:offers(..., delivery, ...)` eklenir.
-- `dbToOrder`: yeni order kolonları map edilir (`trackingNumber`, `carrier`, `disputeWindowExpiresAt`, `cancelReason`).
-- `TIMELINE_DEFAULT`: `cancelled`/`disputed` özel yollar için — `disputed`/`cancelled` statusünde farklı bir timeline dizisi döndüren küçük bir yardımcı (mevcut sıralı akış korunur, terminal step değişir).
+## 2) Types (`src/lib/hasat/types.ts`)
 
-**Yeni mutation'lar:**
-- `useMarkShipped()` → `{ orderId, trackingNumber, carrier }`:
-  - `orders` update (status `preparing`→`shipped`, tracking/carrier set).
-  - `order_timeline` insert `{ step:'shipped', label:'Kargoya Verildi', completed_at: now() }`.
-  - invalidate: `["orders","farmer"]`, `["order-timeline", orderId]`.
-- `useConfirmDelivery()` → `{ orderId, photoFile }`:
-  - `delivery-photos` bucket'a `<orderId>/<uuid>.jpg` yükle → public/signed URL al.
-  - `orders` update (status `shipped`→`delivered`, `dispute_window_expires_at = now() + interval '24 hours'`).
-  - `order_timeline` insert `delivered`.
-  - invalidate: buyer orders + timeline.
-- `useOpenDispute()` → `{ orderId, reason, photoFiles[] }`:
-  - Fotoğrafları `delivery-photos/<orderId>/dispute/` altına yükle.
-  - `disputes` insert; `orders` update `status='disputed'`.
-  - Pencere kontrolü: client tarafında `dispute_window_expires_at > now()` check + DB'de policy zaten sahiplik gerektiriyor; ek server check gerektirmez (mevcut RLS + trigger yeterli).
-- `useCancelOrder()` → `{ orderId, reason }`:
-  - `orders` update: sadece `status='preparing'` iken → `cancelled`, `cancelled_at=now()`, `cancel_reason=reason`. `.eq('status','preparing')` filtresi ile korunur.
-  - `order_timeline` insert `cancelled`.
-- Yeni read: `useOrderDispute(orderId)` — mevcut ihtilaf varsa döner (UI banner'ı için).
+Yeni tip:
+```ts
+export interface Review {
+  id: string;
+  orderId: string;
+  reviewerId: string;
+  revieweeId: string;
+  reviewerRole: 'farmer' | 'buyer';
+  rating: number;
+  comment: string | null;
+  createdAt: string;
+}
+export interface FarmerRatingSummary { avgRating: number | null; reviewCount: number }
+```
+
+## 3) Queries (`src/lib/hasat/queries.ts`)
+
+- **`useCreateReview()`** → `{ orderId, revieweeId, reviewerRole, rating, comment? }`
+  - `reviews` insert (auth.uid() reviewer_id olarak).
+  - Invalidate: `["order-reviews", orderId]`, `["farmer-rating", revieweeId]`, `["orders","buyer"]` veya `["orders","farmer"]`.
+- **`useOrderReviews(orderId)`** — o siparişteki 0-2 review'ı döner.
+- **`useFarmerRatingSummary(farmerId)`** — RPC çağırır, `{avgRating, reviewCount}`.
 
 ## 4) UI
 
-**`farmer.orders.index.tsx` → `OrderCard`:**
-- `preparing`: birincil buton "📦 Kargoya Ver" (modal: taşıyıcı select [Yurtiçi/Aras/MNG/PTT/Diğer] + takip no input), ikincil link "İptal Et" (onay + sebep textarea modalı).
-- `shipped`: kargo firması + takip no readonly gösterim.
-- `disputed`: küçük hred banner "⚠️ Alıcı ihtilaf açtı — nedeni: …".
-- `cancelled`: muted "İptal edildi — …" (badge).
-
 **`buyer.orders.$orderId.tsx`:**
-- Placeholder "Mesajlaşma yakında..." Sheet'ini ve tetikleyen "Satıcıyla Konuş" butonunu kaldır; WhatsApp/tel butonları zaten var, tek başlarına kalır.
-- `shipped`: kargo bilgi kartı + birincil buton "✅ Teslim Aldım" (modal: fotoğraf yükleme zorunlu + onay).
-- `delivered` ve `now() < dispute_window_expires_at`: ikincil buton "⚠️ İhtilaf Aç" (modal: sebep + çoklu fotoğraf).
-- Aktif dispute varsa üstte durum kartı.
+- `order.status === 'delivered' || 'completed'` iken:
+  - Kullanıcının verdiği review varsa → "Değerlendirdiniz ✓ ⭐ {rating}/5" pill.
+  - Yoksa → "⭐ Değerlendir" butonu; modal (1-5 yıldız seçici + opsiyonel yorum textarea) → `useCreateReview({ reviewerRole: 'buyer', revieweeId: order.producerId })`.
 
-**`OrderTimeline.tsx`:**
-- `disputed` ve `cancelled` durumlarında son step için renk tokenı (`--hred` / `--hmuted`) + etiket değişikliği; mevcut visual sistem korunur, sadece `circleBg` seçim map'i genişletilir.
+**`farmer.orders.index.tsx` (`OrderCard`):**
+- `delivered/completed` iken aynı desen: "⭐ Alıcıyı Değerlendir" veya "Değerlendirdiniz ✓" — reviewerRole `'farmer'`, revieweeId order'ın buyer_id'si (mevcut `Order` tipinde yoksa `queries.ts`'de map'e ekle).
+- Not: `Order` tipinde `buyerId` alanı olup olmadığını kontrol edip yoksa `dbToOrder`'a ekle (`offers.buyer_id`'den).
+
+**`buyer.producer.$id.tsx`:**
+- Profil kartında yıldız + ortalama + review sayısı gösterimi (`useFarmerRatingSummary(id)`).
+- Aşağı yeni bir "Değerlendirmeler" bölümü: son 5 buyer→farmer yorumu (yeni bir `useFarmerRecentReviews(farmerId, limit=5)` ile — bu 4. hook olur, plan içine dahil).
+- Veri yoksa "Henüz değerlendirme yok" hint.
 
 ## 5) Doğrulama
 
 - `tsgo` clean.
-- Manuel akış: preparing → ship → deliver (photo) → dispute açılabilir (24h içinde); preparing → cancel yolu ayrı.
+- Manuel: bir `delivered` sipariş üzerinden buyer değerlendirir → producer profile ortalama güncellenir; ikinci review denemesi unique constraint ile engellenir.
 
-## Teknik notlar
+## Notlar
 
-- `alter type add value` transaction dışında çalışır — migration'da diğer DDL'lerden önce ve `commit` sonrası çalıştırılabilecek şekilde konumlandırılır (Supabase migration runner tek statement olarak alır; gerekirse `commit;` ile ayrılır).
-- Storage bucket'ı SQL migration ile değil `supabase--storage_create_bucket` tool ile oluşturulur; RLS policy'leri migration'da yazılır.
-- Tüm yeni RLS'ler sahiplik bazlı — kimse başkasının siparişini veya ihtilafını göremez.
+- Review'lar public SELECT — buyer yorumları rakip çiftçilere de görünür; bu bilinçli (pazaryeri şeffaflığı) ve mevcut community post pattern'i ile tutarlı.
+- Immutable review kararı v1 için — düzenleme/silme ileride ayrı bir feature.
+- RLS check sipariş durumunu ve tarafların doğru eşleşmesini DB seviyesinde zorlar — client validation ek katman.

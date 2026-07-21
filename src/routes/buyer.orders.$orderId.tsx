@@ -1,15 +1,17 @@
 import { createFileRoute, Link, notFound } from "@tanstack/react-router";
-import { ArrowLeft, MessageCircle, Phone, PackageCheck, AlertTriangle } from "lucide-react";
+import { ArrowLeft, MessageCircle, Phone, PackageCheck, AlertTriangle, Star } from "lucide-react";
 import { useState } from "react";
 import { OrderTimeline } from "@/components/hasat/OrderTimeline";
 import { LoadingDots } from "@/components/hasat/LoadingDots";
+import { ReviewModal, RatingStars } from "@/components/hasat/ReviewModal";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import { formatTRY, formatCrop } from "@/lib/hasat/format";
-import { useBuyerOrders, useOrderTimeline, useConfirmDelivery, useOpenDispute, useOrderDispute } from "@/lib/hasat/queries";
+import { useBuyerOrders, useOrderTimeline, useConfirmDelivery, useOpenDispute, useOrderDispute, useOrderReviews, useCreateReview } from "@/lib/hasat/queries";
+import { useAuthUserId } from "@/lib/hasat/queries";
 import { whatsappUrl } from "@/lib/hasat/whatsapp";
 
 export const Route = createFileRoute("/buyer/orders/$orderId")({
@@ -20,16 +22,20 @@ export const Route = createFileRoute("/buyer/orders/$orderId")({
 
 function OrderTracker() {
   const { orderId } = Route.useParams();
+  const userId = useAuthUserId();
   const { data: orders = [], isLoading } = useBuyerOrders();
   const { data: timeline = [] } = useOrderTimeline(orderId);
   const { data: dispute } = useOrderDispute(orderId);
+  const { data: reviews = [] } = useOrderReviews(orderId);
   const [deliverOpen, setDeliverOpen] = useState(false);
   const [disputeOpen, setDisputeOpen] = useState(false);
+  const [reviewOpen, setReviewOpen] = useState(false);
   const [photoFile, setPhotoFile] = useState<File | null>(null);
   const [disputeReason, setDisputeReason] = useState("");
   const [disputeFiles, setDisputeFiles] = useState<File[]>([]);
   const confirmDelivery = useConfirmDelivery();
   const openDispute = useOpenDispute();
+  const createReview = useCreateReview();
 
   if (isLoading) return <div className="p-8"><LoadingDots /></div>;
   const order = orders.find((o) => o.id === orderId);
@@ -42,6 +48,8 @@ function OrderTracker() {
     : new Date(order.disputeWindowExpiresAt).getTime() > Date.now();
   const canConfirmDelivery = order.status === "shipped";
   const canOpenDispute = (order.status === "shipped" || order.status === "delivered") && windowOpen;
+  const canReview = order.status === "delivered" || order.status === "completed";
+  const myReview = reviews.find((r) => r.reviewerId === userId && r.reviewerRole === "buyer");
 
   const onConfirmDelivery = async () => {
     try {
@@ -103,6 +111,29 @@ function OrderTracker() {
           <h2 className="font-serif text-lg mb-4">Durum</h2>
           <OrderTimeline order={orderWithTimeline} />
         </div>
+
+        {canReview && (
+          <div className="rounded-2xl bg-card border p-4">
+            <div className="text-sm font-medium mb-1">Üreticiyi Değerlendir</div>
+            {myReview ? (
+              <div className="flex items-center gap-2 text-sm">
+                <RatingStars rating={myReview.rating} size={18} />
+                <span className="text-hmuted">Değerlendirdiniz ✓ {myReview.rating}/5</span>
+              </div>
+            ) : (
+              <>
+                <p className="text-xs text-hmuted mb-2">Bu sipariş için üreticiyi puanlayın — diğer alıcılara yardımcı olur.</p>
+                <button
+                  onClick={() => setReviewOpen(true)}
+                  className="rounded-xl min-h-[48px] px-4 py-2.5 text-sm font-medium inline-flex items-center gap-2"
+                  style={{ background: "var(--gold)", color: "var(--dark)" }}
+                >
+                  <Star className="h-4 w-4" /> Değerlendir
+                </button>
+              </>
+            )}
+          </div>
+        )}
 
         {(canConfirmDelivery || canOpenDispute) && (
           <div className="grid gap-2 sm:grid-cols-2">
@@ -183,6 +214,27 @@ function OrderTracker() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <ReviewModal
+        open={reviewOpen}
+        onOpenChange={setReviewOpen}
+        title="Üreticiyi Değerlendir"
+        subtitle={`${order.producerName} — ${formatCrop(order.crop)}`}
+        pending={createReview.isPending}
+        onSubmit={async ({ rating, comment }) => {
+          try {
+            await createReview.mutateAsync({
+              orderId: order.id,
+              revieweeId: order.producerId,
+              reviewerRole: "buyer",
+              rating,
+              comment,
+            });
+            toast.success("Değerlendirmeniz için teşekkürler.");
+            setReviewOpen(false);
+          } catch (e: any) { toast.error(e.message ?? "Gönderilemedi"); }
+        }}
+      />
     </div>
   );
 }

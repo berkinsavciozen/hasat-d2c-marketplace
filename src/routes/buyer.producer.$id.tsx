@@ -1,7 +1,8 @@
 import { createFileRoute, Link, useNavigate, notFound } from "@tanstack/react-router";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Star } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Tooltip } from "recharts";
 import { LoadingDots } from "@/components/hasat/LoadingDots";
+import { RatingStars } from "@/components/hasat/ReviewModal";
 import { formatTRY, formatCrop } from "@/lib/hasat/format";
 import {
   useFarmerPublicProfile,
@@ -9,6 +10,8 @@ import {
   useFarmerProducerStats,
   useMyActiveSubscriptionWith,
   useParcelsByFarmer,
+  useFarmerRatingSummary,
+  useFarmerRecentReviews,
 } from "@/lib/hasat/queries";
 import { useCropConfigMap, findCropConfig, cropEmoji } from "@/lib/hasat/crop-config";
 
@@ -37,6 +40,8 @@ function ProducerProfile() {
   const { data: stats } = useFarmerProducerStats(id);
   const { data: subscription } = useMyActiveSubscriptionWith(id);
   const { map: cropMap } = useCropConfigMap();
+  const { data: ratingSummary } = useFarmerRatingSummary(id);
+  const { data: recentReviews = [] } = useFarmerRecentReviews(id, 5);
 
   if (profileLoading) return <div className="p-8"><LoadingDots /></div>;
   if (!profile) throw notFound();
@@ -79,7 +84,15 @@ function ProducerProfile() {
         </Link>
         <div className="absolute bottom-5 left-5 right-5 text-white">
           <h1 className="font-serif text-2xl md:text-3xl">{profile.name ?? "Üretici"}</h1>
-          {profile.city && <div className="text-sm opacity-90">📍 {profile.city}</div>}
+          <div className="flex items-center gap-3 text-sm opacity-90 mt-1">
+            {profile.city && <span>📍 {profile.city}</span>}
+            {ratingSummary && ratingSummary.reviewCount > 0 && ratingSummary.avgRating != null && (
+              <span className="inline-flex items-center gap-1">
+                <Star className="h-4 w-4" style={{ color: "var(--gold)", fill: "var(--gold)" }} />
+                {ratingSummary.avgRating.toFixed(1)} · {ratingSummary.reviewCount} değerlendirme
+              </span>
+            )}
+          </div>
         </div>
       </div>
 
@@ -185,6 +198,28 @@ function ProducerProfile() {
             </div>
           </div>
         )}
+
+        <div>
+          <h2 className="font-serif text-lg mb-3">Değerlendirmeler</h2>
+          {recentReviews.length === 0 ? (
+            <div className="rounded-2xl bg-card border p-6 text-sm text-hmuted text-center">
+              Henüz değerlendirme yok.
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {recentReviews.map((r) => (
+                <div key={r.id} className="rounded-2xl bg-card border p-4">
+                  <div className="flex items-center justify-between">
+                    <RatingStars rating={r.rating} size={14} />
+                    <span className="text-xs text-hmuted">{new Date(r.createdAt).toLocaleDateString("tr-TR")}</span>
+                  </div>
+                  {r.comment && <p className="text-sm mt-2 text-hmuted">{r.comment}</p>}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
 
         <div className="rounded-2xl p-5 border" style={{ background: "color-mix(in oklab, var(--gold) 12%, transparent)", borderColor: "var(--gold)" }}>
           <h3 className="font-serif text-lg">Hasat Aboneliği</h3>
