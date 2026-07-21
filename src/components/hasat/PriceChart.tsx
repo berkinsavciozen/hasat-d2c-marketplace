@@ -6,6 +6,7 @@ interface Props {
   color?: string;
   height?: number;
   label?: string;
+  unit?: string;
 }
 
 const DATE_FMT = new Intl.DateTimeFormat("tr-TR", { day: "2-digit", month: "short" });
