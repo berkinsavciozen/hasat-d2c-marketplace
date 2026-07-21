@@ -2239,6 +2239,7 @@ export interface PriceHistorySummary {
   official: PriceHistoryOfficialSegment | null;
   marketSources: MarketSourceSummary[];
   lastUpdated: string | null;
+  unit: string | null;
 }
 
 export function usePriceHistorySummary(crop: string | null | undefined) {
@@ -2280,6 +2281,7 @@ export function usePriceHistorySummary(crop: string | null | undefined) {
           : null,
         marketSources,
         lastUpdated: row.last_updated ?? null,
+        unit: row.unit == null ? null : String(row.unit),
       };
     },
   });
@@ -2294,6 +2296,7 @@ export interface PriceHistorySeries {
   hasat: PriceHistorySeriesPoint[];
   official: PriceHistorySeriesPoint[] | null;
   marketSources: MarketSourceSeries[];
+  unit: string | null;
 }
 
 export function usePriceHistorySeries(crop: string | null | undefined, weeks = 12) {
@@ -2326,7 +2329,7 @@ export function usePriceHistorySeries(crop: string | null | undefined, weeks = 1
           series: mapArr(s?.series),
         }))
         .filter((s: MarketSourceSeries) => !!s.sourceCode);
-      return { hasat, official, marketSources };
+      return { hasat, official, marketSources, unit: row.unit == null ? null : String(row.unit) };
     },
   });
 }

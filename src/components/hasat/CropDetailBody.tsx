@@ -11,7 +11,7 @@ import {
   useCreatePriceAlert,
   useTogglePriceAlert,
 } from "@/lib/hasat/queries";
-import { formatCrop, formatTRY } from "@/lib/hasat/format";
+import { formatCrop, priceWithUnit } from "@/lib/hasat/format";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 const RANGES = [
@@ -81,6 +81,7 @@ export function CropDetailBody({ crop }: { crop: string }) {
   const officialSeries = series?.official ?? null;
   const marketSummaries = summary?.marketSources ?? [];
   const marketSeries = series?.marketSources ?? [];
+  const unit = summary?.unit ?? "kg";
 
   const hasatHasSomething = hasat && !hasat.insufficientData && hasat.avgPrice != null;
   const officialHasSomething = !!official;
@@ -129,21 +130,21 @@ export function CropDetailBody({ crop }: { crop: string }) {
               <div className="flex flex-wrap items-baseline gap-3">
                 <div>
                   <div className="text-[10px] text-hmuted">Ortalama</div>
-                  <div className="font-mono text-xl font-semibold">{formatTRY(hasat!.avgPrice!)}</div>
+                  <div className="font-mono text-xl font-semibold">{priceWithUnit(hasat!.avgPrice!, unit)}</div>
                 </div>
                 {hasat!.stddevPrice != null && (
                   <span
                     className="inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium"
                     style={{ background: "color-mix(in oklab, var(--gold) 15%, transparent)", color: "var(--gold)" }}
                   >
-                    Aralık: {formatTRY(Math.max(0, hasat!.avgPrice! - hasat!.stddevPrice))} – {formatTRY(hasat!.avgPrice! + hasat!.stddevPrice)}
+                    Aralık: {priceWithUnit(Math.max(0, hasat!.avgPrice! - hasat!.stddevPrice), unit)} – {priceWithUnit(hasat!.avgPrice! + hasat!.stddevPrice, unit)}
                   </span>
                 )}
                 <span className="text-[11px] text-hmuted">{hasat!.distinctFarmerCount} üretici</span>
               </div>
               {hasatSeries.length >= 2 && (
                 <div className="mt-3">
-                  <PriceChart data={hasatSeries} color="var(--saffron)" />
+                  <PriceChart data={hasatSeries} color="var(--saffron)" unit={unit} />
                 </div>
               )}
             </SectionCard>
@@ -154,12 +155,12 @@ export function CropDetailBody({ crop }: { crop: string }) {
               <div className="flex flex-wrap items-baseline gap-3">
                 <div>
                   <div className="text-[10px] text-hmuted">Ortalama</div>
-                  <div className="font-mono text-xl font-semibold">{formatTRY(official.avgPrice)}</div>
+                  <div className="font-mono text-xl font-semibold">{priceWithUnit(official.avgPrice, unit)}</div>
                 </div>
               </div>
               {officialSeries && officialSeries.length >= 2 && (
                 <div className="mt-3">
-                  <PriceChart data={officialSeries} color="var(--gold)" />
+                  <PriceChart data={officialSeries} color="var(--gold)" unit={unit} />
                 </div>
               )}
             </SectionCard>
@@ -174,13 +175,13 @@ export function CropDetailBody({ crop }: { crop: string }) {
                   <div className="flex flex-wrap items-baseline gap-3">
                     <div>
                       <div className="text-[10px] text-hmuted">Ortalama</div>
-                      <div className="font-mono text-xl font-semibold">{formatTRY(src.avgPrice)}</div>
+                      <div className="font-mono text-xl font-semibold">{priceWithUnit(src.avgPrice, unit)}</div>
                     </div>
                   </div>
                 )}
                 {ser.length >= 2 && (
                   <div className="mt-3">
-                    <PriceChart data={ser} color="var(--sage)" />
+                    <PriceChart data={ser} color="var(--sage)" unit={unit} />
                   </div>
                 )}
               </SectionCard>

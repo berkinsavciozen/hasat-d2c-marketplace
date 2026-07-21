@@ -18,6 +18,10 @@ export function formatDelta(pct: number): string {
   return `${sign}${pct.toFixed(1)}%`;
 }
 
+export function priceWithUnit(n: number, unit: string | null | undefined): string {
+  return `${formatTRY(n)}/${unit ?? "kg"}`;
+}
+
 /**
  * Convert a crop slug (e.g. "safran_soğanı") to a display label ("Safran Soğanı").
  * Uses Turkish-aware casing so "i" → "İ" correctly.

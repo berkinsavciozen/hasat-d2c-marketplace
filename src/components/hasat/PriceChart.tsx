@@ -1,11 +1,12 @@
 import { useId } from "react";
-import { formatTRY } from "@/lib/hasat/format";
+import { priceWithUnit } from "@/lib/hasat/format";
 
 interface Props {
   data: { date: string; avgPrice: number }[];
   color?: string;
   height?: number;
   label?: string;
+  unit?: string;
 }
 
 const DATE_FMT = new Intl.DateTimeFormat("tr-TR", { day: "2-digit", month: "short" });
@@ -16,7 +17,7 @@ function fmtDate(iso: string): string {
   return DATE_FMT.format(d);
 }
 
-export function PriceChart({ data, color = "var(--saffron)", height = 180, label }: Props) {
+export function PriceChart({ data, color = "var(--saffron)", height = 180, label, unit }: Props) {
   const gradId = useId().replace(/:/g, "");
   if (!data || data.length < 2) return null;
   const values = data.map((p) => p.avgPrice);
@@ -43,10 +44,10 @@ export function PriceChart({ data, color = "var(--saffron)", height = 180, label
       <div className="flex flex-wrap items-baseline gap-3">
         <div>
           <div className="text-[10px] text-hmuted">Son</div>
-          <div className="font-mono text-lg font-semibold" style={{ color }}>{formatTRY(last.avgPrice)}</div>
+          <div className="font-mono text-lg font-semibold" style={{ color }}>{priceWithUnit(last.avgPrice, unit)}</div>
         </div>
         <div className="text-[10px] text-hmuted">
-          Aralık {formatTRY(min)} – {formatTRY(max)}
+          Aralık {priceWithUnit(min, unit)} – {priceWithUnit(max, unit)}
         </div>
       </div>
       <svg
