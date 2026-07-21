@@ -12,7 +12,7 @@ import {
 } from "@/lib/hasat/queries";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Bell, ChevronRight, Trash2, Star, Plus } from "lucide-react";
+import { Bell, ChevronRight, Trash2, Star, Plus, ClipboardList } from "lucide-react";
 
 export const Route = createFileRoute("/buyer/account")({
   head: () => ({ meta: [{ title: "Hesap — Hasat" }] }),
