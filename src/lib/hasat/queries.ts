@@ -2281,6 +2281,7 @@ export function usePriceHistorySummary(crop: string | null | undefined) {
           : null,
         marketSources,
         lastUpdated: row.last_updated ?? null,
+        unit: row.unit == null ? null : String(row.unit),
       };
     },
   });
