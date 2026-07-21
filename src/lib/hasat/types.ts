@@ -237,6 +237,7 @@ export interface PendingOffer {
   deliveryDate: string;
   notes?: string;
   total: number;
+  subscriptionId?: string | null;
 }
 
 export interface Subscription {
