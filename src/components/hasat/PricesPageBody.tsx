@@ -11,7 +11,7 @@ import {
   useBuyerOrders,
 } from "@/lib/hasat/queries";
 import { LoadingDots } from "@/components/hasat/LoadingDots";
-import { formatTRY, formatCrop, priceWithUnit } from "@/lib/hasat/format";
+import { formatCrop, priceWithUnit } from "@/lib/hasat/format";
 import { Sparkline } from "@/components/hasat/Sparkline";
 import { Info, Search, Star } from "lucide-react";
 import { toast } from "sonner";

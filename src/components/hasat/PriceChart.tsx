@@ -1,5 +1,5 @@
 import { useId } from "react";
-import { formatTRY, priceWithUnit } from "@/lib/hasat/format";
+import { priceWithUnit } from "@/lib/hasat/format";
 
 interface Props {
   data: { date: string; avgPrice: number }[];
