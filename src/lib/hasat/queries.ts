@@ -639,6 +639,7 @@ function dbToOrder(r: any, side: "farmer" | "buyer"): Order {
     disputeWindowExpiresAt: r.dispute_window_expires_at ?? undefined,
     listingId: (listing.id ?? offer.listing_id) ?? undefined,
     listingActive: listing.status === "active",
+    subscriptionId: offer.subscription_id ?? null,
   };
 }
 
@@ -1042,7 +1043,7 @@ export function useFarmerOffers() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("offers")
-        .select("*, buyer:profiles!offers_buyer_id_fkey(id,name,city,buyer_type), listing:listings(crop,unit)")
+        .select("*, buyer:profiles!offers_buyer_id_fkey(id,name,city,buyer_type), listing:listings(crop,unit), subscription_id")
         .eq("farmer_id", userId!)
         .order("created_at", { ascending: false });
       if (error) throw error;
@@ -1059,7 +1060,7 @@ export function useBuyerOffers() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("offers")
-        .select("*, farmer:profiles!offers_farmer_id_fkey(id,name,city,iban,bank_account_name), listing:listings(crop,unit)")
+        .select("*, farmer:profiles!offers_farmer_id_fkey(id,name,city,iban,bank_account_name), listing:listings(crop,unit), subscription_id")
         .eq("buyer_id", userId!)
         .order("created_at", { ascending: false });
       if (error) throw error;
@@ -1076,6 +1077,7 @@ export interface OfferInput {
   delivery?: string;
   deliveryDate?: string;
   note?: string;
+  subscriptionId?: string | null;
 }
 
 export function useCreateOffer() {
@@ -1098,6 +1100,7 @@ export function useCreateOffer() {
         delivery_date: o.deliveryDate || null,
         note: o.note || null,
         status: "pending",
+        subscription_id: o.subscriptionId ?? null,
       }).select("*").single();
       if (error) throw error;
       return data;
@@ -1529,7 +1532,7 @@ export function useBuyerConversations() {
 // ORDERS
 // =====================================================================
 const ORDER_SELECT =
-  "*, offer:offers(quantity,price_per_unit,delivery,delivery_date,listing_id, listing:listings(id,crop,unit,status))";
+  "*, offer:offers(quantity,price_per_unit,delivery,delivery_date,listing_id,subscription_id, listing:listings(id,crop,unit,status))";
 
 
 export function useFarmerOrders() {

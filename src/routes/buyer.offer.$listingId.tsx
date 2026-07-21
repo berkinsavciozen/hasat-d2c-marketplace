@@ -17,12 +17,13 @@ import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/buyer/offer/$listingId")({
   head: () => ({ meta: [{ title: "Teklif Ver — Hasat" }] }),
-  validateSearch: (s: Record<string, unknown>): { qty?: number; suggestedPrice?: number } => {
-    const out: { qty?: number; suggestedPrice?: number } = {};
+  validateSearch: (s: Record<string, unknown>): { qty?: number; suggestedPrice?: number; subscriptionId?: string } => {
+    const out: { qty?: number; suggestedPrice?: number; subscriptionId?: string } = {};
     const q = Number(s.qty);
     if (Number.isFinite(q) && q > 0) out.qty = q;
     const p = Number(s.suggestedPrice);
     if (Number.isFinite(p) && p > 0) out.suggestedPrice = p;
+    if (typeof s.subscriptionId === "string" && s.subscriptionId.length > 0) out.subscriptionId = s.subscriptionId;
     return out;
   },
   component: MakeOffer,
@@ -88,6 +89,7 @@ function MakeOffer() {
       deliveryDate: date,
       notes,
       total,
+      subscriptionId: search.subscriptionId ?? null,
     });
     navigate({ to: "/buyer/payment" });
   };
