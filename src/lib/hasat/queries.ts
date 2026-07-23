@@ -1128,38 +1128,141 @@ export interface OfferInput {
   subscriptionId?: string | null;
 }
 
+export interface MultiBatchOfferItem {
+  listingId: string;
+  quantity: number;
+  pricePerUnit: number;
+}
+
+export interface MultiBatchOfferInput {
+  farmerId: string;
+  items: MultiBatchOfferItem[];
+  delivery?: string;
+  deliveryDate?: string;
+  note?: string;
+  subscriptionId?: string | null;
+}
+
+async function insertOfferWithItems(
+  buyerId: string,
+  input: MultiBatchOfferInput,
+): Promise<{ id: string; farmer_id: string; listing_id: string; quantity: number; price_per_unit: number }> {
+  if (!input.items.length) throw new Error("En az bir parti seçmelisiniz");
+  const totalQty = input.items.reduce((s, i) => s + i.quantity, 0);
+  if (totalQty <= 0) throw new Error("Toplam miktar 0'dan büyük olmalı");
+  const weightedSum = input.items.reduce((s, i) => s + i.quantity * i.pricePerUnit, 0);
+  const wavgPrice = weightedSum / totalQty;
+  const primaryListingId = input.items[0].listingId;
+
+  const { data: offer, error: e1 } = await supabase.from("offers").insert({
+    buyer_id: buyerId,
+    farmer_id: input.farmerId,
+    listing_id: primaryListingId,
+    quantity: totalQty,
+    price_per_unit: wavgPrice,
+    current_quantity: totalQty,
+    current_price: wavgPrice,
+    ball_side: "farmer",
+    payment_status: "unpaid",
+    delivery: deliveryToDb(input.delivery),
+    delivery_date: input.deliveryDate || null,
+    note: input.note || null,
+    status: "pending",
+    subscription_id: input.subscriptionId ?? null,
+  }).select("id, farmer_id, listing_id, quantity, price_per_unit").single();
+  if (e1) throw e1;
+
+  const { error: e2 } = await supabase.from("offer_items" as any).insert(
+    input.items.map((i) => ({
+      offer_id: offer.id,
+      listing_id: i.listingId,
+      quantity: i.quantity,
+      price_per_unit: i.pricePerUnit,
+    })),
+  );
+  if (e2) {
+    // Best-effort rollback so we don't leave an orphan offer with no items.
+    await supabase.from("offers").delete().eq("id", offer.id);
+    throw e2;
+  }
+  return offer as any;
+}
+
 export function useCreateOffer() {
   const qc = useQueryClient();
   const userId = useAuthUserId();
   return useMutation({
     mutationFn: async (o: OfferInput) => {
       if (!userId) throw new Error("Oturum bulunamadı");
-      const { data, error } = await supabase.from("offers").insert({
-        buyer_id: userId,
-        farmer_id: o.farmerId,
-        listing_id: o.listingId,
-        quantity: o.quantity,
-        price_per_unit: o.pricePerUnit,
-        current_quantity: o.quantity,
-        current_price: o.pricePerUnit,
-        ball_side: "farmer",
-        payment_status: "unpaid",
-        delivery: deliveryToDb(o.delivery),
-        delivery_date: o.deliveryDate || null,
-        note: o.note || null,
-        status: "pending",
-        subscription_id: o.subscriptionId ?? null,
-      }).select("*").single();
-      if (error) throw error;
-      return data;
+      return insertOfferWithItems(userId, {
+        farmerId: o.farmerId,
+        items: [{ listingId: o.listingId, quantity: o.quantity, pricePerUnit: o.pricePerUnit }],
+        delivery: o.delivery,
+        deliveryDate: o.deliveryDate,
+        note: o.note,
+        subscriptionId: o.subscriptionId ?? null,
+      });
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["buyerOffers", userId] });
       qc.invalidateQueries({ queryKey: ["farmerOffers"] });
-      // SMS dispatch now handled DB-side via notify_offer_received → dispatch_sms.
     },
   });
 }
+
+export function useCreateMultiBatchOffer() {
+  const qc = useQueryClient();
+  const userId = useAuthUserId();
+  return useMutation({
+    mutationFn: async (o: MultiBatchOfferInput) => {
+      if (!userId) throw new Error("Oturum bulunamadı");
+      return insertOfferWithItems(userId, o);
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["buyerOffers", userId] });
+      qc.invalidateQueries({ queryKey: ["farmerOffers"] });
+    },
+  });
+}
+
+export interface OfferItemRow {
+  id: string;
+  offerId: string;
+  listingId: string;
+  quantity: number;
+  pricePerUnit: number;
+  createdAt: string;
+  batchName: string | null;
+  crop: string;
+  unit: string;
+}
+
+export function useOfferItems(offerId: string | undefined | null) {
+  return useQuery({
+    queryKey: ["offerItems", offerId],
+    enabled: !!offerId,
+    queryFn: async (): Promise<OfferItemRow[]> => {
+      const { data, error } = await (supabase as any)
+        .from("offer_items")
+        .select("id, offer_id, listing_id, quantity, price_per_unit, created_at, listings:listing_id (crop, batch_name, unit)")
+        .eq("offer_id", offerId!)
+        .order("created_at", { ascending: true });
+      if (error) throw error;
+      return (data ?? []).map((r: any, idx: number) => ({
+        id: r.id,
+        offerId: r.offer_id,
+        listingId: r.listing_id,
+        quantity: Number(r.quantity),
+        pricePerUnit: Number(r.price_per_unit),
+        createdAt: r.created_at,
+        batchName: r.listings?.batch_name ?? `Batch #${idx + 1}`,
+        crop: r.listings?.crop ?? "",
+        unit: r.listings?.unit ?? "",
+      }));
+    },
+  });
+}
+
 
 
 export type OfferStatusUpdate = "accepted" | "rejected" | "counter" | "completed";
