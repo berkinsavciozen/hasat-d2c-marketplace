@@ -151,8 +151,16 @@ function ProducerProfile() {
               <div className="font-medium mt-0.5">{estimatedQtyLabel}</div>
             </div>
           </div>
-          <button onClick={() => navigate({ to: "/buyer/subscription/$producerId", params: { producerId: profile.id } })}
-            className="mt-4 w-full rounded-xl py-3 text-sm font-medium" style={{ background: "var(--gold)", color: "var(--dark)" }}>Hasat Aboneliği Oluştur →</button>
+          {loggedIn === false ? (
+            <Link to="/login" search={{ role: "buyer" } as any}
+              className="mt-4 block w-full rounded-xl py-3 text-center text-sm font-medium" style={{ background: "var(--gold)", color: "var(--dark)" }}>
+              Abonelik ve Teklif için Hasat'a Üye Ol →
+            </Link>
+          ) : (
+            <button onClick={() => navigate({ to: "/buyer/subscription/$producerId", params: { producerId: profile.id } })}
+              className="mt-4 w-full rounded-xl py-3 text-sm font-medium" style={{ background: "var(--gold)", color: "var(--dark)" }}>Hasat Aboneliği Oluştur →</button>
+          )}
+
         </div>
 
         <div>
