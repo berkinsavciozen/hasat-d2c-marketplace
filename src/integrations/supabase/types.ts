@@ -599,12 +599,14 @@ export type Database = {
         Row: {
           buyer_id: string
           created_at: string
+          crop: string | null
           estimated_qty: number | null
           farmer_id: string
           id: string
           locked_at: string | null
           locked_price: number | null
           next_harvest_date: string | null
+          note: string | null
           price_lock: boolean
           status: Database["public"]["Enums"]["subscription_status"]
           volume_commitment: number | null
@@ -612,12 +614,14 @@ export type Database = {
         Insert: {
           buyer_id: string
           created_at?: string
+          crop?: string | null
           estimated_qty?: number | null
           farmer_id: string
           id?: string
           locked_at?: string | null
           locked_price?: number | null
           next_harvest_date?: string | null
+          note?: string | null
           price_lock?: boolean
           status?: Database["public"]["Enums"]["subscription_status"]
           volume_commitment?: number | null
@@ -625,12 +629,14 @@ export type Database = {
         Update: {
           buyer_id?: string
           created_at?: string
+          crop?: string | null
           estimated_qty?: number | null
           farmer_id?: string
           id?: string
           locked_at?: string | null
           locked_price?: number | null
           next_harvest_date?: string | null
+          note?: string | null
           price_lock?: boolean
           status?: Database["public"]["Enums"]["subscription_status"]
           volume_commitment?: number | null

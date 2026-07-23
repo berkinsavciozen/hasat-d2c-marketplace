@@ -1,8 +1,8 @@
 import { createFileRoute, Link, Outlet, redirect, useRouterState, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
-import { BarChart3, BookOpen, Home, LineChart, Store, Users, Settings, Crown, Handshake, MoreHorizontal, Gift, HelpCircle } from "lucide-react";
+import { BarChart3, BookOpen, Home, LineChart, Store, Users, Settings, Crown, Handshake, MoreHorizontal, Gift, HelpCircle, CalendarClock } from "lucide-react";
 import { FARMER_TOUR_STORAGE_KEY } from "@/lib/hasat/onboarding-tour";
-import { useProfile, useParcels, useRealtimeSync, useAuthUserId, useFarmerOffers } from "@/lib/hasat/queries";
+import { useProfile, useParcels, useRealtimeSync, useAuthUserId, useFarmerOffers, useIncomingSubscriptions } from "@/lib/hasat/queries";
 import { SeasonBanner } from "@/components/hasat/SeasonBanner";
 import { FarmPill } from "@/components/hasat/FarmPill";
 import { NotificationBell } from "@/components/hasat/NotificationBell";
@@ -44,12 +44,14 @@ const moreItems = [
   { to: "/farmer/analytics", label: "Analitik", icon: BarChart3 },
   { to: "/farmer/community", label: "Topluluk", icon: Users },
   { to: "/farmer/orders", label: "Teklifler", icon: Handshake },
+  { to: "/farmer/subscriptions", label: "Abonelikler", icon: CalendarClock },
   { to: "/farmer/referral", label: "Arkadaşını Davet Et", icon: Gift },
 ] as const;
 
 const sidebarExtras = [
   { to: "/farmer/community", label: "Topluluk", icon: Users },
   { to: "/farmer/orders", label: "Teklifler", icon: Handshake },
+  { to: "/farmer/subscriptions", label: "Abonelikler", icon: CalendarClock },
   { to: "/farmer/referral", label: "Arkadaşını Davet Et", icon: Gift },
 ] as const;
 
@@ -59,7 +61,9 @@ function FarmerShell() {
   const { data: profile } = useProfile();
   const { data: parcels = [] } = useParcels();
   const { data: offers } = useFarmerOffers();
+  const { data: incomingSubs } = useIncomingSubscriptions();
   const pendingCount = offers?.filter((o) => o.status === "pending").length ?? 0;
+  const pendingSubs = incomingSubs?.filter((s) => s.status === "pending").length ?? 0;
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const [moreOpen, setMoreOpen] = useState(false);
   const navigate = useNavigate();
@@ -116,7 +120,7 @@ function FarmerShell() {
         <nav className="flex flex-col gap-1 mt-2">
           {[...tabs, ...sidebarExtras].map(({ to, label, icon: Icon }) => {
             const active = pathname.startsWith(to);
-            const badge = to === "/farmer/orders" ? pendingCount : 0;
+            const badge = to === "/farmer/orders" ? pendingCount : to === "/farmer/subscriptions" ? pendingSubs : 0;
             return (
 
               <Link
@@ -224,7 +228,7 @@ function FarmerShell() {
             </Link>
 
             {moreItems.map(({ to, label, icon: Icon }) => {
-              const badge = to === "/farmer/orders" ? pendingCount : 0;
+              const badge = to === "/farmer/orders" ? pendingCount : to === "/farmer/subscriptions" ? pendingSubs : 0;
               const active = pathname.startsWith(to);
               return (
 

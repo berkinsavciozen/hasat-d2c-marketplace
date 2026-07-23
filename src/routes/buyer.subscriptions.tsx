@@ -2,7 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState } from "react";
 import { BuyerHeader } from "@/components/hasat/BuyerHeader";
 import { LoadingDots } from "@/components/hasat/LoadingDots";
-import { useMySubscriptions, useCancelSubscription, useFarmerActiveListings } from "@/lib/hasat/queries";
+import { useMySubscriptions, useCancelSubscription, useFarmerActiveListings, useSubscriptionFulfillment } from "@/lib/hasat/queries";
 import { formatTRY, formatCrop } from "@/lib/hasat/format";
 import {
   AlertDialog,
@@ -24,11 +24,29 @@ export const Route = createFileRoute("/buyer/subscriptions")({
 });
 
 const STATUS_META: Record<string, { label: string; bg: string; fg: string }> = {
+  pending: { label: "Onay bekliyor", bg: "color-mix(in oklab, var(--lav) 22%, transparent)", fg: "var(--lav)" },
   active: { label: "Aktif", bg: "var(--saffron)", fg: "#fff" },
   paused: { label: "Duraklatıldı", bg: "color-mix(in oklab, var(--gold) 22%, transparent)", fg: "var(--gold)" },
-  completed: { label: "Tamamlandı", bg: "color-mix(in oklab, var(--sage) 22%, transparent)", fg: "var(--sage)" },
+  fulfilled: { label: "Tamamlandı", bg: "color-mix(in oklab, var(--sage) 22%, transparent)", fg: "var(--sage)" },
   cancelled: { label: "İptal", bg: "color-mix(in oklab, var(--hmuted) 18%, transparent)", fg: "var(--hmuted)" },
 };
+
+function FulfillmentBar({ id, target }: { id: string; target: number | null }) {
+  const { data } = useSubscriptionFulfillment(id);
+  if (!target || !data) return null;
+  const pct = Math.min(100, Math.round((data.deliveredQty / target) * 100));
+  return (
+    <div className="mt-3">
+      <div className="flex items-center justify-between text-[10px] text-hmuted uppercase tracking-wider mb-1">
+        <span>Teslim edildi</span>
+        <span>{data.deliveredQty.toFixed(0)} / {target} · {pct}%</span>
+      </div>
+      <div className="h-1.5 w-full rounded-full bg-muted overflow-hidden">
+        <div className="h-full" style={{ width: `${pct}%`, background: "var(--saffron)" }} />
+      </div>
+    </div>
+  );
+}
 
 function daysUntil(iso: string | null): string | null {
   if (!iso) return null;
@@ -95,6 +113,7 @@ function Subscriptions() {
                     <div className="text-xs text-hmuted">
                       {s.farmerCity ?? ""}
                       {s.farmerCity ? " · " : ""}
+                      {s.crop ? `${formatCrop(s.crop)} · ` : ""}
                       {sinceDays < 30 ? `${sinceDays} gündür` : `${Math.floor(sinceDays / 30)} aydır`} tedarikçiniz
                     </div>
                   </div>
@@ -105,6 +124,12 @@ function Subscriptions() {
                     {meta.label}
                   </span>
                 </div>
+
+                {s.note && (
+                  <div className="mt-2 rounded-lg border border-dashed p-2 text-xs text-hmuted">
+                    “{s.note}”
+                  </div>
+                )}
 
                 {nextLabel && s.status === "active" && (
                   <div className="mt-3 flex items-center gap-2 rounded-lg border p-2.5 text-xs"
@@ -143,15 +168,27 @@ function Subscriptions() {
                   )}
                 </div>
 
-                {s.status === "active" && (
+                {(s.status === "active" || s.status === "fulfilled") && (
+                  <FulfillmentBar id={s.id} target={s.volumeCommitment} />
+                )}
+
+                {s.status === "pending" && (
+                  <div className="mt-3 rounded-lg border border-dashed p-2.5 text-xs text-hmuted">
+                    Üretici talebinizi inceliyor. Onaylandığında bildirim alacaksınız.
+                  </div>
+                )}
+
+                {(s.status === "active" || s.status === "pending" || s.status === "paused") && (
                   <div className="mt-3 flex items-center justify-between gap-2">
-                    <button
-                      onClick={() => setOrderSub({ subscriptionId: s.id, farmerId: s.farmerId, farmerName: s.farmerName, priceLock: s.priceLock, lockedPrice: s.lockedPrice, crop: null })}
-                      className="inline-flex items-center gap-1.5 rounded-lg min-h-[40px] px-3 py-2 text-xs font-medium"
-                      style={{ background: "var(--saffron)", color: "#fff" }}
-                    >
-                      <ShoppingBag className="h-3.5 w-3.5" /> Şimdi Sipariş Ver
-                    </button>
+                    {s.status === "active" ? (
+                      <button
+                        onClick={() => setOrderSub({ subscriptionId: s.id, farmerId: s.farmerId, farmerName: s.farmerName, priceLock: s.priceLock, lockedPrice: s.lockedPrice, crop: s.crop })}
+                        className="inline-flex items-center gap-1.5 rounded-lg min-h-[40px] px-3 py-2 text-xs font-medium"
+                        style={{ background: "var(--saffron)", color: "#fff" }}
+                      >
+                        <ShoppingBag className="h-3.5 w-3.5" /> Şimdi Sipariş Ver
+                      </button>
+                    ) : <span />}
                     <button
                       onClick={() => setPendingId(s.id)}
                       className="text-xs font-medium text-hred hover:underline min-h-[40px] px-2"
@@ -163,6 +200,7 @@ function Subscriptions() {
               </div>
             );
           })
+
         )}
       </div>
 

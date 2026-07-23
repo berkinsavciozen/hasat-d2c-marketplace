@@ -1847,9 +1847,13 @@ export function useTogglePriceAlert() {
 export interface SubscriptionRow {
   id: string;
   buyerId: string;
+  buyerName: string | null;
+  buyerCity: string | null;
   farmerId: string;
   farmerName: string | null;
   farmerCity: string | null;
+  crop: string | null;
+  note: string | null;
   nextHarvestDate: string | null;
   estimatedQty: number | null;
   volumeCommitment: number | null;
@@ -1864,9 +1868,13 @@ function dbToSubscription(r: any): SubscriptionRow {
   return {
     id: r.id,
     buyerId: r.buyer_id,
+    buyerName: r.buyer?.name ?? null,
+    buyerCity: r.buyer?.city ?? null,
     farmerId: r.farmer_id,
     farmerName: r.farmer?.name ?? null,
     farmerCity: r.farmer?.city ?? null,
+    crop: r.crop ?? null,
+    note: r.note ?? null,
     nextHarvestDate: r.next_harvest_date,
     estimatedQty: r.estimated_qty != null ? Number(r.estimated_qty) : null,
     volumeCommitment: r.volume_commitment != null ? Number(r.volume_commitment) : null,
@@ -1895,12 +1903,31 @@ export function useMySubscriptions() {
   });
 }
 
+export function useIncomingSubscriptions() {
+  const userId = useAuthUserId();
+  return useQuery({
+    queryKey: ["incomingSubscriptions", userId],
+    enabled: !!userId,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("harvest_subscriptions")
+        .select("*, buyer:profiles!harvest_subscriptions_buyer_id_fkey(id,name,city)")
+        .eq("farmer_id", userId!)
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      return (data ?? []).map(dbToSubscription);
+    },
+  });
+}
+
 export function useCreateSubscription() {
   const qc = useQueryClient();
   const userId = useAuthUserId();
   return useMutation({
     mutationFn: async (input: {
       farmerId: string;
+      crop?: string | null;
+      note?: string | null;
       volumeCommitment: number;
       priceLock: boolean;
       lockedPrice?: number | null;
@@ -1911,14 +1938,16 @@ export function useCreateSubscription() {
       const { data, error } = await supabase.from("harvest_subscriptions").insert({
         buyer_id: userId,
         farmer_id: input.farmerId,
+        crop: input.crop ?? null,
+        note: input.note ?? null,
         volume_commitment: input.volumeCommitment,
         price_lock: input.priceLock,
         locked_price: input.priceLock ? input.lockedPrice ?? null : null,
         locked_at: input.priceLock ? new Date().toISOString() : null,
         next_harvest_date: input.nextHarvestDate ?? null,
         estimated_qty: input.estimatedQty ?? null,
-        status: "active",
-      }).select("*").single();
+        // status defaults to 'pending' at DB level
+      } as any).select("*").single();
       if (error) throw error;
       return data;
     },
@@ -1942,6 +1971,68 @@ export function useCancelSubscription() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ["mySubscriptions"] }),
   });
 }
+
+export function useRespondToSubscription() {
+  const qc = useQueryClient();
+  const userId = useAuthUserId();
+  return useMutation({
+    mutationFn: async (input: { id: string; status: "active" | "cancelled" | "paused" | "fulfilled" }) => {
+      if (!userId) throw new Error("Oturum bulunamadı");
+      const { error } = await supabase
+        .from("harvest_subscriptions")
+        .update({ status: input.status })
+        .eq("id", input.id)
+        .eq("farmer_id", userId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["incomingSubscriptions"] });
+      qc.invalidateQueries({ queryKey: ["mySubscriptions"] });
+    },
+  });
+}
+
+export function useUpdateSubscriptionSchedule() {
+  const qc = useQueryClient();
+  const userId = useAuthUserId();
+  return useMutation({
+    mutationFn: async (input: { id: string; nextHarvestDate?: string | null; estimatedQty?: number | null }) => {
+      if (!userId) throw new Error("Oturum bulunamadı");
+      const patch: Record<string, unknown> = {};
+      if (input.nextHarvestDate !== undefined) patch.next_harvest_date = input.nextHarvestDate;
+      if (input.estimatedQty !== undefined) patch.estimated_qty = input.estimatedQty;
+      const { error } = await supabase
+        .from("harvest_subscriptions")
+        .update(patch as any)
+        .eq("id", input.id)
+        .eq("farmer_id", userId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["incomingSubscriptions"] });
+      qc.invalidateQueries({ queryKey: ["mySubscriptions"] });
+    },
+  });
+}
+
+export function useSubscriptionFulfillment(subscriptionId: string | null | undefined) {
+  return useQuery({
+    queryKey: ["subscriptionFulfillment", subscriptionId],
+    enabled: !!subscriptionId,
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc("get_subscription_fulfillment", {
+        _subscription_id: subscriptionId!,
+      });
+      if (error) throw error;
+      const row = Array.isArray(data) ? data[0] : data;
+      return {
+        deliveredQty: row?.delivered_qty != null ? Number(row.delivered_qty) : 0,
+        orderCount: row?.order_count != null ? Number(row.order_count) : 0,
+      };
+    },
+  });
+}
+
 
 // ---- community posts (4C) ----
 export interface CommunityPostRow {
