@@ -17,6 +17,7 @@ import {
 import { CATEGORY_GROUP_META, cropEmoji, findCropConfig, useCropConfigMap } from "@/lib/hasat/crop-config";
 import { slugifyFarmer } from "@/lib/hasat/vitrin";
 import { TR_PROVINCES } from "@/lib/hasat/cities";
+import { convertQuantity } from "@/lib/hasat/units";
 
 
 
@@ -227,17 +228,22 @@ function Discover() {
                   cur.items.push(l);
                   groups.set(key, cur);
                 }
-                return Array.from(groups.values()).map((g) => (
-                  <ListingGroupCard
-                    key={g.key}
-                    items={g.items}
-                    onOpen={() =>
-                      g.items.length === 1
-                        ? navigate({ to: "/buyer/offer/$listingId", params: { listingId: g.items[0].id } })
-                        : navigate({ to: "/buyer/product/$farmerId/$crop", params: { farmerId: g.farmerId, crop: g.crop } })
-                    }
-                  />
-                ));
+                return Array.from(groups.values()).map((g) => {
+                  const cfg = findCropConfig(cropMap, g.crop);
+                  const canonicalUnit = cfg?.default_unit ?? g.items[0].unit;
+                  return (
+                    <ListingGroupCard
+                      key={g.key}
+                      items={g.items}
+                      canonicalUnit={canonicalUnit}
+                      onOpen={() =>
+                        g.items.length === 1
+                          ? navigate({ to: "/buyer/offer/$listingId", params: { listingId: g.items[0].id } })
+                          : navigate({ to: "/buyer/product/$farmerId/$crop", params: { farmerId: g.farmerId, crop: g.crop } })
+                      }
+                    />
+                  );
+                });
               })()}
             </div>
 
@@ -374,9 +380,12 @@ function CropRequestModal({ initialCrop, onClose }: { initialCrop: string; onClo
 
 type ListingRow = ReturnType<typeof useActiveListings>["data"] extends (infer U)[] | undefined ? U : never;
 
-function ListingGroupCard({ items, onOpen }: { items: ListingRow[]; onOpen: () => void }) {
-  // Sum of base quantities across batches (approx; product-detail page shows accurate live stock per batch).
-  const totalAvail = items.reduce((s, l) => s + Number(l.quantity ?? 0), 0);
+function ListingGroupCard({ items, canonicalUnit, onOpen }: { items: ListingRow[]; canonicalUnit: string; onOpen: () => void }) {
+  // Kanonik birime çevirerek topla (g↔kg). Diğer birimler tek preset olduğu için değişmez.
+  const totalAvail = items.reduce(
+    (s, l) => s + convertQuantity(Number(l.quantity ?? 0), l.unit, canonicalUnit),
+    0,
+  );
   const soldOut = totalAvail <= 0;
   const first = items[0];
 
@@ -429,7 +438,7 @@ function ListingGroupCard({ items, onOpen }: { items: ListingRow[]; onOpen: () =
       <div className="p-4">
         <div className="flex items-center justify-between gap-2">
           <div className="text-xs text-hmuted">
-            Toplam mevcut {totalAvail} {first.unit}
+            Toplam mevcut {Number(totalAvail.toFixed(2))} {canonicalUnit}
           </div>
           <CoverageBadge listingId={first.id} crop={first.crop} compact />
         </div>

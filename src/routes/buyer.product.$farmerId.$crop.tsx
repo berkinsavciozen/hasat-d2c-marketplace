@@ -1,11 +1,13 @@
 import { createFileRoute, Link, useNavigate, notFound } from "@tanstack/react-router";
 import { ArrowLeft, ChevronDown, ChevronUp } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
 import { LoadingDots } from "@/components/hasat/LoadingDots";
 import { formatTRY, formatCrop } from "@/lib/hasat/format";
+import { convertQuantity } from "@/lib/hasat/units";
+import { findCropConfig, useCropConfigMap } from "@/lib/hasat/crop-config";
 import {
   dbToActiveListing,
   useListingStock,
@@ -61,6 +63,7 @@ function BuyerProduct() {
   const { farmerId, crop } = Route.useParams();
   const navigate = useNavigate();
   const { data: listings = [], isLoading } = useFarmerCropListings(farmerId, crop);
+  const { map: cropMap } = useCropConfigMap();
   const [selected, setSelected] = useState<Record<string, number>>({});
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
   const [note, setNote] = useState("");
@@ -70,14 +73,15 @@ function BuyerProduct() {
   if (listings.length === 0) throw notFound();
 
   const first = listings[0];
-  const unit = first.unit;
+  const cfg = findCropConfig(cropMap, crop);
+  const canonicalUnit = cfg?.default_unit ?? first.unit;
   const items = Object.entries(selected)
     .filter(([, q]) => q > 0)
     .map(([listingId, quantity]) => {
       const l = listings.find((x) => x.id === listingId)!;
-      return { listingId, quantity, pricePerUnit: l.pricePerUnit };
+      return { listingId, quantity, pricePerUnit: l.pricePerUnit, unit: l.unit };
     });
-  const totalQty = items.reduce((s, i) => s + i.quantity, 0);
+  const totalQty = items.reduce((s, i) => s + convertQuantity(i.quantity, i.unit, canonicalUnit), 0);
   const totalPrice = items.reduce((s, i) => s + i.quantity * i.pricePerUnit, 0);
 
   const submit = async () => {
@@ -139,7 +143,7 @@ function BuyerProduct() {
             <div className="text-xs text-hmuted">Toplam</div>
             <div className="font-mono text-lg" style={{ color: "var(--saffron)" }}>
               {formatTRY(totalPrice)}
-              <span className="text-xs text-hmuted ml-2">{totalQty} {unit} · {items.length} parti</span>
+              <span className="text-xs text-hmuted ml-2">{Number(totalQty.toFixed(2))} {canonicalUnit} · {items.length} parti</span>
             </div>
           </div>
           <button

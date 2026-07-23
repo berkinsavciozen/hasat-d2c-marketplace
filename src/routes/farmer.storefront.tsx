@@ -308,6 +308,7 @@ function ListingSheet({ open, editing, onClose }: { open: boolean; editing: List
 
   const [crop, setCrop] = useState(editing?.crop ?? "");
   const { options: cropOptions, isLoading: cropsLoading } = useCropOptions();
+  const { map: cropMap } = useCropConfigMap();
   const [parcelId, setParcelId] = useState<string>(editing?.parcelId ?? "");
   const [quantity, setQuantity] = useState(editing?.quantity ?? 100);
   const [unit, setUnit] = useState<"g" | "kg" | "L">(editing?.unit ?? "g");
@@ -420,7 +421,15 @@ function ListingSheet({ open, editing, onClose }: { open: boolean; editing: List
               </div>
               <div>
                 <div className="mb-1.5 text-xs font-medium text-hmuted">Ürün</div>
-                <Select value={crop} onValueChange={(v) => { setCrop(v); setBatchDecisionOverride(false); }}>
+                <Select value={crop} onValueChange={(v) => {
+                  setCrop(v);
+                  setBatchDecisionOverride(false);
+                  if (!editing) {
+                    const cfg = findCropConfig(cropMap, v);
+                    const du = cfg?.default_unit;
+                    if (du === "g" || du === "kg" || du === "L") setUnit(du);
+                  }
+                }}>
                   <SelectTrigger><SelectValue placeholder={cropsLoading ? "Yükleniyor…" : "Ürün seçin"} /></SelectTrigger>
                   <SelectContent>{cropOptions.map((o) => <SelectItem key={o.value} value={o.value}>{o.emoji} {o.label}</SelectItem>)}</SelectContent>
                 </Select>
