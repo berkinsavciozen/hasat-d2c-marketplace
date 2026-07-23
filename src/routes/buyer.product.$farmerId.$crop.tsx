@@ -143,6 +143,13 @@ function BuyerProduct() {
           ))}
         </div>
 
+        <DeliveryFields
+          delivery={delivery}
+          onDeliveryChange={setDelivery}
+          date={deliveryDate}
+          onDateChange={setDeliveryDate}
+        />
+
         <div>
           <label className="text-xs text-hmuted block mb-1">Not (opsiyonel)</label>
           <textarea value={note} onChange={(e) => setNote(e.target.value)} rows={2}
@@ -161,11 +168,11 @@ function BuyerProduct() {
           </div>
           <button
             onClick={submit}
-            disabled={items.length === 0 || createOffer.isPending}
+            disabled={items.length === 0 || !deliveryDate}
             className="rounded-full px-6 py-3 text-sm font-medium text-white disabled:opacity-40 min-h-[48px]"
             style={{ background: "var(--saffron)" }}
           >
-            {createOffer.isPending ? "Gönderiliyor…" : "Teklif Gönder"}
+            Teklif Gönder &amp; Öde →
           </button>
         </div>
       </div>
