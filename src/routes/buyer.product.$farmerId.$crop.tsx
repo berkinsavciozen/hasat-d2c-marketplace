@@ -143,7 +143,7 @@ function BuyerProduct() {
             <div className="text-xs text-hmuted">Toplam</div>
             <div className="font-mono text-lg" style={{ color: "var(--saffron)" }}>
               {formatTRY(totalPrice)}
-              <span className="text-xs text-hmuted ml-2">{totalQty} {unit} · {items.length} parti</span>
+              <span className="text-xs text-hmuted ml-2">{Number(totalQty.toFixed(2))} {canonicalUnit} · {items.length} parti</span>
             </div>
           </div>
           <button
