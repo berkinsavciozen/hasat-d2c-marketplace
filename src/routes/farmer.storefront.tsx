@@ -343,7 +343,7 @@ function ListingSheet({ open, editing, onClose }: { open: boolean; editing: List
 
   // Duplicate/batch tespiti: yeni listing oluştururken (editing yok) aynı parsel+crop için
   // mevcut draft/active batch varsa karar ekranı göster.
-  const { data: existingBatches = [] } = useExistingBatches(
+  const { data: existingBatches = [] as Listing[] } = useExistingBatches(
     !editing && parcelId ? parcelId : null,
     !editing && crop ? crop : null,
   );
