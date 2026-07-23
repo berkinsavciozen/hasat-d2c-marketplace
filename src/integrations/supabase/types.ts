@@ -880,6 +880,9 @@ export type Database = {
           price_alert_push: boolean
           price_alert_sms: boolean
           price_alert_whatsapp: boolean
+          subscription_accepted_sms: boolean
+          subscription_new_sms: boolean
+          subscription_rejected_sms: boolean
           user_id: string
         }
         Insert: {
@@ -900,6 +903,9 @@ export type Database = {
           price_alert_push?: boolean
           price_alert_sms?: boolean
           price_alert_whatsapp?: boolean
+          subscription_accepted_sms?: boolean
+          subscription_new_sms?: boolean
+          subscription_rejected_sms?: boolean
           user_id: string
         }
         Update: {
@@ -920,6 +926,9 @@ export type Database = {
           price_alert_push?: boolean
           price_alert_sms?: boolean
           price_alert_whatsapp?: boolean
+          subscription_accepted_sms?: boolean
+          subscription_new_sms?: boolean
+          subscription_rejected_sms?: boolean
           user_id?: string
         }
         Relationships: [
@@ -2161,6 +2170,13 @@ export type Database = {
         Returns: Json
       }
       get_price_history_summary: { Args: { p_crop: string }; Returns: Json }
+      get_subscription_fulfillment: {
+        Args: { _subscription_id: string }
+        Returns: {
+          delivered_qty: number
+          order_count: number
+        }[]
+      }
       increment_ai_usage: { Args: { _user_id: string }; Returns: number }
     }
     Enums: {
@@ -2198,7 +2214,12 @@ export type Database = {
         | "cancelled"
       price_alert_condition: "above" | "below"
       quality_grade: "A" | "B" | "C"
-      subscription_status: "active" | "cancelled" | "fulfilled"
+      subscription_status:
+        | "pending"
+        | "active"
+        | "paused"
+        | "fulfilled"
+        | "cancelled"
       unit_type: "g" | "kg" | "L"
       user_role: "farmer" | "buyer"
       user_tier: "free" | "premium"
@@ -2367,7 +2388,13 @@ export const Constants = {
       ],
       price_alert_condition: ["above", "below"],
       quality_grade: ["A", "B", "C"],
-      subscription_status: ["active", "cancelled", "fulfilled"],
+      subscription_status: [
+        "pending",
+        "active",
+        "paused",
+        "fulfilled",
+        "cancelled",
+      ],
       unit_type: ["g", "kg", "L"],
       user_role: ["farmer", "buyer"],
       user_tier: ["free", "premium"],
