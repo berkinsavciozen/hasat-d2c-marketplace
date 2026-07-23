@@ -216,10 +216,32 @@ function Discover() {
             )
           ) : (
             <div className="grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
-              {filtered.map((l) => (
-                <ListingCard key={l.id} listing={l} onOpen={() => navigate({ to: "/buyer/offer/$listingId", params: { listingId: l.id } })} />
-              ))}
+              {(() => {
+                type Row = typeof filtered[number];
+                const groups = new Map<string, { key: string; farmerId: string; crop: string; items: Row[] }>();
+                for (const l of filtered) {
+                  const farmerId = l.producerId ?? "";
+                  const cropKey = (l.crop ?? "").toLocaleLowerCase("tr-TR");
+                  const key = `${farmerId}::${cropKey}`;
+                  const cur = groups.get(key) ?? { key, farmerId, crop: cropKey, items: [] };
+                  cur.items.push(l);
+                  groups.set(key, cur);
+                }
+                return Array.from(groups.values()).map((g) => (
+                  <ListingGroupCard
+                    key={g.key}
+                    items={g.items}
+                    onOpen={() =>
+                      g.items.length === 1
+                        ? navigate({ to: "/buyer/offer/$listingId", params: { listingId: g.items[0].id } })
+                        : navigate({ to: "/buyer/product/$farmerId/$crop", params: { farmerId: g.farmerId, crop: g.crop } })
+                    }
+                  />
+                ));
+              })()}
             </div>
+
+
 
           )}
         </div>
