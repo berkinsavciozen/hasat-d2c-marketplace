@@ -26,6 +26,8 @@ export default defineTool({
       .optional()
       .describe("ISO date YYYY-MM-DD."),
     estimated_qty: z.number().positive().optional(),
+    crop: z.string().min(1).optional().describe("Crop name for the subscription (e.g. 'safran')."),
+    note: z.string().max(2000).optional().describe("Optional note for the farmer."),
     confirm: z.literal(true).describe("Must be true — safety guard."),
   },
   annotations: { readOnlyHint: false, destructiveHint: true, openWorldHint: false },
@@ -54,7 +56,9 @@ export default defineTool({
       locked_at: input.price_lock ? new Date().toISOString() : null,
       next_harvest_date: input.next_harvest_date ?? null,
       estimated_qty: input.estimated_qty ?? null,
-      status: "active",
+      crop: input.crop ?? null,
+      note: input.note ?? null,
+      // status omitted — DB default 'pending' requires farmer approval.
     } as any).select("*").single();
     if (error) return { content: [{ type: "text", text: error.message }], isError: true };
     return {

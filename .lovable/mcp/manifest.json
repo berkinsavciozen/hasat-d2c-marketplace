@@ -677,6 +677,16 @@
               "type": "number",
               "exclusiveMinimum": 0
             },
+            "crop": {
+              "description": "Crop name for the subscription (e.g. 'safran').",
+              "type": "string",
+              "minLength": 1
+            },
+            "note": {
+              "description": "Optional note for the farmer.",
+              "type": "string",
+              "maxLength": 2000
+            },
             "confirm": {
               "type": "boolean",
               "const": true,
