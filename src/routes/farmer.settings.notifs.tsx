@@ -56,6 +56,10 @@ const EVENTS: EventDef[] = [
     cols: { sms: "crop_request_match_sms" },
   },
   {
+    label: "Yeni Abonelik Talebi",
+    cols: { sms: "subscription_new_sms" },
+  },
+  {
     label: "Topluluk",
     cols: { push: "community_push" },
   },
