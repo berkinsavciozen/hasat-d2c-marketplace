@@ -226,19 +226,28 @@ export interface Dispute {
 }
 
 
+export interface PendingOfferItem {
+  listingId: string;
+  quantity: number;
+  pricePerUnit: number;
+  unit: string;
+}
+
 export interface PendingOffer {
   listingId: string;
   producerId: string;
   producerName: string;
   crop: string;
   quantity: number;
-  unit: "g" | "kg" | "L";
+  unit: "g" | "kg" | "L" | string;
   pricePerUnit: number;
   delivery: string;
   deliveryDate: string;
   notes?: string;
   total: number;
   subscriptionId?: string | null;
+  /** When set, indicates a multi-batch offer; payment flow will create it via useCreateMultiBatchOffer. */
+  items?: PendingOfferItem[];
 }
 
 export interface Subscription {
