@@ -1,9 +1,11 @@
 import { createFileRoute, Link, useNavigate, notFound } from "@tanstack/react-router";
 import { ArrowLeft, Star } from "lucide-react";
+import { useEffect, useState } from "react";
 import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Tooltip } from "recharts";
 import { LoadingDots } from "@/components/hasat/LoadingDots";
 import { RatingStars } from "@/components/hasat/ReviewModal";
 import { formatTRY, formatCrop } from "@/lib/hasat/format";
+import { supabase } from "@/integrations/supabase/client";
 import {
   useFarmerPublicProfile,
   useFarmerActiveListings,
@@ -14,6 +16,22 @@ import {
   useFarmerRecentReviews,
 } from "@/lib/hasat/queries";
 import { useCropConfigMap, findCropConfig, cropEmoji } from "@/lib/hasat/crop-config";
+
+function useIsLoggedIn() {
+  const [loggedIn, setLoggedIn] = useState<boolean | null>(null);
+  useEffect(() => {
+    let mounted = true;
+    supabase.auth.getUser().then(({ data }) => {
+      if (mounted) setLoggedIn(!!data.user);
+    });
+    const { data: sub } = supabase.auth.onAuthStateChange((_e, session) => {
+      setLoggedIn(!!session?.user);
+    });
+    return () => { mounted = false; sub.subscription.unsubscribe(); };
+  }, []);
+  return loggedIn;
+}
+
 
 export const Route = createFileRoute("/buyer/producer/$id")({
   head: () => ({ meta: [{ title: "Üretici — Hasat" }] }),
