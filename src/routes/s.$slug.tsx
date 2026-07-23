@@ -1,10 +1,10 @@
-import { createFileRoute, Link, notFound } from "@tanstack/react-router";
+import { createFileRoute, Link, notFound, useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
-import { ArrowLeft, Share2 } from "lucide-react";
+import { ArrowLeft, Share2, CalendarPlus } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
-import { dbToListing, dbToParcel } from "@/lib/hasat/queries";
+import { dbToListing, dbToParcel, useProfile } from "@/lib/hasat/queries";
 import { LoadingDots } from "@/components/hasat/LoadingDots";
 import { formatTRY } from "@/lib/hasat/format";
 import { formatCrop } from "@/lib/hasat/format";
@@ -95,13 +95,18 @@ function useIsLoggedIn() {
 
 function PublicStorefront() {
   const { slug } = Route.useParams();
+  const navigate = useNavigate();
   const { data, isLoading } = useStorefront(slug);
   const loggedIn = useIsLoggedIn();
+  const { data: myProfile } = useProfile();
 
   if (isLoading) return <div className="p-8"><LoadingDots /></div>;
   if (!data) throw notFound();
 
   const { profile, listings, parcels, certs } = data;
+  const isBuyer = loggedIn && myProfile?.role === "buyer";
+  const isOwnStorefront = myProfile?.id === profile.id;
+  const showSubscribeCTA = isBuyer && !isOwnStorefront;
   const parcelsWithPhotos = parcels.filter((p: Parcel) => (p.photos ?? []).length > 0);
   const heroPhoto = parcelsWithPhotos[0]?.photos?.[0]
     ?? listings.find((l) => (l.photos ?? []).length > 0)?.photos?.[0]
@@ -235,6 +240,19 @@ function PublicStorefront() {
           </section>
         )}
       </div>
+
+      {showSubscribeCTA && (
+        <div className="fixed inset-x-0 bottom-0 z-40 border-t bg-card/95 backdrop-blur px-4 py-3 md:px-8">
+          <button
+            onClick={() => navigate({ to: "/buyer/subscription/$producerId", params: { producerId: profile.id } })}
+            className="flex w-full items-center justify-center gap-2 rounded-full py-3 text-center text-sm font-semibold min-h-[48px]"
+            style={{ background: "var(--gold)", color: "var(--dark)" }}
+          >
+            <CalendarPlus className="h-4 w-4" />
+            📅 Hasat Aboneliği Oluştur
+          </button>
+        </div>
+      )}
 
       {loggedIn === false && (
         <div className="fixed inset-x-0 bottom-0 z-40 border-t bg-card/95 backdrop-blur px-4 py-3 md:px-8">
