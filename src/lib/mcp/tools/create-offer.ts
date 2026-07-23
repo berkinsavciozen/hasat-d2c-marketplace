@@ -51,6 +51,20 @@ export default defineTool({
       status: "pending",
     } as any).select().single();
     if (error) return { content: [{ type: "text", text: error.message }], isError: true };
+
+    // Mirror single-batch offers into offer_items so no offer is ever left
+    // without at least one item row (multi-batch invariant).
+    const { error: itemErr } = await sb.from("offer_items" as any).insert({
+      offer_id: data.id,
+      listing_id: listing.id,
+      quantity: input.quantity,
+      price_per_unit: input.offered_price,
+    });
+    if (itemErr) {
+      await sb.from("offers").delete().eq("id", data.id);
+      return { content: [{ type: "text", text: itemErr.message }], isError: true };
+    }
+
     return {
       content: [{ type: "text", text: `Created offer ${data.id}` }],
       structuredContent: { offer: data },

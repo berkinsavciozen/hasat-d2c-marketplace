@@ -5,14 +5,15 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
 import { LoadingDots } from "@/components/hasat/LoadingDots";
+import { DeliveryFields, DELIVERY_OPTIONS } from "@/components/hasat/DeliveryFields";
 import { formatTRY, formatCrop } from "@/lib/hasat/format";
 import { convertQuantity } from "@/lib/hasat/units";
 import { findCropConfig, useCropConfigMap } from "@/lib/hasat/crop-config";
+import { useHasat } from "@/lib/hasat/store";
 import {
   dbToActiveListing,
   useListingStock,
   useListingBatchEntries,
-  useCreateMultiBatchOffer,
   type ActiveListing,
 } from "@/lib/hasat/queries";
 
@@ -62,12 +63,14 @@ function useFarmerCropListings(farmerId: string, crop: string) {
 function BuyerProduct() {
   const { farmerId, crop } = Route.useParams();
   const navigate = useNavigate();
+  const setPendingOffer = useHasat((s) => s.setPendingOffer);
   const { data: listings = [], isLoading } = useFarmerCropListings(farmerId, crop);
   const { map: cropMap } = useCropConfigMap();
   const [selected, setSelected] = useState<Record<string, number>>({});
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
   const [note, setNote] = useState("");
-  const createOffer = useCreateMultiBatchOffer();
+  const [delivery, setDelivery] = useState(DELIVERY_OPTIONS[0].id);
+  const [deliveryDate, setDeliveryDate] = useState("");
 
   if (isLoading) return <div className="p-8"><LoadingDots /></div>;
   if (listings.length === 0) throw notFound();
@@ -84,19 +87,29 @@ function BuyerProduct() {
   const totalQty = items.reduce((s, i) => s + convertQuantity(i.quantity, i.unit, canonicalUnit), 0);
   const totalPrice = items.reduce((s, i) => s + i.quantity * i.pricePerUnit, 0);
 
-  const submit = async () => {
+  const submit = () => {
     if (items.length === 0) return;
-    try {
-      await createOffer.mutateAsync({
-        farmerId,
-        items,
-        note: note.trim() || undefined,
-      });
-      toast.success("Teklifiniz gönderildi");
-      navigate({ to: "/buyer/messages" });
-    } catch (e) {
-      toast.error((e as Error).message);
+    if (!deliveryDate) {
+      toast.error("Teslim tarihi seçin");
+      return;
     }
+    const weightedPrice = totalQty > 0 ? totalPrice / totalQty : 0;
+    setPendingOffer({
+      listingId: first.id,
+      producerId: farmerId,
+      producerName: first.farmerName,
+      crop: first.crop,
+      quantity: Number(totalQty.toFixed(3)),
+      unit: canonicalUnit,
+      pricePerUnit: weightedPrice,
+      delivery,
+      deliveryDate,
+      notes: note.trim() || undefined,
+      total: totalPrice,
+      subscriptionId: null,
+      items,
+    });
+    navigate({ to: "/buyer/payment" });
   };
 
   return (
@@ -130,6 +143,13 @@ function BuyerProduct() {
           ))}
         </div>
 
+        <DeliveryFields
+          delivery={delivery}
+          onDeliveryChange={setDelivery}
+          date={deliveryDate}
+          onDateChange={setDeliveryDate}
+        />
+
         <div>
           <label className="text-xs text-hmuted block mb-1">Not (opsiyonel)</label>
           <textarea value={note} onChange={(e) => setNote(e.target.value)} rows={2}
@@ -148,11 +168,11 @@ function BuyerProduct() {
           </div>
           <button
             onClick={submit}
-            disabled={items.length === 0 || createOffer.isPending}
+            disabled={items.length === 0 || !deliveryDate}
             className="rounded-full px-6 py-3 text-sm font-medium text-white disabled:opacity-40 min-h-[48px]"
             style={{ background: "var(--saffron)" }}
           >
-            {createOffer.isPending ? "Gönderiliyor…" : "Teklif Gönder"}
+            Teklif Gönder &amp; Öde →
           </button>
         </div>
       </div>

@@ -2,7 +2,8 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
 
 import { FarmerHeader } from "./farmer";
-import { useFarmerOffers, useUpdateOfferStatus, useFarmerOrders, useCounterOffer, useConfirmTransferReceived, useMarkShipped, useCancelOrder, useOrderReviews, useCreateReview, useAuthUserId, useBuyerRatingSummary } from "@/lib/hasat/queries";
+import { useFarmerOffers, useUpdateOfferStatus, useFarmerOrders, useCounterOffer, useConfirmTransferReceived, useMarkShipped, useCancelOrder, useOrderReviews, useCreateReview, useAuthUserId, useBuyerRatingSummary, useOrderOfferId } from "@/lib/hasat/queries";
+import { OfferBatchBreakdown } from "@/components/hasat/OfferBatchBreakdown";
 import { WaitingBanner } from "@/components/hasat/WaitingBanner";
 import { LoadingDots } from "@/components/hasat/LoadingDots";
 import { formatTRY, formatCrop } from "@/lib/hasat/format";
@@ -155,6 +156,10 @@ function OfferCard({ offer }: { offer: Offer }) {
           unit={offer.unit}
           initial={{ price: offer.original?.pricePerUnit ?? offer.pricePerUnit, quantity: offer.original?.quantity ?? offer.quantity, createdAt: offer.createdAt }}
         />
+      </div>
+
+      <div className="mt-3">
+        <OfferBatchBreakdown offerId={offer.id} />
       </div>
 
       {isTransferPending ? (
@@ -356,6 +361,9 @@ function OrderCard({ order, muted }: { order: Order; muted?: boolean }) {
         </div>
       </div>
 
+      <OrderBatchBreakdown orderId={order.id} />
+
+
       {order.status === "preparing" && (
         <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-2">
           <button onClick={() => setShipOpen(true)}
@@ -465,6 +473,17 @@ function BuyerRatingBadge({ buyerId }: { buyerId?: string }) {
   if (!buyerId || !data || !data.reviewCount || data.avgRating == null) return null;
   return <span className="text-[11px] text-hmuted">⭐ {data.avgRating.toFixed(1)} ({data.reviewCount})</span>;
 }
+
+function OrderBatchBreakdown({ orderId }: { orderId: string }) {
+  const { data: offerId } = useOrderOfferId(orderId);
+  if (!offerId) return null;
+  return (
+    <div className="mt-3">
+      <OfferBatchBreakdown offerId={offerId} />
+    </div>
+  );
+}
+
 
 function SubscriptionOrderBadge() {
   return (
