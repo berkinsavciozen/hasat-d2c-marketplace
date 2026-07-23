@@ -228,7 +228,7 @@ function FarmerShell() {
             </Link>
 
             {moreItems.map(({ to, label, icon: Icon }) => {
-              const badge = to === "/farmer/orders" ? pendingCount : 0;
+              const badge = to === "/farmer/orders" ? pendingCount : to === "/farmer/subscriptions" ? pendingSubs : 0;
               const active = pathname.startsWith(to);
               return (
 
