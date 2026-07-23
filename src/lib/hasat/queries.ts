@@ -774,6 +774,9 @@ export interface ListingInput {
   quality: "A" | "B" | "C";
   description?: string;
   harvestEntryId?: string | null;
+  parcelId?: string | null;
+  batchName?: string | null;
+  status?: "draft" | "active";
 }
 
 async function uploadListingPhotos(userId: string, listingId: string, files: File[]): Promise<string[]> {
@@ -797,6 +800,7 @@ export function useCreateListing() {
       const { data, error } = await supabase.from("listings").insert({
         farmer_id: userId,
         harvest_entry_id: l.harvestEntryId ?? null,
+        parcel_id: l.parcelId ?? null,
         crop: l.crop,
         quantity: l.quantity,
         unit: l.unit,
@@ -804,7 +808,8 @@ export function useCreateListing() {
         min_order: l.minOrder,
         quality: l.quality,
         description: l.description ?? null,
-        status: "active",
+        batch_name: l.batchName ?? null,
+        status: l.status ?? "active",
       }).select("*").single();
       if (error) throw error;
       let row = data;
@@ -819,6 +824,31 @@ export function useCreateListing() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["farmerListings", userId] });
       qc.invalidateQueries({ queryKey: ["activeListings"] });
+      qc.invalidateQueries({ queryKey: ["existingBatches"] });
+    },
+  });
+}
+
+/**
+ * Same parcel+crop için mevcut draft/active listing (batch) listesi.
+ * ListingSheet, kullanıcıya duplicate uyarısı gösterirken bunu kullanır.
+ */
+export function useExistingBatches(parcelId: string | null | undefined, crop: string | null | undefined) {
+  const userId = useAuthUserId();
+  return useQuery({
+    queryKey: ["existingBatches", userId, parcelId ?? null, crop ?? null],
+    enabled: !!userId && !!parcelId && !!crop,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("listings")
+        .select("*")
+        .eq("farmer_id", userId!)
+        .eq("parcel_id", parcelId!)
+        .eq("crop", crop!)
+        .in("status", ["draft", "active"])
+        .order("created_at", { ascending: true });
+      if (error) throw error;
+      return (data ?? []).map(dbToListing);
     },
   });
 }
