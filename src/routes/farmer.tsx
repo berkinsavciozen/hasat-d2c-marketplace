@@ -44,12 +44,14 @@ const moreItems = [
   { to: "/farmer/analytics", label: "Analitik", icon: BarChart3 },
   { to: "/farmer/community", label: "Topluluk", icon: Users },
   { to: "/farmer/orders", label: "Teklifler", icon: Handshake },
+  { to: "/farmer/subscriptions", label: "Abonelikler", icon: CalendarClock },
   { to: "/farmer/referral", label: "Arkadaşını Davet Et", icon: Gift },
 ] as const;
 
 const sidebarExtras = [
   { to: "/farmer/community", label: "Topluluk", icon: Users },
   { to: "/farmer/orders", label: "Teklifler", icon: Handshake },
+  { to: "/farmer/subscriptions", label: "Abonelikler", icon: CalendarClock },
   { to: "/farmer/referral", label: "Arkadaşını Davet Et", icon: Gift },
 ] as const;
 
