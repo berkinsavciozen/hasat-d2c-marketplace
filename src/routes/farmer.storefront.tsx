@@ -301,17 +301,21 @@ function ListingCard({ listing, muted, draft, parcelLabel, onEdit, onRemove }: {
 function ListingSheet({ open, editing, onClose }: { open: boolean; editing: Listing | null; onClose: () => void }) {
   const createListing = useCreateListing();
   const updateListing = useUpdateListing();
+  const { data: parcels = [] } = useParcels();
 
   const [crop, setCrop] = useState(editing?.crop ?? "");
   const { options: cropOptions, isLoading: cropsLoading } = useCropOptions();
+  const [parcelId, setParcelId] = useState<string>(editing?.parcelId ?? "");
   const [quantity, setQuantity] = useState(editing?.quantity ?? 100);
   const [unit, setUnit] = useState<"g" | "kg" | "L">(editing?.unit ?? "g");
   const [price, setPrice] = useState(editing?.pricePerUnit ?? 350);
   const [minOrder, setMinOrder] = useState(editing?.minOrder ?? 10);
   const [quality, setQuality] = useState<"A" | "B" | "C">(editing?.quality ?? "A");
   const [desc, setDesc] = useState(editing?.description ?? "");
+  const [batchName, setBatchName] = useState<string>(editing?.batchName ?? "");
   const [existingPhotos, setExistingPhotos] = useState<string[]>(editing?.photos ?? []);
   const [photoFiles, setPhotoFiles] = useState<File[]>([]);
+  const [batchDecisionOverride, setBatchDecisionOverride] = useState(false);
 
   const editingId = editing?.id;
   useEffect(() => {
@@ -319,22 +323,35 @@ function ListingSheet({ open, editing, onClose }: { open: boolean; editing: List
       setCrop(editing.crop); setQuantity(editing.quantity); setUnit(editing.unit);
       setPrice(editing.pricePerUnit); setMinOrder(editing.minOrder); setQuality(editing.quality);
       setDesc(editing.description ?? "");
+      setBatchName(editing.batchName ?? "");
+      setParcelId(editing.parcelId ?? "");
       setExistingPhotos(editing.photos ?? []);
     } else {
       setCrop(""); setQuantity(100); setUnit("g"); setPrice(350); setMinOrder(10); setQuality("A");
       setDesc("");
+      setBatchName("");
+      setParcelId("");
       setExistingPhotos([]);
     }
     setPhotoFiles([]);
+    setBatchDecisionOverride(false);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [editingId]);
+  }, [editingId, open]);
 
   const pending = createListing.isPending || updateListing.isPending;
-
   const isDraft = editing?.status === "draft";
+
+  // Duplicate/batch tespiti: yeni listing oluştururken (editing yok) aynı parsel+crop için
+  // mevcut draft/active batch varsa karar ekranı göster.
+  const { data: existingBatches = [] } = useExistingBatches(
+    !editing && parcelId ? parcelId : null,
+    !editing && crop ? crop : null,
+  );
+  const showBatchDecision = !editing && !batchDecisionOverride && existingBatches.length > 0;
 
   const save = async () => {
     if (!crop) { toast.error("Ürün seçin"); return; }
+    if (!editing && !parcelId) { toast.error("Parsel seçin"); return; }
     if (isDraft) {
       if (quantity <= 0) { toast.error("Miktar 0'dan büyük olmalı"); return; }
       if (price <= 0) { toast.error("Fiyat 0'dan büyük olmalı"); return; }
@@ -347,13 +364,27 @@ function ListingSheet({ open, editing, onClose }: { open: boolean; editing: List
     }
     try {
       if (editing) {
-        const patch: Partial<Listing> = { crop, quantity, unit, pricePerUnit: price, minOrder, quality, description: desc || undefined };
+        const patch: Partial<Listing> = {
+          crop, quantity, unit, pricePerUnit: price, minOrder, quality,
+          description: desc || undefined,
+          batchName: batchName.trim() || null,
+        };
         if (isDraft) patch.status = "active";
         await updateListing.mutateAsync({ id: editing.id, patch, photoFiles, existingPhotos });
         toast.success(isDraft ? "Ürün yayınlandı" : "Ürün güncellendi");
       } else {
-        await createListing.mutateAsync({ crop, quantity, unit, pricePerUnit: price, minOrder, quality, description: desc || undefined, photoFiles });
-        toast.success("Ürün yayınlandı");
+        // Yeni batch açılıyorsa (mevcut batch varken) → draft olarak oluştur (kullanıcı sonra yayınlar).
+        // Hiç batch yoksa → mevcut davranış (active).
+        const status: "draft" | "active" = batchDecisionOverride ? "draft" : "active";
+        await createListing.mutateAsync({
+          crop, quantity, unit, pricePerUnit: price, minOrder, quality,
+          description: desc || undefined,
+          parcelId: parcelId || null,
+          batchName: batchName.trim() || null,
+          status,
+          photoFiles,
+        });
+        toast.success(status === "draft" ? "Yeni batch taslak olarak kaydedildi" : "Ürün yayınlandı");
       }
       onClose();
     } catch (e: any) {
@@ -361,61 +392,143 @@ function ListingSheet({ open, editing, onClose }: { open: boolean; editing: List
     }
   };
 
-
   return (
     <Sheet open={open} onOpenChange={(o) => !o && onClose()}>
       <SheetContent side="bottom" className="rounded-t-2xl max-h-[92vh] overflow-y-auto">
         <SheetHeader>
-          <SheetTitle className="font-serif text-xl">{isDraft ? "Taslağı Yayınla" : editing ? "Ürünü Düzenle" : "🏪 Yeni Ürün"}</SheetTitle>
+          <SheetTitle className="font-serif text-xl">
+            {isDraft ? "Taslağı Yayınla" : editing ? "Ürünü Düzenle" : batchDecisionOverride ? "🌾 Yeni Batch" : "🏪 Yeni Ürün"}
+          </SheetTitle>
         </SheetHeader>
+
         <div className="mt-4 space-y-4">
-          <div>
-            <div className="mb-1.5 text-xs font-medium text-hmuted">Ürün</div>
-            <Select value={crop} onValueChange={setCrop}>
-              <SelectTrigger><SelectValue placeholder={cropsLoading ? "Yükleniyor…" : "Ürün seçin"} /></SelectTrigger>
-              <SelectContent>{cropOptions.map((o) => <SelectItem key={o.value} value={o.value}>{o.emoji} {o.label}</SelectItem>)}</SelectContent>
-            </Select>
-          </div>
-          <div>
-            <div className="mb-1.5 text-xs font-medium text-hmuted">Miktar</div>
-            <Stepper value={quantity} onChange={setQuantity} step={unit === "g" ? 10 : 1} unit={unit} units={["g", "kg", "L"]} onUnitChange={(u) => setUnit(u as "g" | "kg" | "L")} />
-          </div>
-          <div>
-            <div className="mb-1.5 text-xs font-medium text-hmuted">Birim fiyat (₺/{unit})</div>
-            <Input type="number" value={price} onChange={(e) => setPrice(Number(e.target.value) || 0)} className="font-mono text-lg" />
-          </div>
-          <div>
-            <div className="mb-1.5 text-xs font-medium text-hmuted">Minimum sipariş ({unit})</div>
-            <Stepper value={minOrder} onChange={setMinOrder} step={1} unit={unit} />
-          </div>
-          <div>
-            <div className="mb-1.5 text-xs font-medium text-hmuted">Kalite</div>
-            <div className="grid grid-cols-3 gap-2">
-              {(["A", "B", "C"] as const).map((q) => (
-                <button key={q} type="button" onClick={() => setQuality(q)}
-                  className={`rounded-xl border py-3 text-sm font-semibold ${quality === q ? "bg-saffron text-white border-saffron" : "border-input text-hmuted"}`}>
-                  Kalite {q}
-                </button>
-              ))}
+          {!editing && (
+            <>
+              <div>
+                <div className="mb-1.5 text-xs font-medium text-hmuted">Parsel</div>
+                <Select value={parcelId} onValueChange={(v) => { setParcelId(v); setBatchDecisionOverride(false); }}>
+                  <SelectTrigger><SelectValue placeholder={parcels.length === 0 ? "Önce Ayarlar'dan parsel ekleyin" : "Parsel seçin"} /></SelectTrigger>
+                  <SelectContent>
+                    {parcels.map((p) => (
+                      <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <div className="mb-1.5 text-xs font-medium text-hmuted">Ürün</div>
+                <Select value={crop} onValueChange={(v) => { setCrop(v); setBatchDecisionOverride(false); }}>
+                  <SelectTrigger><SelectValue placeholder={cropsLoading ? "Yükleniyor…" : "Ürün seçin"} /></SelectTrigger>
+                  <SelectContent>{cropOptions.map((o) => <SelectItem key={o.value} value={o.value}>{o.emoji} {o.label}</SelectItem>)}</SelectContent>
+                </Select>
+              </div>
+            </>
+          )}
+
+          {showBatchDecision ? (
+            <div className="rounded-xl border border-saffron/40 bg-saffron/5 p-3 space-y-3">
+              <div className="text-sm font-medium">
+                Bu parselde {formatCrop(crop)} için zaten {existingBatches.length} batch var
+              </div>
+              <div className="space-y-2">
+                {existingBatches.map((b, i) => (
+                  <div key={b.id} className="rounded-lg border bg-card p-2 flex items-center justify-between gap-2">
+                    <div className="min-w-0">
+                      <div className="text-sm font-medium truncate">
+                        {b.batchName?.trim() || `Batch #${i + 1}`}
+                        <span className="ml-2 text-[10px] text-hmuted uppercase">{b.status}</span>
+                      </div>
+                      <div className="text-[11px] text-hmuted">
+                        Stok: {b.quantity} {b.unit} · {formatTRY(b.pricePerUnit)}/{b.unit}
+                      </div>
+                    </div>
+                    <Link
+                      to="/farmer/journal/new"
+                      className="rounded-full border px-3 py-1.5 text-[11px] font-medium hover:bg-cream"
+                      onClick={onClose}
+                    >
+                      Bu batch'e hasat ekle
+                    </Link>
+                  </div>
+                ))}
+              </div>
+              <div className="text-[11px] text-hmuted">
+                Yeni bir batch açmak istersen (örn. ikinci hasat), aşağıdaki butona bas.
+              </div>
+              <button
+                type="button"
+                onClick={() => setBatchDecisionOverride(true)}
+                className="w-full rounded-lg border border-saffron px-3 py-2 text-sm font-medium text-saffron hover:bg-saffron/10"
+              >
+                Yeni Batch Aç (Taslak)
+              </button>
             </div>
-          </div>
-          <div>
-            <div className="mb-1.5 text-xs font-medium text-hmuted">Açıklama</div>
-            <Textarea value={desc} onChange={(e) => setDesc(e.target.value)} rows={3} placeholder="Ürününüzü tanıtın..." />
-          </div>
-          <div>
-            <div className="mb-1.5 text-xs font-medium text-hmuted">Fotoğraflar (en fazla 3)</div>
-            <PhotoUploader
-              value={existingPhotos}
-              files={photoFiles}
-              onChange={(v, f) => { setExistingPhotos(v); setPhotoFiles(f); }}
-              max={3}
-            />
-          </div>
-          <BuyerPreview listingId={editing?.id} crop={crop} />
-          <button onClick={save} disabled={pending} className="w-full rounded-xl bg-saffron py-3 text-sm font-medium text-white disabled:opacity-50">
-            {pending ? "Kaydediliyor…" : "Yayınla ✓"}
-          </button>
+          ) : (
+            <>
+              {batchDecisionOverride && (
+                <div className="rounded-lg bg-cream/70 px-3 py-2 text-[11px] text-hmuted">
+                  Bu, aynı parsel+ürün için yeni bir batch. Taslak olarak kaydedilecek; hazır olduğunda “Yayınla” ile aktif hale getirebilirsin.
+                </div>
+              )}
+              {editing && (
+                <div>
+                  <div className="mb-1.5 text-xs font-medium text-hmuted">Ürün</div>
+                  <Select value={crop} onValueChange={setCrop}>
+                    <SelectTrigger><SelectValue placeholder={cropsLoading ? "Yükleniyor…" : "Ürün seçin"} /></SelectTrigger>
+                    <SelectContent>{cropOptions.map((o) => <SelectItem key={o.value} value={o.value}>{o.emoji} {o.label}</SelectItem>)}</SelectContent>
+                  </Select>
+                </div>
+              )}
+              <div>
+                <div className="mb-1.5 text-xs font-medium text-hmuted">Batch adı (opsiyonel)</div>
+                <Input
+                  value={batchName}
+                  onChange={(e) => setBatchName(e.target.value)}
+                  placeholder='Örn. "Ekim Turfandası" veya "2. Hasat"'
+                />
+              </div>
+              <div>
+                <div className="mb-1.5 text-xs font-medium text-hmuted">Miktar</div>
+                <Stepper value={quantity} onChange={setQuantity} step={unit === "g" ? 10 : 1} unit={unit} units={["g", "kg", "L"]} onUnitChange={(u) => setUnit(u as "g" | "kg" | "L")} />
+              </div>
+              <div>
+                <div className="mb-1.5 text-xs font-medium text-hmuted">Birim fiyat (₺/{unit})</div>
+                <Input type="number" value={price} onChange={(e) => setPrice(Number(e.target.value) || 0)} className="font-mono text-lg" />
+              </div>
+              <div>
+                <div className="mb-1.5 text-xs font-medium text-hmuted">Minimum sipariş ({unit})</div>
+                <Stepper value={minOrder} onChange={setMinOrder} step={1} unit={unit} />
+              </div>
+              <div>
+                <div className="mb-1.5 text-xs font-medium text-hmuted">Kalite</div>
+                <div className="grid grid-cols-3 gap-2">
+                  {(["A", "B", "C"] as const).map((q) => (
+                    <button key={q} type="button" onClick={() => setQuality(q)}
+                      className={`rounded-xl border py-3 text-sm font-semibold ${quality === q ? "bg-saffron text-white border-saffron" : "border-input text-hmuted"}`}>
+                      Kalite {q}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div>
+                <div className="mb-1.5 text-xs font-medium text-hmuted">Açıklama</div>
+                <Textarea value={desc} onChange={(e) => setDesc(e.target.value)} rows={3} placeholder="Ürününüzü tanıtın..." />
+              </div>
+              <div>
+                <div className="mb-1.5 text-xs font-medium text-hmuted">Fotoğraflar (en fazla 3)</div>
+                <PhotoUploader
+                  value={existingPhotos}
+                  files={photoFiles}
+                  onChange={(v, f) => { setExistingPhotos(v); setPhotoFiles(f); }}
+                  max={3}
+                />
+              </div>
+              <BuyerPreview listingId={editing?.id} crop={crop} />
+              <button onClick={save} disabled={pending} className="w-full rounded-xl bg-saffron py-3 text-sm font-medium text-white disabled:opacity-50">
+                {pending ? "Kaydediliyor…" : batchDecisionOverride ? "Taslak Kaydet" : "Yayınla ✓"}
+              </button>
+            </>
+          )}
         </div>
       </SheetContent>
     </Sheet>
