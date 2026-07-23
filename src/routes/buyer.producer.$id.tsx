@@ -1,9 +1,11 @@
 import { createFileRoute, Link, useNavigate, notFound } from "@tanstack/react-router";
 import { ArrowLeft, Star } from "lucide-react";
+import { useEffect, useState } from "react";
 import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Tooltip } from "recharts";
 import { LoadingDots } from "@/components/hasat/LoadingDots";
 import { RatingStars } from "@/components/hasat/ReviewModal";
 import { formatTRY, formatCrop } from "@/lib/hasat/format";
+import { supabase } from "@/integrations/supabase/client";
 import {
   useFarmerPublicProfile,
   useFarmerActiveListings,
@@ -14,6 +16,22 @@ import {
   useFarmerRecentReviews,
 } from "@/lib/hasat/queries";
 import { useCropConfigMap, findCropConfig, cropEmoji } from "@/lib/hasat/crop-config";
+
+function useIsLoggedIn() {
+  const [loggedIn, setLoggedIn] = useState<boolean | null>(null);
+  useEffect(() => {
+    let mounted = true;
+    supabase.auth.getUser().then(({ data }) => {
+      if (mounted) setLoggedIn(!!data.user);
+    });
+    const { data: sub } = supabase.auth.onAuthStateChange((_e, session) => {
+      setLoggedIn(!!session?.user);
+    });
+    return () => { mounted = false; sub.subscription.unsubscribe(); };
+  }, []);
+  return loggedIn;
+}
+
 
 export const Route = createFileRoute("/buyer/producer/$id")({
   head: () => ({ meta: [{ title: "Üretici — Hasat" }] }),
@@ -42,6 +60,8 @@ function ProducerProfile() {
   const { map: cropMap } = useCropConfigMap();
   const { data: ratingSummary } = useFarmerRatingSummary(id);
   const { data: recentReviews = [] } = useFarmerRecentReviews(id, 5);
+  const loggedIn = useIsLoggedIn();
+
 
   if (profileLoading) return <div className="p-8"><LoadingDots /></div>;
   if (!profile) throw notFound();
@@ -131,8 +151,16 @@ function ProducerProfile() {
               <div className="font-medium mt-0.5">{estimatedQtyLabel}</div>
             </div>
           </div>
-          <button onClick={() => navigate({ to: "/buyer/subscription/$producerId", params: { producerId: profile.id } })}
-            className="mt-4 w-full rounded-xl py-3 text-sm font-medium" style={{ background: "var(--gold)", color: "var(--dark)" }}>Hasat Aboneliği Oluştur →</button>
+          {loggedIn === false ? (
+            <Link to="/login" search={{ role: "buyer" } as any}
+              className="mt-4 block w-full rounded-xl py-3 text-center text-sm font-medium" style={{ background: "var(--gold)", color: "var(--dark)" }}>
+              Abonelik ve Teklif için Hasat'a Üye Ol →
+            </Link>
+          ) : (
+            <button onClick={() => navigate({ to: "/buyer/subscription/$producerId", params: { producerId: profile.id } })}
+              className="mt-4 w-full rounded-xl py-3 text-sm font-medium" style={{ background: "var(--gold)", color: "var(--dark)" }}>Hasat Aboneliği Oluştur →</button>
+          )}
+
         </div>
 
         <div>
@@ -186,8 +214,14 @@ function ProducerProfile() {
                         {formatTRY(l.pricePerUnit)}<span className="text-xs text-hmuted">/{l.unit}</span>
                       </div>
                     </div>
-                    <button onClick={() => navigate({ to: "/buyer/offer/$listingId", params: { listingId: l.id } })}
-                      className="mt-3 w-full rounded-xl bg-saffron py-2 text-sm text-white">Teklif Ver →</button>
+                    {loggedIn === false ? (
+                      <Link to="/login" search={{ role: "buyer" } as any}
+                        className="mt-3 block w-full rounded-xl bg-saffron py-2 text-center text-sm text-white">Üye Ol & Teklif Ver →</Link>
+                    ) : (
+                      <button onClick={() => navigate({ to: "/buyer/offer/$listingId", params: { listingId: l.id } })}
+                        className="mt-3 w-full rounded-xl bg-saffron py-2 text-sm text-white">Teklif Ver →</button>
+                    )}
+
                   </div>
                 </div>
               ))}
