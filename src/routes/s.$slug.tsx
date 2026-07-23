@@ -95,13 +95,18 @@ function useIsLoggedIn() {
 
 function PublicStorefront() {
   const { slug } = Route.useParams();
+  const navigate = useNavigate();
   const { data, isLoading } = useStorefront(slug);
   const loggedIn = useIsLoggedIn();
+  const { data: myProfile } = useProfile();
 
   if (isLoading) return <div className="p-8"><LoadingDots /></div>;
   if (!data) throw notFound();
 
   const { profile, listings, parcels, certs } = data;
+  const isBuyer = loggedIn && myProfile?.role === "buyer";
+  const isOwnStorefront = myProfile?.id === profile.id;
+  const showSubscribeCTA = isBuyer && !isOwnStorefront;
   const parcelsWithPhotos = parcels.filter((p: Parcel) => (p.photos ?? []).length > 0);
   const heroPhoto = parcelsWithPhotos[0]?.photos?.[0]
     ?? listings.find((l) => (l.photos ?? []).length > 0)?.photos?.[0]
