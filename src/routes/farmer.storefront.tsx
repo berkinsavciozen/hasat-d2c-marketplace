@@ -308,6 +308,7 @@ function ListingSheet({ open, editing, onClose }: { open: boolean; editing: List
 
   const [crop, setCrop] = useState(editing?.crop ?? "");
   const { options: cropOptions, isLoading: cropsLoading } = useCropOptions();
+  const { map: cropMap } = useCropConfigMap();
   const [parcelId, setParcelId] = useState<string>(editing?.parcelId ?? "");
   const [quantity, setQuantity] = useState(editing?.quantity ?? 100);
   const [unit, setUnit] = useState<"g" | "kg" | "L">(editing?.unit ?? "g");
