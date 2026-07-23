@@ -260,6 +260,32 @@ export function JournalEntryCard({ initial }: Props) {
             ))}
           </select>
         </Field>
+        {batches.length > 1 && (
+          <Field label="Batch (parti)" className="col-span-2">
+            <div className="flex flex-wrap gap-1.5">
+              {batches.map((b, i) => {
+                const active = b.id === listingId;
+                const label = b.batchName?.trim() || `Batch #${i + 1}`;
+                return (
+                  <button
+                    key={b.id}
+                    type="button"
+                    onClick={() => setListingId(b.id)}
+                    className={`rounded-full border px-2.5 py-1 text-xs transition ${
+                      active ? "text-white" : "text-dark"
+                    }`}
+                    style={active
+                      ? { background: "var(--saffron)", borderColor: "var(--saffron)" }
+                      : { background: "white" }}
+                  >
+                    📦 {label} <span className="opacity-70 ml-0.5">{b.status}</span>
+                  </button>
+                );
+              })}
+            </div>
+            <span className="text-[10px] text-muted-foreground">Bu kayıt seçili batch'e bağlanacak.</span>
+          </Field>
+        )}
         <Field label="Not (opsiyonel)" className="col-span-2">
           <textarea
             value={notes} onChange={(e) => setNotes(e.target.value)}
