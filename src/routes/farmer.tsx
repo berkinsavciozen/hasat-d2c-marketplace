@@ -1,8 +1,8 @@
 import { createFileRoute, Link, Outlet, redirect, useRouterState, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
-import { BarChart3, BookOpen, Home, LineChart, Store, Users, Settings, Crown, Handshake, MoreHorizontal, Gift, HelpCircle } from "lucide-react";
+import { BarChart3, BookOpen, Home, LineChart, Store, Users, Settings, Crown, Handshake, MoreHorizontal, Gift, HelpCircle, CalendarClock } from "lucide-react";
 import { FARMER_TOUR_STORAGE_KEY } from "@/lib/hasat/onboarding-tour";
-import { useProfile, useParcels, useRealtimeSync, useAuthUserId, useFarmerOffers } from "@/lib/hasat/queries";
+import { useProfile, useParcels, useRealtimeSync, useAuthUserId, useFarmerOffers, useIncomingSubscriptions } from "@/lib/hasat/queries";
 import { SeasonBanner } from "@/components/hasat/SeasonBanner";
 import { FarmPill } from "@/components/hasat/FarmPill";
 import { NotificationBell } from "@/components/hasat/NotificationBell";
