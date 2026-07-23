@@ -1,7 +1,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import { ArrowLeft, Camera, X } from "lucide-react";
-import { useParcels, useCreateEntry } from "@/lib/hasat/queries";
+import { useParcels, useCreateEntry, useExistingBatches } from "@/lib/hasat/queries";
 import {
   WORK_TYPES,
   WORK_TO_STEP_KEY,
