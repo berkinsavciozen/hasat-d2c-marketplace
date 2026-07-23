@@ -3,7 +3,7 @@ import { Link } from "@tanstack/react-router";
 import { Check, AlertTriangle, ChevronDown, Plus, Trash2 } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { useParcels, useAuthUserId } from "@/lib/hasat/queries";
+import { useParcels, useAuthUserId, useExistingBatches, useCreateEntry } from "@/lib/hasat/queries";
 import { ZERO_COSTS } from "@/lib/hasat/journal-meta";
 import type { ParsedJournal } from "./parseJournalEntry";
 
