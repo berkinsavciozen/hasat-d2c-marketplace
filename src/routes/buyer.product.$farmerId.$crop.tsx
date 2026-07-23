@@ -63,6 +63,7 @@ function BuyerProduct() {
   const { farmerId, crop } = Route.useParams();
   const navigate = useNavigate();
   const { data: listings = [], isLoading } = useFarmerCropListings(farmerId, crop);
+  const { map: cropMap } = useCropConfigMap();
   const [selected, setSelected] = useState<Record<string, number>>({});
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
   const [note, setNote] = useState("");
@@ -72,14 +73,15 @@ function BuyerProduct() {
   if (listings.length === 0) throw notFound();
 
   const first = listings[0];
-  const unit = first.unit;
+  const cfg = findCropConfig(cropMap, crop);
+  const canonicalUnit = cfg?.default_unit ?? first.unit;
   const items = Object.entries(selected)
     .filter(([, q]) => q > 0)
     .map(([listingId, quantity]) => {
       const l = listings.find((x) => x.id === listingId)!;
-      return { listingId, quantity, pricePerUnit: l.pricePerUnit };
+      return { listingId, quantity, pricePerUnit: l.pricePerUnit, unit: l.unit };
     });
-  const totalQty = items.reduce((s, i) => s + i.quantity, 0);
+  const totalQty = items.reduce((s, i) => s + convertQuantity(i.quantity, i.unit, canonicalUnit), 0);
   const totalPrice = items.reduce((s, i) => s + i.quantity * i.pricePerUnit, 0);
 
   const submit = async () => {
