@@ -17,6 +17,7 @@ function Payment() {
   const pending = useHasat((s) => s.pendingOffer);
   const setPendingOffer = useHasat((s) => s.setPendingOffer);
   const createOffer = useCreateOffer();
+  const createMultiOffer = useCreateMultiBatchOffer();
 
   const [success, setSuccess] = useState<{ ref: string } | null>(null);
   const [card, setCard] = useState({ num: "", exp: "", cvv: "", name: "" });
@@ -32,20 +33,32 @@ function Payment() {
 
   const fee = pending ? Math.round(pending.total * 0.025) : 0;
   const grand = pending ? pending.total + fee : 0;
+  const isPending = createOffer.isPending || createMultiOffer.isPending;
 
   const complete = async () => {
     if (!pending) return;
     try {
-      await createOffer.mutateAsync({
-        farmerId: pending.producerId,
-        listingId: pending.listingId,
-        quantity: pending.quantity,
-        pricePerUnit: pending.pricePerUnit,
-        delivery: pending.delivery,
-        deliveryDate: pending.deliveryDate,
-        note: pending.notes,
-        subscriptionId: pending.subscriptionId ?? null,
-      });
+      if (pending.items && pending.items.length > 0) {
+        await createMultiOffer.mutateAsync({
+          farmerId: pending.producerId,
+          items: pending.items.map((i) => ({ listingId: i.listingId, quantity: i.quantity, pricePerUnit: i.pricePerUnit })),
+          delivery: pending.delivery,
+          deliveryDate: pending.deliveryDate,
+          note: pending.notes,
+          subscriptionId: pending.subscriptionId ?? null,
+        });
+      } else {
+        await createOffer.mutateAsync({
+          farmerId: pending.producerId,
+          listingId: pending.listingId,
+          quantity: pending.quantity,
+          pricePerUnit: pending.pricePerUnit,
+          delivery: pending.delivery,
+          deliveryDate: pending.deliveryDate,
+          note: pending.notes,
+          subscriptionId: pending.subscriptionId ?? null,
+        });
+      }
       const ref = `HT-${new Date().getFullYear()}-${String(Math.floor(Math.random() * 9000) + 1000)}`;
       setPendingOffer(null);
       setSuccess({ ref });
