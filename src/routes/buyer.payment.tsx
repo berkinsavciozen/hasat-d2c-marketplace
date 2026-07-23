@@ -4,7 +4,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { formatTRY, formatCrop } from "@/lib/hasat/format";
 import { useHasat } from "@/lib/hasat/store";
-import { useCreateOffer } from "@/lib/hasat/queries";
+import { useCreateOffer, useCreateMultiBatchOffer } from "@/lib/hasat/queries";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/buyer/payment")({
