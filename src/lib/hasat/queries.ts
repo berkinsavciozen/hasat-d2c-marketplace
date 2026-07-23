@@ -1736,6 +1736,21 @@ export function useOrderTimeline(orderId: string) {
   });
 }
 
+export function useOrderOfferId(orderId: string | undefined | null) {
+  return useQuery({
+    queryKey: ["orderOfferId", orderId],
+    enabled: !!orderId,
+    queryFn: async (): Promise<string | null> => {
+      const { data, error } = await supabase
+        .from("orders").select("offer_id").eq("id", orderId!).maybeSingle();
+      if (error) throw error;
+      return (data?.offer_id as string | null) ?? null;
+    },
+  });
+}
+
+
+
 // shared loading dots (3-cycle)
 export { ProgressDots } from "@/components/hasat/ProgressDots";
 
