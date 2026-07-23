@@ -241,6 +241,19 @@ function PublicStorefront() {
         )}
       </div>
 
+      {showSubscribeCTA && (
+        <div className="fixed inset-x-0 bottom-0 z-40 border-t bg-card/95 backdrop-blur px-4 py-3 md:px-8">
+          <button
+            onClick={() => navigate({ to: "/buyer/subscription/$producerId", params: { producerId: profile.id } })}
+            className="flex w-full items-center justify-center gap-2 rounded-full py-3 text-center text-sm font-semibold min-h-[48px]"
+            style={{ background: "var(--gold)", color: "var(--dark)" }}
+          >
+            <CalendarPlus className="h-4 w-4" />
+            📅 Hasat Aboneliği Oluştur
+          </button>
+        </div>
+      )}
+
       {loggedIn === false && (
         <div className="fixed inset-x-0 bottom-0 z-40 border-t bg-card/95 backdrop-blur px-4 py-3 md:px-8">
           <Link
