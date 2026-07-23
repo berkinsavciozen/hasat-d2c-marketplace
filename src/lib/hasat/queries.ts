@@ -231,7 +231,9 @@ export function useCreateEntry() {
   const qc = useQueryClient();
   const userId = useAuthUserId();
   return useMutation({
-    mutationFn: async (e: Omit<HarvestEntry, "id"> & { photoFile?: File }) => {
+    mutationFn: async (
+      e: Omit<HarvestEntry, "id"> & { photoFile?: File; listingId?: string | null }
+    ) => {
       if (!userId) throw new Error("Oturum bulunamadı");
       const { data, error } = await supabase.from("harvest_entries").insert({
         farmer_id: userId,
@@ -258,6 +260,18 @@ export function useCreateEntry() {
           .single();
         if (upd.error) throw upd.error;
         row = upd.data;
+      }
+      // Kullanıcı belirli bir batch (listing) seçtiyse bu satırı frontend link'ler.
+      // Trigger tarafı: birden fazla eşleşme varsa hiçbir şey yapmaz; tek eşleşme varsa
+      // aynı listing_id'yi eklemeye çalışır — ON CONFLICT DO NOTHING ile duplicate önlenir.
+      if (e.listingId) {
+        const linkRes = await supabase
+          .from("listing_harvest_entries")
+          .insert({ listing_id: e.listingId, harvest_entry_id: data.id });
+        if (linkRes.error && !String(linkRes.error.message).includes("duplicate")) {
+          // link hatası, kaydı bozmadan sadece uyarı ver
+          console.warn("listing_harvest_entries link failed:", linkRes.error.message);
+        }
       }
       return dbToEntry(row);
     },
