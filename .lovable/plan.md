@@ -1,72 +1,97 @@
+# P21-B+C — Buyer çoklu-batch keşif, ürün detayı, çoklu-batch tek teklif
 
-# P21-A — Kontrollü Batch Mimarisi
+## Amaç
+Buyer tarafında aynı çiftçi+ürün için birden fazla batch (listing) varsa: Keşfet'te tek karta grupla, açılan yeni ürün detay sayfasında batch dağılımını göster, buyer birden fazla batch'ten aynı anda miktar seçip **tek teklif** gönderebilsin. Backend'de bu tek teklif `offer_items` alt satırlarıyla temsil edilsin. Stok kontrolü ve traceability RLS bu modele uyacak şekilde güncellensin.
 
-Amaç: aynı parcel+crop için birden fazla `listings` (batch) kasıtlı ve kullanıcı seçimiyle açılsın; yeni hasat kayıtları tek bir batch'e bağlansın.
+## 1) Migration (tek migration)
 
-## Bulgular (mevcut durum)
+**a) `offer_items` tablosu**
+```sql
+CREATE TABLE public.offer_items (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  offer_id uuid NOT NULL REFERENCES public.offers(id) ON DELETE CASCADE,
+  listing_id uuid NOT NULL REFERENCES public.listings(id),
+  quantity numeric NOT NULL CHECK (quantity > 0),
+  price_per_unit numeric NOT NULL CHECK (price_per_unit >= 0),
+  created_at timestamptz NOT NULL DEFAULT now()
+);
+CREATE INDEX ON public.offer_items(offer_id);
+CREATE INDEX ON public.offer_items(listing_id);
+GRANT SELECT, INSERT ON public.offer_items TO authenticated;
+GRANT ALL ON public.offer_items TO service_role;
+ALTER TABLE public.offer_items ENABLE ROW LEVEL SECURITY;
+```
+- **SELECT policy**: `EXISTS (SELECT 1 FROM offers o WHERE o.id = offer_items.offer_id AND (o.buyer_id = auth.uid() OR o.farmer_id = auth.uid()))`
+- **INSERT policy**: aynı EXISTS + `o.buyer_id = auth.uid()` (buyer, kendi offer'ına eklesin).
 
-- `useCreateListing` — `src/lib/hasat/queries.ts:~806`, explicit `status: 'active'` yazıyor. Duplicate kontrolü yok. Çağrıldığı yer: `src/routes/farmer.storefront.tsx` (ListingSheet, satır ~355).
-- `useCreateEntry` — `src/lib/hasat/queries.ts:230`. Sadece `harvest_entries` insert eder; `listing_harvest_entries` bağını DB trigger'ı (`tg_harvest_entries_after_insert_autolink`) yapar. Trigger, aynı farmer+parcel+crop'a sahip TÜM draft/active listing'lere link atar (ON CONFLICT DO NOTHING).
-- Çağrıldığı yerler: `src/routes/farmer.journal.new.tsx:25` ve AI chat akışı — `src/components/hasat/ai-chat/JournalEntryCard.tsx:141` (bu doğrudan `supabase.from("harvest_entries").insert(...)` — hook kullanmıyor).
-- DB verisi: bugün için aynı farmer+parcel+crop'ta çoklu draft/active listing **YOK** (kontrol edildi, 0 satır). Yani "Ahmet'in safranındaki 3 listing" mevcut durumda birden fazla parselden geliyor olabilir — parcel bazında duplicate yok.
-- `listing_harvest_entries`'te 2 listing'e birden bağlı 5 harvest_entry var — autolink trigger'ının geçmiş dönemde ürettiği kayıtlar (farklı listing'lerin overlap ettiği anlar). Fanout gerçek.
+**b) `offers` toplam kolonlarının anlamı (geri uyum)**
+Tek-batch teklifler dahil her offer için `offer_items`'a en az 1 satır yazılır. `offers.listing_id` = **birincil batch** (buyer'ın sepetteki ilk seçtiği veya tek batch'liyse o batch — mevcut UI'ların crashlemesini önlemek için). `offers.quantity` = `SUM(offer_items.quantity)`. `offers.price_per_unit` = **ağırlıklı ortalama** (Σ(qty×price) / Σ(qty)). Neden ağırlıklı ortalama: mevcut UI'lar (negotiation, orders, notifications, `notify_offer_received`) `quantity × price_per_unit` ile toplam ciroyu hesaplıyor; ağırlıklı ortalama bu invariant'ı korur (Σqty × wavg = Σ(qty×price)). "İlk batch fiyatı" seçilirse toplam ciro yanlış görünür.
 
-## Uygulama planı
+**c) `enforce_offer_stock` güncelle**
+Şu an sadece `NEW.listing_id` üzerinden çalışıyor. Yeni davranış: offer `accepted`'e geçtiğinde, offer'ın **her `offer_items` satırı için ayrı ayrı** stok kontrolü yap. Her listing için: base_stock (batch_total veya listing.quantity fallback) − reserved (aynı listing'e diğer accepted offer'ların `offer_items.quantity` toplamı, bu offer hariç) ≥ bu offer'ın o listing için `offer_items.quantity` toplamı. Backward-compat: offer'ın hiç `offer_items` satırı yoksa mevcut tekil kontrole düş.
 
-### 1) Migration (tek migration)
+**d) `harvest_entries.unit` vs `listings.unit` tutarlılık kontrolü**
+Yeni trigger `tg_enforce_link_unit_match` (BEFORE INSERT on `listing_harvest_entries`): bağlanacak `harvest_entries.unit` ile `listings.unit` farklıysa `RAISE EXCEPTION`. Sadece uyarı değil hata — kg/g karışıklığı ciddi bir stok bug'ı yaratıyor. Mevcut kayıtlara dokunmuyoruz (backfill/temizlik yapmıyoruz), sadece yeni link'leri koruyor.
 
-- `ALTER TABLE public.listings ADD COLUMN batch_name text` (nullable).
-- `tg_harvest_entries_after_insert_autolink` trigger fonksiyonunu güncelle: **eğer aynı farmer+parcel+crop için birden fazla draft/active listing varsa hiçbir şey yapma** (frontend seçecek). Tek eşleşme varsa mevcut davranışı koru (backward compatible, tek batch senaryosunu bozmaz).
-- Not: `listing_harvest_entries` üzerinde yeni bir kısıt eklemiyoruz (bir harvest_entry'nin fiziksel olarak birden fazla listing'e link'lenmesi teorik olarak geçerli kalabilir; bu turda sadece yeni-kayıt akışını tek-batch'e sabitliyoruz).
-- Geriye dönük veri temizliği: bu turda YAPMIYORUZ. 5 çoklu-linkli mevcut kayıt olduğu gibi kalır (stok toplamı bugün de bu kayıtlar için üste-sayıma yol açmıyor çünkü `useListingStock` `SUM(harvest_entries.quantity)`'yi listing başına ayrı hesaplıyor; her listing kendi bağlarını görüyor). İleride P21-B'de "orphan link temizliği" olarak ele alınabilir — planın kapsamına almadım.
+**e) Traceability RLS**
+Mevcut `listings` SELECT policy'si "status active" ile sınırlıysa, ek bir OR policy ekle: buyer'ın o listing için `offer_items` → `offers` (herhangi statüde) veya `orders` (offer üzerinden) satırı varsa okuyabilsin. Aynı mantık `harvest_entries` ve `listing_harvest_entries` için: buyer'ın o listing ile ilişkili `offer_items`'ı varsa okuyabilsin.
 
-### 2) `useCreateListing` — duplicate ön-kontrolü
+## 2) Frontend — Keşfet grouping
 
-- Insert öncesi aynı `farmer_id + parcel_id + crop` için `status in ('draft','active')` listing var mı diye sorgula.
-- Varsa: throw etme; mutation'ın çağırdığı UI karar versin. Bunu iki yoldan biriyle çözelim (planda A'yı öneriyorum):
-  - **A (önerilen):** yeni bir hook `useExistingBatches(parcelId, crop)` ekle. `ListingSheet` "Yeni Ürün" açıldığında bu hook'u çalıştırır; eşleşme varsa formu göstermeden önce bir "Batch kararı" ekranı gösterir. Böylece `useCreateListing` mantığı sadeleşir, duplicate riski UI'da yakalanır.
-  - B: `useCreateListing` içine `force: boolean` parametresi ekleyip sunucu tarafında engelleme — daha kırılgan, UX zayıf.
+`buyer.discover.tsx`: `useActiveListings()` sonucunu client-side `(farmer_id, crop_lowercase)` ile grupla. Grup kartı üstünde:
+- Toplam available stok: her batch için `useListingStock` sonuçlarının toplamı (kartlar mount olduğunda hook'lar paralel çalışır; N-batch senaryosunda tek grup için N sorgu, kabul edilebilir).
+- "N parti" rozeti (N>1 iken).
+- Fiyat aralığı: `min===max` ise tek fiyat, aksi halde `₺X–Y/{unit}`.
+- Tıklama → yeni ürün detay sayfası.
 
-### 3) `ListingSheet` (`src/routes/farmer.storefront.tsx`) UI
+## 3) Yeni route — ürün detay (multi-batch)
 
-Yeni bir ön-adım (form açılmadan önce):
+Dosya: `src/routes/buyer.product.$farmerId.$crop.tsx` (path: `/buyer/product/$farmerId/$crop`).
+- URL'den `farmerId` + `crop` (lowercase slug) al; `listings` sorgusu: `farmer_id = $farmerId AND lower(crop) = $crop AND status = 'active'`.
+- Üstte çiftçi başlık kartı (isim, şehir — mevcut `public_farmer_profiles` ile).
+- Batch listesi (her batch bir accordion satırı):
+  - Sol: `batch_name || 'Batch #'+n`, kalite, `useListingStock` available, `price_per_unit`.
+  - Sağ: miktar input'u (0 – available, adım input'un unit'ine göre).
+  - Genişletildiğinde: `useListingBatchEntries(listingId)` ile bağlı harvest_entries listesi (tarih, quantity+unit, quality, notes) — kronolojik, basit `<ul>`. Takvim yok.
+- Alt sabit çubuk: canlı toplam = Σ(seçilen_qty × batch_price), toplam adet, "Teklif Gönder" butonu. Buton yalnız en az bir batch'te qty>0 iken enable.
+- Butona basınca yeni hook `useCreateMultiBatchOffer` çağrılır (aşağıda).
 
-- Sheet açıldığında, seçili crop yoksa mevcut akış aynen sürsün.
-- Crop seçilir seçilmez (veya "Yeni Ürün" bir crop için başlatıldığında) `useExistingBatches` sonucunu göster:
-  - 0 mevcut batch → normal form (mevcut davranış, `status:'active'` ile create).
-  - ≥1 mevcut batch → 3 seçenekli kart:
-    1. Liste: mevcut batch'ler `{batch_name || 'Batch #n'} · stok: X {unit}` şeklinde. Seçilirse Sheet kapanır, kullanıcı hasat kaydı formuna yönlendirilir (o batch preselected). Yeni listing açılmaz.
-    2. "Yeni batch aç" → form açılır ama create çağrısı `status: 'draft'` yollar (mevcut "✓ Yayınla" akışıyla sonradan aktifleşir).
-    3. İptal.
-- Form'a yeni opsiyonel input: **Batch adı** (`batch_name`). Boşsa DB'ye null gider; kartlarda UI fallback `"Batch #${index+1}"` gösterir.
-- `ListingCard` (aynı dosya) başlığına `batch_name` (varsa) ekle.
+Route dosyasında `errorComponent`, `notFoundComponent`, unique `head()` (title/description/og — çiftçi + ürün ismi ile).
 
-### 4) Hasat kaydı formu — batch seçici
+## 4) `useCreateMultiBatchOffer` (yeni hook, `queries.ts`)
 
-Etkilenen yerler:
+Girdi:
+```ts
+{ farmerId: string; items: { listingId: string; quantity: number; pricePerUnit: number }[]; delivery?; deliveryDate?; note? }
+```
+Adımlar (client-side; tek RPC yok, iki insert):
+1. `totalQty = Σ items.quantity`, `wavgPrice = Σ(qty×price) / totalQty`, `primaryListingId = items[0].listingId`.
+2. `INSERT INTO offers ({ listing_id: primary, quantity: totalQty, price_per_unit: wavgPrice, current_quantity, current_price, ...mevcut alanlar })` → `offer.id` al.
+3. `INSERT INTO offer_items` — items map'i, `offer_id = offer.id`.
+4. Hata olursa (2. adım geçip 3. adım patlarsa) offer'ı delete et (best-effort rollback). Not: RLS + FK ON DELETE CASCADE zaten korur ama orphan offer bırakmayalım.
 
-- `src/routes/farmer.journal.new.tsx`: parsel+crop seçildikten sonra yeni bir "Hangi batch'e ekleniyor?" select alanı. Seçenekler: aynı parcel+crop için draft/active listing'ler; varsayılan: en son `created_at` olan; "hiçbirine bağlama" seçeneği de olsun (bugünün autolink-none davranışını koruyan alt sınır).
-- `src/components/hasat/ai-chat/JournalEntryCard.tsx`: aynı seçici bileşeni; AI parse ettiği alanlar dolduktan sonra kullanıcıya "kaydet"ten önce göster.
-- Insert sonrası: eğer kullanıcı bir batch seçtiyse frontend, `harvest_entries` insert'inden sonra `listing_harvest_entries` satırını kendisi `insert({listing_id, harvest_entry_id})` yapar. Trigger değişikliği (yukarıda) çoklu-eşleşme durumunda hiçbir şey yapmadığı için double-link olmaz; tek-eşleşme durumunda kullanıcı seçmese bile trigger o tek listing'e bağlar (BC).
-- Yeni hook: `useCreateEntryWithBatch({ entry, listingId? })` — mevcut `useCreateEntry`'yi wrap edip listing_id opsiyonel bağlamayı yönetir. (`useCreateEntry`'ye direkt param eklemek de olabilir; tercih: yeni hook, mevcut callers dokunulmaz.)
+`useCreateOffer` (mevcut tek-batch hook) **kaldırılmıyor** — çağıran yerler var (`buyer.offer.$listingId.tsx`, MCP `create-offer` tool). Bunun yerine `useCreateOffer` internal olarak `useCreateMultiBatchOffer` mantığına delege edilir: tek-item bir çağrı yaparak `offer_items`'a 1 satır yazmayı da garanti eder. Böylece "her offer en az 1 offer_item'a sahip" invariant'ı hem eski hem yeni yoldan sağlanır.
 
-### 5) Etkilenen dosyalar (özet)
+MCP `create-offer` tool'u da aynı desene taşınacak (tool handler içinde ikinci insert). Bu turda dahil.
 
-- `src/lib/hasat/queries.ts` — `useExistingBatches`, `useCreateListing` (batch_name'i insert'e ekle, `draft` opsiyonu), `useCreateEntryWithBatch`, `HarvestEntry`/`Listing` tiplerine `batchName`.
-- `src/lib/hasat/types.ts` — `Listing.batchName?: string`.
-- `src/routes/farmer.storefront.tsx` — ListingSheet ön-adım, batch adı input, ListingCard etiketi.
-- `src/routes/farmer.journal.new.tsx` — batch seçici.
-- `src/components/hasat/ai-chat/JournalEntryCard.tsx` — batch seçici; direkt insert yerine yeni hook'u kullan.
-- 1 migration (kolon + trigger update).
+## 5) Offer/Order detay — batch dağılımı
 
-### 6) Soruların cevapları
+- Yeni hook `useOfferItems(offerId)`: `offer_items` + join `listings(id, crop, batch_name, unit)` + join `public_farmer_profiles` (zaten var). Sıra: `created_at`.
+- Etkilenen sayfalar: `buyer.negotiation.$offerId.tsx`, `buyer.orders.$orderId.tsx`, farmer tarafındaki offer/order detay ekranları (`farmer.orders.index.tsx` ve varsa farmer negotiation ekranı — araştırıp gerekli tüm yerlere ekle).
+- "Batch dağılımı" bölümü: her `offer_items` satırı için `batch_name` + qty + price + subtotal; tıklanınca `useListingBatchEntries(listing_id)` ile harvest entry listesi (madde 3'teki gibi) açılır.
 
-1. **Etkilenen kod**: yukarıdaki 5 dosya + 1 migration. `useCreateListing`, yeni `useExistingBatches`, yeni `useCreateEntryWithBatch`; `useCreateEntry` iç imzası değişmez.
-2. **Geriye dönük çoklu listing'ler**: bugün aynı farmer+parcel+crop için duplicate listing YOK (sorgu ile doğrulandı). Migration/temizlik gerekmiyor. Yeni akış yalnızca ileriye dönük çalışır.
-3. **Mevcut çoklu-linkli harvest_entries**: 5 kayıt var (2 listing'e birden bağlı). Bu turda dokunulmaz — mevcut `useListingStock` hesabı bu kayıtlar için sorun üretmiyor. P21-B'de opsiyonel "eski linkleri tek batch'e daralt" temizliği düşünülebilir; şimdi kapsam dışı.
+## 6) Etkilenen dosyalar (özet)
 
-## Kapsam dışı (bilinçli)
+- **Yeni**: 1 migration; `src/routes/buyer.product.$farmerId.$crop.tsx`.
+- **Değişen**: `src/lib/hasat/queries.ts` (yeni `useCreateMultiBatchOffer`, `useOfferItems`; `useCreateOffer` refactor; `useActiveListings` opsiyonel — grouping client-side olacağı için değişmeyebilir), `src/routes/buyer.discover.tsx` (grouping + kart), `src/routes/buyer.negotiation.$offerId.tsx`, `src/routes/buyer.orders.$orderId.tsx`, farmer offer/order detay dosya(ları), `src/lib/mcp/tools/create-offer.ts` (offer_items ikinci insert).
+- **Dokunulmaz**: `farmer.storefront.tsx`, care/journal takvim işleri (kapsam dışı).
 
-- Aynı-crop farklı-parcel kısıtı yok — planın konusu parcel+crop düzeyinde.
-- `listing_harvest_entries` üzerinde UNIQUE(harvest_entry_id) eklemiyoruz — bir harvest_entry'nin ilerideki manuel çoklu-batch senaryolarını (nadir) kapatmamak için.
-- Mevcut çoklu-linkli 5 satırın temizliği.
+## 7) Doğrulama
+- Migration RLS ve trigger'lar için manuel SELECT/UPDATE denemeleri.
+- `bunx tsgo --noEmit` sonucu raporlanır.
+- Rapor: değişen dosya listesi + migration özeti + tsgo çıktısı.
+
+## Açık varsayımlar (yanlışsa düzeltin)
+- **Ağırlıklı ortalama** seçildi (bkz. 1b). "İlk batch fiyatı" tercih ediliyorsa söyleyin — o zaman notify_offer_received / order total hesaplarını da güncellemek gerek.
+- Farklı **kalite** (A/B/C) batch'lerin aynı offer'da birleştirilmesine izin veriliyor (buyer isterse); UI'da her satırda kalite görünür ama karma engel yok.
+- `harvest_entries.unit` ↔ `listings.unit` uyumsuzluğunda **hata fırlatılıyor** (uyarı değil). Mevcut kayıtları migrate etmiyoruz.
