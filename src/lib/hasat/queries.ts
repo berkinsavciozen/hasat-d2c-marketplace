@@ -867,6 +867,8 @@ export function useUpdateListing() {
       if (patch.quality !== undefined) dbPatch.quality = patch.quality;
       if (patch.status !== undefined) dbPatch.status = patch.status;
       if (patch.description !== undefined) dbPatch.description = patch.description;
+      if (patch.batchName !== undefined) dbPatch.batch_name = patch.batchName;
+      if (patch.parcelId !== undefined) dbPatch.parcel_id = patch.parcelId;
       if (existingPhotos !== undefined || (photoFiles && photoFiles.length > 0)) {
         const kept = existingPhotos ?? [];
         const uploaded = userId && photoFiles && photoFiles.length > 0
