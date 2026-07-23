@@ -113,6 +113,7 @@ function Subscriptions() {
                     <div className="text-xs text-hmuted">
                       {s.farmerCity ?? ""}
                       {s.farmerCity ? " · " : ""}
+                      {s.crop ? `${formatCrop(s.crop)} · ` : ""}
                       {sinceDays < 30 ? `${sinceDays} gündür` : `${Math.floor(sinceDays / 30)} aydır`} tedarikçiniz
                     </div>
                   </div>
@@ -123,6 +124,12 @@ function Subscriptions() {
                     {meta.label}
                   </span>
                 </div>
+
+                {s.note && (
+                  <div className="mt-2 rounded-lg border border-dashed p-2 text-xs text-hmuted">
+                    “{s.note}”
+                  </div>
+                )}
 
                 {nextLabel && s.status === "active" && (
                   <div className="mt-3 flex items-center gap-2 rounded-lg border p-2.5 text-xs"
@@ -161,15 +168,27 @@ function Subscriptions() {
                   )}
                 </div>
 
-                {s.status === "active" && (
+                {(s.status === "active" || s.status === "fulfilled") && (
+                  <FulfillmentBar id={s.id} target={s.volumeCommitment} />
+                )}
+
+                {s.status === "pending" && (
+                  <div className="mt-3 rounded-lg border border-dashed p-2.5 text-xs text-hmuted">
+                    Üretici talebinizi inceliyor. Onaylandığında bildirim alacaksınız.
+                  </div>
+                )}
+
+                {(s.status === "active" || s.status === "pending" || s.status === "paused") && (
                   <div className="mt-3 flex items-center justify-between gap-2">
-                    <button
-                      onClick={() => setOrderSub({ subscriptionId: s.id, farmerId: s.farmerId, farmerName: s.farmerName, priceLock: s.priceLock, lockedPrice: s.lockedPrice, crop: null })}
-                      className="inline-flex items-center gap-1.5 rounded-lg min-h-[40px] px-3 py-2 text-xs font-medium"
-                      style={{ background: "var(--saffron)", color: "#fff" }}
-                    >
-                      <ShoppingBag className="h-3.5 w-3.5" /> Şimdi Sipariş Ver
-                    </button>
+                    {s.status === "active" ? (
+                      <button
+                        onClick={() => setOrderSub({ subscriptionId: s.id, farmerId: s.farmerId, farmerName: s.farmerName, priceLock: s.priceLock, lockedPrice: s.lockedPrice, crop: s.crop })}
+                        className="inline-flex items-center gap-1.5 rounded-lg min-h-[40px] px-3 py-2 text-xs font-medium"
+                        style={{ background: "var(--saffron)", color: "#fff" }}
+                      >
+                        <ShoppingBag className="h-3.5 w-3.5" /> Şimdi Sipariş Ver
+                      </button>
+                    ) : <span />}
                     <button
                       onClick={() => setPendingId(s.id)}
                       className="text-xs font-medium text-hred hover:underline min-h-[40px] px-2"
@@ -181,6 +200,7 @@ function Subscriptions() {
               </div>
             );
           })
+
         )}
       </div>
 
