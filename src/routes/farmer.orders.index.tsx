@@ -361,6 +361,9 @@ function OrderCard({ order, muted }: { order: Order; muted?: boolean }) {
         </div>
       </div>
 
+      <OrderBatchBreakdown orderId={order.id} />
+
+
       {order.status === "preparing" && (
         <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-2">
           <button onClick={() => setShipOpen(true)}
