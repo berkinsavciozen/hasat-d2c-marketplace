@@ -158,6 +158,10 @@ function OfferCard({ offer }: { offer: Offer }) {
         />
       </div>
 
+      <div className="mt-3">
+        <OfferBatchBreakdown offerId={offer.id} />
+      </div>
+
       {isTransferPending ? (
         <div className="mt-3 rounded-lg p-3"
           style={{ background: "color-mix(in oklab, var(--gold) 15%, transparent)", border: "1px solid color-mix(in oklab, var(--gold) 40%, transparent)" }}>
