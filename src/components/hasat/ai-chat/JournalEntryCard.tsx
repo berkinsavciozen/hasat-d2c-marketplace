@@ -3,7 +3,7 @@ import { Link } from "@tanstack/react-router";
 import { Check, AlertTriangle, ChevronDown, Plus, Trash2 } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { useParcels, useAuthUserId } from "@/lib/hasat/queries";
+import { useParcels, useAuthUserId, useExistingBatches, useCreateEntry } from "@/lib/hasat/queries";
 import { ZERO_COSTS } from "@/lib/hasat/journal-meta";
 import type { ParsedJournal } from "./parseJournalEntry";
 
@@ -75,6 +75,7 @@ export function JournalEntryCard({ initial }: Props) {
   const userId = useAuthUserId();
   const { data: parcels = [] } = useParcels();
   const qc = useQueryClient();
+  const createEntry = useCreateEntry();
 
   const [crop, setCrop] = useState(initial.crop);
   const [quantity, setQuantity] = useState<string>(String(initial.quantity));
@@ -91,7 +92,16 @@ export function JournalEntryCard({ initial }: Props) {
   const [saveState, setSaveState] = useState<SaveState>({ kind: "idle" });
   const [existing, setExisting] = useState<ExistingRow | null>(null);
   const [forceInsert, setForceInsert] = useState(false);
+  const [listingId, setListingId] = useState<string>("");
   const checkedKeyRef = useRef<string>("");
+
+  const { data: batches = [] } = useExistingBatches(parcelId || null, crop || null);
+  useEffect(() => {
+    if (batches.length === 0) { setListingId(""); return; }
+    const preferred = batches[batches.length - 1].id;
+    setListingId((prev) => (prev && batches.some((b) => b.id === prev) ? prev : preferred));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [batches.map((b) => b.id).join("|")]);
 
   // Resolve parcel once parcels arrive
   useEffect(() => {
@@ -138,24 +148,23 @@ export function JournalEntryCard({ initial }: Props) {
     if (!userId) return;
     if (!validate()) return;
     setSaveState({ kind: "saving" });
-    const { error } = await supabase.from("harvest_entries").insert({
-      farmer_id: userId,
-      parcel_id: parcelId,
-      crop: crop.trim(),
-      quantity: Number(quantity),
-      unit,
-      quality,
-      notes: notes.trim() || null,
-      costs: buildCostsPayload(costRows) as any,
-      harvest_date: date,
-      photo_urls: [],
-    });
-    if (error) {
+    try {
+      await createEntry.mutateAsync({
+        parcelId,
+        crop: crop.trim(),
+        quantity: Number(quantity),
+        unit,
+        quality,
+        notes: notes.trim(),
+        costs: buildCostsPayload(costRows) as any,
+        date,
+        photos: [],
+        listingId: batches.length > 1 && listingId ? listingId : null,
+      } as any);
+      setSaveState({ kind: "saved", updated: false });
+    } catch {
       setSaveState({ kind: "error", message: "Kayıt sırasında bir hata oluştu. Tekrar deneyin." });
-      return;
     }
-    qc.invalidateQueries({ queryKey: ["entries", userId] });
-    setSaveState({ kind: "saved", updated: false });
   };
 
   const doUpdate = async () => {
@@ -251,6 +260,32 @@ export function JournalEntryCard({ initial }: Props) {
             ))}
           </select>
         </Field>
+        {batches.length > 1 && (
+          <Field label="Batch (parti)" className="col-span-2">
+            <div className="flex flex-wrap gap-1.5">
+              {batches.map((b, i) => {
+                const active = b.id === listingId;
+                const label = b.batchName?.trim() || `Batch #${i + 1}`;
+                return (
+                  <button
+                    key={b.id}
+                    type="button"
+                    onClick={() => setListingId(b.id)}
+                    className={`rounded-full border px-2.5 py-1 text-xs transition ${
+                      active ? "text-white" : "text-dark"
+                    }`}
+                    style={active
+                      ? { background: "var(--saffron)", borderColor: "var(--saffron)" }
+                      : { background: "white" }}
+                  >
+                    📦 {label} <span className="opacity-70 ml-0.5">{b.status}</span>
+                  </button>
+                );
+              })}
+            </div>
+            <span className="text-[10px] text-muted-foreground">Bu kayıt seçili batch'e bağlanacak.</span>
+          </Field>
+        )}
         <Field label="Not (opsiyonel)" className="col-span-2">
           <textarea
             value={notes} onChange={(e) => setNotes(e.target.value)}
