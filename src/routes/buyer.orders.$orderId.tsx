@@ -10,7 +10,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import { formatTRY, formatCrop } from "@/lib/hasat/format";
-import { useBuyerOrders, useOrderTimeline, useConfirmDelivery, useOpenDispute, useOrderDispute, useOrderReviews, useCreateReview } from "@/lib/hasat/queries";
+import { useBuyerOrders, useOrderTimeline, useConfirmDelivery, useOpenDispute, useOrderDispute, useOrderReviews, useCreateReview, useOrderOfferId } from "@/lib/hasat/queries";
+import { OfferBatchBreakdown } from "@/components/hasat/OfferBatchBreakdown";
+
 import { useAuthUserId } from "@/lib/hasat/queries";
 import { whatsappUrl } from "@/lib/hasat/whatsapp";
 
