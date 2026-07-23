@@ -13,6 +13,8 @@ import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import type { Offer } from "@/lib/hasat/types";
 import { NegotiationTimeline } from "@/components/hasat/NegotiationTimeline";
+import { OfferBatchBreakdown } from "@/components/hasat/OfferBatchBreakdown";
+
 
 export const Route = createFileRoute("/buyer/negotiation/$offerId")({
   head: () => ({ meta: [{ title: "Müzakere — Hasat" }] }),
