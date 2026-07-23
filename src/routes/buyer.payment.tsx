@@ -137,9 +137,9 @@ function Payment() {
           </TabsContent>
         </Tabs>
 
-        <button onClick={complete} disabled={createOffer.isPending} className="w-full rounded-xl py-3.5 text-sm font-medium disabled:opacity-50"
+        <button onClick={complete} disabled={isPending} className="w-full rounded-xl py-3.5 text-sm font-medium disabled:opacity-50"
           style={{ background: "var(--saffron)", color: "var(--hwhite)" }}>
-          {createOffer.isPending ? "Gönderiliyor…" : `Ödemeyi Tamamla — ${formatTRY(grand)}`}
+          {isPending ? "Gönderiliyor…" : `Ödemeyi Tamamla — ${formatTRY(grand)}`}
         </button>
       </div>
     </div>
