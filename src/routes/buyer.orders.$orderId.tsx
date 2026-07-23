@@ -262,3 +262,9 @@ function OrderTracker() {
     </div>
   );
 }
+
+function OrderOfferBreakdown({ orderId }: { orderId: string }) {
+  const { data: offerId } = useOrderOfferId(orderId);
+  if (!offerId) return null;
+  return <OfferBatchBreakdown offerId={offerId} />;
+}
