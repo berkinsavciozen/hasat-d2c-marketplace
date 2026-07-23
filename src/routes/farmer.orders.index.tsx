@@ -474,6 +474,17 @@ function BuyerRatingBadge({ buyerId }: { buyerId?: string }) {
   return <span className="text-[11px] text-hmuted">⭐ {data.avgRating.toFixed(1)} ({data.reviewCount})</span>;
 }
 
+function OrderBatchBreakdown({ orderId }: { orderId: string }) {
+  const { data: offerId } = useOrderOfferId(orderId);
+  if (!offerId) return null;
+  return (
+    <div className="mt-3">
+      <OfferBatchBreakdown offerId={offerId} />
+    </div>
+  );
+}
+
+
 function SubscriptionOrderBadge() {
   return (
     <span
