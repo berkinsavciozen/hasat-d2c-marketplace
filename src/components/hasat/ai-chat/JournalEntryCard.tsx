@@ -75,6 +75,7 @@ export function JournalEntryCard({ initial }: Props) {
   const userId = useAuthUserId();
   const { data: parcels = [] } = useParcels();
   const qc = useQueryClient();
+  const createEntry = useCreateEntry();
 
   const [crop, setCrop] = useState(initial.crop);
   const [quantity, setQuantity] = useState<string>(String(initial.quantity));
@@ -91,7 +92,16 @@ export function JournalEntryCard({ initial }: Props) {
   const [saveState, setSaveState] = useState<SaveState>({ kind: "idle" });
   const [existing, setExisting] = useState<ExistingRow | null>(null);
   const [forceInsert, setForceInsert] = useState(false);
+  const [listingId, setListingId] = useState<string>("");
   const checkedKeyRef = useRef<string>("");
+
+  const { data: batches = [] } = useExistingBatches(parcelId || null, crop || null);
+  useEffect(() => {
+    if (batches.length === 0) { setListingId(""); return; }
+    const preferred = batches[batches.length - 1].id;
+    setListingId((prev) => (prev && batches.some((b) => b.id === prev) ? prev : preferred));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [batches.map((b) => b.id).join("|")]);
 
   // Resolve parcel once parcels arrive
   useEffect(() => {
