@@ -421,7 +421,15 @@ function ListingSheet({ open, editing, onClose }: { open: boolean; editing: List
               </div>
               <div>
                 <div className="mb-1.5 text-xs font-medium text-hmuted">Ürün</div>
-                <Select value={crop} onValueChange={(v) => { setCrop(v); setBatchDecisionOverride(false); }}>
+                <Select value={crop} onValueChange={(v) => {
+                  setCrop(v);
+                  setBatchDecisionOverride(false);
+                  if (!editing) {
+                    const cfg = findCropConfig(cropMap, v);
+                    const du = cfg?.default_unit;
+                    if (du === "g" || du === "kg" || du === "L") setUnit(du);
+                  }
+                }}>
                   <SelectTrigger><SelectValue placeholder={cropsLoading ? "Yükleniyor…" : "Ürün seçin"} /></SelectTrigger>
                   <SelectContent>{cropOptions.map((o) => <SelectItem key={o.value} value={o.value}>{o.emoji} {o.label}</SelectItem>)}</SelectContent>
                 </Select>
