@@ -86,6 +86,8 @@ function NewEntry() {
         costs: { ...ZERO_COSTS },
         pricePerUnit: 0,
         step_key: WORK_TO_STEP_KEY[work] ?? null,
+        // Birden fazla batch varsa kullanıcı seçtiği batch'e bağlanır (trigger otomatik bağlamaz).
+        listingId: batches.length > 1 && listingId ? listingId : null,
       });
       toast.success("Kayıt eklendi ✓");
       navigate({ to: "/farmer/journal" });
