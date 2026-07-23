@@ -114,6 +114,10 @@ function OrderTracker() {
           <OrderTimeline order={orderWithTimeline} />
         </div>
 
+        <OrderOfferBreakdown orderId={order.id} />
+
+
+
         {canReview && (
           <div className="rounded-2xl bg-card border p-4">
             <div className="text-sm font-medium mb-1">Üreticiyi Değerlendir</div>
