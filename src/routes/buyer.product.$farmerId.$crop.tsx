@@ -1,11 +1,13 @@
 import { createFileRoute, Link, useNavigate, notFound } from "@tanstack/react-router";
 import { ArrowLeft, ChevronDown, ChevronUp } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
 import { LoadingDots } from "@/components/hasat/LoadingDots";
 import { formatTRY, formatCrop } from "@/lib/hasat/format";
+import { convertQuantity } from "@/lib/hasat/units";
+import { findCropConfig, useCropConfigMap } from "@/lib/hasat/crop-config";
 import {
   dbToActiveListing,
   useListingStock,
