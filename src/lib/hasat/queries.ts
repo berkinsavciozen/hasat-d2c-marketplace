@@ -523,6 +523,7 @@ export function dbToListing(r: any): Listing {
     producerId: r.farmer_id,
     parcelId: r.parcel_id ?? null,
     description: r.description ?? undefined,
+    batchName: r.batch_name ?? null,
   };
 }
 
