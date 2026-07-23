@@ -61,7 +61,9 @@ function FarmerShell() {
   const { data: profile } = useProfile();
   const { data: parcels = [] } = useParcels();
   const { data: offers } = useFarmerOffers();
+  const { data: incomingSubs } = useIncomingSubscriptions();
   const pendingCount = offers?.filter((o) => o.status === "pending").length ?? 0;
+  const pendingSubs = incomingSubs?.filter((s) => s.status === "pending").length ?? 0;
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const [moreOpen, setMoreOpen] = useState(false);
   const navigate = useNavigate();
