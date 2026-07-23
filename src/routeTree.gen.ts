@@ -21,6 +21,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as SSlugRouteImport } from './routes/s.$slug'
 import { Route as OnboardingFarmerRouteImport } from './routes/onboarding.farmer'
 import { Route as OnboardingBuyerRouteImport } from './routes/onboarding.buyer'
+import { Route as FarmerSubscriptionsRouteImport } from './routes/farmer.subscriptions'
 import { Route as FarmerStorefrontRouteImport } from './routes/farmer.storefront'
 import { Route as FarmerSettingsRouteImport } from './routes/farmer.settings'
 import { Route as FarmerReferralRouteImport } from './routes/farmer.referral'
@@ -122,6 +123,11 @@ const OnboardingBuyerRoute = OnboardingBuyerRouteImport.update({
   id: '/onboarding/buyer',
   path: '/onboarding/buyer',
   getParentRoute: () => rootRouteImport,
+} as any)
+const FarmerSubscriptionsRoute = FarmerSubscriptionsRouteImport.update({
+  id: '/subscriptions',
+  path: '/subscriptions',
+  getParentRoute: () => FarmerRoute,
 } as any)
 const FarmerStorefrontRoute = FarmerStorefrontRouteImport.update({
   id: '/storefront',
@@ -366,6 +372,7 @@ export interface FileRoutesByFullPath {
   '/farmer/referral': typeof FarmerReferralRoute
   '/farmer/settings': typeof FarmerSettingsRouteWithChildren
   '/farmer/storefront': typeof FarmerStorefrontRoute
+  '/farmer/subscriptions': typeof FarmerSubscriptionsRoute
   '/onboarding/buyer': typeof OnboardingBuyerRoute
   '/onboarding/farmer': typeof OnboardingFarmerRoute
   '/s/$slug': typeof SSlugRoute
@@ -420,6 +427,7 @@ export interface FileRoutesByTo {
   '/farmer/referral': typeof FarmerReferralRoute
   '/farmer/settings': typeof FarmerSettingsRouteWithChildren
   '/farmer/storefront': typeof FarmerStorefrontRoute
+  '/farmer/subscriptions': typeof FarmerSubscriptionsRoute
   '/onboarding/buyer': typeof OnboardingBuyerRoute
   '/onboarding/farmer': typeof OnboardingFarmerRoute
   '/s/$slug': typeof SSlugRoute
@@ -476,6 +484,7 @@ export interface FileRoutesById {
   '/farmer/referral': typeof FarmerReferralRoute
   '/farmer/settings': typeof FarmerSettingsRouteWithChildren
   '/farmer/storefront': typeof FarmerStorefrontRoute
+  '/farmer/subscriptions': typeof FarmerSubscriptionsRoute
   '/onboarding/buyer': typeof OnboardingBuyerRoute
   '/onboarding/farmer': typeof OnboardingFarmerRoute
   '/s/$slug': typeof SSlugRoute
@@ -533,6 +542,7 @@ export interface FileRouteTypes {
     | '/farmer/referral'
     | '/farmer/settings'
     | '/farmer/storefront'
+    | '/farmer/subscriptions'
     | '/onboarding/buyer'
     | '/onboarding/farmer'
     | '/s/$slug'
@@ -587,6 +597,7 @@ export interface FileRouteTypes {
     | '/farmer/referral'
     | '/farmer/settings'
     | '/farmer/storefront'
+    | '/farmer/subscriptions'
     | '/onboarding/buyer'
     | '/onboarding/farmer'
     | '/s/$slug'
@@ -642,6 +653,7 @@ export interface FileRouteTypes {
     | '/farmer/referral'
     | '/farmer/settings'
     | '/farmer/storefront'
+    | '/farmer/subscriptions'
     | '/onboarding/buyer'
     | '/onboarding/farmer'
     | '/s/$slug'
@@ -772,6 +784,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/onboarding/buyer'
       preLoaderRoute: typeof OnboardingBuyerRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/farmer/subscriptions': {
+      id: '/farmer/subscriptions'
+      path: '/subscriptions'
+      fullPath: '/farmer/subscriptions'
+      preLoaderRoute: typeof FarmerSubscriptionsRouteImport
+      parentRoute: typeof FarmerRoute
     }
     '/farmer/storefront': {
       id: '/farmer/storefront'
@@ -1157,6 +1176,7 @@ interface FarmerRouteChildren {
   FarmerReferralRoute: typeof FarmerReferralRoute
   FarmerSettingsRoute: typeof FarmerSettingsRouteWithChildren
   FarmerStorefrontRoute: typeof FarmerStorefrontRoute
+  FarmerSubscriptionsRoute: typeof FarmerSubscriptionsRoute
   FarmerPricesCropRoute: typeof FarmerPricesCropRoute
   FarmerOrdersIndexRoute: typeof FarmerOrdersIndexRoute
   FarmerPricesIndexRoute: typeof FarmerPricesIndexRoute
@@ -1172,6 +1192,7 @@ const FarmerRouteChildren: FarmerRouteChildren = {
   FarmerReferralRoute: FarmerReferralRoute,
   FarmerSettingsRoute: FarmerSettingsRouteWithChildren,
   FarmerStorefrontRoute: FarmerStorefrontRoute,
+  FarmerSubscriptionsRoute: FarmerSubscriptionsRoute,
   FarmerPricesCropRoute: FarmerPricesCropRoute,
   FarmerOrdersIndexRoute: FarmerOrdersIndexRoute,
   FarmerPricesIndexRoute: FarmerPricesIndexRoute,
