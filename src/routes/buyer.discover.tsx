@@ -379,9 +379,12 @@ function CropRequestModal({ initialCrop, onClose }: { initialCrop: string; onClo
 
 type ListingRow = ReturnType<typeof useActiveListings>["data"] extends (infer U)[] | undefined ? U : never;
 
-function ListingGroupCard({ items, onOpen }: { items: ListingRow[]; onOpen: () => void }) {
-  // Sum of base quantities across batches (approx; product-detail page shows accurate live stock per batch).
-  const totalAvail = items.reduce((s, l) => s + Number(l.quantity ?? 0), 0);
+function ListingGroupCard({ items, canonicalUnit, onOpen }: { items: ListingRow[]; canonicalUnit: string; onOpen: () => void }) {
+  // Kanonik birime çevirerek topla (g↔kg). Diğer birimler tek preset olduğu için değişmez.
+  const totalAvail = items.reduce(
+    (s, l) => s + convertQuantity(Number(l.quantity ?? 0), l.unit, canonicalUnit),
+    0,
+  );
   const soldOut = totalAvail <= 0;
   const first = items[0];
 
