@@ -375,10 +375,11 @@ function CropRequestModal({ initialCrop, onClose }: { initialCrop: string; onClo
 type ListingRow = ReturnType<typeof useActiveListings>["data"] extends (infer U)[] | undefined ? U : never;
 
 function ListingGroupCard({ items, onOpen }: { items: ListingRow[]; onOpen: () => void }) {
-  const stocks = items.map((l) => useListingStock(l.id).data);
-  const totalAvail = stocks.reduce((s, st, i) => s + (st?.available ?? Number(items[i].quantity ?? 0)), 0);
+  // Sum of base quantities across batches (approx; product-detail page shows accurate live stock per batch).
+  const totalAvail = items.reduce((s, l) => s + Number(l.quantity ?? 0), 0);
   const soldOut = totalAvail <= 0;
   const first = items[0];
+
   const farmerSlug = first.farmerName ? (slugifyFarmer(first.farmerName) || (first.producerId ?? "")) : (first.producerId ?? "");
   const prices = items.map((l) => l.pricePerUnit);
   const minP = Math.min(...prices);
