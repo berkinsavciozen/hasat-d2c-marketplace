@@ -987,6 +987,48 @@ export type Database = {
           },
         ]
       }
+      offer_items: {
+        Row: {
+          created_at: string
+          id: string
+          listing_id: string
+          offer_id: string
+          price_per_unit: number
+          quantity: number
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          listing_id: string
+          offer_id: string
+          price_per_unit: number
+          quantity: number
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          listing_id?: string
+          offer_id?: string
+          price_per_unit?: number
+          quantity?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "offer_items_listing_id_fkey"
+            columns: ["listing_id"]
+            isOneToOne: false
+            referencedRelation: "listings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "offer_items_offer_id_fkey"
+            columns: ["offer_id"]
+            isOneToOne: false
+            referencedRelation: "offers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       offer_messages: {
         Row: {
           created_at: string
