@@ -214,8 +214,14 @@ function ProducerProfile() {
                         {formatTRY(l.pricePerUnit)}<span className="text-xs text-hmuted">/{l.unit}</span>
                       </div>
                     </div>
-                    <button onClick={() => navigate({ to: "/buyer/offer/$listingId", params: { listingId: l.id } })}
-                      className="mt-3 w-full rounded-xl bg-saffron py-2 text-sm text-white">Teklif Ver →</button>
+                    {loggedIn === false ? (
+                      <Link to="/login" search={{ role: "buyer" } as any}
+                        className="mt-3 block w-full rounded-xl bg-saffron py-2 text-center text-sm text-white">Üye Ol & Teklif Ver →</Link>
+                    ) : (
+                      <button onClick={() => navigate({ to: "/buyer/offer/$listingId", params: { listingId: l.id } })}
+                        className="mt-3 w-full rounded-xl bg-saffron py-2 text-sm text-white">Teklif Ver →</button>
+                    )}
+
                   </div>
                 </div>
               ))}
