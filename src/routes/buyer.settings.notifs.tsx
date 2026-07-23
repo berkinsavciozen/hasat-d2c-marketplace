@@ -24,6 +24,8 @@ const EVENTS: EventDef[] = [
   { label: "Teslim Edildi", cols: { sms: "order_delivered_sms" } },
   { label: "Sipariş İptal Edildi", cols: { sms: "order_cancelled_sms" } },
   { label: "İhtilaf Açıldı", cols: { sms: "dispute_opened_sms" } },
+  { label: "Abonelik Kabul Edildi", cols: { sms: "subscription_accepted_sms" } },
+  { label: "Abonelik Reddedildi", cols: { sms: "subscription_rejected_sms" } },
   { label: "Topluluk", cols: { push: "community_push" } },
 
 ];
