@@ -35,6 +35,7 @@ function NewEntry() {
   const [notes, setNotes] = useState("");
   const [photoFile, setPhotoFile] = useState<File | null>(null);
   const [crop, setCrop] = useState<string>("");
+  const [listingId, setListingId] = useState<string>("");
 
   // sync default parcel once loaded
   if (!parcelId && parcels[0]) setParcelId(parcels[0].id);
@@ -54,6 +55,17 @@ function NewEntry() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [parcelId, parcelCrops.join("|")]);
+
+  // Aynı parsel+üründe kaç batch (draft/active) var? Kullanıcı hangisine bağlayacağını seçer.
+  const { data: batches = [] } = useExistingBatches(parcelId || null, crop || null);
+  useEffect(() => {
+    // Varsayılan: birden fazla batch varsa en son eklenen (dizi sonu) otomatik seçili,
+    // tek batch varsa onu seç, hiç yoksa boş kalsın (trigger tek batch'i zaten link'ler).
+    if (batches.length === 0) { setListingId(""); return; }
+    const preferred = batches[batches.length - 1].id;
+    setListingId((prev) => (prev && batches.some((b) => b.id === prev) ? prev : preferred));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [batches.map((b) => b.id).join("|")]);
 
   const save = async () => {
     if (!parcelId) return toast.error("Lütfen bir parsel seçin");
