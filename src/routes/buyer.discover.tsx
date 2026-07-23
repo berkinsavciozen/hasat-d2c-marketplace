@@ -8,7 +8,7 @@ import { CoverageBadge } from "@/components/hasat/CoverageBadge";
 import { formatTRY, formatCrop } from "@/lib/hasat/format";
 import {
   useActiveListings,
-  useListingStock,
+  
   useBuyerOffers,
   useMySubscriptions,
   usePriceAlerts,
@@ -216,10 +216,32 @@ function Discover() {
             )
           ) : (
             <div className="grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
-              {filtered.map((l) => (
-                <ListingCard key={l.id} listing={l} onOpen={() => navigate({ to: "/buyer/offer/$listingId", params: { listingId: l.id } })} />
-              ))}
+              {(() => {
+                type Row = typeof filtered[number];
+                const groups = new Map<string, { key: string; farmerId: string; crop: string; items: Row[] }>();
+                for (const l of filtered) {
+                  const farmerId = l.producerId ?? "";
+                  const cropKey = (l.crop ?? "").toLocaleLowerCase("tr-TR");
+                  const key = `${farmerId}::${cropKey}`;
+                  const cur = groups.get(key) ?? { key, farmerId, crop: cropKey, items: [] };
+                  cur.items.push(l);
+                  groups.set(key, cur);
+                }
+                return Array.from(groups.values()).map((g) => (
+                  <ListingGroupCard
+                    key={g.key}
+                    items={g.items}
+                    onOpen={() =>
+                      g.items.length === 1
+                        ? navigate({ to: "/buyer/offer/$listingId", params: { listingId: g.items[0].id } })
+                        : navigate({ to: "/buyer/product/$farmerId/$crop", params: { farmerId: g.farmerId, crop: g.crop } })
+                    }
+                  />
+                ));
+              })()}
             </div>
+
+
 
           )}
         </div>
@@ -352,10 +374,19 @@ function CropRequestModal({ initialCrop, onClose }: { initialCrop: string; onClo
 
 type ListingRow = ReturnType<typeof useActiveListings>["data"] extends (infer U)[] | undefined ? U : never;
 
-function ListingCard({ listing: l, onOpen }: { listing: ListingRow; onOpen: () => void }) {
-  const { data: stock } = useListingStock(l.id);
-  const soldOut = !!stock && stock.available <= 0;
-  const farmerSlug = l.farmerName ? (slugifyFarmer(l.farmerName) || (l.producerId ?? "")) : (l.producerId ?? "");
+function ListingGroupCard({ items, onOpen }: { items: ListingRow[]; onOpen: () => void }) {
+  // Sum of base quantities across batches (approx; product-detail page shows accurate live stock per batch).
+  const totalAvail = items.reduce((s, l) => s + Number(l.quantity ?? 0), 0);
+  const soldOut = totalAvail <= 0;
+  const first = items[0];
+
+  const farmerSlug = first.farmerName ? (slugifyFarmer(first.farmerName) || (first.producerId ?? "")) : (first.producerId ?? "");
+  const prices = items.map((l) => l.pricePerUnit);
+  const minP = Math.min(...prices);
+  const maxP = Math.max(...prices);
+  const priceLabel = minP === maxP
+    ? `${formatTRY(minP)}/${first.unit}`
+    : `${formatTRY(minP)}–${formatTRY(maxP)}/${first.unit}`;
   return (
     <div
       role="button"
@@ -365,54 +396,57 @@ function ListingCard({ listing: l, onOpen }: { listing: ListingRow; onOpen: () =
       className={`text-left rounded-2xl bg-card border overflow-hidden hover:border-saffron transition ${soldOut ? "opacity-60 cursor-not-allowed" : "cursor-pointer"}`}
     >
       <div className="h-28 relative overflow-hidden" style={
-        l.photos && l.photos[0]
+        first.photos && first.photos[0]
           ? undefined
           : { background: `repeating-linear-gradient(45deg, color-mix(in oklab, var(--saffron) 30%, var(--dark)) 0 12px, color-mix(in oklab, var(--saffron) 20%, var(--dark)) 12px 24px)` }
       }>
-        {l.photos && l.photos[0] && (
-          <img src={l.photos[0]} alt={formatCrop(l.crop)} className="absolute inset-0 h-full w-full object-cover" />
+        {first.photos && first.photos[0] && (
+          <img src={first.photos[0]} alt={formatCrop(first.crop)} className="absolute inset-0 h-full w-full object-cover" />
         )}
         <div className="absolute inset-0" style={{ background: "linear-gradient(180deg, transparent 40%, rgba(0,0,0,0.55))" }} />
-        <div className="absolute top-2 left-2 inline-flex items-center gap-1 rounded-full bg-saffron text-white text-[10px] font-bold px-2 py-0.5">
-          Kalite {l.quality}
-        </div>
+        {items.length > 1 && (
+          <div className="absolute top-2 left-2 inline-flex items-center gap-1 rounded-full bg-saffron text-white text-[10px] font-bold px-2 py-0.5">
+            {items.length} parti
+          </div>
+        )}
         {soldOut && (
           <div className="absolute top-2 right-2 inline-flex items-center rounded-full bg-hred text-white text-[10px] font-bold px-2 py-0.5">
             Tükendi
           </div>
         )}
         <div className="absolute bottom-2 left-3 right-3 text-white">
-          <div className="font-serif text-base leading-tight line-clamp-2">{cropEmoji(l.crop)} {formatCrop(l.crop)}</div>
+          <div className="font-serif text-base leading-tight line-clamp-2">{cropEmoji(first.crop)} {formatCrop(first.crop)}</div>
           <div className="text-[11px] opacity-80 truncate">
             {farmerSlug ? (
               <Link to="/s/$slug" params={{ slug: farmerSlug }} onClick={(e) => e.stopPropagation()} className="underline hover:text-saffron">
-                {l.farmerName}
+                {first.farmerName}
               </Link>
-            ) : l.farmerName}
-            {l.farmerCity ? ` · ${l.farmerCity}` : ""}
+            ) : first.farmerName}
+            {first.farmerCity ? ` · ${first.farmerCity}` : ""}
           </div>
         </div>
       </div>
       <div className="p-4">
         <div className="flex items-center justify-between gap-2">
           <div className="text-xs text-hmuted">
-            {stock ? `Mevcut ${stock.available} ${l.unit}` : `Mevcut ${l.quantity} ${l.unit}`} · Min {l.minOrder} {l.unit}
+            Toplam mevcut {totalAvail} {first.unit}
           </div>
-          <CoverageBadge listingId={l.id} crop={l.crop} compact />
+          <CoverageBadge listingId={first.id} crop={first.crop} compact />
         </div>
         <div className="mt-3 flex items-center justify-between gap-2">
           <div style={{ fontFamily: "Courier New, monospace", color: "var(--saffron)" }} className="text-base truncate min-w-0">
-            {formatTRY(l.pricePerUnit)}<span className="text-xs text-hmuted">/{l.unit}</span>
+            {priceLabel}
           </div>
           <span
             className="shrink-0 inline-flex items-center rounded-full px-4 py-1.5 text-xs text-white min-h-[48px]"
             style={{ background: soldOut ? "var(--hmuted)" : "var(--saffron)" }}
           >
-            {soldOut ? "Tükendi" : "Teklif Ver →"}
+            {soldOut ? "Tükendi" : (items.length > 1 ? "Partileri Gör →" : "Teklif Ver →")}
           </span>
         </div>
       </div>
     </div>
   );
 }
+
 

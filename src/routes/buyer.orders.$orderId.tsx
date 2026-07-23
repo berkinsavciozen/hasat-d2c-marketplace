@@ -10,7 +10,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import { formatTRY, formatCrop } from "@/lib/hasat/format";
-import { useBuyerOrders, useOrderTimeline, useConfirmDelivery, useOpenDispute, useOrderDispute, useOrderReviews, useCreateReview } from "@/lib/hasat/queries";
+import { useBuyerOrders, useOrderTimeline, useConfirmDelivery, useOpenDispute, useOrderDispute, useOrderReviews, useCreateReview, useOrderOfferId } from "@/lib/hasat/queries";
+import { OfferBatchBreakdown } from "@/components/hasat/OfferBatchBreakdown";
+
 import { useAuthUserId } from "@/lib/hasat/queries";
 import { whatsappUrl } from "@/lib/hasat/whatsapp";
 
@@ -111,6 +113,10 @@ function OrderTracker() {
           <h2 className="font-serif text-lg mb-4">Durum</h2>
           <OrderTimeline order={orderWithTimeline} />
         </div>
+
+        <OrderOfferBreakdown orderId={order.id} />
+
+
 
         {canReview && (
           <div className="rounded-2xl bg-card border p-4">
@@ -255,4 +261,10 @@ function OrderTracker() {
       />
     </div>
   );
+}
+
+function OrderOfferBreakdown({ orderId }: { orderId: string }) {
+  const { data: offerId } = useOrderOfferId(orderId);
+  if (!offerId) return null;
+  return <OfferBatchBreakdown offerId={offerId} />;
 }

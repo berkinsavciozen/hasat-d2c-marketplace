@@ -61,6 +61,7 @@ import { Route as BuyerOfferListingIdRouteImport } from './routes/buyer.offer.$l
 import { Route as BuyerNegotiationOfferIdRouteImport } from './routes/buyer.negotiation.$offerId'
 import { Route as Char91DotmcpChar93InvokeToolToolRouteImport } from './routes/[.mcp]/invoke-tool/$tool'
 import { Route as DotlovableOauthConsentRouteImport } from './routes/[.]lovable.oauth.consent'
+import { Route as BuyerProductFarmerIdCropRouteImport } from './routes/buyer.product.$farmerId.$crop'
 
 const TermsRoute = TermsRouteImport.update({
   id: '/terms',
@@ -326,6 +327,12 @@ const DotlovableOauthConsentRoute = DotlovableOauthConsentRouteImport.update({
   path: '/.lovable/oauth/consent',
   getParentRoute: () => rootRouteImport,
 } as any)
+const BuyerProductFarmerIdCropRoute =
+  BuyerProductFarmerIdCropRouteImport.update({
+    id: '/product/$farmerId/$crop',
+    path: '/product/$farmerId/$crop',
+    getParentRoute: () => BuyerRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -380,6 +387,7 @@ export interface FileRoutesByFullPath {
   '/farmer/journal/': typeof FarmerJournalIndexRoute
   '/farmer/orders/': typeof FarmerOrdersIndexRoute
   '/farmer/prices/': typeof FarmerPricesIndexRoute
+  '/buyer/product/$farmerId/$crop': typeof BuyerProductFarmerIdCropRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -433,6 +441,7 @@ export interface FileRoutesByTo {
   '/farmer/journal': typeof FarmerJournalIndexRoute
   '/farmer/orders': typeof FarmerOrdersIndexRoute
   '/farmer/prices': typeof FarmerPricesIndexRoute
+  '/buyer/product/$farmerId/$crop': typeof BuyerProductFarmerIdCropRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -488,6 +497,7 @@ export interface FileRoutesById {
   '/farmer/journal/': typeof FarmerJournalIndexRoute
   '/farmer/orders/': typeof FarmerOrdersIndexRoute
   '/farmer/prices/': typeof FarmerPricesIndexRoute
+  '/buyer/product/$farmerId/$crop': typeof BuyerProductFarmerIdCropRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -544,6 +554,7 @@ export interface FileRouteTypes {
     | '/farmer/journal/'
     | '/farmer/orders/'
     | '/farmer/prices/'
+    | '/buyer/product/$farmerId/$crop'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -597,6 +608,7 @@ export interface FileRouteTypes {
     | '/farmer/journal'
     | '/farmer/orders'
     | '/farmer/prices'
+    | '/buyer/product/$farmerId/$crop'
   id:
     | '__root__'
     | '/'
@@ -651,6 +663,7 @@ export interface FileRouteTypes {
     | '/farmer/journal/'
     | '/farmer/orders/'
     | '/farmer/prices/'
+    | '/buyer/product/$farmerId/$crop'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -1040,6 +1053,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DotlovableOauthConsentRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/buyer/product/$farmerId/$crop': {
+      id: '/buyer/product/$farmerId/$crop'
+      path: '/product/$farmerId/$crop'
+      fullPath: '/buyer/product/$farmerId/$crop'
+      preLoaderRoute: typeof BuyerProductFarmerIdCropRouteImport
+      parentRoute: typeof BuyerRoute
+    }
   }
 }
 
@@ -1073,6 +1093,7 @@ interface BuyerRouteChildren {
   BuyerSettingsNotifsRoute: typeof BuyerSettingsNotifsRoute
   BuyerSubscriptionProducerIdRoute: typeof BuyerSubscriptionProducerIdRoute
   BuyerPricesIndexRoute: typeof BuyerPricesIndexRoute
+  BuyerProductFarmerIdCropRoute: typeof BuyerProductFarmerIdCropRoute
 }
 
 const BuyerRouteChildren: BuyerRouteChildren = {
@@ -1093,6 +1114,7 @@ const BuyerRouteChildren: BuyerRouteChildren = {
   BuyerSettingsNotifsRoute: BuyerSettingsNotifsRoute,
   BuyerSubscriptionProducerIdRoute: BuyerSubscriptionProducerIdRoute,
   BuyerPricesIndexRoute: BuyerPricesIndexRoute,
+  BuyerProductFarmerIdCropRoute: BuyerProductFarmerIdCropRoute,
 }
 
 const BuyerRouteWithChildren = BuyerRoute._addFileChildren(BuyerRouteChildren)

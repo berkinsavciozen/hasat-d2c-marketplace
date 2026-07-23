@@ -13,6 +13,8 @@ import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import type { Offer } from "@/lib/hasat/types";
 import { NegotiationTimeline } from "@/components/hasat/NegotiationTimeline";
+import { OfferBatchBreakdown } from "@/components/hasat/OfferBatchBreakdown";
+
 
 export const Route = createFileRoute("/buyer/negotiation/$offerId")({
   head: () => ({ meta: [{ title: "Müzakere — Hasat" }] }),
@@ -98,6 +100,10 @@ function Negotiation() {
             {diff > 0 ? "+" : ""}{formatTRY(diff)}
           </div>
         </div>
+
+        <OfferBatchBreakdown offerId={offer.id} />
+
+
 
 
         <div className="fixed inset-x-0 bottom-0 z-30 grid grid-cols-3 gap-1.5 border-t bg-background p-3 pb-safe md:static md:border-0 md:bg-transparent md:p-0 md:gap-2">
