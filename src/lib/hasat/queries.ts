@@ -849,16 +849,17 @@ export function useCreateListing() {
  */
 export function useExistingBatches(parcelId: string | null | undefined, crop: string | null | undefined) {
   const userId = useAuthUserId();
+  const normalizedCrop = crop ? crop.toLocaleLowerCase("tr-TR").trim() : null;
   return useQuery({
-    queryKey: ["existingBatches", userId, parcelId ?? null, crop ?? null],
-    enabled: !!userId && !!parcelId && !!crop,
+    queryKey: ["existingBatches", userId, parcelId ?? null, normalizedCrop],
+    enabled: !!userId && !!parcelId && !!normalizedCrop,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("listings")
         .select("*")
         .eq("farmer_id", userId!)
         .eq("parcel_id", parcelId!)
-        .eq("crop", crop!)
+        .eq("crop", normalizedCrop!)
         .in("status", ["draft", "active"])
         .order("created_at", { ascending: true });
       if (error) throw error;

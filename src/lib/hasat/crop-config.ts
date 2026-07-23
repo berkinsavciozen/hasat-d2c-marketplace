@@ -108,7 +108,7 @@ export function useCropOptions() {
   const q = useCropConfigs();
   const options: CropOption[] = (q.data ?? [])
     .map((c) => ({
-      value: c.display_name,
+      value: c.crop, // kanonik slug (örn. "safran") — DB'de listings.crop, price_history vs. hep slug
       label: c.display_name,
       emoji: cropEmoji(c.display_name, c),
       category_group: c.category_group,
