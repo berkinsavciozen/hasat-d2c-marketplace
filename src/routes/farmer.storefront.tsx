@@ -261,6 +261,9 @@ function ListingCard({ listing, muted, draft, parcelLabel, onEdit, onRemove }: {
         <div className="flex-1">
           <div className="flex items-center gap-2 flex-wrap">
             <div className="font-medium">{formatCrop(listing.crop)}</div>
+            {listing.batchName?.trim() && (
+              <span className="rounded-full bg-cream px-2 py-0.5 text-[10px] font-medium text-hmuted">📦 {listing.batchName}</span>
+            )}
             <span className="rounded-full px-2 py-0.5 text-[10px] font-medium text-white" style={{ background: statusColor }}>{statusLabel}</span>
             <StockBadge listingId={listing.id} unit={listing.unit} />
           </div>
