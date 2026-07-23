@@ -231,7 +231,9 @@ export function useCreateEntry() {
   const qc = useQueryClient();
   const userId = useAuthUserId();
   return useMutation({
-    mutationFn: async (e: Omit<HarvestEntry, "id"> & { photoFile?: File }) => {
+    mutationFn: async (
+      e: Omit<HarvestEntry, "id"> & { photoFile?: File; listingId?: string | null }
+    ) => {
       if (!userId) throw new Error("Oturum bulunamadı");
       const { data, error } = await supabase.from("harvest_entries").insert({
         farmer_id: userId,
@@ -258,6 +260,18 @@ export function useCreateEntry() {
           .single();
         if (upd.error) throw upd.error;
         row = upd.data;
+      }
+      // Kullanıcı belirli bir batch (listing) seçtiyse bu satırı frontend link'ler.
+      // Trigger tarafı: birden fazla eşleşme varsa hiçbir şey yapmaz; tek eşleşme varsa
+      // aynı listing_id'yi eklemeye çalışır — ON CONFLICT DO NOTHING ile duplicate önlenir.
+      if (e.listingId) {
+        const linkRes = await supabase
+          .from("listing_harvest_entries")
+          .insert({ listing_id: e.listingId, harvest_entry_id: data.id });
+        if (linkRes.error && !String(linkRes.error.message).includes("duplicate")) {
+          // link hatası, kaydı bozmadan sadece uyarı ver
+          console.warn("listing_harvest_entries link failed:", linkRes.error.message);
+        }
       }
       return dbToEntry(row);
     },
@@ -523,6 +537,7 @@ export function dbToListing(r: any): Listing {
     producerId: r.farmer_id,
     parcelId: r.parcel_id ?? null,
     description: r.description ?? undefined,
+    batchName: r.batch_name ?? null,
   };
 }
 
@@ -773,6 +788,9 @@ export interface ListingInput {
   quality: "A" | "B" | "C";
   description?: string;
   harvestEntryId?: string | null;
+  parcelId?: string | null;
+  batchName?: string | null;
+  status?: "draft" | "active";
 }
 
 async function uploadListingPhotos(userId: string, listingId: string, files: File[]): Promise<string[]> {
@@ -796,6 +814,7 @@ export function useCreateListing() {
       const { data, error } = await supabase.from("listings").insert({
         farmer_id: userId,
         harvest_entry_id: l.harvestEntryId ?? null,
+        parcel_id: l.parcelId ?? null,
         crop: l.crop,
         quantity: l.quantity,
         unit: l.unit,
@@ -803,7 +822,8 @@ export function useCreateListing() {
         min_order: l.minOrder,
         quality: l.quality,
         description: l.description ?? null,
-        status: "active",
+        batch_name: l.batchName ?? null,
+        status: l.status ?? "active",
       }).select("*").single();
       if (error) throw error;
       let row = data;
@@ -818,6 +838,31 @@ export function useCreateListing() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["farmerListings", userId] });
       qc.invalidateQueries({ queryKey: ["activeListings"] });
+      qc.invalidateQueries({ queryKey: ["existingBatches"] });
+    },
+  });
+}
+
+/**
+ * Same parcel+crop için mevcut draft/active listing (batch) listesi.
+ * ListingSheet, kullanıcıya duplicate uyarısı gösterirken bunu kullanır.
+ */
+export function useExistingBatches(parcelId: string | null | undefined, crop: string | null | undefined) {
+  const userId = useAuthUserId();
+  return useQuery({
+    queryKey: ["existingBatches", userId, parcelId ?? null, crop ?? null],
+    enabled: !!userId && !!parcelId && !!crop,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("listings")
+        .select("*")
+        .eq("farmer_id", userId!)
+        .eq("parcel_id", parcelId!)
+        .eq("crop", crop!)
+        .in("status", ["draft", "active"])
+        .order("created_at", { ascending: true });
+      if (error) throw error;
+      return (data ?? []).map(dbToListing);
     },
   });
 }
@@ -836,6 +881,8 @@ export function useUpdateListing() {
       if (patch.quality !== undefined) dbPatch.quality = patch.quality;
       if (patch.status !== undefined) dbPatch.status = patch.status;
       if (patch.description !== undefined) dbPatch.description = patch.description;
+      if (patch.batchName !== undefined) dbPatch.batch_name = patch.batchName;
+      if (patch.parcelId !== undefined) dbPatch.parcel_id = patch.parcelId;
       if (existingPhotos !== undefined || (photoFiles && photoFiles.length > 0)) {
         const kept = existingPhotos ?? [];
         const uploaded = userId && photoFiles && photoFiles.length > 0

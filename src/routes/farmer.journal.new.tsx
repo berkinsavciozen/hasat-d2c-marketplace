@@ -1,7 +1,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import { ArrowLeft, Camera, X } from "lucide-react";
-import { useParcels, useCreateEntry } from "@/lib/hasat/queries";
+import { useParcels, useCreateEntry, useExistingBatches } from "@/lib/hasat/queries";
 import {
   WORK_TYPES,
   WORK_TO_STEP_KEY,
@@ -35,6 +35,7 @@ function NewEntry() {
   const [notes, setNotes] = useState("");
   const [photoFile, setPhotoFile] = useState<File | null>(null);
   const [crop, setCrop] = useState<string>("");
+  const [listingId, setListingId] = useState<string>("");
 
   // sync default parcel once loaded
   if (!parcelId && parcels[0]) setParcelId(parcels[0].id);
@@ -55,6 +56,17 @@ function NewEntry() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [parcelId, parcelCrops.join("|")]);
 
+  // Aynı parsel+üründe kaç batch (draft/active) var? Kullanıcı hangisine bağlayacağını seçer.
+  const { data: batches = [] } = useExistingBatches(parcelId || null, crop || null);
+  useEffect(() => {
+    // Varsayılan: birden fazla batch varsa en son eklenen (dizi sonu) otomatik seçili,
+    // tek batch varsa onu seç, hiç yoksa boş kalsın (trigger tek batch'i zaten link'ler).
+    if (batches.length === 0) { setListingId(""); return; }
+    const preferred = batches[batches.length - 1].id;
+    setListingId((prev) => (prev && batches.some((b) => b.id === prev) ? prev : preferred));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [batches.map((b) => b.id).join("|")]);
+
   const save = async () => {
     if (!parcelId) return toast.error("Lütfen bir parsel seçin");
     if (!crop) return toast.error("Lütfen bir ürün seçin");
@@ -74,6 +86,8 @@ function NewEntry() {
         costs: { ...ZERO_COSTS },
         pricePerUnit: 0,
         step_key: WORK_TO_STEP_KEY[work] ?? null,
+        // Birden fazla batch varsa kullanıcı seçtiği batch'e bağlanır (trigger otomatik bağlamaz).
+        listingId: batches.length > 1 && listingId ? listingId : null,
       });
       toast.success("Kayıt eklendi ✓");
       navigate({ to: "/farmer/journal" });
@@ -154,6 +168,35 @@ function NewEntry() {
               </div>
             </div>
           )}
+
+          {batches.length > 1 && (
+            <div>
+              <label className="text-xs text-hmuted">Batch (parti)</label>
+              <div className="mt-2 -mx-4 md:mx-0 px-4 md:px-0 overflow-x-auto">
+                <div className="flex gap-2 min-w-max md:flex-wrap">
+                  {batches.map((b, i) => {
+                    const active = b.id === listingId;
+                    const label = b.batchName?.trim() || `Batch #${i + 1}`;
+                    return (
+                      <button
+                        key={b.id}
+                        type="button"
+                        onClick={() => setListingId(b.id)}
+                        className={`rounded-full border px-4 py-2 text-sm whitespace-nowrap transition ${
+                          active ? "bg-sage text-white border-sage" : "border-border text-dark"
+                        }`}
+                        style={!active ? { background: "var(--cream)" } : undefined}
+                      >
+                        📦 {label} <span className="opacity-70 text-[10px] ml-1">{b.status}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+              <div className="mt-1 text-[10px] text-hmuted">Bu kayıt seçili batch'e bağlanacak.</div>
+            </div>
+          )}
+
 
           <div>
             <label className="text-xs text-hmuted">Tarih</label>

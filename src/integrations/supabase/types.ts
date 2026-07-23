@@ -731,6 +731,7 @@ export type Database = {
       }
       listings: {
         Row: {
+          batch_name: string | null
           created_at: string
           crop: string
           description: string | null
@@ -748,6 +749,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          batch_name?: string | null
           created_at?: string
           crop: string
           description?: string | null
@@ -765,6 +767,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          batch_name?: string | null
           created_at?: string
           crop?: string
           description?: string | null

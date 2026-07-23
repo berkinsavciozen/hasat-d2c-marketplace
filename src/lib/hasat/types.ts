@@ -53,6 +53,7 @@ export interface Listing {
   producerId?: string;
   parcelId?: string | null;
   description?: string;
+  batchName?: string | null;
 }
 
 export interface PricePoint {
