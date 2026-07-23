@@ -2184,6 +2184,7 @@ export type Database = {
         }[]
       }
       increment_ai_usage: { Args: { _user_id: string }; Returns: number }
+      send_subscription_harvest_reminders: { Args: never; Returns: undefined }
     }
     Enums: {
       certification_type:
