@@ -2003,7 +2003,7 @@ export function useUpdateSubscriptionSchedule() {
       if (input.estimatedQty !== undefined) patch.estimated_qty = input.estimatedQty;
       const { error } = await supabase
         .from("harvest_subscriptions")
-        .update(patch)
+        .update(patch as any)
         .eq("id", input.id)
         .eq("farmer_id", userId);
       if (error) throw error;
