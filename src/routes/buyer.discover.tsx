@@ -227,17 +227,22 @@ function Discover() {
                   cur.items.push(l);
                   groups.set(key, cur);
                 }
-                return Array.from(groups.values()).map((g) => (
-                  <ListingGroupCard
-                    key={g.key}
-                    items={g.items}
-                    onOpen={() =>
-                      g.items.length === 1
-                        ? navigate({ to: "/buyer/offer/$listingId", params: { listingId: g.items[0].id } })
-                        : navigate({ to: "/buyer/product/$farmerId/$crop", params: { farmerId: g.farmerId, crop: g.crop } })
-                    }
-                  />
-                ));
+                return Array.from(groups.values()).map((g) => {
+                  const cfg = findCropConfig(cropMap, g.crop);
+                  const canonicalUnit = cfg?.default_unit ?? g.items[0].unit;
+                  return (
+                    <ListingGroupCard
+                      key={g.key}
+                      items={g.items}
+                      canonicalUnit={canonicalUnit}
+                      onOpen={() =>
+                        g.items.length === 1
+                          ? navigate({ to: "/buyer/offer/$listingId", params: { listingId: g.items[0].id } })
+                          : navigate({ to: "/buyer/product/$farmerId/$crop", params: { farmerId: g.farmerId, crop: g.crop } })
+                      }
+                    />
+                  );
+                });
               })()}
             </div>
 
