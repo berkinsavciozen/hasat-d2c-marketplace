@@ -120,7 +120,7 @@ function FarmerShell() {
         <nav className="flex flex-col gap-1 mt-2">
           {[...tabs, ...sidebarExtras].map(({ to, label, icon: Icon }) => {
             const active = pathname.startsWith(to);
-            const badge = to === "/farmer/orders" ? pendingCount : 0;
+            const badge = to === "/farmer/orders" ? pendingCount : to === "/farmer/subscriptions" ? pendingSubs : 0;
             return (
 
               <Link
