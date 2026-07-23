@@ -169,6 +169,35 @@ function NewEntry() {
             </div>
           )}
 
+          {batches.length > 1 && (
+            <div>
+              <label className="text-xs text-hmuted">Batch (parti)</label>
+              <div className="mt-2 -mx-4 md:mx-0 px-4 md:px-0 overflow-x-auto">
+                <div className="flex gap-2 min-w-max md:flex-wrap">
+                  {batches.map((b, i) => {
+                    const active = b.id === listingId;
+                    const label = b.batchName?.trim() || `Batch #${i + 1}`;
+                    return (
+                      <button
+                        key={b.id}
+                        type="button"
+                        onClick={() => setListingId(b.id)}
+                        className={`rounded-full border px-4 py-2 text-sm whitespace-nowrap transition ${
+                          active ? "bg-sage text-white border-sage" : "border-border text-dark"
+                        }`}
+                        style={!active ? { background: "var(--cream)" } : undefined}
+                      >
+                        📦 {label} <span className="opacity-70 text-[10px] ml-1">{b.status}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+              <div className="mt-1 text-[10px] text-hmuted">Bu kayıt seçili batch'e bağlanacak.</div>
+            </div>
+          )}
+
+
           <div>
             <label className="text-xs text-hmuted">Tarih</label>
             <input
