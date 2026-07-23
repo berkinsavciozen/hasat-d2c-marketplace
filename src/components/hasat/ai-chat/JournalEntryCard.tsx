@@ -148,24 +148,23 @@ export function JournalEntryCard({ initial }: Props) {
     if (!userId) return;
     if (!validate()) return;
     setSaveState({ kind: "saving" });
-    const { error } = await supabase.from("harvest_entries").insert({
-      farmer_id: userId,
-      parcel_id: parcelId,
-      crop: crop.trim(),
-      quantity: Number(quantity),
-      unit,
-      quality,
-      notes: notes.trim() || null,
-      costs: buildCostsPayload(costRows) as any,
-      harvest_date: date,
-      photo_urls: [],
-    });
-    if (error) {
+    try {
+      await createEntry.mutateAsync({
+        parcelId,
+        crop: crop.trim(),
+        quantity: Number(quantity),
+        unit,
+        quality,
+        notes: notes.trim(),
+        costs: buildCostsPayload(costRows) as any,
+        date,
+        photos: [],
+        listingId: batches.length > 1 && listingId ? listingId : null,
+      } as any);
+      setSaveState({ kind: "saved", updated: false });
+    } catch {
       setSaveState({ kind: "error", message: "Kayıt sırasında bir hata oluştu. Tekrar deneyin." });
-      return;
     }
-    qc.invalidateQueries({ queryKey: ["entries", userId] });
-    setSaveState({ kind: "saved", updated: false });
   };
 
   const doUpdate = async () => {
