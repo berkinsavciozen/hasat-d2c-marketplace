@@ -438,7 +438,7 @@ function ListingGroupCard({ items, canonicalUnit, onOpen }: { items: ListingRow[
       <div className="p-4">
         <div className="flex items-center justify-between gap-2">
           <div className="text-xs text-hmuted">
-            Toplam mevcut {totalAvail} {first.unit}
+            Toplam mevcut {Number(totalAvail.toFixed(2))} {canonicalUnit}
           </div>
           <CoverageBadge listingId={first.id} crop={first.crop} compact />
         </div>
