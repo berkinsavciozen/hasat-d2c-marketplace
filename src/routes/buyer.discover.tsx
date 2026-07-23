@@ -8,7 +8,7 @@ import { CoverageBadge } from "@/components/hasat/CoverageBadge";
 import { formatTRY, formatCrop } from "@/lib/hasat/format";
 import {
   useActiveListings,
-  useListingStock,
+  
   useBuyerOffers,
   useMySubscriptions,
   usePriceAlerts,
