@@ -9,10 +9,22 @@ const CORS = {
 };
 
 // notif_prefs has per-event SMS columns; map incoming `event` to the right column.
+// NOTE: Keep this map in sync with the CASE expression in the SQL `dispatch_sms(_user_id, _event, _message)`
+// function. If you add/remove an event in one, mirror the change in the other.
 const COL: Record<string, string> = {
   new_offer: "new_offer_sms",
   price_alert: "price_alert_sms",
   harvest_time: "harvest_time_sms",
+  offer_accepted: "offer_accepted_sms",
+  payment_confirmed: "payment_confirmed_sms",
+  order_shipped: "order_shipped_sms",
+  order_delivered: "order_delivered_sms",
+  order_cancelled: "order_cancelled_sms",
+  dispute_opened: "dispute_opened_sms",
+  crop_request_match: "crop_request_match_sms",
+  subscription_new: "subscription_new_sms",
+  subscription_accepted: "subscription_accepted_sms",
+  subscription_rejected: "subscription_rejected_sms",
 };
 
 serve(async (req) => {
