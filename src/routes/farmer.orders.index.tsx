@@ -2,7 +2,8 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
 
 import { FarmerHeader } from "./farmer";
-import { useFarmerOffers, useUpdateOfferStatus, useFarmerOrders, useCounterOffer, useConfirmTransferReceived, useMarkShipped, useCancelOrder, useOrderReviews, useCreateReview, useAuthUserId, useBuyerRatingSummary } from "@/lib/hasat/queries";
+import { useFarmerOffers, useUpdateOfferStatus, useFarmerOrders, useCounterOffer, useConfirmTransferReceived, useMarkShipped, useCancelOrder, useOrderReviews, useCreateReview, useAuthUserId, useBuyerRatingSummary, useOrderOfferId } from "@/lib/hasat/queries";
+import { OfferBatchBreakdown } from "@/components/hasat/OfferBatchBreakdown";
 import { WaitingBanner } from "@/components/hasat/WaitingBanner";
 import { LoadingDots } from "@/components/hasat/LoadingDots";
 import { formatTRY, formatCrop } from "@/lib/hasat/format";
