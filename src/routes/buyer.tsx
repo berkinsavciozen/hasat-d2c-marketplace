@@ -5,8 +5,10 @@ import { useRealtimeSync, useAuthUserId } from "@/lib/hasat/queries";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 
 export const Route = createFileRoute("/buyer")({
-  beforeLoad: () => {
+  beforeLoad: ({ location }) => {
     if (typeof window === "undefined") return;
+    // Public exception: producer profile is viewable by guests (with limited CTAs).
+    if (location.pathname.startsWith("/buyer/producer/")) return;
     const raw = localStorage.getItem("hasat-store");
     if (!raw) throw redirect({ to: "/" });
     try {
@@ -18,6 +20,7 @@ export const Route = createFileRoute("/buyer")({
   },
   component: BuyerShell,
 });
+
 
 const tabs = [
   { to: "/buyer/discover", label: "Keşfet", icon: Search },
