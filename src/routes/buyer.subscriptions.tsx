@@ -24,11 +24,29 @@ export const Route = createFileRoute("/buyer/subscriptions")({
 });
 
 const STATUS_META: Record<string, { label: string; bg: string; fg: string }> = {
+  pending: { label: "Onay bekliyor", bg: "color-mix(in oklab, var(--lav) 22%, transparent)", fg: "var(--lav)" },
   active: { label: "Aktif", bg: "var(--saffron)", fg: "#fff" },
   paused: { label: "Duraklatıldı", bg: "color-mix(in oklab, var(--gold) 22%, transparent)", fg: "var(--gold)" },
-  completed: { label: "Tamamlandı", bg: "color-mix(in oklab, var(--sage) 22%, transparent)", fg: "var(--sage)" },
+  fulfilled: { label: "Tamamlandı", bg: "color-mix(in oklab, var(--sage) 22%, transparent)", fg: "var(--sage)" },
   cancelled: { label: "İptal", bg: "color-mix(in oklab, var(--hmuted) 18%, transparent)", fg: "var(--hmuted)" },
 };
+
+function FulfillmentBar({ id, target }: { id: string; target: number | null }) {
+  const { data } = useSubscriptionFulfillment(id);
+  if (!target || !data) return null;
+  const pct = Math.min(100, Math.round((data.deliveredQty / target) * 100));
+  return (
+    <div className="mt-3">
+      <div className="flex items-center justify-between text-[10px] text-hmuted uppercase tracking-wider mb-1">
+        <span>Teslim edildi</span>
+        <span>{data.deliveredQty.toFixed(0)} / {target} · {pct}%</span>
+      </div>
+      <div className="h-1.5 w-full rounded-full bg-muted overflow-hidden">
+        <div className="h-full" style={{ width: `${pct}%`, background: "var(--saffron)" }} />
+      </div>
+    </div>
+  );
+}
 
 function daysUntil(iso: string | null): string | null {
   if (!iso) return null;
