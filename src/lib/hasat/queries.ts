@@ -2922,6 +2922,9 @@ export interface NotifPrefsRow {
   order_cancelled_sms: boolean;
   dispute_opened_sms: boolean;
   crop_request_match_sms: boolean;
+  subscription_new_sms: boolean;
+  subscription_accepted_sms: boolean;
+  subscription_rejected_sms: boolean;
 }
 
 export type NotifPrefKey = keyof NotifPrefsRow;
