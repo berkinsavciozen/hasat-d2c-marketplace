@@ -99,6 +99,10 @@ function Negotiation() {
           </div>
         </div>
 
+        <OfferBatchBreakdown offerId={offer.id} />
+
+
+
 
         <div className="fixed inset-x-0 bottom-0 z-30 grid grid-cols-3 gap-1.5 border-t bg-background p-3 pb-safe md:static md:border-0 md:bg-transparent md:p-0 md:gap-2">
           <Button variant="outline" onClick={reject} className="border-hred/40 text-hred hover:bg-hred/5 px-2 text-xs sm:text-sm">Reddet</Button>
