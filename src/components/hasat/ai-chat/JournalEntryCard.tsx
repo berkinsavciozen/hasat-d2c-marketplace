@@ -125,6 +125,7 @@ export function JournalEntryCard({ initial }: Props) {
         .eq("farmer_id", userId)
         .eq("crop", c)
         .eq("harvest_date", date)
+        .is("journal_entry_type_id", null)
         .maybeSingle();
       if (cancelled) return;
       checkedKeyRef.current = key;

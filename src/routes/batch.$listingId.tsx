@@ -112,7 +112,7 @@ function BatchPage() {
                           {labelForStepKey(cfg, e.step_key)} · {new Date(e.date).toLocaleDateString("tr-TR")}
                         </div>
                         <div className="text-xs text-hmuted mt-0.5">
-                          {e.quantity} {e.unit} · Kalite {e.quality}
+                          {e.quantity > 0 ? `${e.quantity} ${e.unit} · ` : ""}Kalite {e.quality}
                           {backdated && e.createdAt ? ` · kayıt ${new Date(e.createdAt).toLocaleDateString("tr-TR")}` : ""}
                         </div>
                         {e.notes ? <div className="text-xs text-hmuted mt-0.5">{e.notes}</div> : null}

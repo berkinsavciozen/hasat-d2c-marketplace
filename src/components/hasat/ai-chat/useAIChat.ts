@@ -34,7 +34,8 @@ function ymd(): string { return new Date().toISOString().slice(0, 7); }
 async function fetchContextBlock(userId: string): Promise<string> {
   const [entries, listings, offers, parcels] = await Promise.all([
     supabase.from("harvest_entries").select("crop, quantity, unit, quality, harvest_date")
-      .eq("farmer_id", userId).order("harvest_date", { ascending: false }).limit(5),
+      .eq("farmer_id", userId).is("journal_entry_type_id", null)
+      .order("harvest_date", { ascending: false }).limit(5),
     supabase.from("listings").select("crop, quantity, price_per_unit, unit")
       .eq("farmer_id", userId).eq("status", "active").limit(10),
     supabase.from("offers").select("id, created_at, status, listing_id")
