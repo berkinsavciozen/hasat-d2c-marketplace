@@ -2667,6 +2667,13 @@ export function useCreateCropRequest() {
           .maybeSingle();
         const canonical: string = cfg?.crop ?? cfg?.display_name ?? cropName;
 
+        // Katalog boşluğu sinyali: alıcının aradığı ürün crop_config'te hiç yoksa Berkin'e anında haber ver.
+        if (!cfg) {
+          (supabase as any).functions.invoke("notify-admin", {
+            body: { message: `🛒 Katalogda olmayan ürün talebi: "${cropName}" (buyer)` },
+          }).catch((e: unknown) => console.warn("notify-admin (catalog gap) failed", e));
+        }
+
         const farmerIds = new Set<string>();
         const { data: listingRows } = await (supabase as any)
           .from("listings")
@@ -3655,6 +3662,38 @@ export function useCropGlossary(crop: string | null | undefined) {
         .eq("crop", crop!);
       if (error) throw error;
       return (data ?? []) as Array<{ term: string; explanation: string }>;
+    },
+  });
+}
+
+// ============= Yeni ürün türü talebi (P22-E, çiftçi tarafı) =============
+
+export function useCreateCropTypeRequest() {
+  const userId = useAuthUserId();
+  return useMutation({
+    mutationFn: async (input: {
+      cropName: string;
+      suggestedCategoryGroup?: string | null;
+      suggestedDefaultUnit?: string | null;
+      suggestedHarvestWindowStartMonth?: number | null;
+      suggestedHarvestWindowEndMonth?: number | null;
+      lifecycleNotes?: string | null;
+      note?: string | null;
+    }) => {
+      if (!userId) throw new Error("Giriş gerekli");
+      const { error } = await (supabase as any)
+        .from("crop_type_requests")
+        .insert({
+          requested_by: userId,
+          crop_name: input.cropName.trim(),
+          suggested_category_group: input.suggestedCategoryGroup?.trim() || null,
+          suggested_default_unit: input.suggestedDefaultUnit || null,
+          suggested_harvest_window_start_month: input.suggestedHarvestWindowStartMonth ?? null,
+          suggested_harvest_window_end_month: input.suggestedHarvestWindowEndMonth ?? null,
+          lifecycle_notes: input.lifecycleNotes?.trim() || null,
+          note: input.note?.trim() || null,
+        });
+      if (error) throw error;
     },
   });
 }

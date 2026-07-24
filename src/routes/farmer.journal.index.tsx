@@ -214,7 +214,7 @@ function Journal() {
                 <div>
                   <label className="text-xs text-hmuted">Ürün</label>
                   <div className="mt-1">
-                    <CropChips value={pCrops} onChange={setPCrops} />
+                    <CropChips value={pCrops} onChange={setPCrops} context="farmer" />
                   </div>
                 </div>
                 <div>
