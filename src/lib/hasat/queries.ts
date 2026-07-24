@@ -3392,3 +3392,140 @@ export function useSetDefaultAddress() {
   });
 }
 
+// ============= Journal customize (routines) =============
+
+export function useJournalThemes() {
+  return useQuery({
+    queryKey: ["journalThemes"],
+    queryFn: async () => {
+      const { data, error } = await (supabase as any)
+        .from("journal_themes")
+        .select("*")
+        .order("sort_order", { ascending: true });
+      if (error) throw error;
+      return (data ?? []) as Array<{
+        id: string; name: string; icon: string | null;
+        sort_order: number; crop: string | null;
+      }>;
+    },
+  });
+}
+
+export function useJournalEntryTypes(themeId: string | null | undefined) {
+  const userId = useAuthUserId();
+  return useQuery({
+    queryKey: ["journalEntryTypes", themeId, userId],
+    enabled: !!themeId,
+    queryFn: async () => {
+      const { data, error } = await (supabase as any)
+        .from("journal_entry_types")
+        .select("*")
+        .eq("theme_id", themeId!)
+        .or(`is_preset.eq.true,farmer_id.eq.${userId ?? "00000000-0000-0000-0000-000000000000"}`)
+        .order("is_preset", { ascending: false })
+        .order("sort_order", { ascending: true });
+      if (error) throw error;
+      return (data ?? []) as Array<{
+        id: string; theme_id: string; farmer_id: string | null;
+        crop: string | null; name: string; icon: string | null;
+        default_frequency_days: number | null; is_preset: boolean; sort_order: number;
+      }>;
+    },
+  });
+}
+
+export function useFarmerJournalPrefs() {
+  const userId = useAuthUserId();
+  return useQuery({
+    queryKey: ["farmerJournalPrefs", userId],
+    enabled: !!userId,
+    queryFn: async () => {
+      const { data, error } = await (supabase as any)
+        .from("farmer_journal_prefs")
+        .select("*")
+        .eq("farmer_id", userId!);
+      if (error) throw error;
+      const map: Record<string, {
+        id: string; entry_type_id: string; is_active: boolean;
+        frequency_days: number | null; threshold_note: string | null;
+      }> = {};
+      for (const r of (data ?? []) as any[]) map[r.entry_type_id] = r;
+      return map;
+    },
+  });
+}
+
+export function useToggleJournalPref() {
+  const qc = useQueryClient();
+  const userId = useAuthUserId();
+  return useMutation({
+    mutationFn: async (input: {
+      entry_type_id: string;
+      is_active: boolean;
+      frequency_days?: number | null;
+      threshold_note?: string | null;
+    }) => {
+      if (!userId) throw new Error("Giriş gerekli");
+      const payload: any = {
+        farmer_id: userId,
+        entry_type_id: input.entry_type_id,
+        is_active: input.is_active,
+      };
+      if (input.frequency_days !== undefined) payload.frequency_days = input.frequency_days;
+      if (input.threshold_note !== undefined) payload.threshold_note = input.threshold_note;
+      const { error } = await (supabase as any)
+        .from("farmer_journal_prefs")
+        .upsert(payload, { onConflict: "farmer_id,entry_type_id" });
+      if (error) throw error;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["farmerJournalPrefs", userId] }),
+  });
+}
+
+export function useCreateCustomEntryType() {
+  const qc = useQueryClient();
+  const userId = useAuthUserId();
+  return useMutation({
+    mutationFn: async (input: {
+      theme_id: string;
+      name: string;
+      icon?: string | null;
+      default_frequency_days?: number | null;
+    }) => {
+      if (!userId) throw new Error("Giriş gerekli");
+      const { data, error } = await (supabase as any)
+        .from("journal_entry_types")
+        .insert({
+          theme_id: input.theme_id,
+          farmer_id: userId,
+          name: input.name,
+          icon: input.icon ?? null,
+          default_frequency_days: input.default_frequency_days ?? null,
+          is_preset: false,
+          sort_order: 999,
+        })
+        .select("*")
+        .single();
+      if (error) throw error;
+      const { error: prefErr } = await (supabase as any)
+        .from("farmer_journal_prefs")
+        .upsert(
+          {
+            farmer_id: userId,
+            entry_type_id: (data as any).id,
+            is_active: true,
+            frequency_days: input.default_frequency_days ?? null,
+          },
+          { onConflict: "farmer_id,entry_type_id" },
+        );
+      if (prefErr) throw prefErr;
+      return data;
+    },
+    onSuccess: (_d, vars) => {
+      qc.invalidateQueries({ queryKey: ["journalEntryTypes", vars.theme_id, userId] });
+      qc.invalidateQueries({ queryKey: ["farmerJournalPrefs", userId] });
+    },
+  });
+}
+
+
