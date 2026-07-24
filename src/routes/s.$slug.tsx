@@ -190,30 +190,63 @@ function PublicStorefront() {
               Bu üreticinin şu anda aktif ürünü yok.
             </div>
           ) : (
-            listings.map((l: Listing) => (
-              <div
-                key={l.id}
-                className="flex items-center gap-3 rounded-2xl border bg-card p-4"
-              >
-                <div className="grid h-14 w-14 place-items-center rounded-xl bg-cream text-2xl overflow-hidden">
-                  {l.photos?.[0] ? (
-                    <img src={l.photos[0]} alt={formatCrop(l.crop)} className="h-14 w-14 object-cover" />
-                  ) : (
-                    cropEmoji(l.crop)
-                  )}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="font-medium">{formatCrop(l.crop)}</div>
-                  <div className="text-xs text-hmuted">
-                    {l.quantity} {l.unit} · Min {l.minOrder} {l.unit} · Kalite {l.quality}
+            listings.map((l: Listing) => {
+              const canOffer = isBuyer && !isOwnStorefront;
+              const handleClick = () => {
+                if (canOffer) {
+                  navigate({ to: "/buyer/offer/$listingId", params: { listingId: l.id } });
+                } else if (loggedIn === false) {
+                  navigate({ to: "/login", search: { role: "buyer" } as any });
+                }
+              };
+              const clickable = canOffer || loggedIn === false;
+              return (
+                <button
+                  key={l.id}
+                  type="button"
+                  onClick={clickable ? handleClick : undefined}
+                  disabled={!clickable}
+                  className="w-full flex items-center gap-3 rounded-2xl border bg-card p-4 text-left transition hover:border-saffron disabled:cursor-default disabled:hover:border-border min-h-[48px]"
+                >
+                  <div className="grid h-14 w-14 place-items-center rounded-xl bg-cream text-2xl overflow-hidden shrink-0">
+                    {l.photos?.[0] ? (
+                      <img src={l.photos[0]} alt={formatCrop(l.crop)} className="h-14 w-14 object-cover" />
+                    ) : (
+                      cropEmoji(l.crop)
+                    )}
                   </div>
-                  <div className="mt-1"><CoverageBadge listingId={l.id} crop={l.crop} compact /></div>
-                </div>
-                <div className="font-mono text-sm text-saffron whitespace-nowrap">
-                  {formatTRY(l.pricePerUnit)}/{l.unit}
-                </div>
-              </div>
-            ))
+                  <div className="flex-1 min-w-0">
+                    <div className="font-medium">{formatCrop(l.crop)}</div>
+                    <div className="text-xs text-hmuted">
+                      {l.quantity} {l.unit} · Min {l.minOrder} {l.unit} · Kalite {l.quality}
+                    </div>
+                    <div className="mt-1"><CoverageBadge listingId={l.id} crop={l.crop} compact /></div>
+                  </div>
+                  {loggedIn === false ? (
+                    <span
+                      className="rounded-full px-3 py-1.5 text-xs font-semibold whitespace-nowrap"
+                      style={{ background: "var(--saffron)", color: "var(--hwhite)" }}
+                    >
+                      Giriş yap
+                    </span>
+                  ) : (
+                    <div className="flex items-center gap-2 shrink-0">
+                      <div className="font-mono text-sm text-saffron whitespace-nowrap">
+                        {formatTRY(l.pricePerUnit)}/{l.unit}
+                      </div>
+                      {canOffer && (
+                        <span
+                          className="rounded-full px-3 py-1.5 text-xs font-semibold whitespace-nowrap"
+                          style={{ background: "var(--gold)", color: "var(--dark)" }}
+                        >
+                          Teklif Ver
+                        </span>
+                      )}
+                    </div>
+                  )}
+                </button>
+              );
+            })
           )}
         </section>
 
