@@ -232,7 +232,7 @@ export function useCreateEntry() {
   const userId = useAuthUserId();
   return useMutation({
     mutationFn: async (
-      e: Omit<HarvestEntry, "id"> & { photoFile?: File; listingId?: string | null }
+      e: Omit<HarvestEntry, "id"> & { photoFile?: File; listingId?: string | null; journalEntryTypeId?: string | null }
     ) => {
       if (!userId) throw new Error("Oturum bulunamadı");
       const { data, error } = await supabase.from("harvest_entries").insert({
@@ -247,7 +247,8 @@ export function useCreateEntry() {
         harvest_date: e.date,
         photo_urls: [],
         step_key: e.step_key ?? null,
-      }).select("*").single();
+        journal_entry_type_id: e.journalEntryTypeId ?? null,
+      } as any).select("*").single();
       if (error) throw error;
       let row = data;
       if (e.photoFile) {
@@ -3548,6 +3549,7 @@ export interface ActiveJournalPref {
     icon: string | null;
     crop: string | null;
     default_frequency_days: number | null;
+    work_type_key: string;
     theme: { id: string; name: string; icon: string | null; sort_order: number };
   };
 }
@@ -3560,7 +3562,7 @@ export function useActiveJournalPrefsDetailed() {
     queryFn: async (): Promise<ActiveJournalPref[]> => {
       const { data, error } = await (supabase as any)
         .from("farmer_journal_prefs")
-        .select("id, entry_type_id, frequency_days, threshold_note, journal_entry_types(id, name, icon, crop, default_frequency_days, journal_themes(id, name, icon, sort_order))")
+        .select("id, entry_type_id, frequency_days, threshold_note, journal_entry_types(id, name, icon, crop, default_frequency_days, work_type_key, journal_themes(id, name, icon, sort_order))")
         .eq("farmer_id", userId!)
         .eq("is_active", true);
       if (error) throw error;
@@ -3575,6 +3577,7 @@ export function useActiveJournalPrefsDetailed() {
           icon: r.journal_entry_types.icon,
           crop: r.journal_entry_types.crop,
           default_frequency_days: r.journal_entry_types.default_frequency_days,
+          work_type_key: r.journal_entry_types.work_type_key,
           theme: r.journal_entry_types.journal_themes,
         },
       }));
@@ -3582,71 +3585,30 @@ export function useActiveJournalPrefsDetailed() {
   });
 }
 
-/** Map of `${entry_type_id}:${parcel_id}:${crop}` -> latest performed_at (date string). */
-export function useCareEntriesLastPerformed() {
+/**
+ * Rutin bakım eylemleri artık ayrı bir tabloda değil, doğrudan günlükte (`harvest_entries`,
+ * `journal_entry_type_id` doluyken) tutulur — Rutin Bakım = günlüğe hızlı ekleme.
+ * Map: `${journal_entry_type_id}:${parcel_id}:${crop}` -> son yapılma tarihi (harvest_date).
+ */
+export function useLastPerformedFromJournal() {
   const userId = useAuthUserId();
   return useQuery({
-    queryKey: ["careEntriesLastPerformed", userId],
+    queryKey: ["lastPerformedFromJournal", userId],
     enabled: !!userId,
     queryFn: async (): Promise<Record<string, string>> => {
       const { data, error } = await (supabase as any)
-        .from("care_journal_entries")
-        .select("entry_type_id, parcel_id, crop, performed_at")
+        .from("harvest_entries")
+        .select("journal_entry_type_id, parcel_id, crop, harvest_date")
         .eq("farmer_id", userId!)
-        .order("performed_at", { ascending: false });
+        .not("journal_entry_type_id", "is", null)
+        .order("harvest_date", { ascending: false });
       if (error) throw error;
       const map: Record<string, string> = {};
       for (const r of (data ?? []) as any[]) {
-        const key = `${r.entry_type_id}:${r.parcel_id}:${r.crop}`;
-        if (!map[key]) map[key] = r.performed_at;
+        const key = `${r.journal_entry_type_id}:${r.parcel_id}:${r.crop}`;
+        if (!map[key]) map[key] = r.harvest_date;
       }
       return map;
-    },
-  });
-}
-
-export function useLogCareEntry() {
-  const qc = useQueryClient();
-  const userId = useAuthUserId();
-  return useMutation({
-    mutationFn: async (input: { parcel_id: string; entry_type_id: string; crop: string; note?: string | null }) => {
-      if (!userId) throw new Error("Giriş gerekli");
-      const { error } = await (supabase as any)
-        .from("care_journal_entries")
-        .insert({
-          farmer_id: userId,
-          parcel_id: input.parcel_id,
-          entry_type_id: input.entry_type_id,
-          crop: input.crop,
-          performed_at: new Date().toISOString().slice(0, 10),
-          note: input.note ?? null,
-        });
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["careEntriesLastPerformed", userId] });
-      qc.invalidateQueries({ queryKey: ["careJournalEntries", userId] });
-    },
-  });
-}
-
-export function useCareJournalEntries() {
-  const userId = useAuthUserId();
-  return useQuery({
-    queryKey: ["careJournalEntries", userId],
-    enabled: !!userId,
-    queryFn: async () => {
-      const { data, error } = await (supabase as any)
-        .from("care_journal_entries")
-        .select("id, parcel_id, entry_type_id, crop, performed_at, note, journal_entry_types(name, icon)")
-        .eq("farmer_id", userId!)
-        .order("performed_at", { ascending: false });
-      if (error) throw error;
-      return (data ?? []) as Array<{
-        id: string; parcel_id: string; entry_type_id: string; crop: string;
-        performed_at: string; note: string | null;
-        journal_entry_types: { name: string; icon: string | null };
-      }>;
     },
   });
 }
