@@ -146,6 +146,98 @@ export type Database = {
           },
         ]
       }
+      care_journal_entries: {
+        Row: {
+          created_at: string
+          crop: string
+          entry_type_id: string
+          farmer_id: string
+          id: string
+          listing_id: string | null
+          note: string | null
+          parcel_id: string
+          performed_at: string
+          photo_urls: string[]
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          crop: string
+          entry_type_id: string
+          farmer_id: string
+          id?: string
+          listing_id?: string | null
+          note?: string | null
+          parcel_id: string
+          performed_at?: string
+          photo_urls?: string[]
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          crop?: string
+          entry_type_id?: string
+          farmer_id?: string
+          id?: string
+          listing_id?: string | null
+          note?: string | null
+          parcel_id?: string
+          performed_at?: string
+          photo_urls?: string[]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "care_journal_entries_crop_fkey"
+            columns: ["crop"]
+            isOneToOne: false
+            referencedRelation: "crop_config"
+            referencedColumns: ["crop"]
+          },
+          {
+            foreignKeyName: "care_journal_entries_entry_type_id_fkey"
+            columns: ["entry_type_id"]
+            isOneToOne: false
+            referencedRelation: "journal_entry_types"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "care_journal_entries_farmer_id_fkey"
+            columns: ["farmer_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "care_journal_entries_farmer_id_fkey"
+            columns: ["farmer_id"]
+            isOneToOne: false
+            referencedRelation: "public_farmer_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "care_journal_entries_listing_id_fkey"
+            columns: ["listing_id"]
+            isOneToOne: false
+            referencedRelation: "listings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "care_journal_entries_parcel_id_fkey"
+            columns: ["parcel_id"]
+            isOneToOne: false
+            referencedRelation: "parcels"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "care_journal_entries_parcel_id_fkey"
+            columns: ["parcel_id"]
+            isOneToOne: false
+            referencedRelation: "public_parcel_cards"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       certifications: {
         Row: {
           created_at: string
@@ -331,6 +423,41 @@ export type Database = {
         }
         Relationships: []
       }
+      crop_journal_glossary: {
+        Row: {
+          created_at: string
+          crop: string
+          explanation: string
+          id: string
+          term: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          crop: string
+          explanation: string
+          id?: string
+          term: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          crop?: string
+          explanation?: string
+          id?: string
+          term?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "crop_journal_glossary_crop_fkey"
+            columns: ["crop"]
+            isOneToOne: false
+            referencedRelation: "crop_config"
+            referencedColumns: ["crop"]
+          },
+        ]
+      }
       crop_market_sources: {
         Row: {
           crop: string
@@ -479,6 +606,61 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "v_kpi_order_base"
             referencedColumns: ["order_id"]
+          },
+        ]
+      }
+      farmer_journal_prefs: {
+        Row: {
+          created_at: string
+          entry_type_id: string
+          farmer_id: string
+          frequency_days: number | null
+          id: string
+          is_active: boolean
+          threshold_note: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          entry_type_id: string
+          farmer_id: string
+          frequency_days?: number | null
+          id?: string
+          is_active?: boolean
+          threshold_note?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          entry_type_id?: string
+          farmer_id?: string
+          frequency_days?: number | null
+          id?: string
+          is_active?: boolean
+          threshold_note?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "farmer_journal_prefs_entry_type_id_fkey"
+            columns: ["entry_type_id"]
+            isOneToOne: false
+            referencedRelation: "journal_entry_types"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "farmer_journal_prefs_farmer_id_fkey"
+            columns: ["farmer_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "farmer_journal_prefs_farmer_id_fkey"
+            columns: ["farmer_id"]
+            isOneToOne: false
+            referencedRelation: "public_farmer_profiles"
+            referencedColumns: ["id"]
           },
         ]
       }
@@ -701,6 +883,109 @@ export type Database = {
           phone?: string
         }
         Relationships: []
+      }
+      journal_entry_types: {
+        Row: {
+          created_at: string
+          crop: string | null
+          default_frequency_days: number | null
+          farmer_id: string | null
+          icon: string | null
+          id: string
+          is_preset: boolean
+          name: string
+          sort_order: number
+          theme_id: string
+        }
+        Insert: {
+          created_at?: string
+          crop?: string | null
+          default_frequency_days?: number | null
+          farmer_id?: string | null
+          icon?: string | null
+          id?: string
+          is_preset?: boolean
+          name: string
+          sort_order?: number
+          theme_id: string
+        }
+        Update: {
+          created_at?: string
+          crop?: string | null
+          default_frequency_days?: number | null
+          farmer_id?: string | null
+          icon?: string | null
+          id?: string
+          is_preset?: boolean
+          name?: string
+          sort_order?: number
+          theme_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "journal_entry_types_crop_fkey"
+            columns: ["crop"]
+            isOneToOne: false
+            referencedRelation: "crop_config"
+            referencedColumns: ["crop"]
+          },
+          {
+            foreignKeyName: "journal_entry_types_farmer_id_fkey"
+            columns: ["farmer_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "journal_entry_types_farmer_id_fkey"
+            columns: ["farmer_id"]
+            isOneToOne: false
+            referencedRelation: "public_farmer_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "journal_entry_types_theme_id_fkey"
+            columns: ["theme_id"]
+            isOneToOne: false
+            referencedRelation: "journal_themes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      journal_themes: {
+        Row: {
+          created_at: string
+          crop: string | null
+          icon: string | null
+          id: string
+          name: string
+          sort_order: number
+        }
+        Insert: {
+          created_at?: string
+          crop?: string | null
+          icon?: string | null
+          id?: string
+          name: string
+          sort_order?: number
+        }
+        Update: {
+          created_at?: string
+          crop?: string | null
+          icon?: string | null
+          id?: string
+          name?: string
+          sort_order?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "journal_themes_crop_fkey"
+            columns: ["crop"]
+            isOneToOne: false
+            referencedRelation: "crop_config"
+            referencedColumns: ["crop"]
+          },
+        ]
       }
       listing_harvest_entries: {
         Row: {

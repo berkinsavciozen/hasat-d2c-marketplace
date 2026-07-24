@@ -145,10 +145,15 @@ function Journal() {
               </>
             )}
           </div>
-          <Sheet open={open} onOpenChange={setOpen}>
-            <SheetTrigger asChild>
-              <button className="shrink-0 text-xs text-saffron font-medium whitespace-nowrap">+ Parsel</button>
-            </SheetTrigger>
+          <div className="flex items-center gap-3 shrink-0">
+            <Link to="/farmer/journal/customize" className="text-xs text-hmuted hover:text-saffron font-medium whitespace-nowrap">
+              ⚙️ Rutin Bakımı Özelleştir
+            </Link>
+            <Sheet open={open} onOpenChange={setOpen}>
+              <SheetTrigger asChild>
+                <button className="shrink-0 text-xs text-saffron font-medium whitespace-nowrap">+ Parsel</button>
+              </SheetTrigger>
+
             <SheetContent side="bottom" className="rounded-t-3xl max-h-[85vh]">
               <div className="mx-auto h-1.5 w-12 rounded-full bg-muted -mt-2 mb-3" />
               <SheetHeader>
@@ -207,8 +212,10 @@ function Journal() {
                 </button>
               </div>
             </SheetContent>
-          </Sheet>
+            </Sheet>
+          </div>
         </div>
+
 
         {isLoading ? (
           <LoadingDots />
