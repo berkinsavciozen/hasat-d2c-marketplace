@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
-import { ChevronLeft, Plus } from "lucide-react";
+import { ChevronLeft, Plus, Settings } from "lucide-react";
 import { toast } from "sonner";
 import { FarmerHeader } from "./farmer";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
@@ -216,7 +216,17 @@ function CustomizePage() {
                         {pref?.threshold_note ? ` · ${pref.threshold_note}` : ""}
                       </div>
                     </div>
-                    <div className="shrink-0">
+                    <div className="shrink-0 flex items-center gap-2">
+                      {isOn && (
+                        <button
+                          onClick={() => openFreqSheet(t)}
+                          className="rounded-full border p-1.5 text-hmuted hover:text-saffron hover:border-saffron transition"
+                          style={{ borderColor: "var(--border)" }}
+                          aria-label="Sıklığı ayarla"
+                        >
+                          <Settings className="h-4 w-4" />
+                        </button>
+                      )}
                       <Switch checked={isOn} onCheckedChange={(v) => handleToggle(t, v)} />
                     </div>
                   </div>

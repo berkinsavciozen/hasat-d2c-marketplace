@@ -202,7 +202,7 @@ function Onboarding() {
 
             <label className="text-xs text-hwhite/60">Ana Ürünlerin</label>
             <div className="mt-2 mb-4">
-              <CropChips value={crops} onChange={setCrops} variant="dark" />
+              <CropChips value={crops} onChange={setCrops} variant="dark" context="farmer" />
             </div>
 
             <label className="text-xs text-hwhite/60">Arazi Büyüklüğü: <span style={{ color: "var(--saffron)" }}>{land} dönüm</span></label>

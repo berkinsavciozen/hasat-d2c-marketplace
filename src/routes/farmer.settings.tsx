@@ -528,7 +528,7 @@ function Settings() {
             <div>
               <label className="text-xs text-muted-foreground">Ana Ürünler</label>
               <div className="mt-2">
-                <CropChips value={nCrops} onChange={setNCrops} />
+                <CropChips value={nCrops} onChange={setNCrops} context="farmer" />
               </div>
             </div>
             <div>

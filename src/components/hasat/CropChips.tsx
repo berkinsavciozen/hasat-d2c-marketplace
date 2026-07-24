@@ -11,7 +11,7 @@
  */
 import { useState } from "react";
 import { useCropOptions } from "@/lib/hasat/crop-config";
-import { useCreateCropRequest } from "@/lib/hasat/queries";
+import { useCreateCropRequest, useCreateCropTypeRequest } from "@/lib/hasat/queries";
 import {
   Dialog,
   DialogContent,
@@ -28,9 +28,11 @@ interface Props {
   value: string[];
   onChange: (next: string[]) => void;
   variant?: "light" | "dark";
+  /** "farmer" = kendi yetiştirdiği ürünü seçiyor (yeni ürün türü talebi gider); "buyer" = ilgilendiği ürünü seçiyor (mevcut alıcı RFQ akışına gider). */
+  context: "farmer" | "buyer";
 }
 
-export function CropChips({ value, onChange, variant = "light" }: Props) {
+export function CropChips({ value, onChange, variant = "light", context }: Props) {
   const { options, isLoading } = useCropOptions();
   const [requestOpen, setRequestOpen] = useState(false);
 
@@ -116,17 +118,22 @@ export function CropChips({ value, onChange, variant = "light" }: Props) {
             borderColor: isDark ? "rgba(255,255,255,0.25)" : undefined,
             opacity: 0.85,
           }}
-          aria-label="Ürününüzü bulamadınız mı? Talep edin"
+          aria-label={context === "farmer" ? "Yetiştirdiğiniz ürün listede yok mu? Talep edin" : "Aradığınız ürün listede yok mu? Talep edin"}
         >
-          + Ürününüzü bulamadınız mı? Talep edin
+          {context === "farmer" ? "+ Yetiştirdiğiniz ürün yok mu? Talep edin" : "+ Aradığınız ürün yok mu? Talep edin"}
         </button>
       </div>
 
-      <CropRequestDialog open={requestOpen} onClose={() => setRequestOpen(false)} />
+      {context === "farmer" ? (
+        <CropTypeRequestDialog open={requestOpen} onClose={() => setRequestOpen(false)} />
+      ) : (
+        <CropRequestDialog open={requestOpen} onClose={() => setRequestOpen(false)} />
+      )}
     </>
   );
 }
 
+/** Buyer: ilgilendiği ürünü katalogda bulamadı — mevcut crop_requests (RFQ) akışına gider. */
 function CropRequestDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
   const create = useCreateCropRequest();
   const [name, setName] = useState("");
@@ -137,7 +144,7 @@ function CropRequestDialog({ open, onClose }: { open: boolean; onClose: () => vo
     if (!trimmed) return toast.error("Ürün adı gerekli");
     try {
       await create.mutateAsync({ cropName: trimmed, note });
-      toast.success("Talebiniz alındı, teşekkürler.");
+      toast.success("Talebiniz alındı — uygun üreticiler bulununca haber vereceğiz.");
       setName("");
       setNote("");
       onClose();
@@ -152,7 +159,7 @@ function CropRequestDialog({ open, onClose }: { open: boolean; onClose: () => vo
         <DialogHeader>
           <DialogTitle>Ürün Talebi</DialogTitle>
           <DialogDescription>
-            Kataloğumuzda olmayan bir ürününüz mü var? Bize bildirin, ekleyelim.
+            İlgilendiğiniz ürün kataloğumuzda yok mu? Talep gönderin, uygun üreticilerle sizi buluşturalım.
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-3">
@@ -170,10 +177,114 @@ function CropRequestDialog({ open, onClose }: { open: boolean; onClose: () => vo
             <Textarea
               value={note}
               onChange={(e) => setNote(e.target.value)}
-              placeholder="Ek bilgi, üretim yeri, birim, vs."
+              placeholder="Ek bilgi, miktar, bölge, vs."
               maxLength={500}
               rows={3}
             />
+          </div>
+        </div>
+        <DialogFooter>
+          <button
+            onClick={submit}
+            disabled={create.isPending}
+            className="rounded-xl bg-saffron px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
+          >
+            {create.isPending ? "Gönderiliyor…" : "Gönder"}
+          </button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+const UNIT_OPTIONS = ["g", "kg", "L", "adet"];
+
+/** Farmer: yetiştirdiği ürün katalogda yok — yeni ürün türü talebi (crop_type_requests), Berkin'e anlık SMS gider. */
+function CropTypeRequestDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
+  const create = useCreateCropTypeRequest();
+  const [name, setName] = useState("");
+  const [unit, setUnit] = useState("kg");
+  const [category, setCategory] = useState("");
+  const [startMonth, setStartMonth] = useState("");
+  const [endMonth, setEndMonth] = useState("");
+  const [lifecycleNotes, setLifecycleNotes] = useState("");
+  const [note, setNote] = useState("");
+
+  const reset = () => {
+    setName(""); setUnit("kg"); setCategory("");
+    setStartMonth(""); setEndMonth(""); setLifecycleNotes(""); setNote("");
+  };
+
+  const submit = async () => {
+    const trimmed = name.trim();
+    if (!trimmed) return toast.error("Ürün adı gerekli");
+    try {
+      await create.mutateAsync({
+        cropName: trimmed,
+        suggestedDefaultUnit: unit,
+        suggestedCategoryGroup: category || null,
+        suggestedHarvestWindowStartMonth: startMonth ? Number(startMonth) : null,
+        suggestedHarvestWindowEndMonth: endMonth ? Number(endMonth) : null,
+        lifecycleNotes: lifecycleNotes || null,
+        note: note || null,
+      });
+      toast.success("Talebiniz alındı, teşekkürler — inceleyip ekleyeceğiz.");
+      reset();
+      onClose();
+    } catch (e: any) {
+      toast.error(e?.message ?? "Talep gönderilemedi");
+    }
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Yeni Ürün Türü Talebi</DialogTitle>
+          <DialogDescription>
+            Yetiştirdiğiniz ürün kataloğumuzda yok mu? Aşağıdaki bilgileri paylaşın, inceleyip ekleyelim.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="space-y-3">
+          <div>
+            <div className="mb-1.5 text-xs font-medium text-hmuted">Ürün adı *</div>
+            <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Örn. Kudret narı" maxLength={100} />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <div className="mb-1.5 text-xs font-medium text-hmuted">Birim</div>
+              <select value={unit} onChange={(e) => setUnit(e.target.value)} className="w-full rounded-lg border bg-input px-3 py-2 text-sm">
+                {UNIT_OPTIONS.map((u) => <option key={u} value={u}>{u}</option>)}
+              </select>
+            </div>
+            <div>
+              <div className="mb-1.5 text-xs font-medium text-hmuted">Kategori (opsiyonel)</div>
+              <Input value={category} onChange={(e) => setCategory(e.target.value)} placeholder="Örn. meyve, sebze, baharat" maxLength={50} />
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <div className="mb-1.5 text-xs font-medium text-hmuted">Hasat ayı başlangıç (opsiyonel)</div>
+              <Input value={startMonth} onChange={(e) => setStartMonth(e.target.value.replace(/\D/g, ""))} placeholder="1-12" maxLength={2} />
+            </div>
+            <div>
+              <div className="mb-1.5 text-xs font-medium text-hmuted">Hasat ayı bitiş (opsiyonel)</div>
+              <Input value={endMonth} onChange={(e) => setEndMonth(e.target.value.replace(/\D/g, ""))} placeholder="1-12" maxLength={2} />
+            </div>
+          </div>
+          <div>
+            <div className="mb-1.5 text-xs font-medium text-hmuted">Nasıl yetiştiriliyor? (opsiyonel)</div>
+            <Textarea
+              value={lifecycleNotes}
+              onChange={(e) => setLifecycleNotes(e.target.value)}
+              placeholder="Ekim/dikim, bakım, hasat, kurutma vb. adımları kısaca anlatın"
+              maxLength={1000}
+              rows={3}
+            />
+          </div>
+          <div>
+            <div className="mb-1.5 text-xs font-medium text-hmuted">Ek not (opsiyonel)</div>
+            <Textarea value={note} onChange={(e) => setNote(e.target.value)} maxLength={500} rows={2} />
           </div>
         </div>
         <DialogFooter>

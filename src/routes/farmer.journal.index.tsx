@@ -9,10 +9,10 @@ import {
   useParcels,
   useEntries,
   useCreateParcel,
+  useCreateEntry,
+  useExistingBatches,
   useActiveJournalPrefsDetailed,
-  useCareEntriesLastPerformed,
-  useLogCareEntry,
-  useCareJournalEntries,
+  useLastPerformedFromJournal,
   useCropGlossary,
   type ActiveJournalPref,
 } from "@/lib/hasat/queries";
@@ -21,6 +21,10 @@ import type { Parcel } from "@/lib/hasat/types";
 import {
   parseNotes,
   WORK_TYPE_MAP,
+  WORK_TO_STEP_KEY,
+  encodeNotes,
+  ZERO_COSTS,
+  type WorkTypeKey,
   monthLabel,
   shortDay,
   relativeTr,
@@ -214,7 +218,7 @@ function Journal() {
                 <div>
                   <label className="text-xs text-hmuted">Ürün</label>
                   <div className="mt-1">
-                    <CropChips value={pCrops} onChange={setPCrops} />
+                    <CropChips value={pCrops} onChange={setPCrops} context="farmer" />
                   </div>
                 </div>
                 <div>
@@ -413,17 +417,15 @@ function statusStyle(status: RowStatus): { bg: string; fg: string; label: (nextD
   };
 }
 
+type DateFilter = "today" | "week" | "all";
+
 function RoutineTab({ parcels }: { parcels: Parcel[] }) {
   const { data: prefs = [], isLoading: prefsLoading } = useActiveJournalPrefsDetailed();
-  const { data: lastPerformedMap = {}, isLoading: lastLoading } = useCareEntriesLastPerformed();
-  const { data: history = [] } = useCareJournalEntries();
-  const logEntry = useLogCareEntry();
+  const { data: lastPerformedMap = {}, isLoading: lastLoading } = useLastPerformedFromJournal();
   const { map: cropConfigMap } = useCropConfigMap();
 
-  const [view, setView] = useState<"list" | "calendar">("list");
-  const [overdueOnly, setOverdueOnly] = useState(false);
-
-  const parcelById = useMemo(() => Object.fromEntries(parcels.map((p) => [p.id, p])), [parcels]);
+  const [dateFilter, setDateFilter] = useState<DateFilter>("week");
+  const [logRow, setLogRow] = useState<RoutineRow | null>(null);
 
   // Her (pref × parsel × parseldeki crop) kombinasyonu ayrı bir satır — crop her zaman açık.
   const rows: RoutineRow[] = useMemo(() => {
@@ -455,7 +457,18 @@ function RoutineTab({ parcels }: { parcels: Parcel[] }) {
     return out;
   }, [prefs, parcels, lastPerformedMap]);
 
-  const visibleRows = overdueOnly ? rows.filter((r) => r.status === "overdue") : rows;
+  // Tarih filtresi: gecikmiş ve hiç yapılmamış olanlar her zaman görünür (bunlar zaten "bekleyen").
+  // Olay-bazlı (sıklığı olmayan) eylemler de her zaman görünür. Sıklığı olanlar seçili pencereye göre süzülür.
+  const visibleRows = useMemo(() => {
+    if (dateFilter === "all") return rows;
+    const maxDays = dateFilter === "today" ? 0 : 7;
+    return rows.filter((r) => {
+      if (r.status === "overdue" || r.status === "none") return true;
+      if (!r.nextDue) return true;
+      const daysUntil = Math.floor((new Date(r.nextDue).getTime() - Date.now()) / 86400000);
+      return daysUntil <= maxDays;
+    });
+  }, [rows, dateFilter]);
 
   // Parsel bazlı gruplama — her parselin altında o parseldeki eylemler, crop etiketiyle.
   const groupedByParcel = useMemo(() => {
@@ -476,25 +489,6 @@ function RoutineTab({ parcels }: { parcels: Parcel[] }) {
     return Array.from(s);
   }, [parcels]);
 
-  const handleLog = async (row: RoutineRow) => {
-    try {
-      await logEntry.mutateAsync({ parcel_id: row.parcel.id, entry_type_id: row.pref.entry_type_id, crop: row.crop });
-      toast.success("Kaydedildi ✓");
-    } catch (err) {
-      toast.error((err as Error).message);
-    }
-  };
-
-  const historyGroups = useMemo(() => {
-    const m = new Map<string, typeof history>();
-    for (const h of history) {
-      const ym = h.performed_at.slice(0, 7);
-      if (!m.has(ym)) m.set(ym, []);
-      m.get(ym)!.push(h);
-    }
-    return Array.from(m.entries());
-  }, [history]);
-
   const isLoading = prefsLoading || lastLoading;
 
   return (
@@ -503,124 +497,75 @@ function RoutineTab({ parcels }: { parcels: Parcel[] }) {
         <Link to="/farmer/journal/customize" className="text-xs text-hmuted hover:text-saffron font-medium whitespace-nowrap">
           ⚙️ Rutin Bakımı Özelleştir
         </Link>
-        <div className="flex items-center gap-3">
-          <label className="flex items-center gap-1.5 text-xs text-hmuted">
-            <input type="checkbox" checked={overdueOnly} onChange={(e) => setOverdueOnly(e.target.checked)} />
-            Sadece gecikmiş
-          </label>
-          <div className="flex gap-1 rounded-full border p-0.5" style={{ borderColor: "var(--border)" }}>
+        <div className="flex gap-1 rounded-full border p-0.5" style={{ borderColor: "var(--border)" }}>
+          {([["today", "Bugün"], ["week", "Bu Hafta"], ["all", "Tümü"]] as [DateFilter, string][]).map(([key, label]) => (
             <button
-              onClick={() => setView("list")}
+              key={key}
+              onClick={() => setDateFilter(key)}
               className="rounded-full px-2.5 py-1 text-[11px] font-medium"
-              style={{ background: view === "list" ? "var(--saffron)" : "transparent", color: view === "list" ? "white" : "var(--dark)" }}
+              style={{ background: dateFilter === key ? "var(--saffron)" : "transparent", color: dateFilter === key ? "white" : "var(--dark)" }}
             >
-              Liste
+              {label}
             </button>
-            <button
-              onClick={() => setView("calendar")}
-              className="rounded-full px-2.5 py-1 text-[11px] font-medium"
-              style={{ background: view === "calendar" ? "var(--saffron)" : "transparent", color: view === "calendar" ? "white" : "var(--dark)" }}
-            >
-              Takvim
-            </button>
-          </div>
+          ))}
         </div>
       </div>
 
       {isLoading ? (
         <div className="py-10 text-center text-sm text-hmuted">Yükleniyor…</div>
-      ) : view === "list" ? (
-        rows.length === 0 ? (
-          <div className="rounded-2xl border border-dashed py-14 text-center" style={{ background: "var(--cream)", borderColor: "var(--border)" }}>
-            <div className="text-4xl mb-2">🌱</div>
-            <div className="font-serif text-xl text-dark">Henüz bir bakım eylemi takip etmiyorsun</div>
-            <div className="text-sm text-hmuted mt-1">Sulama, gübreleme, ilaçlama — takip etmek istediklerini seç.</div>
-            <Link
-              to="/farmer/journal/customize"
-              className="mt-5 inline-flex items-center gap-2 rounded-full bg-saffron px-5 py-2.5 text-sm text-white font-medium"
-            >
-              ⚙️ Rutin Bakımı Özelleştir
-            </Link>
-          </div>
-        ) : visibleRows.length === 0 ? (
-          <div className="rounded-2xl border border-dashed py-10 text-center text-sm text-hmuted" style={{ background: "var(--cream)", borderColor: "var(--border)" }}>
-            Gecikmiş bakım eylemi yok 🎉
-          </div>
-        ) : (
-          <div className="space-y-5">
-            {groupedByParcel.map(({ parcel, rows: parcelRows }) => (
-              <section key={parcel.id}>
-                <h3 className="font-serif text-sm uppercase tracking-widest text-hmuted mb-2">
-                  📍 {parcel.name}
-                </h3>
-                <ul className="space-y-2">
-                  {parcelRows.map((row) => {
-                    const st = statusStyle(row.status);
-                    return (
-                      <li
-                        key={row.key}
-                        className="flex items-center gap-3 rounded-2xl border px-4 py-3.5"
-                        style={{ background: "var(--cream)", borderColor: "var(--border)" }}
-                      >
-                        <div className="text-2xl shrink-0 w-8 text-center">{row.pref.entry_type.icon ?? "•"}</div>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <span className="font-medium text-dark truncate">{row.pref.entry_type.name}</span>
-                            <span
-                              className="rounded-full px-2 py-0.5 text-[10px] font-medium"
-                              style={{ background: cropChipColor(row.crop).bg, color: cropChipColor(row.crop).fg }}
-                            >
-                              {formatCrop(row.crop)}
-                            </span>
-                          </div>
-                          <div className="mt-1 inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium" style={{ background: st.bg, color: st.fg }}>
-                            {st.label(row.nextDue, row.lastPerformed)}
-                          </div>
-                        </div>
-                        <button
-                          onClick={() => handleLog(row)}
-                          disabled={logEntry.isPending}
-                          className="shrink-0 rounded-full bg-saffron px-3 py-1.5 text-xs font-medium text-white disabled:opacity-40"
-                        >
-                          ✓ Yaptım
-                        </button>
-                      </li>
-                    );
-                  })}
-                </ul>
-              </section>
-            ))}
-          </div>
-        )
-      ) : historyGroups.length === 0 ? (
+      ) : rows.length === 0 ? (
+        <div className="rounded-2xl border border-dashed py-14 text-center" style={{ background: "var(--cream)", borderColor: "var(--border)" }}>
+          <div className="text-4xl mb-2">🌱</div>
+          <div className="font-serif text-xl text-dark">Henüz bir bakım eylemi takip etmiyorsun</div>
+          <div className="text-sm text-hmuted mt-1">Sulama, gübreleme, ilaçlama — takip etmek istediklerini seç.</div>
+          <Link
+            to="/farmer/journal/customize"
+            className="mt-5 inline-flex items-center gap-2 rounded-full bg-saffron px-5 py-2.5 text-sm text-white font-medium"
+          >
+            ⚙️ Rutin Bakımı Özelleştir
+          </Link>
+        </div>
+      ) : visibleRows.length === 0 ? (
         <div className="rounded-2xl border border-dashed py-10 text-center text-sm text-hmuted" style={{ background: "var(--cream)", borderColor: "var(--border)" }}>
-          Henüz bakım kaydı yok.
+          Bekleyen bakım eylemi yok 🎉
         </div>
       ) : (
         <div className="space-y-5">
-          {historyGroups.map(([ym, rowsInMonth]) => (
-            <section key={ym}>
-              <h3 className="font-serif text-sm uppercase tracking-widest text-hmuted mb-2">{monthLabel(ym)}</h3>
+          {groupedByParcel.map(({ parcel, rows: parcelRows }) => (
+            <section key={parcel.id}>
+              <h3 className="font-serif text-sm uppercase tracking-widest text-hmuted mb-2">
+                📍 {parcel.name}
+              </h3>
               <ul className="space-y-2">
-                {rowsInMonth.map((h) => {
-                  const sd = shortDay(h.performed_at);
+                {parcelRows.map((row) => {
+                  const st = statusStyle(row.status);
                   return (
-                    <li key={h.id} className="flex items-center gap-4 rounded-2xl border px-4 py-3" style={{ background: "var(--cream)", borderColor: "var(--border)" }}>
-                      <div className="text-center shrink-0 w-10">
-                        <div className="font-serif text-lg leading-none text-dark">{sd.day}</div>
-                        <div className="text-[10px] uppercase tracking-widest text-hmuted mt-0.5">{sd.mon}</div>
+                    <li
+                      key={row.key}
+                      className="flex items-center gap-3 rounded-2xl border px-4 py-3.5"
+                      style={{ background: "var(--cream)", borderColor: "var(--border)" }}
+                    >
+                      <div className="text-2xl shrink-0 w-8 text-center">{row.pref.entry_type.icon ?? "•"}</div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="font-medium text-dark truncate">{row.pref.entry_type.name}</span>
+                          <span
+                            className="rounded-full px-2 py-0.5 text-[10px] font-medium"
+                            style={{ background: cropChipColor(row.crop).bg, color: cropChipColor(row.crop).fg }}
+                          >
+                            {formatCrop(row.crop)}
+                          </span>
+                        </div>
+                        <div className="mt-1 inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium" style={{ background: st.bg, color: st.fg }}>
+                          {st.label(row.nextDue, row.lastPerformed)}
+                        </div>
                       </div>
-                      <div className="flex-1 min-w-0 text-sm text-dark">
-                        <span className="mr-1">{h.journal_entry_types.icon ?? "•"}</span>
-                        {h.journal_entry_types.name}
-                        <span
-                          className="ml-1.5 rounded-full px-1.5 py-0.5 text-[10px] font-medium"
-                          style={{ background: cropChipColor(h.crop).bg, color: cropChipColor(h.crop).fg }}
-                        >
-                          {formatCrop(h.crop)}
-                        </span>
-                        <span className="text-hmuted"> — {parcelById[h.parcel_id]?.name ?? "—"}</span>
-                      </div>
+                      <button
+                        onClick={() => setLogRow(row)}
+                        className="shrink-0 rounded-full bg-saffron px-3 py-1.5 text-xs font-medium text-white"
+                      >
+                        ✓ Yaptım
+                      </button>
                     </li>
                   );
                 })}
@@ -639,7 +584,116 @@ function RoutineTab({ parcels }: { parcels: Parcel[] }) {
         </div>
       )}
 
+      {logRow && (
+        <LogRoutineEntrySheet row={logRow} cropConfigMap={cropConfigMap} onClose={() => setLogRow(null)} />
+      )}
     </div>
+  );
+}
+
+/** "✓ Yaptım" → günlüğe (harvest_entries) yeni bir kayıt ekler, birden fazla batch varsa hangisine bağlanacağını sorar. */
+function LogRoutineEntrySheet({ row, cropConfigMap, onClose }: { row: RoutineRow; cropConfigMap: Map<string, any>; onClose: () => void }) {
+  const { data: batches = [], isLoading: batchesLoading } = useExistingBatches(row.parcel.id, row.crop);
+  const createEntry = useCreateEntry();
+  const [listingId, setListingId] = useState("");
+  const [note, setNote] = useState("");
+
+  useEffect(() => {
+    if (batches.length === 0) { setListingId(""); return; }
+    const preferred = batches[batches.length - 1].id;
+    setListingId((prev) => (prev && batches.some((b) => b.id === prev) ? prev : preferred));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [batches.map((b) => b.id).join("|")]);
+
+  const cfg = findCropConfig(cropConfigMap, row.crop);
+  // Bağlanacak batch varsa birim ONUNKİYLE eşleşmeli (aynı crop+parsel'de g/kg karışık batch'ler olabilir,
+  // bkz. P21 mixed-unit bug'ı) — batch yoksa crop'un kanonik birimine düşülür.
+  const selectedBatch = batches.find((b) => b.id === listingId);
+  const unit: "g" | "kg" | "L" = selectedBatch?.unit ?? (cfg?.default_unit === "kg" ? "kg" : "g");
+  const workTypeKey = row.pref.entry_type.work_type_key as WorkTypeKey;
+
+  const submit = async () => {
+    try {
+      await createEntry.mutateAsync({
+        parcelId: row.parcel.id,
+        date: new Date().toISOString().slice(0, 10),
+        crop: row.crop,
+        quantity: 0,
+        unit,
+        quality: "A",
+        photos: [],
+        notes: encodeNotes({ work: workTypeKey, text: note }),
+        costs: { ...ZERO_COSTS },
+        pricePerUnit: 0,
+        step_key: WORK_TO_STEP_KEY[workTypeKey] ?? null,
+        listingId: batches.length > 1 && listingId ? listingId : null,
+        journalEntryTypeId: row.pref.entry_type_id,
+      } as any);
+      toast.success("Günlüğe eklendi ✓");
+      onClose();
+    } catch (err) {
+      toast.error((err as Error).message);
+    }
+  };
+
+  return (
+    <Sheet open onOpenChange={(o) => !o && onClose()}>
+      <SheetContent side="bottom" className="rounded-t-3xl max-h-[85vh]">
+        <div className="mx-auto h-1.5 w-12 rounded-full bg-muted -mt-2 mb-3" />
+        <SheetHeader>
+          <SheetTitle className="font-serif">{row.pref.entry_type.name}</SheetTitle>
+        </SheetHeader>
+        <div className="mt-1 text-sm text-hmuted">
+          {row.parcel.name} · {formatCrop(row.crop)}
+        </div>
+        <div className="mt-4 space-y-4 pb-6">
+          {batchesLoading ? (
+            <div className="text-sm text-hmuted">Batch bilgisi yükleniyor…</div>
+          ) : batches.length > 1 ? (
+            <div>
+              <label className="text-xs text-hmuted">Hangi batch (parti)?</label>
+              <div className="mt-1.5 flex flex-wrap gap-2">
+                {batches.map((b) => {
+                  const active = b.id === listingId;
+                  return (
+                    <button
+                      key={b.id}
+                      type="button"
+                      onClick={() => setListingId(b.id)}
+                      className="rounded-full border px-3 py-1.5 text-xs"
+                      style={{
+                        background: active ? "var(--saffron)" : "var(--cream)",
+                        color: active ? "white" : "var(--dark)",
+                        borderColor: active ? "var(--saffron)" : "var(--border)",
+                      }}
+                    >
+                      {b.batchName ?? `${b.quantity} ${b.unit}`}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          ) : null}
+          <div>
+            <label className="text-xs text-hmuted">Not (opsiyonel)</label>
+            <textarea
+              value={note}
+              onChange={(e) => setNote(e.target.value)}
+              placeholder="Örn: yaprak sararması gözlendi"
+              rows={3}
+              className="mt-1 w-full rounded-lg border bg-input px-3 py-2.5 text-sm outline-none focus:border-saffron"
+            />
+          </div>
+          <button
+            onClick={submit}
+            disabled={createEntry.isPending}
+            className="w-full rounded-xl bg-saffron py-3 text-white font-medium disabled:opacity-40"
+          >
+            {createEntry.isPending ? "Kaydediliyor…" : "Kaydet ✓"}
+          </button>
+        </div>
+      </SheetContent>
+    </Sheet>
   );
 }
 

@@ -184,7 +184,7 @@ function BuyerOnboarding() {
             <p className="text-sm text-hwhite/60 mb-6">Eşleşmeler için ilgi alanlarınız.</p>
             <label className="text-xs text-hwhite/60">İlgilendiğiniz Ürünler</label>
             <div className="mt-2 mb-6">
-              <CropChips value={interests} onChange={setInterests} variant="dark" />
+              <CropChips value={interests} onChange={setInterests} variant="dark" context="buyer" />
             </div>
             <label className="text-xs text-hwhite/60 mb-2 block">Aylık Tahmini Hacim</label>
             <div className="grid grid-cols-2 gap-2 mb-6">
