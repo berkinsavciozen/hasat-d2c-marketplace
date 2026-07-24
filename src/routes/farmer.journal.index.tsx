@@ -212,8 +212,10 @@ function Journal() {
                 </button>
               </div>
             </SheetContent>
-          </Sheet>
+            </Sheet>
+          </div>
         </div>
+
 
         {isLoading ? (
           <LoadingDots />
