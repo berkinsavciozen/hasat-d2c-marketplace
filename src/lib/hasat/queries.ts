@@ -3575,7 +3575,7 @@ export function useActiveJournalPrefsDetailed() {
   });
 }
 
-/** Map of `${entry_type_id}:${parcel_id}` -> latest performed_at (date string). */
+/** Map of `${entry_type_id}:${parcel_id}:${crop}` -> latest performed_at (date string). */
 export function useCareEntriesLastPerformed() {
   const userId = useAuthUserId();
   return useQuery({
@@ -3584,13 +3584,13 @@ export function useCareEntriesLastPerformed() {
     queryFn: async (): Promise<Record<string, string>> => {
       const { data, error } = await (supabase as any)
         .from("care_journal_entries")
-        .select("entry_type_id, parcel_id, performed_at")
+        .select("entry_type_id, parcel_id, crop, performed_at")
         .eq("farmer_id", userId!)
         .order("performed_at", { ascending: false });
       if (error) throw error;
       const map: Record<string, string> = {};
       for (const r of (data ?? []) as any[]) {
-        const key = `${r.entry_type_id}:${r.parcel_id}`;
+        const key = `${r.entry_type_id}:${r.parcel_id}:${r.crop}`;
         if (!map[key]) map[key] = r.performed_at;
       }
       return map;
