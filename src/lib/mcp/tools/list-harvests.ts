@@ -28,6 +28,7 @@ export default defineTool({
       .from("harvest_entries")
       .select("id, crop, quantity, unit, quality, harvest_date, parcel_id, notes")
       .eq("farmer_id", ctx.getUserId()!)
+      .is("journal_entry_type_id", null)
       .order("harvest_date", { ascending: false })
       .limit(limit);
     if (crop) q = q.ilike("crop", crop);
