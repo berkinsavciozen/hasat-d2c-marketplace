@@ -3528,4 +3528,135 @@ export function useCreateCustomEntryType() {
   });
 }
 
+// ============= Journal routine tracking (P22-D) =============
+
+export interface ActiveJournalPref {
+  id: string;
+  entry_type_id: string;
+  frequency_days: number | null;
+  threshold_note: string | null;
+  entry_type: {
+    id: string;
+    name: string;
+    icon: string | null;
+    crop: string | null;
+    default_frequency_days: number | null;
+    theme: { id: string; name: string; icon: string | null; sort_order: number };
+  };
+}
+
+export function useActiveJournalPrefsDetailed() {
+  const userId = useAuthUserId();
+  return useQuery({
+    queryKey: ["activeJournalPrefsDetailed", userId],
+    enabled: !!userId,
+    queryFn: async (): Promise<ActiveJournalPref[]> => {
+      const { data, error } = await (supabase as any)
+        .from("farmer_journal_prefs")
+        .select("id, entry_type_id, frequency_days, threshold_note, journal_entry_types(id, name, icon, crop, default_frequency_days, journal_themes(id, name, icon, sort_order))")
+        .eq("farmer_id", userId!)
+        .eq("is_active", true);
+      if (error) throw error;
+      return (data ?? []).map((r: any) => ({
+        id: r.id,
+        entry_type_id: r.entry_type_id,
+        frequency_days: r.frequency_days,
+        threshold_note: r.threshold_note,
+        entry_type: {
+          id: r.journal_entry_types.id,
+          name: r.journal_entry_types.name,
+          icon: r.journal_entry_types.icon,
+          crop: r.journal_entry_types.crop,
+          default_frequency_days: r.journal_entry_types.default_frequency_days,
+          theme: r.journal_entry_types.journal_themes,
+        },
+      }));
+    },
+  });
+}
+
+/** Map of `${entry_type_id}:${parcel_id}` -> latest performed_at (date string). */
+export function useCareEntriesLastPerformed() {
+  const userId = useAuthUserId();
+  return useQuery({
+    queryKey: ["careEntriesLastPerformed", userId],
+    enabled: !!userId,
+    queryFn: async (): Promise<Record<string, string>> => {
+      const { data, error } = await (supabase as any)
+        .from("care_journal_entries")
+        .select("entry_type_id, parcel_id, performed_at")
+        .eq("farmer_id", userId!)
+        .order("performed_at", { ascending: false });
+      if (error) throw error;
+      const map: Record<string, string> = {};
+      for (const r of (data ?? []) as any[]) {
+        const key = `${r.entry_type_id}:${r.parcel_id}`;
+        if (!map[key]) map[key] = r.performed_at;
+      }
+      return map;
+    },
+  });
+}
+
+export function useLogCareEntry() {
+  const qc = useQueryClient();
+  const userId = useAuthUserId();
+  return useMutation({
+    mutationFn: async (input: { parcel_id: string; entry_type_id: string; crop: string; note?: string | null }) => {
+      if (!userId) throw new Error("Giriş gerekli");
+      const { error } = await (supabase as any)
+        .from("care_journal_entries")
+        .insert({
+          farmer_id: userId,
+          parcel_id: input.parcel_id,
+          entry_type_id: input.entry_type_id,
+          crop: input.crop,
+          performed_at: new Date().toISOString().slice(0, 10),
+          note: input.note ?? null,
+        });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["careEntriesLastPerformed", userId] });
+      qc.invalidateQueries({ queryKey: ["careJournalEntries", userId] });
+    },
+  });
+}
+
+export function useCareJournalEntries() {
+  const userId = useAuthUserId();
+  return useQuery({
+    queryKey: ["careJournalEntries", userId],
+    enabled: !!userId,
+    queryFn: async () => {
+      const { data, error } = await (supabase as any)
+        .from("care_journal_entries")
+        .select("id, parcel_id, entry_type_id, crop, performed_at, note, journal_entry_types(name, icon)")
+        .eq("farmer_id", userId!)
+        .order("performed_at", { ascending: false });
+      if (error) throw error;
+      return (data ?? []) as Array<{
+        id: string; parcel_id: string; entry_type_id: string; crop: string;
+        performed_at: string; note: string | null;
+        journal_entry_types: { name: string; icon: string | null };
+      }>;
+    },
+  });
+}
+
+export function useCropGlossary(crop: string | null | undefined) {
+  return useQuery({
+    queryKey: ["cropGlossary", crop],
+    enabled: !!crop,
+    queryFn: async () => {
+      const { data, error } = await (supabase as any)
+        .from("crop_journal_glossary")
+        .select("term, explanation")
+        .eq("crop", crop!);
+      if (error) throw error;
+      return (data ?? []) as Array<{ term: string; explanation: string }>;
+    },
+  });
+}
+
 
