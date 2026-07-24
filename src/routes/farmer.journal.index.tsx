@@ -368,6 +368,7 @@ interface RoutineRow {
   key: string;
   pref: ActiveJournalPref;
   parcel: Parcel;
+  crop: string;
   lastPerformed: string | null;
   nextDue: string | null;
   status: RowStatus;
@@ -421,32 +422,34 @@ function RoutineTab({ parcels }: { parcels: Parcel[] }) {
 
   const [view, setView] = useState<"list" | "calendar">("list");
   const [overdueOnly, setOverdueOnly] = useState(false);
-  const [logSheet, setLogSheet] = useState<{ row: RoutineRow; crop: string } | null>(null);
 
   const parcelById = useMemo(() => Object.fromEntries(parcels.map((p) => [p.id, p])), [parcels]);
 
+  // Her (pref × parsel × parseldeki crop) kombinasyonu ayrı bir satır — crop her zaman açık.
   const rows: RoutineRow[] = useMemo(() => {
     const out: RoutineRow[] = [];
     for (const pref of prefs) {
-      const relevantParcels = pref.entry_type.crop
-        ? parcels.filter((p) => p.crops.some((c) => c.toLowerCase() === pref.entry_type.crop!.toLowerCase()))
-        : parcels;
-      for (const parcel of relevantParcels) {
-        const key = `${pref.entry_type_id}:${parcel.id}`;
-        const lastPerformed = lastPerformedMap[key] ?? null;
-        const freq = pref.frequency_days ?? pref.entry_type.default_frequency_days;
-        let nextDue: string | null = null;
-        let status: RowStatus = "none";
-        if (lastPerformed && freq) {
-          const d = new Date(lastPerformed);
-          d.setDate(d.getDate() + freq);
-          nextDue = d.toISOString().slice(0, 10);
-          const daysUntil = Math.floor((d.getTime() - Date.now()) / 86400000);
-          status = daysUntil < 0 ? "overdue" : daysUntil <= 2 ? "soon" : "ok";
-        } else if (lastPerformed) {
-          status = "ok";
+      for (const parcel of parcels) {
+        const cropsForRow = pref.entry_type.crop
+          ? (parcel.crops.some((c) => c.toLowerCase() === pref.entry_type.crop!.toLowerCase()) ? [pref.entry_type.crop] : [])
+          : parcel.crops;
+        for (const crop of cropsForRow) {
+          const key = `${pref.entry_type_id}:${parcel.id}:${crop}`;
+          const lastPerformed = lastPerformedMap[key] ?? null;
+          const freq = pref.frequency_days ?? pref.entry_type.default_frequency_days;
+          let nextDue: string | null = null;
+          let status: RowStatus = "none";
+          if (lastPerformed && freq) {
+            const d = new Date(lastPerformed);
+            d.setDate(d.getDate() + freq);
+            nextDue = d.toISOString().slice(0, 10);
+            const daysUntil = Math.floor((d.getTime() - Date.now()) / 86400000);
+            status = daysUntil < 0 ? "overdue" : daysUntil <= 2 ? "soon" : "ok";
+          } else if (lastPerformed) {
+            status = "ok";
+          }
+          out.push({ key, pref, parcel, crop, lastPerformed, nextDue, status });
         }
-        out.push({ key, pref, parcel, lastPerformed, nextDue, status });
       }
     }
     return out;
@@ -454,15 +457,18 @@ function RoutineTab({ parcels }: { parcels: Parcel[] }) {
 
   const visibleRows = overdueOnly ? rows.filter((r) => r.status === "overdue") : rows;
 
-  const groupedByTheme = useMemo(() => {
-    const m = new Map<string, { theme: ActiveJournalPref["entry_type"]["theme"]; rows: RoutineRow[] }>();
+  // Parsel bazlı gruplama — her parselin altında o parseldeki eylemler, crop etiketiyle.
+  const groupedByParcel = useMemo(() => {
+    const m = new Map<string, { parcel: Parcel; rows: RoutineRow[] }>();
     for (const row of visibleRows) {
-      const t = row.pref.entry_type.theme;
-      if (!m.has(t.id)) m.set(t.id, { theme: t, rows: [] });
-      m.get(t.id)!.rows.push(row);
+      if (!m.has(row.parcel.id)) m.set(row.parcel.id, { parcel: row.parcel, rows: [] });
+      m.get(row.parcel.id)!.rows.push(row);
     }
-    return Array.from(m.values()).sort((a, b) => a.theme.sort_order - b.theme.sort_order);
-  }, [visibleRows]);
+    // parcels dizisindeki sırayı (created_at asc) koru
+    return parcels
+      .map((p) => m.get(p.id))
+      .filter((g): g is { parcel: Parcel; rows: RoutineRow[] } => !!g && g.rows.length > 0);
+  }, [visibleRows, parcels]);
 
   const farmerCrops = useMemo(() => {
     const s = new Set<string>();
@@ -470,20 +476,10 @@ function RoutineTab({ parcels }: { parcels: Parcel[] }) {
     return Array.from(s);
   }, [parcels]);
 
-  const openLogSheet = (row: RoutineRow) => {
-    const crops = row.pref.entry_type.crop ? [row.pref.entry_type.crop] : row.parcel.crops;
-    if (crops.length <= 1) {
-      void confirmLog(row, crops[0] ?? row.parcel.crops[0]);
-    } else {
-      setLogSheet({ row, crop: crops[0] });
-    }
-  };
-
-  const confirmLog = async (row: RoutineRow, crop: string) => {
+  const handleLog = async (row: RoutineRow) => {
     try {
-      await logEntry.mutateAsync({ parcel_id: row.parcel.id, entry_type_id: row.pref.entry_type_id, crop });
+      await logEntry.mutateAsync({ parcel_id: row.parcel.id, entry_type_id: row.pref.entry_type_id, crop: row.crop });
       toast.success("Kaydedildi ✓");
-      setLogSheet(null);
     } catch (err) {
       toast.error((err as Error).message);
     }
@@ -552,15 +548,14 @@ function RoutineTab({ parcels }: { parcels: Parcel[] }) {
           </div>
         ) : (
           <div className="space-y-5">
-            {groupedByTheme.map(({ theme, rows: themeRows }) => (
-              <section key={theme.id}>
+            {groupedByParcel.map(({ parcel, rows: parcelRows }) => (
+              <section key={parcel.id}>
                 <h3 className="font-serif text-sm uppercase tracking-widest text-hmuted mb-2">
-                  {theme.icon ?? ""} {theme.name}
+                  📍 {parcel.name}
                 </h3>
                 <ul className="space-y-2">
-                  {themeRows.map((row) => {
+                  {parcelRows.map((row) => {
                     const st = statusStyle(row.status);
-                    const showParcel = parcels.length > 1;
                     return (
                       <li
                         key={row.key}
@@ -569,16 +564,21 @@ function RoutineTab({ parcels }: { parcels: Parcel[] }) {
                       >
                         <div className="text-2xl shrink-0 w-8 text-center">{row.pref.entry_type.icon ?? "•"}</div>
                         <div className="flex-1 min-w-0">
-                          <div className="font-medium text-dark truncate">
-                            {row.pref.entry_type.name}
-                            {showParcel && <span className="text-hmuted font-normal"> — {row.parcel.name}</span>}
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="font-medium text-dark truncate">{row.pref.entry_type.name}</span>
+                            <span
+                              className="rounded-full px-2 py-0.5 text-[10px] font-medium"
+                              style={{ background: cropChipColor(row.crop).bg, color: cropChipColor(row.crop).fg }}
+                            >
+                              {formatCrop(row.crop)}
+                            </span>
                           </div>
                           <div className="mt-1 inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium" style={{ background: st.bg, color: st.fg }}>
                             {st.label(row.nextDue, row.lastPerformed)}
                           </div>
                         </div>
                         <button
-                          onClick={() => openLogSheet(row)}
+                          onClick={() => handleLog(row)}
                           disabled={logEntry.isPending}
                           className="shrink-0 rounded-full bg-saffron px-3 py-1.5 text-xs font-medium text-white disabled:opacity-40"
                         >
@@ -613,6 +613,12 @@ function RoutineTab({ parcels }: { parcels: Parcel[] }) {
                       <div className="flex-1 min-w-0 text-sm text-dark">
                         <span className="mr-1">{h.journal_entry_types.icon ?? "•"}</span>
                         {h.journal_entry_types.name}
+                        <span
+                          className="ml-1.5 rounded-full px-1.5 py-0.5 text-[10px] font-medium"
+                          style={{ background: cropChipColor(h.crop).bg, color: cropChipColor(h.crop).fg }}
+                        >
+                          {formatCrop(h.crop)}
+                        </span>
                         <span className="text-hmuted"> — {parcelById[h.parcel_id]?.name ?? "—"}</span>
                       </div>
                     </li>
@@ -633,27 +639,6 @@ function RoutineTab({ parcels }: { parcels: Parcel[] }) {
         </div>
       )}
 
-      {/* Parsel/crop seçim sheet'i (birden fazla crop'lu parselde) */}
-      <Sheet open={!!logSheet} onOpenChange={(o) => !o && setLogSheet(null)}>
-        <SheetContent side="bottom" className="rounded-t-3xl max-h-[85vh]">
-          <div className="mx-auto h-1.5 w-12 rounded-full bg-muted -mt-2 mb-3" />
-          <SheetHeader>
-            <SheetTitle className="font-serif">Hangi ürün için?</SheetTitle>
-          </SheetHeader>
-          <div className="mt-4 space-y-2 pb-6">
-            {logSheet?.row.parcel.crops.map((c) => (
-              <button
-                key={c}
-                onClick={() => confirmLog(logSheet.row, c)}
-                className="w-full rounded-xl border px-4 py-3 text-left text-sm"
-                style={{ borderColor: "var(--border)" }}
-              >
-                {formatCrop(c)}
-              </button>
-            ))}
-          </div>
-        </SheetContent>
-      </Sheet>
     </div>
   );
 }
