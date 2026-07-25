@@ -386,25 +386,6 @@ function Hero({ onRole }: { onRole: (r: "farmer" | "buyer") => void }) {
         {/* Floating glass product card + timeline */}
         <HeroProductCard />
 
-
-          {/* Timeline overlay */}
-          <div
-            className="lp-glass rounded-2xl p-6 mt-4 max-w-sm mx-auto md:ml-auto md:-mt-6 md:mr-6 md:translate-x-4"
-            style={{ boxShadow: "0 20px 40px -18px rgba(0,0,0,0.3)" }}
-          >
-            <div className="text-[11px] uppercase tracking-widest mb-4" style={{ color: "var(--lp-muted)" }}>
-              Tarla günlüğü
-            </div>
-            <TimelineDraw
-              items={[
-                { icon: <Droplets className="w-4 h-4" />, label: "Sulandı", date: "3 Eki" },
-                { icon: <Camera className="w-4 h-4" />, label: "Fotoğraf eklendi", date: "8 Eki" },
-                { icon: <Sprout className="w-4 h-4" />, label: "Gübrelendi", date: "15 Eki" },
-                { icon: <Scissors className="w-4 h-4" />, label: "Hasat edildi", date: "22 Eki" },
-              ]}
-            />
-          </div>
-        </div>
       </div>
     </section>
   );
