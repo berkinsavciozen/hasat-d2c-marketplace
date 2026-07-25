@@ -868,7 +868,7 @@ const PINS: Pin[] = [
 
 function TurkeyMap() {
   const ref = useReveal<HTMLDivElement>();
-  const [active, setActive] = useState<string>("safranbolu");
+  const [active, setActive] = useState<string>(() => PINS[Math.floor(Math.random() * PINS.length)].id);
   const pin = useMemo(() => PINS.find((p) => p.id === active) ?? PINS[0], [active]);
   return (
     <section
