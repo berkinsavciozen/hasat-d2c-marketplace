@@ -100,7 +100,7 @@ function Journal() {
   // Parsel sheet
   const [pName, setPName] = useState("");
   const [pArea, setPArea] = useState(2);
-  const [pCrops, setPCrops] = useState<string[]>(["safran"]);
+  const [pCrops, setPCrops] = useState<string[]>([]);
   const [gpsState, setGpsState] = useState<"idle" | "loading" | "done" | "error">("idle");
   const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(null);
   const [open, setOpen] = useState(false);
