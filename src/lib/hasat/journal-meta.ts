@@ -110,10 +110,25 @@ export function relativeTr(date: string): string {
   return `${Math.floor(diff / 30)} ay önce`;
 }
 
+const CHIP_PALETTE = [
+  { token: "--saffron" },
+  { token: "--lav" },
+  { token: "--sage" },
+  { token: "--dark" },
+] as const;
+
+function hashString(s: string): number {
+  let h = 0;
+  for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0;
+  return h;
+}
+
 export function cropChipColor(crop: string): { bg: string; fg: string } {
   const c = (crop || "").toLowerCase();
   if (c.includes("safran")) return { bg: "color-mix(in oklab, var(--saffron) 18%, transparent)", fg: "var(--saffron)" };
   if (c.includes("lavanta")) return { bg: "color-mix(in oklab, var(--lav) 18%, transparent)", fg: "var(--lav)" };
   if (c.includes("zeytin") || c.includes("tıbbi") || c.includes("tibbi")) return { bg: "color-mix(in oklab, var(--sage) 18%, transparent)", fg: "var(--sage)" };
-  return { bg: "color-mix(in oklab, var(--dark) 10%, transparent)", fg: "var(--dark)" };
+  if (!c) return { bg: "color-mix(in oklab, var(--dark) 10%, transparent)", fg: "var(--dark)" };
+  const pick = CHIP_PALETTE[hashString(c) % CHIP_PALETTE.length];
+  return { bg: `color-mix(in oklab, var(${pick.token}) 15%, transparent)`, fg: `var(${pick.token})` };
 }

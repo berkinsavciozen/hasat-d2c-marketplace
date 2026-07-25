@@ -100,7 +100,7 @@ function Journal() {
   // Parsel sheet
   const [pName, setPName] = useState("");
   const [pArea, setPArea] = useState(2);
-  const [pCrops, setPCrops] = useState<string[]>(["safran"]);
+  const [pCrops, setPCrops] = useState<string[]>([]);
   const [gpsState, setGpsState] = useState<"idle" | "loading" | "done" | "error">("idle");
   const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(null);
   const [open, setOpen] = useState(false);
@@ -132,7 +132,7 @@ function Journal() {
           : { lat: 0, lng: 0, label: "" },
       });
       setOpen(false);
-      setPName(""); setPArea(2); setPCrops(["safran"]); setGpsState("idle"); setCoords(null);
+      setPName(""); setPArea(2); setPCrops([]); setGpsState("idle"); setCoords(null);
       toast.success("Parsel eklendi");
     } catch (err) {
       toast.error((err as Error).message);
