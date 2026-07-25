@@ -1063,15 +1063,15 @@ function AISection() {
           <ChatCard
             title="Soru-cevap"
             messages={[
-              { who: "farmer", text: "Safranımı ne zaman hasat etmeliyim?" },
-              { who: "hasat", text: "Safranbolu için hasat penceresi 15 Ekim – 10 Kasım. Son günlük kaydına göre ilk çiçekleri 3–5 gün içinde görebilirsin. Sabah 6–8 arası topla." },
+              { who: "farmer", text: "Bu hafta neye öncelik vermeliyim?" },
+              { who: "hasat", text: "Son kaydına göre sulama 4 gün önce yapılmış; hava tahminine göre yarın kısa bir sulama iyi olur. Ayrıca bu hafta yaprak kontrolü için 10 dk ayır." },
             ]}
           />
           <ChatCard
             title="Otomatik ilan güncellemesi"
             messages={[
-              { who: "farmer", text: "Bugün hasat yaptım, 320 gr safran çıktı." },
-              { who: "hasat", text: "Harika 🌸 İlanına 320 gr eklendi, güven skoru %78'den %92'ye çıktı. Fiyatı ₺2.900 olarak güncelledim, onaylıyor musun?" },
+              { who: "farmer", text: "Bugün 5 kg hasat kaydettim." },
+              { who: "hasat", text: "Harika 🌱 İlanına 5 kg eklendi, güven skoru %78'den %92'ye çıktı. Fiyatı son kaydına göre güncelledim, onaylıyor musun?" },
             ]}
           />
         </div>
