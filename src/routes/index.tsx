@@ -391,6 +391,68 @@ function Hero({ onRole }: { onRole: (r: "farmer" | "buyer") => void }) {
   );
 }
 
+
+const HERO_ITEMS: {
+  img: string; crop: string; qty: string; price: string; loc: string; farmer: string; when: string;
+}[] = [
+  { img: IMG_SAFFRON, crop: "Safran", qty: "50 gr", price: "₺2.900", loc: "Safranbolu", farmer: "A. Y.", when: "Hasat: 22 Ekim 2025" },
+  { img: IMG_OLIVE, crop: "Zeytinyağı · Erken hasat", qty: "1 L", price: "₺620", loc: "Ayvalık", farmer: "M. K.", when: "Hasat: 3 Kasım 2025" },
+  { img: IMG_LAVENDER, crop: "Lavanta kurusu", qty: "250 gr", price: "₺380", loc: "Isparta", farmer: "A. D.", when: "Hasat: 18 Temmuz 2025" },
+  { img: IMG_HAZELNUT, crop: "Fındık · Levant", qty: "1 kg", price: "₺310", loc: "Giresun", farmer: "S. T.", when: "Hasat: 25 Ağustos 2025" },
+];
+
+function HeroProductCard() {
+  const item = useMemo(() => HERO_ITEMS[Math.floor(Math.random() * HERO_ITEMS.length)], []);
+  return (
+    <div className="relative lp-reveal lp-reveal-d2">
+      <div className="lp-glass rounded-3xl p-4 shadow-2xl max-w-sm mx-auto md:ml-auto">
+        <div className="relative rounded-2xl overflow-hidden aspect-[4/3]">
+          <img src={item.img} alt={`${item.crop} — örnek ürün`} className="w-full h-full object-cover" />
+          <span
+            className="absolute top-3 left-3 inline-flex items-center gap-1 rounded-full px-2 py-1 text-[10px] font-medium"
+            style={{ background: "var(--lp-primary)", color: "#fff" }}
+          >
+            <ShieldCheck className="w-3 h-3" /> Tam İzlenebilir
+          </span>
+        </div>
+        <div className="p-3">
+          <div className="flex items-baseline justify-between gap-2">
+            <div className="font-serif text-lg" style={{ color: "var(--lp-ink)" }}>{item.crop} · {item.qty}</div>
+            <div className="text-sm font-medium" style={{ color: "var(--lp-primary)" }}>{item.price}</div>
+          </div>
+          <div className="mt-1 flex items-center gap-2 text-xs" style={{ color: "var(--lp-muted)" }}>
+            <MapPin className="w-3 h-3" /> {item.loc} · {item.farmer} <span className="opacity-70">· örnek üretici</span>
+          </div>
+          <div className="mt-2 flex items-center gap-2 text-xs" style={{ color: "var(--lp-muted)" }}>
+            <div className="inline-flex items-center gap-0.5" style={{ color: "var(--lp-accent)" }}>
+              {Array.from({ length: 5 }).map((_, i) => <Star key={i} className="w-3 h-3 fill-current" />)}
+            </div>
+            <span>·</span><span>{item.when}</span>
+          </div>
+        </div>
+      </div>
+
+      {/* Timeline overlay */}
+      <div
+        className="lp-glass rounded-2xl p-6 mt-4 max-w-sm mx-auto md:ml-auto md:-mt-6 md:mr-6 md:translate-x-4"
+        style={{ boxShadow: "0 20px 40px -18px rgba(0,0,0,0.3)" }}
+      >
+        <div className="text-[11px] uppercase tracking-widest mb-4" style={{ color: "var(--lp-muted)" }}>
+          Tarla günlüğü
+        </div>
+        <TimelineDraw
+          items={[
+            { icon: <Droplets className="w-4 h-4" />, label: "Sulandı", date: "3 Eki" },
+            { icon: <Camera className="w-4 h-4" />, label: "Fotoğraf eklendi", date: "8 Eki" },
+            { icon: <Sprout className="w-4 h-4" />, label: "Gübrelendi", date: "15 Eki" },
+            { icon: <Scissors className="w-4 h-4" />, label: "Hasat edildi", date: "22 Eki" },
+          ]}
+        />
+      </div>
+    </div>
+  );
+}
+
 function TimelineDraw({ items }: { items: { icon: React.ReactNode; label: string; date: string }[] }) {
   return (
     <ol className="relative pl-9 space-y-5">
