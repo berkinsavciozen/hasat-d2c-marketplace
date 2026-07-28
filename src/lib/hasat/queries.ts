@@ -281,6 +281,7 @@ export function useCreateEntry() {
       qc.invalidateQueries({ queryKey: ["farmerListings", userId] });
       qc.invalidateQueries({ queryKey: ["listingStock"] });
       qc.invalidateQueries({ queryKey: ["listingBatchEntries"] });
+      qc.invalidateQueries({ queryKey: ["routineMaintenanceStatus", userId] });
     },
   });
 }
@@ -2669,9 +2670,13 @@ export function useCreateCropRequest() {
         const canonical: string = cfg?.crop ?? cfg?.display_name ?? cropName;
 
         // Katalog boşluğu sinyali: alıcının aradığı ürün crop_config'te hiç yoksa Berkin'e anında haber ver.
+        // Not alanı da mesaja dahil edilir (kısaltılmış) — form topluyor ama önceden SMS'e hiç yansımıyordu.
         if (!cfg) {
+          const noteSnippet = input.note?.trim()
+            ? ` · Not: ${input.note.trim().slice(0, 80)}${input.note.trim().length > 80 ? "..." : ""}`
+            : "";
           (supabase as any).functions.invoke("notify-admin", {
-            body: { message: `🛒 Katalogda olmayan ürün talebi: "${cropName}" (buyer)` },
+            body: { message: `🛒 Katalogda olmayan ürün talebi: "${cropName}"${noteSnippet} (buyer)` },
           }).catch((e: unknown) => console.warn("notify-admin (catalog gap) failed", e));
         }
 
@@ -3536,79 +3541,44 @@ export function useCreateCustomEntryType() {
   });
 }
 
-// ============= Journal routine tracking (P22-D) =============
+// ============= Journal routine tracking (P22-D, hesap P22-G'de DB view'ına taşındı) =============
 
-export interface ActiveJournalPref {
-  id: string;
+export interface RoutineMaintenanceStatusRow {
+  pref_id: string;
+  parcel_id: string;
+  parcel_name: string;
+  crop: string;
   entry_type_id: string;
+  entry_type_name: string;
+  entry_type_icon: string | null;
+  work_type_key: string;
   frequency_days: number | null;
   threshold_note: string | null;
-  entry_type: {
-    id: string;
-    name: string;
-    icon: string | null;
-    crop: string | null;
-    default_frequency_days: number | null;
-    work_type_key: string;
-    theme: { id: string; name: string; icon: string | null; sort_order: number };
-  };
-}
-
-export function useActiveJournalPrefsDetailed() {
-  const userId = useAuthUserId();
-  return useQuery({
-    queryKey: ["activeJournalPrefsDetailed", userId],
-    enabled: !!userId,
-    queryFn: async (): Promise<ActiveJournalPref[]> => {
-      const { data, error } = await (supabase as any)
-        .from("farmer_journal_prefs")
-        .select("id, entry_type_id, frequency_days, threshold_note, journal_entry_types(id, name, icon, crop, default_frequency_days, work_type_key, journal_themes(id, name, icon, sort_order))")
-        .eq("farmer_id", userId!)
-        .eq("is_active", true);
-      if (error) throw error;
-      return (data ?? []).map((r: any) => ({
-        id: r.id,
-        entry_type_id: r.entry_type_id,
-        frequency_days: r.frequency_days,
-        threshold_note: r.threshold_note,
-        entry_type: {
-          id: r.journal_entry_types.id,
-          name: r.journal_entry_types.name,
-          icon: r.journal_entry_types.icon,
-          crop: r.journal_entry_types.crop,
-          default_frequency_days: r.journal_entry_types.default_frequency_days,
-          work_type_key: r.journal_entry_types.work_type_key,
-          theme: r.journal_entry_types.journal_themes,
-        },
-      }));
-    },
-  });
+  last_performed_date: string | null;
+  next_due_date: string | null;
+  never_performed: boolean;
+  is_event_based: boolean;
+  is_overdue: boolean;
 }
 
 /**
  * Rutin bakım eylemleri artık ayrı bir tabloda değil, doğrudan günlükte (`harvest_entries`,
  * `journal_entry_type_id` doluyken) tutulur — Rutin Bakım = günlüğe hızlı ekleme.
- * Map: `${journal_entry_type_id}:${parcel_id}:${crop}` -> son yapılma tarihi (harvest_date).
+ * "Son yapılma / sıklık / sıradaki tarih / gecikmiş mi" hesabı `v_routine_maintenance_status`
+ * view'ında (DB) yaşar (kural #106) — web ve mobil aynı hesabı okur, client sadece filtreler.
  */
-export function useLastPerformedFromJournal() {
+export function useRoutineMaintenanceStatus() {
   const userId = useAuthUserId();
   return useQuery({
-    queryKey: ["lastPerformedFromJournal", userId],
+    queryKey: ["routineMaintenanceStatus", userId],
     enabled: !!userId,
-    queryFn: async (): Promise<Record<string, string>> => {
+    queryFn: async (): Promise<RoutineMaintenanceStatusRow[]> => {
       const { data, error } = await (supabase as any)
-        .from("harvest_entries")
-        .select("journal_entry_type_id, parcel_id, crop, harvest_date")
-        .eq("farmer_id", userId!)
-        .not("journal_entry_type_id", "is", null)
-        .order("harvest_date", { ascending: false });
+        .from("v_routine_maintenance_status")
+        .select("*")
+        .eq("farmer_id", userId!);
       if (error) throw error;
-      const map: Record<string, string> = {};
-      for (const r of (data ?? []) as any[]) {
-        const key = `${r.journal_entry_type_id}:${r.parcel_id}:${r.crop}`;
-        if (!map[key]) map[key] = r.harvest_date;
-      }
-      return map;
+      return (data ?? []) as RoutineMaintenanceStatusRow[];
     },
   });
 }
