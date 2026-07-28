@@ -11,10 +11,9 @@ import {
   useCreateParcel,
   useCreateEntry,
   useExistingBatches,
-  useActiveJournalPrefsDetailed,
-  useLastPerformedFromJournal,
+  useRoutineMaintenanceStatus,
   useCropGlossary,
-  type ActiveJournalPref,
+  type RoutineMaintenanceStatusRow,
 } from "@/lib/hasat/queries";
 import { useCropConfigMap, findCropConfig } from "@/lib/hasat/crop-config";
 import type { Parcel } from "@/lib/hasat/types";
@@ -364,27 +363,25 @@ function Journal() {
   );
 }
 
-// ============= Rutin Bakım sekmesi (P22-D) =============
+// ============= Rutin Bakım sekmesi (P22-D, hesap P22-G'de DB view'ına taşındı) =============
 
 type RowStatus = "overdue" | "soon" | "ok" | "none";
 
-interface RoutineRow {
-  key: string;
-  pref: ActiveJournalPref;
-  parcel: Parcel;
-  crop: string;
-  lastPerformed: string | null;
-  nextDue: string | null;
-  status: RowStatus;
+function rowStatus(row: RoutineMaintenanceStatusRow): RowStatus {
+  if (row.never_performed) return "none";
+  if (row.is_overdue) return "overdue";
+  if (!row.next_due_date) return "ok"; // olay bazlı, sıklığı yok ama en az bir kez yapılmış
+  const daysUntil = Math.floor((new Date(row.next_due_date).getTime() - Date.now()) / 86400000);
+  return daysUntil <= 2 ? "soon" : "ok";
 }
 
-function statusStyle(status: RowStatus): { bg: string; fg: string; label: (nextDue: string | null, lastPerformed: string | null) => string } {
+function statusStyle(status: RowStatus): { bg: string; fg: string; label: (row: RoutineMaintenanceStatusRow) => string } {
   if (status === "overdue") {
     return {
       bg: "color-mix(in oklab, var(--hred) 15%, transparent)",
       fg: "var(--hred)",
-      label: (nextDue) => {
-        const days = nextDue ? Math.abs(Math.floor((new Date(nextDue).getTime() - Date.now()) / 86400000)) : 0;
+      label: (row) => {
+        const days = row.next_due_date ? Math.abs(Math.floor((new Date(row.next_due_date).getTime() - Date.now()) / 86400000)) : 0;
         return `${days} gün gecikti`;
       },
     };
@@ -393,8 +390,8 @@ function statusStyle(status: RowStatus): { bg: string; fg: string; label: (nextD
     return {
       bg: "color-mix(in oklab, var(--gold) 20%, transparent)",
       fg: "var(--dark)",
-      label: (nextDue) => {
-        const days = nextDue ? Math.max(0, Math.floor((new Date(nextDue).getTime() - Date.now()) / 86400000)) : 0;
+      label: (row) => {
+        const days = row.next_due_date ? Math.max(0, Math.floor((new Date(row.next_due_date).getTime() - Date.now()) / 86400000)) : 0;
         return days === 0 ? "Bugün sırası" : `${days} gün sonra`;
       },
     };
@@ -403,9 +400,9 @@ function statusStyle(status: RowStatus): { bg: string; fg: string; label: (nextD
     return {
       bg: "color-mix(in oklab, var(--sage) 15%, transparent)",
       fg: "var(--sage)",
-      label: (nextDue, lastPerformed) => {
-        if (!nextDue) return lastPerformed ? `Son: ${relativeTr(lastPerformed)}` : "Olay bazlı";
-        const days = Math.max(0, Math.floor((new Date(nextDue).getTime() - Date.now()) / 86400000));
+      label: (row) => {
+        if (!row.next_due_date) return row.last_performed_date ? `Son: ${relativeTr(row.last_performed_date)}` : "Olay bazlı";
+        const days = Math.max(0, Math.floor((new Date(row.next_due_date).getTime() - Date.now()) / 86400000));
         return `${days} gün sonra`;
       },
     };
@@ -420,67 +417,41 @@ function statusStyle(status: RowStatus): { bg: string; fg: string; label: (nextD
 type DateFilter = "today" | "week" | "all";
 
 function RoutineTab({ parcels }: { parcels: Parcel[] }) {
-  const { data: prefs = [], isLoading: prefsLoading } = useActiveJournalPrefsDetailed();
-  const { data: lastPerformedMap = {}, isLoading: lastLoading } = useLastPerformedFromJournal();
+  const { data: rows = [], isLoading } = useRoutineMaintenanceStatus();
   const { map: cropConfigMap } = useCropConfigMap();
 
   const [dateFilter, setDateFilter] = useState<DateFilter>("week");
-  const [logRow, setLogRow] = useState<RoutineRow | null>(null);
-
-  // Her (pref × parsel × parseldeki crop) kombinasyonu ayrı bir satır — crop her zaman açık.
-  const rows: RoutineRow[] = useMemo(() => {
-    const out: RoutineRow[] = [];
-    for (const pref of prefs) {
-      for (const parcel of parcels) {
-        const cropsForRow = pref.entry_type.crop
-          ? (parcel.crops.some((c) => c.toLowerCase() === pref.entry_type.crop!.toLowerCase()) ? [pref.entry_type.crop] : [])
-          : parcel.crops;
-        for (const crop of cropsForRow) {
-          const key = `${pref.entry_type_id}:${parcel.id}:${crop}`;
-          const lastPerformed = lastPerformedMap[key] ?? null;
-          const freq = pref.frequency_days ?? pref.entry_type.default_frequency_days;
-          let nextDue: string | null = null;
-          let status: RowStatus = "none";
-          if (lastPerformed && freq) {
-            const d = new Date(lastPerformed);
-            d.setDate(d.getDate() + freq);
-            nextDue = d.toISOString().slice(0, 10);
-            const daysUntil = Math.floor((d.getTime() - Date.now()) / 86400000);
-            status = daysUntil < 0 ? "overdue" : daysUntil <= 2 ? "soon" : "ok";
-          } else if (lastPerformed) {
-            status = "ok";
-          }
-          out.push({ key, pref, parcel, crop, lastPerformed, nextDue, status });
-        }
-      }
-    }
-    return out;
-  }, [prefs, parcels, lastPerformedMap]);
+  const [logRow, setLogRow] = useState<RoutineMaintenanceStatusRow | null>(null);
 
   // Tarih filtresi: gecikmiş ve hiç yapılmamış olanlar her zaman görünür (bunlar zaten "bekleyen").
   // Olay-bazlı (sıklığı olmayan) eylemler de her zaman görünür. Sıklığı olanlar seçili pencereye göre süzülür.
+  // Hesap (next_due_date / is_overdue / never_performed) `v_routine_maintenance_status` view'ından geliyor (kural #106).
   const visibleRows = useMemo(() => {
     if (dateFilter === "all") return rows;
     const maxDays = dateFilter === "today" ? 0 : 7;
     return rows.filter((r) => {
-      if (r.status === "overdue" || r.status === "none") return true;
-      if (!r.nextDue) return true;
-      const daysUntil = Math.floor((new Date(r.nextDue).getTime() - Date.now()) / 86400000);
+      if (r.is_overdue || r.never_performed || r.is_event_based) return true;
+      if (!r.next_due_date) return true;
+      const daysUntil = Math.floor((new Date(r.next_due_date).getTime() - Date.now()) / 86400000);
       return daysUntil <= maxDays;
     });
   }, [rows, dateFilter]);
 
   // Parsel bazlı gruplama — her parselin altında o parseldeki eylemler, crop etiketiyle.
   const groupedByParcel = useMemo(() => {
-    const m = new Map<string, { parcel: Parcel; rows: RoutineRow[] }>();
+    const m = new Map<string, { parcel: Parcel; rows: RoutineMaintenanceStatusRow[] }>();
     for (const row of visibleRows) {
-      if (!m.has(row.parcel.id)) m.set(row.parcel.id, { parcel: row.parcel, rows: [] });
-      m.get(row.parcel.id)!.rows.push(row);
+      if (!m.has(row.parcel_id)) {
+        const parcel = parcels.find((p) => p.id === row.parcel_id);
+        if (!parcel) continue;
+        m.set(row.parcel_id, { parcel, rows: [] });
+      }
+      m.get(row.parcel_id)!.rows.push(row);
     }
     // parcels dizisindeki sırayı (created_at asc) koru
     return parcels
       .map((p) => m.get(p.id))
-      .filter((g): g is { parcel: Parcel; rows: RoutineRow[] } => !!g && g.rows.length > 0);
+      .filter((g): g is { parcel: Parcel; rows: RoutineMaintenanceStatusRow[] } => !!g && g.rows.length > 0);
   }, [visibleRows, parcels]);
 
   const farmerCrops = useMemo(() => {
@@ -488,8 +459,6 @@ function RoutineTab({ parcels }: { parcels: Parcel[] }) {
     for (const p of parcels) for (const c of p.crops ?? []) s.add(c.toLowerCase());
     return Array.from(s);
   }, [parcels]);
-
-  const isLoading = prefsLoading || lastLoading;
 
   return (
     <div className="space-y-4">
@@ -538,17 +507,18 @@ function RoutineTab({ parcels }: { parcels: Parcel[] }) {
               </h3>
               <ul className="space-y-2">
                 {parcelRows.map((row) => {
-                  const st = statusStyle(row.status);
+                  const st = statusStyle(rowStatus(row));
+                  const key = `${row.entry_type_id}:${row.parcel_id}:${row.crop}`;
                   return (
                     <li
-                      key={row.key}
+                      key={key}
                       className="flex items-center gap-3 rounded-2xl border px-4 py-3.5"
                       style={{ background: "var(--cream)", borderColor: "var(--border)" }}
                     >
-                      <div className="text-2xl shrink-0 w-8 text-center">{row.pref.entry_type.icon ?? "•"}</div>
+                      <div className="text-2xl shrink-0 w-8 text-center">{row.entry_type_icon ?? "•"}</div>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 flex-wrap">
-                          <span className="font-medium text-dark truncate">{row.pref.entry_type.name}</span>
+                          <span className="font-medium text-dark truncate">{row.entry_type_name}</span>
                           <span
                             className="rounded-full px-2 py-0.5 text-[10px] font-medium"
                             style={{ background: cropChipColor(row.crop).bg, color: cropChipColor(row.crop).fg }}
@@ -556,8 +526,16 @@ function RoutineTab({ parcels }: { parcels: Parcel[] }) {
                             {formatCrop(row.crop)}
                           </span>
                         </div>
-                        <div className="mt-1 inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium" style={{ background: st.bg, color: st.fg }}>
-                          {st.label(row.nextDue, row.lastPerformed)}
+                        <div className="mt-1 flex items-center gap-2 flex-wrap">
+                          <span className="inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium" style={{ background: st.bg, color: st.fg }}>
+                            {st.label(row)}
+                          </span>
+                          {row.last_performed_date && (
+                            <span className="text-[11px] text-hmuted">
+                              Son: {shortDay(row.last_performed_date).day} {shortDay(row.last_performed_date).mon}
+                              {row.next_due_date && ` · Sıradaki: ${shortDay(row.next_due_date).day} ${shortDay(row.next_due_date).mon}`}
+                            </span>
+                          )}
                         </div>
                       </div>
                       <button
@@ -591,12 +569,15 @@ function RoutineTab({ parcels }: { parcels: Parcel[] }) {
   );
 }
 
+const todayIso = () => new Date().toISOString().slice(0, 10);
+
 /** "✓ Yaptım" → günlüğe (harvest_entries) yeni bir kayıt ekler, birden fazla batch varsa hangisine bağlanacağını sorar. */
-function LogRoutineEntrySheet({ row, cropConfigMap, onClose }: { row: RoutineRow; cropConfigMap: Map<string, any>; onClose: () => void }) {
-  const { data: batches = [], isLoading: batchesLoading } = useExistingBatches(row.parcel.id, row.crop);
+function LogRoutineEntrySheet({ row, cropConfigMap, onClose }: { row: RoutineMaintenanceStatusRow; cropConfigMap: Map<string, any>; onClose: () => void }) {
+  const { data: batches = [], isLoading: batchesLoading } = useExistingBatches(row.parcel_id, row.crop);
   const createEntry = useCreateEntry();
   const [listingId, setListingId] = useState("");
   const [note, setNote] = useState("");
+  const [performedDate, setPerformedDate] = useState(todayIso());
 
   useEffect(() => {
     if (batches.length === 0) { setListingId(""); return; }
@@ -610,13 +591,13 @@ function LogRoutineEntrySheet({ row, cropConfigMap, onClose }: { row: RoutineRow
   // bkz. P21 mixed-unit bug'ı) — batch yoksa crop'un kanonik birimine düşülür.
   const selectedBatch = batches.find((b) => b.id === listingId);
   const unit: "g" | "kg" | "L" = selectedBatch?.unit ?? (cfg?.default_unit === "kg" ? "kg" : "g");
-  const workTypeKey = row.pref.entry_type.work_type_key as WorkTypeKey;
+  const workTypeKey = row.work_type_key as WorkTypeKey;
 
   const submit = async () => {
     try {
       await createEntry.mutateAsync({
-        parcelId: row.parcel.id,
-        date: new Date().toISOString().slice(0, 10),
+        parcelId: row.parcel_id,
+        date: performedDate,
         crop: row.crop,
         quantity: 0,
         unit,
@@ -627,7 +608,7 @@ function LogRoutineEntrySheet({ row, cropConfigMap, onClose }: { row: RoutineRow
         pricePerUnit: 0,
         step_key: WORK_TO_STEP_KEY[workTypeKey] ?? null,
         listingId: batches.length > 1 && listingId ? listingId : null,
-        journalEntryTypeId: row.pref.entry_type_id,
+        journalEntryTypeId: row.entry_type_id,
       } as any);
       toast.success("Günlüğe eklendi ✓");
       onClose();
@@ -641,12 +622,22 @@ function LogRoutineEntrySheet({ row, cropConfigMap, onClose }: { row: RoutineRow
       <SheetContent side="bottom" className="rounded-t-3xl max-h-[85vh]">
         <div className="mx-auto h-1.5 w-12 rounded-full bg-muted -mt-2 mb-3" />
         <SheetHeader>
-          <SheetTitle className="font-serif">{row.pref.entry_type.name}</SheetTitle>
+          <SheetTitle className="font-serif">{row.entry_type_name}</SheetTitle>
         </SheetHeader>
         <div className="mt-1 text-sm text-hmuted">
-          {row.parcel.name} · {formatCrop(row.crop)}
+          {row.parcel_name} · {formatCrop(row.crop)}
         </div>
         <div className="mt-4 space-y-4 pb-6">
+          <div>
+            <label className="text-xs text-hmuted">Hangi gün yapıldı?</label>
+            <input
+              type="date"
+              value={performedDate}
+              max={todayIso()}
+              onChange={(e) => setPerformedDate(e.target.value)}
+              className="mt-1 w-full rounded-lg border bg-input px-3 py-2.5 text-sm outline-none focus:border-saffron"
+            />
+          </div>
           {batchesLoading ? (
             <div className="text-sm text-hmuted">Batch bilgisi yükleniyor…</div>
           ) : batches.length > 1 ? (
