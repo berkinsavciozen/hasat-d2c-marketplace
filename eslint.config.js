@@ -29,11 +29,33 @@ export default tseslint.config(
               message:
                 "TanStack Start does not use the Next.js `server-only` package. Rename the module to `*.server.ts` or mark it with `@tanstack/react-start/server-only`.",
             },
+            {
+              name: "@/integrations/supabase/types",
+              message:
+                "Bu Lovable'ın yeniden ürettiği bayat scaffold dosyasıdır (M1-b'de silindi, Lovable tekrar üretebilir). DB tipleri için `@/lib/core/db/types` kullan — kural #105/#106 (hasat-vault Build/Shared-Architecture.md).",
+            },
           ],
         },
       ],
       "react-refresh/only-export-components": ["warn", { allowConstantExport: true }],
       "@typescript-eslint/no-unused-vars": "off",
+    },
+  },
+  {
+    files: ["src/integrations/supabase/**/*.{ts,tsx}"],
+    rules: {
+      "no-restricted-imports": [
+        "error",
+        {
+          patterns: [
+            {
+              group: ["./types", "./types.js", "./types.ts"],
+              message:
+                "Bu Lovable'ın yeniden ürettiği bayat scaffold dosyasıdır (M1-b'de silindi, Lovable tekrar üretebilir). DB tipleri için `@/lib/core/db/types` kullan — kural #105/#106 (hasat-vault Build/Shared-Architecture.md).",
+            },
+          ],
+        },
+      ],
     },
   },
   eslintPluginPrettier,
