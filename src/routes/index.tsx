@@ -6,8 +6,6 @@ import { toast } from "sonner";
 import {
   ShieldCheck,
   MessageCircle,
-  Sparkles,
-  Leaf,
   Star,
   MapPin,
   Droplets,
@@ -21,7 +19,6 @@ import {
   ShoppingBasket,
   Globe2,
   Users2,
-  
   Lock,
   Percent,
 } from "lucide-react";
