@@ -6,8 +6,6 @@ import { toast } from "sonner";
 import {
   ShieldCheck,
   MessageCircle,
-  Sparkles,
-  Leaf,
   Star,
   MapPin,
   Droplets,
@@ -21,7 +19,6 @@ import {
   ShoppingBasket,
   Globe2,
   Users2,
-  
   Lock,
   Percent,
 } from "lucide-react";
@@ -719,7 +716,6 @@ function TraceabilityMock() {
     >
       <div className="mx-auto max-w-6xl grid gap-12 md:grid-cols-2 items-center">
         <div className="lp-reveal">
-          <div className="text-xs uppercase tracking-widest mb-2" style={{ color: "var(--lp-muted)" }}>İzlenebilirlik</div>
           <h2 className="font-serif text-3xl md:text-4xl mb-4" style={{ color: "var(--lp-ink)" }}>
             Her ürünün kanıtlı bir geçmişi var.
           </h2>
@@ -804,7 +800,6 @@ function MarketplacePreview() {
       <div className="mx-auto max-w-6xl">
         <div className="flex items-end justify-between mb-8 lp-reveal">
           <div>
-            <div className="text-xs uppercase tracking-widest mb-2" style={{ color: "var(--lp-muted)" }}>Pazar yeri</div>
             <h2 className="font-serif text-3xl md:text-4xl" style={{ color: "var(--lp-ink)" }}>Öne çıkan üreticiler.</h2>
             <div className="text-xs mt-1" style={{ color: "var(--lp-muted)" }}>Vitrin ilanları böyle görünür — en yeni tarihe göre sıralanır, ücretli öne çıkarma yoktur.</div>
           </div>
@@ -877,7 +872,6 @@ function TurkeyMap() {
     >
       <div className="mx-auto max-w-6xl">
         <div className="text-center mb-10 lp-reveal">
-          <div className="text-xs uppercase tracking-widest mb-2" style={{ color: "var(--lp-muted)" }}>Üretim haritası</div>
           <h2 className="font-serif text-3xl md:text-4xl" style={{ color: "var(--lp-ink)" }}>Türkiye'nin dört bir yanından.</h2>
         </div>
 
@@ -984,7 +978,6 @@ function FarmerStory() {
           />
         </div>
         <div className="lp-reveal lp-reveal-d2">
-          <div className="text-xs uppercase tracking-widest mb-2" style={{ color: "var(--lp-muted)" }}>Çiftçi hikayesi</div>
           <blockquote className="font-serif text-2xl md:text-3xl leading-snug" style={{ color: "var(--lp-ink)" }}>
             "Ürünümü ilk defa doğru fiyata sattım. Alıcı, tarlamın her adımını
             görüyor — güven kendiliğinden geliyor."
@@ -1012,7 +1005,6 @@ function BuyerPersonas() {
     <section className="px-4 py-16 md:py-24 border-t" style={{ borderColor: "var(--lp-line)", background: "var(--lp-cream)", position: "relative", isolation: "isolate" }} ref={ref}>
       <div className="mx-auto max-w-6xl">
         <div className="text-center mb-10 lp-reveal">
-          <div className="text-xs uppercase tracking-widest mb-2" style={{ color: "var(--lp-muted)" }}>Alıcılar</div>
           <h2 className="font-serif text-3xl md:text-4xl" style={{ color: "var(--lp-ink)" }}>Herkese göre çözümler.</h2>
         </div>
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
@@ -1044,9 +1036,6 @@ function AISection() {
     <section className="px-4 py-16 md:py-24 border-t" style={{ borderColor: "var(--lp-line)", background: "var(--lp-cream-2)" }} ref={ref}>
       <div className="mx-auto max-w-5xl">
         <div className="text-center mb-10 lp-reveal">
-          <div className="inline-flex items-center gap-2 text-xs uppercase tracking-widest mb-2" style={{ color: "var(--lp-muted)" }}>
-            <Sparkles className="w-3.5 h-3.5" /> Hasat AI
-          </div>
           <h2 className="font-serif text-3xl md:text-4xl" style={{ color: "var(--lp-ink)" }}>
             Tarlanda bir <span style={{ color: "var(--lp-accent)" }}>uzman</span>.
           </h2>
@@ -1120,7 +1109,6 @@ function TrustScoreLadder() {
     <section className="px-4 py-16 md:py-24 border-t" style={{ borderColor: "var(--lp-line)", background: "var(--lp-cream)", position: "relative", isolation: "isolate" }} ref={ref}>
       <div className="mx-auto max-w-6xl">
         <div className="text-center mb-10 lp-reveal">
-          <div className="text-xs uppercase tracking-widest mb-2" style={{ color: "var(--lp-muted)" }}>Güven skoru</div>
           <h2 className="font-serif text-3xl md:text-4xl" style={{ color: "var(--lp-ink)" }}>
             Kanıtladıkça güçlenen bir rozet.
           </h2>
@@ -1215,9 +1203,6 @@ function IndoorSection() {
     >
       <div className="mx-auto max-w-6xl grid gap-10 md:grid-cols-2 items-start">
         <div>
-          <div className="flex items-center gap-2 text-xs uppercase tracking-widest opacity-80 mb-3">
-            <Leaf className="w-3.5 h-3.5" /> Indoor Farming
-          </div>
           <h2 className="font-serif text-3xl md:text-4xl mb-4">
             Kırsalda kalın, <span style={{ color: "#CFE8D3" }}>toprakta büyüyün</span>.
           </h2>
