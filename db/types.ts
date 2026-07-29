@@ -4,7 +4,7 @@
 // Yeniden üretmek için:
 //   supabase gen types typescript --project-id efuqpiaavrzimvstpdpm > core/db/types.ts
 // ve üretim sonrası bu başlığı tekrar ekle.
-// Son üretim: 2026-07-29 (P23-M2 tarif backend'i)
+// Son üretim: 2026-07-29 (P23-M2-ek — recipe_views, offers.source_recipe_id, funnel v2)
 
 export type Json =
   | string
@@ -1465,6 +1465,7 @@ export type Database = {
           payment_status: string
           price_per_unit: number
           quantity: number
+          source_recipe_id: string | null
           status: Database["public"]["Enums"]["offer_status"]
           subscription_id: string | null
           updated_at: string
@@ -1486,6 +1487,7 @@ export type Database = {
           payment_status?: string
           price_per_unit: number
           quantity: number
+          source_recipe_id?: string | null
           status?: Database["public"]["Enums"]["offer_status"]
           subscription_id?: string | null
           updated_at?: string
@@ -1507,6 +1509,7 @@ export type Database = {
           payment_status?: string
           price_per_unit?: number
           quantity?: number
+          source_recipe_id?: string | null
           status?: Database["public"]["Enums"]["offer_status"]
           subscription_id?: string | null
           updated_at?: string
@@ -1546,6 +1549,20 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "listings"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "offers_source_recipe_id_fkey"
+            columns: ["source_recipe_id"]
+            isOneToOne: false
+            referencedRelation: "recipes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "offers_source_recipe_id_fkey"
+            columns: ["source_recipe_id"]
+            isOneToOne: false
+            referencedRelation: "v_recipe_coverage"
+            referencedColumns: ["recipe_id"]
           },
           {
             foreignKeyName: "offers_subscription_id_fkey"
@@ -2186,6 +2203,59 @@ export type Database = {
           },
         ]
       }
+      recipe_views: {
+        Row: {
+          created_at: string
+          id: string
+          recipe_id: string
+          session_id: string | null
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          recipe_id: string
+          session_id?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          recipe_id?: string
+          session_id?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "recipe_views_recipe_id_fkey"
+            columns: ["recipe_id"]
+            isOneToOne: false
+            referencedRelation: "recipes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "recipe_views_recipe_id_fkey"
+            columns: ["recipe_id"]
+            isOneToOne: false
+            referencedRelation: "v_recipe_coverage"
+            referencedColumns: ["recipe_id"]
+          },
+          {
+            foreignKeyName: "recipe_views_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "recipe_views_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "public_farmer_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       recipes: {
         Row: {
           author_type: string
@@ -2756,12 +2826,15 @@ export type Database = {
       v_kpi_recipe_funnel: {
         Row: {
           month: string | null
-          recipe_attributed_offers: number | null
-          recipe_attributed_orders: number | null
-          recipe_attributed_requests: number | null
+          offer_to_order_pct: number | null
+          recipe_offers: number | null
+          recipe_offers_converted: number | null
+          recipe_orders: number | null
+          recipe_requests: number | null
           recipe_saves: number | null
           recipe_views: number | null
-          request_to_order_pct: number | null
+          unique_viewers: number | null
+          view_to_save_pct: number | null
         }
         Relationships: []
       }
