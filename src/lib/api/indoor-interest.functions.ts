@@ -1,7 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { createClient } from "@supabase/supabase-js";
 import { z } from "zod";
-import type { Database } from "@/integrations/supabase/types";
+import type { Database } from "@/lib/core/db/types";
 
 const InterestType = z.enum(["danışmanlık", "ortaklık", "diğer"]);
 

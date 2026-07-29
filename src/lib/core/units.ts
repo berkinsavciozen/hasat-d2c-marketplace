@@ -1,3 +1,4 @@
+// hasat-core — BU DOSYAYI BURADA DÜZENLEME. Değişiklik hasat-core reposunda yapılır.
 // Sadece kütle ailesi (g/kg) dönüşümü. Diğer birimler (L, adet) tek crop'a özel preset
 // olduğu için karışmaz.
 export function convertQuantity(qty: number, fromUnit: string, toUnit: string): number {
