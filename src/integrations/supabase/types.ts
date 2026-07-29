@@ -106,7 +106,7 @@ export type Database = {
       }
       buyer_profiles: {
         Row: {
-          company_name: string
+          company_name: string | null
           company_type: Database["public"]["Enums"]["company_type"]
           created_at: string
           id: string
@@ -114,7 +114,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
-          company_name: string
+          company_name?: string | null
           company_type?: Database["public"]["Enums"]["company_type"]
           created_at?: string
           id?: string
@@ -122,7 +122,7 @@ export type Database = {
           user_id: string
         }
         Update: {
-          company_name?: string
+          company_name?: string | null
           company_type?: Database["public"]["Enums"]["company_type"]
           created_at?: string
           id?: string
@@ -750,6 +750,13 @@ export type Database = {
             referencedRelation: "public_parcel_cards"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "harvest_entries_parcel_id_fkey"
+            columns: ["parcel_id"]
+            isOneToOne: false
+            referencedRelation: "v_routine_maintenance_status"
+            referencedColumns: ["parcel_id"]
+          },
         ]
       }
       harvest_subscriptions: {
@@ -1088,6 +1095,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "public_parcel_cards"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "listings_parcel_id_fkey"
+            columns: ["parcel_id"]
+            isOneToOne: false
+            referencedRelation: "v_routine_maintenance_status"
+            referencedColumns: ["parcel_id"]
           },
         ]
       }
@@ -2402,6 +2416,49 @@ export type Database = {
           total_cells: number | null
         }
         Relationships: []
+      }
+      v_routine_maintenance_status: {
+        Row: {
+          crop: string | null
+          entry_type_icon: string | null
+          entry_type_id: string | null
+          entry_type_name: string | null
+          farmer_id: string | null
+          frequency_days: number | null
+          is_event_based: boolean | null
+          is_overdue: boolean | null
+          last_performed_date: string | null
+          never_performed: boolean | null
+          next_due_date: string | null
+          parcel_id: string | null
+          parcel_name: string | null
+          pref_id: string | null
+          threshold_note: string | null
+          work_type_key: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "farmer_journal_prefs_entry_type_id_fkey"
+            columns: ["entry_type_id"]
+            isOneToOne: false
+            referencedRelation: "journal_entry_types"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "farmer_journal_prefs_farmer_id_fkey"
+            columns: ["farmer_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "farmer_journal_prefs_farmer_id_fkey"
+            columns: ["farmer_id"]
+            isOneToOne: false
+            referencedRelation: "public_farmer_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Functions: {
