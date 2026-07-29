@@ -17,7 +17,7 @@ import {
 import { CATEGORY_GROUP_META, cropEmoji, findCropConfig, useCropConfigMap } from "@/lib/hasat/crop-config";
 import { slugifyFarmer } from "@/lib/hasat/vitrin";
 import { TR_PROVINCES } from "@/lib/hasat/cities";
-import { convertQuantity } from "@/lib/hasat/units";
+import { convertQuantity } from "@/lib/core";
 
 
 
