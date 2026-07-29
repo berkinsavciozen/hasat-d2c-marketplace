@@ -540,7 +540,6 @@ function SupplyChain() {
     >
       <div className="mx-auto max-w-6xl">
         <div className="text-center mb-8 lp-reveal">
-          <div className="text-xs uppercase tracking-widest mb-2" style={{ color: "var(--lp-muted)" }}>Tedarik zinciri</div>
           <h2 className="font-serif text-3xl md:text-4xl" style={{ color: "var(--lp-ink)" }}>
             Üreticinin eline ne kadar geçiyor?
           </h2>
