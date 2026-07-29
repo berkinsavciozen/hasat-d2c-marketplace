@@ -1,0 +1,7 @@
+# hasat-core sapma manifesti — sha256(dosya içeriği)
+# Elle düzenlenmez. hasat-core'da `npm run manifest` ile üretilir.
+# Kontrol: hasat-core'da `npm run drift -- <bu klasörün yolu>`
+48ca911f6a4e00f507a91e6fe42260aea54001e72e9b0eea76be828876cc1fb8  db/types.ts
+d9f8bd15665b31a91f095f3bb1e2099275dac5b6d213874734a86890fbc8c256  design/tokens.ts
+7641fccea731913abbdc826f0d55e3fdd92d695b2709bfd96770ac25a497c185  index.ts
+e38eaf304a9656af464a92e4edf76ce12240c179f6fb46e1af455a35ae85f732  units.ts
