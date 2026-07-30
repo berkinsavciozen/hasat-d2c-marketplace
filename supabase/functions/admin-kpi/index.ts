@@ -51,7 +51,7 @@ Deno.serve(async (req) => {
       farmerActivation, listingOfferRate, farmerSellthrough, farmerVerifiedPct,
       buyerActivation, horecaOrderFrequency, supplyDensity, offerConversion,
       farmerGmv, farmerRetention, buyerAovSegment, buyerGmvRetention,
-      buyerSellerRatio, priceVsMarket,
+      buyerSellerRatio, priceVsMarket, cropDemandHeatmap,
     ] = await Promise.all([
       safe(supabase.from("v_kpi_north_star").select("*").order("month", { ascending: true })),
       safe(supabase.from("v_kpi_dispute_rate").select("*").order("month", { ascending: true })),
@@ -75,6 +75,10 @@ Deno.serve(async (req) => {
       safe(supabase.from("v_kpi_buyer_gmv_retention").select("*").order("cohort_month", { ascending: true })),
       safe(supabase.from("v_kpi_buyer_seller_ratio").select("*")),
       safe(supabase.from("v_kpi_price_vs_market").select("*")),
+      // P23-M4-b: talep ısı haritası — çiftçi kazanım öncelik listesi.
+      safe(supabase.from("v_kpi_crop_demand_heatmap").select("*")
+        .order("requester_count", { ascending: false })
+        .order("key_ingredient_recipe_count", { ascending: false })),
     ]);
 
     const rows = (orderBase as Array<{ amount: number | string | null }> | null) ?? [];
@@ -106,6 +110,7 @@ Deno.serve(async (req) => {
       buyer_gmv_retention: buyerGmvRetention,
       buyer_seller_ratio: buyerSellerRatio,
       price_vs_market: priceVsMarket,
+      crop_demand_heatmap: cropDemandHeatmap,
     }), { status: 200, headers: { ...CORS, "content-type": "application/json" } });
   } catch (e) {
     console.error(e);

@@ -38,3 +38,17 @@ export function formatCrop(slug: string | null | undefined): string {
     .filter(Boolean)
     .join(" ");
 }
+
+/**
+ * Same crop-slug-to-label conversion as `formatCrop`, but fully lowercase —
+ * for use where the name reads as part of an ingredient line ("1 bardak ceviz"),
+ * not as a standalone heading. Title Case is only correct at a real sentence start.
+ */
+export function formatCropIngredient(slug: string | null | undefined): string {
+  if (!slug) return "—";
+  return String(slug)
+    .split("_")
+    .map((w) => w.trim().toLocaleLowerCase("tr-TR"))
+    .filter(Boolean)
+    .join(" ");
+}

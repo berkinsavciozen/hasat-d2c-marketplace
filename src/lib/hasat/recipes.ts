@@ -282,6 +282,51 @@ export function toIsoDuration(minutes: number | null | undefined): string | unde
   return `PT${h > 0 ? `${h}H` : ""}${m > 0 ? `${m}M` : ""}`;
 }
 
+/** Human-readable total time — some recipes now carry multi-day totals
+ * (fermentation/drying), where "N dk" alone reads as broken. Mirrors the
+ * step-timer formatter (`formatTimer` in tarifler.$slug.tsx) at the day scale. */
+export function formatTotalMinutes(minutes: number): string {
+  if (minutes < 60) return `${minutes} dk`;
+  if (minutes < 1440) {
+    const h = Math.floor(minutes / 60);
+    const m = minutes % 60;
+    return m > 0 ? `${h} sa ${m} dk` : `${h} sa`;
+  }
+  const d = Math.floor(minutes / 1440);
+  const remH = Math.floor((minutes % 1440) / 60);
+  return remH > 0 ? `${d} gün ${remH} sa` : `${d} gün`;
+}
+
+/**
+ * Gap #9 ("parselden tabağa") — for a matched ingredient, the cheapest active
+ * listing id doubles as the entry point into the existing traceability page
+ * (`/batch/$listingId` — already built for P16-H, reused as-is here, no new
+ * traceability system). Anon-safe: `listings` already grants public SELECT on
+ * active rows (same RLS the availability RPC itself relies on).
+ */
+export function useMatchedListingIds(crops: string[]) {
+  const key = Array.from(new Set(crops.filter(Boolean))).sort();
+  return useQuery({
+    queryKey: ["recipeMatchedListingIds", key],
+    enabled: key.length > 0,
+    staleTime: 60 * 1000,
+    queryFn: async (): Promise<Map<string, string>> => {
+      const { data, error } = await supabase
+        .from("listings")
+        .select("id, crop, price_per_unit")
+        .in("crop", key)
+        .eq("status", "active")
+        .order("price_per_unit", { ascending: true });
+      if (error) throw error;
+      const map = new Map<string, string>();
+      for (const row of (data ?? []) as Array<{ id: string; crop: string }>) {
+        if (!map.has(row.crop)) map.set(row.crop, row.id);
+      }
+      return map;
+    },
+  });
+}
+
 export const DIFFICULTY_LABELS: Record<string, string> = {
   kolay: "Kolay",
   orta: "Orta",
