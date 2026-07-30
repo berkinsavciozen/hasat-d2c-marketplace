@@ -159,6 +159,17 @@ function Discover() {
           </div>
         )}
 
+        <Link
+          to="/tarifler"
+          className="flex items-center gap-3 rounded-2xl border bg-card p-4 hover:border-saffron transition"
+        >
+          <span className="text-2xl">🍽️</span>
+          <div className="min-w-0">
+            <div className="font-medium">Tarif fikri mi arıyorsun?</div>
+            <div className="text-xs text-hmuted">Hasat'ın tariflerine göz at — her malzemenin Hasat'ta bulunup bulunmadığını gösterir.</div>
+          </div>
+        </Link>
+
         <div>
 
           <h2 className="font-serif text-lg mb-3">Kategoriler</h2>
