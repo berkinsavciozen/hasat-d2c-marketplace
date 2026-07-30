@@ -13,6 +13,7 @@ export interface RecipeListItem {
   servings: number | null;
   prep_minutes: number | null;
   cook_minutes: number | null;
+  rest_minutes: number | null;
   difficulty: string | null;
   cuisine: string | null;
   diet_tags: string[];
@@ -31,6 +32,7 @@ export interface RecipeDetail {
   servings: number | null;
   prep_minutes: number | null;
   cook_minutes: number | null;
+  rest_minutes: number | null;
   difficulty: string | null;
   cuisine: string | null;
   diet_tags: string[];
@@ -58,7 +60,7 @@ export interface RecipeIngredientRow {
 }
 
 const RECIPE_LIST_COLUMNS =
-  "id, slug, title, description, cover_photo_url, servings, prep_minutes, cook_minutes, difficulty, cuisine, diet_tags";
+  "id, slug, title, description, cover_photo_url, servings, prep_minutes, cook_minutes, rest_minutes, difficulty, cuisine, diet_tags";
 
 /**
  * Recipe's own cover photo if it has one, else the crop photo of its first
@@ -140,11 +142,18 @@ export async function fetchRecipeList(): Promise<RecipeListItem[]> {
   })) as RecipeListItem[];
 }
 
+export interface RelatedRecipeItem {
+  slug: string;
+  title: string;
+  sharedCrop: string;
+}
+
 /** Anon-safe fetch for `/tarifler/$slug` — used in the route loader (SSR + client). Null = not found/not public. */
 export async function fetchRecipeBySlug(slug: string): Promise<{
   recipe: RecipeDetail;
   steps: RecipeStepRow[];
   ingredients: RecipeIngredientRow[];
+  relatedRecipes: RelatedRecipeItem[];
 } | null> {
   const { data: recipeRow, error: recipeErr } = await supabase
     .from("recipes")
@@ -172,11 +181,50 @@ export async function fetchRecipeBySlug(slug: string): Promise<{
   if (stepErr) throw stepErr;
   if (ingErr) throw ingErr;
 
+  // SEO — internal link web (P23-M4-c): 2-3 other published recipes sharing a
+  // key ingredient crop. Fetched server-side in the loader (not client-side
+  // after mount) so the links are present in the crawled HTML itself — a
+  // link a bot only sees after JS runs doesn't count for discoverability.
+  const keyCrops = Array.from(
+    new Set(
+      ((ingredientRows ?? []) as RecipeIngredientRow[])
+        .filter((i) => i.is_key_ingredient && i.crop)
+        .map((i) => i.crop as string),
+    ),
+  );
+  const relatedRecipes: RelatedRecipeItem[] = [];
+  if (keyCrops.length > 0) {
+    const { data: relatedIngredientRows, error: relErr } = await supabase
+      .from("recipe_ingredients")
+      .select("recipe_id, crop, recipes!inner(slug, title, visibility, status)")
+      .in("crop", keyCrops)
+      .eq("is_key_ingredient", true)
+      .neq("recipe_id", recipeRow.id)
+      .eq("recipes.visibility", "public")
+      .eq("recipes.status", "published");
+    if (relErr) throw relErr;
+    const seen = new Set<string>();
+    for (const row of (relatedIngredientRows ?? []) as unknown as Array<{
+      crop: string;
+      recipes: { slug: string; title: string };
+    }>) {
+      if (seen.has(row.recipes.slug)) continue;
+      seen.add(row.recipes.slug);
+      relatedRecipes.push({
+        slug: row.recipes.slug,
+        title: row.recipes.title,
+        sharedCrop: row.crop,
+      });
+      if (relatedRecipes.length >= 3) break;
+    }
+  }
+
   const [withCover] = await attachCoverFallback([recipeRow as any]);
   return {
     recipe: { ...(withCover as any), diet_tags: recipeRow.diet_tags ?? [] },
     steps: (stepRows ?? []) as RecipeStepRow[],
     ingredients: (ingredientRows ?? []) as RecipeIngredientRow[],
+    relatedRecipes,
   };
 }
 
@@ -282,10 +330,11 @@ export function toIsoDuration(minutes: number | null | undefined): string | unde
   return `PT${h > 0 ? `${h}H` : ""}${m > 0 ? `${m}M` : ""}`;
 }
 
-/** Human-readable total time — some recipes now carry multi-day totals
- * (fermentation/drying), where "N dk" alone reads as broken. Mirrors the
- * step-timer formatter (`formatTimer` in tarifler.$slug.tsx) at the day scale. */
-export function formatTotalMinutes(minutes: number): string {
+/** dk/sa/gün — shared by the total-time badge and the breakdown below.
+ * Mirrors the step-timer formatter (`formatTimer` in tarifler.$slug.tsx) at
+ * the day scale, since some recipes now carry multi-day rest (fermentation/
+ * drying), where a raw "N dk" reads as broken. */
+function formatMinutesPart(minutes: number): string {
   if (minutes < 60) return `${minutes} dk`;
   if (minutes < 1440) {
     const h = Math.floor(minutes / 60);
@@ -295,6 +344,38 @@ export function formatTotalMinutes(minutes: number): string {
   const d = Math.floor(minutes / 1440);
   const remH = Math.floor((minutes % 1440) / 60);
   return remH > 0 ? `${d} gün ${remH} sa` : `${d} gün`;
+}
+
+/** Human-readable total time (prep+cook+rest) for the compact list-card badge. */
+export function formatTotalMinutes(minutes: number): string {
+  return formatMinutesPart(minutes);
+}
+
+export function totalRecipeMinutes(r: {
+  prep_minutes: number | null;
+  cook_minutes: number | null;
+  rest_minutes: number | null;
+}): number {
+  return (r.prep_minutes ?? 0) + (r.cook_minutes ?? 0) + (r.rest_minutes ?? 0);
+}
+
+/**
+ * P23-M4-c — the three times are never collapsed into one number on the
+ * detail page: "pişirme süresi" means active stove/oven time, and folding a
+ * 3-day drying step into it (as P23-M4-b's cook_minutes fix mistakenly did,
+ * for lack of this column) is exactly the kind of visible dishonesty the
+ * güven tezi can't afford. Zero-value parts are omitted.
+ */
+export function formatTimeBreakdown(
+  prepMinutes: number | null,
+  cookMinutes: number | null,
+  restMinutes: number | null,
+): string {
+  const parts: string[] = [];
+  if (prepMinutes) parts.push(`${formatMinutesPart(prepMinutes)} hazırlık`);
+  if (cookMinutes) parts.push(`${formatMinutesPart(cookMinutes)} pişirme`);
+  if (restMinutes) parts.push(`${formatMinutesPart(restMinutes)} dinlenme`);
+  return parts.join(" · ");
 }
 
 /**

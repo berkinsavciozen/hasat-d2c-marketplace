@@ -12,7 +12,8 @@ import {
   useLogRecipeView,
   useMatchedListingIds,
   toIsoDuration,
-  formatTotalMinutes,
+  totalRecipeMinutes,
+  formatTimeBreakdown,
   DIFFICULTY_LABELS,
   type RecipeIngredientRow,
 } from "@/lib/hasat/recipes";
@@ -53,7 +54,9 @@ export const Route = createFileRoute("/tarifler/$slug")({
     const description =
       recipe.description ?? `${recipe.title} tarifi — Hasat'ın editoryal tarif koleksiyonundan.`;
     const canonical = `https://hasat.lovable.app/tarifler/${recipe.slug}`;
-    const totalMinutes = (recipe.prep_minutes ?? 0) + (recipe.cook_minutes ?? 0);
+    // totalTime = prep + cook + rest (schema.org has no separate "rest" field —
+    // it folds into totalTime by definition; prepTime/cookTime stay pure, P23-M4-c).
+    const totalMinutes = totalRecipeMinutes(recipe);
     return {
       meta: [
         { title },
@@ -133,7 +136,7 @@ function useIsLoggedIn() {
 }
 
 function RecipeDetailPage() {
-  const { recipe, steps, ingredients } = Route.useLoaderData();
+  const { recipe, steps, ingredients, relatedRecipes } = Route.useLoaderData();
   const navigate = useNavigate();
   const loggedIn = useIsLoggedIn();
   const { data: myProfile } = useProfile();
@@ -193,13 +196,23 @@ function RecipeDetailPage() {
         crop: ing.crop ?? "",
         cropLabel: formatCropIngredient(ing.crop),
       });
-      navigate({ to: "/login", search: { role: "buyer", next: `/tarifler/${recipe.slug}` } as any });
+      navigate({
+        to: "/login",
+        search: { role: "buyer", next: `/tarifler/${recipe.slug}` } as any,
+      });
       return;
     }
     setRequestIngredient(ing);
   };
 
-  const totalMinutes = (recipe.prep_minutes ?? 0) + (recipe.cook_minutes ?? 0);
+  // P23-M4-c — shown as three separate times, never collapsed into one
+  // number: "pişirme süresi" (cookTime) must mean real stovetop/oven time,
+  // not a fermentation/drying/chilling wait folded in for lack of a column.
+  const timeBreakdown = formatTimeBreakdown(
+    recipe.prep_minutes,
+    recipe.cook_minutes,
+    recipe.rest_minutes,
+  );
 
   return (
     <div className="min-h-screen pb-24">
@@ -219,9 +232,9 @@ function RecipeDetailPage() {
           <h1 className="mt-2 font-serif text-2xl md:text-3xl">{recipe.title}</h1>
           {recipe.description && <p className="mt-2 text-sm text-hmuted">{recipe.description}</p>}
           <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-hmuted">
-            {totalMinutes > 0 && (
+            {timeBreakdown && (
               <span className="inline-flex items-center gap-1">
-                <Clock className="h-3.5 w-3.5" /> {formatTotalMinutes(totalMinutes)}
+                <Clock className="h-3.5 w-3.5" /> {timeBreakdown}
               </span>
             )}
             {recipe.difficulty && (
@@ -429,6 +442,27 @@ function RecipeDetailPage() {
           </ol>
         </section>
 
+        {relatedRecipes.length > 0 && (
+          <section className="space-y-3">
+            <h2 className="text-xs font-medium uppercase tracking-wider text-hmuted">
+              {formatCropIngredient(relatedRecipes[0].sharedCrop)} ile diğer tarifler
+            </h2>
+            <ul className="space-y-2">
+              {relatedRecipes.map((r) => (
+                <li key={r.slug}>
+                  <Link
+                    to="/tarifler/$slug"
+                    params={{ slug: r.slug }}
+                    className="block rounded-xl border bg-card p-3 text-sm hover:border-saffron transition"
+                  >
+                    {r.title}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </section>
+        )}
+
         <div className="rounded-xl border border-dashed p-3 text-[11px] text-hmuted">
           Hasat hızlı teslimat uygulaması değildir: teslim süresi ve minimum sipariş miktarı
           çiftçiden doğrudan, mevsiminde ve güvenilir tedarik içindir — anında değil.
@@ -448,22 +482,23 @@ function RecipeDetailPage() {
         </div>
       )}
 
-      {requestIngredient && (() => {
-        const shop = shopByIngredient.get(requestIngredient.id);
-        const initialQuantity =
-          shop?.purchase_canonical != null ? String(Math.ceil(shop.purchase_canonical)) : "";
-        const initialUnit = (shop?.canonical_unit as "kg" | "g" | "L" | undefined) ?? "kg";
-        return (
-          <CropRequestModal
-            initialCrop={formatCropIngredient(requestIngredient.crop)}
-            lockCropName
-            initialQuantity={initialQuantity}
-            initialUnit={initialUnit}
-            recipeId={recipe.id}
-            onClose={() => setRequestIngredient(null)}
-          />
-        );
-      })()}
+      {requestIngredient &&
+        (() => {
+          const shop = shopByIngredient.get(requestIngredient.id);
+          const initialQuantity =
+            shop?.purchase_canonical != null ? String(Math.ceil(shop.purchase_canonical)) : "";
+          const initialUnit = (shop?.canonical_unit as "kg" | "g" | "L" | undefined) ?? "kg";
+          return (
+            <CropRequestModal
+              initialCrop={formatCropIngredient(requestIngredient.crop)}
+              lockCropName
+              initialQuantity={initialQuantity}
+              initialUnit={initialUnit}
+              recipeId={recipe.id}
+              onClose={() => setRequestIngredient(null)}
+            />
+          );
+        })()}
     </div>
   );
 }

@@ -1,7 +1,13 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { Clock, Filter } from "lucide-react";
-import { fetchRecipeList, formatTotalMinutes, DIFFICULTY_LABELS, type RecipeListItem } from "@/lib/hasat/recipes";
+import {
+  fetchRecipeList,
+  formatTotalMinutes,
+  totalRecipeMinutes,
+  DIFFICULTY_LABELS,
+  type RecipeListItem,
+} from "@/lib/hasat/recipes";
 import { RepresentativePhoto } from "@/components/hasat/RepresentativePhoto";
 
 const TITLE = "Tarifler | Hasat";
@@ -35,7 +41,7 @@ const DURATION_BUCKETS = [
 ] as const;
 
 function totalMinutes(r: RecipeListItem): number {
-  return (r.prep_minutes ?? 0) + (r.cook_minutes ?? 0);
+  return totalRecipeMinutes(r);
 }
 
 function RecipeListPage() {
