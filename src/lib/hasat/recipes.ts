@@ -360,6 +360,39 @@ export function totalRecipeMinutes(r: {
 }
 
 /**
+ * "Aktif" süre — hazırlık + pişirme, dinlenme/bekleme HARİÇ. Süre filtresinin
+ * (tarifler.index.tsx) süzdüğü değer budur, `totalRecipeMinutes` değil:
+ * `rest_minutes` bir planlama kısıtıdır ("gece boyu ıslat", "3 gün kurut"),
+ * kullanıcının o sırada mutfakta harcadığı emek değil. Toplam süreye göre
+ * filtrelemek 18 saatlik ekşi mayalı ekmeği ve 73 saatlik Köme'yi "1 saatten
+ * uzun" tek bucket'ına, 65 dakikalık bir tarifle ayırt edilemez şekilde
+ * gömerdi — filtre pratikte anlamsızlaşırdı (bkz. P23-M5-a QA notu).
+ */
+export function activeRecipeMinutes(r: {
+  prep_minutes: number | null;
+  cook_minutes: number | null;
+}): number {
+  return (r.prep_minutes ?? 0) + (r.cook_minutes ?? 0);
+}
+
+/**
+ * Bir tarif önceden (aynı gün içinde bile olsa, en az birkaç saat önce)
+ * başlatılmalı mı? Eşik 120 dakika (2 saat): bu, çoğu tarifte tek seferlik
+ * bir "dinlendirme" adımının (örn. hamur mayalama, marine etme) üst sınırına
+ * yakın — 2 saatin altındaki bir bekleme "bugün akşam yemeğine yetişir",
+ * üstündeki (gece ıslatma, ekşi maya, kurutma) yetişmez ve kullanıcının
+ * günün başında planlaması gerekir. Süre filtresinden çıkarılan bilginin
+ * (bkz. `activeRecipeMinutes`) yerine geçen, filtreden daha faydalı bir
+ * sinyal — dördüncü bir süre bucket'ı eklemek kavramsal hatayı çözmezdi
+ * (aktif süre ile bekleme süresi hâlâ karışık kalırdı), bir etiket çözüyor.
+ */
+export const ADVANCE_START_THRESHOLD_MINUTES = 120;
+
+export function needsAdvanceStart(r: { rest_minutes: number | null }): boolean {
+  return (r.rest_minutes ?? 0) > ADVANCE_START_THRESHOLD_MINUTES;
+}
+
+/**
  * P23-M4-c — the three times are never collapsed into one number on the
  * detail page: "pişirme süresi" means active stove/oven time, and folding a
  * 3-day drying step into it (as P23-M4-b's cook_minutes fix mistakenly did,
