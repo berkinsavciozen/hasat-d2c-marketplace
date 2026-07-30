@@ -1,23 +1,33 @@
 import { createFileRoute, Link, notFound, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
-import { Clock, Minus, Plus, Timer as TimerIcon } from "lucide-react";
+import { Clock, Minus, Plus, Timer as TimerIcon, Search } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useProfile } from "@/lib/hasat/queries";
-import { formatCrop, formatTRY } from "@/lib/hasat/format";
+import { formatCropIngredient, formatTRY } from "@/lib/hasat/format";
 import { cropEmoji } from "@/lib/hasat/crop-config";
 import {
   fetchRecipeBySlug,
   useRecipeAvailability,
   useRecipeShoppingList,
   useLogRecipeView,
+  useMatchedListingIds,
   toIsoDuration,
+  formatTotalMinutes,
   DIFFICULTY_LABELS,
   type RecipeIngredientRow,
 } from "@/lib/hasat/recipes";
 import { RepresentativePhoto } from "@/components/hasat/RepresentativePhoto";
+import { CropRequestModal } from "@/components/hasat/CropRequestModal";
+import {
+  savePendingRecipeRequest,
+  loadPendingRecipeRequest,
+  clearPendingRecipeRequest,
+} from "@/lib/hasat/recipe-intent";
 
 function ingredientLabel(i: RecipeIngredientRow): string {
-  const name = i.crop ? formatCrop(i.crop) : (i.free_text_name ?? "");
+  // Lowercase — this array reads as "1 bardak ceviz", not "1 bardak Ceviz"
+  // (kural: crop adı cümle içinde geçerken küçük harf, P23-M4-b).
+  const name = i.crop ? formatCropIngredient(i.crop) : (i.free_text_name ?? "");
   const qty = [i.quantity, i.unit].filter((x) => x != null && x !== "").join(" ");
   const base = [qty, name].filter(Boolean).join(" ").trim();
   return i.note ? `${base} (${i.note})` : base;
@@ -65,7 +75,12 @@ export const Route = createFileRoute("/tarifler/$slug")({
             "@type": "Recipe",
             name: recipe.title,
             description,
-            ...(recipe.displayPhotoUrl ? { image: [recipe.displayPhotoUrl] } : {}),
+            // Only the recipe's own photo counts as `image` — a representative
+            // crop stock photo is not a picture of this dish, and Google penalizes
+            // structured-data image claims that don't match the page (P23-M4-b).
+            // Currently 18/18 recipes have cover_photo_url=NULL, so this omits
+            // the field entirely until Berkin uploads real cover photos.
+            ...(recipe.cover_photo_url ? { image: [recipe.cover_photo_url] } : {}),
             ...(recipe.servings ? { recipeYield: `${recipe.servings} porsiyon` } : {}),
             ...(toIsoDuration(recipe.prep_minutes)
               ? { prepTime: toIsoDuration(recipe.prep_minutes) }
@@ -148,6 +163,42 @@ function RecipeDetailPage() {
     else navigate({ to: "/login", search: { role: "buyer" } as any });
   };
 
+  // P23-M4-b — Gap #9 "parselden tabağa": for matched ingredients only (the
+  // 14/68 that actually resolve to an active listing), link straight into the
+  // existing batch/traceability page. Unmatched ingredients show no chain at all.
+  const matchedCrops = ingredients.filter((i) => i.crop).map((i) => i.crop!) as string[];
+  const { data: matchedListingIds } = useMatchedListingIds(matchedCrops);
+
+  // Talep Et (M4-b) — which ingredient's request sheet is open, if any.
+  const [requestIngredient, setRequestIngredient] = useState<RecipeIngredientRow | null>(null);
+
+  // Guest → signup/login round trip: resume an interrupted "Talep Et" the
+  // moment this exact recipe is loaded again by a now-logged-in user.
+  useEffect(() => {
+    if (!loggedIn) return;
+    const pending = loadPendingRecipeRequest();
+    if (!pending || pending.recipeId !== recipe.id) return;
+    const match = ingredients.find((i) => i.crop === pending.crop);
+    if (match) setRequestIngredient(match);
+    clearPendingRecipeRequest();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loggedIn, recipe.id]);
+
+  const openTalepEt = (ing: RecipeIngredientRow) => {
+    if (!loggedIn) {
+      savePendingRecipeRequest({
+        recipeId: recipe.id,
+        recipeSlug: recipe.slug,
+        recipeTitle: recipe.title,
+        crop: ing.crop ?? "",
+        cropLabel: formatCropIngredient(ing.crop),
+      });
+      navigate({ to: "/login", search: { role: "buyer", next: `/tarifler/${recipe.slug}` } as any });
+      return;
+    }
+    setRequestIngredient(ing);
+  };
+
   const totalMinutes = (recipe.prep_minutes ?? 0) + (recipe.cook_minutes ?? 0);
 
   return (
@@ -170,7 +221,7 @@ function RecipeDetailPage() {
           <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-hmuted">
             {totalMinutes > 0 && (
               <span className="inline-flex items-center gap-1">
-                <Clock className="h-3.5 w-3.5" /> {totalMinutes} dk
+                <Clock className="h-3.5 w-3.5" /> {formatTotalMinutes(totalMinutes)}
               </span>
             )}
             {recipe.difficulty && (
@@ -223,11 +274,12 @@ function RecipeDetailPage() {
             {ingredients.map((ing) => {
               const avail = availByIngredient.get(ing.id);
               const shop = shopByIngredient.get(ing.id);
-              const name = ing.crop
-                ? (avail?.crop_display_name ?? formatCrop(ing.crop))
-                : ing.free_text_name;
+              // Lowercase — see ingredientLabel() above, same rule applies to the
+              // visible card (not just JSON-LD): a list item isn't a sentence start.
+              const name = ing.crop ? formatCropIngredient(ing.crop) : ing.free_text_name;
               const isPlatformCrop = shop?.is_platform_crop ?? !!ing.crop;
               const isMatched = shop?.is_matched ?? false;
+              const matchedListingId = ing.crop ? matchedListingIds?.get(ing.crop) : undefined;
 
               return (
                 <div key={ing.id} className="flex items-center gap-3 rounded-xl border bg-card p-3">
@@ -306,17 +358,39 @@ function RecipeDetailPage() {
                             Tahmini maliyet: {formatTRY(shop.estimated_cost)}
                           </div>
                         )}
+                        {matchedListingId && (
+                          <Link
+                            to="/batch/$listingId"
+                            params={{ listingId: matchedListingId }}
+                            className="inline-flex items-center gap-1 text-[11px] underline decoration-dotted text-hmuted hover:text-foreground"
+                          >
+                            <Search className="h-3 w-3" /> Parselden tabağa: kaynağını gör
+                          </Link>
+                        )}
                       </div>
                     ) : (
-                      <span
-                        className="mt-1 inline-block rounded-full px-2 py-0.5 text-[10px] font-medium"
-                        style={{
-                          background: "color-mix(in oklab, var(--hmuted) 18%, transparent)",
-                          color: "var(--hmuted)",
-                        }}
-                      >
-                        Hasat'ta henüz yok
-                      </span>
+                      // Dominant state (68 malzemenin 54'ü) — a real CTA, not a
+                      // grey dead-end pill. "Talep Et" doubles as "bu ürün
+                      // geldiğinde haber ver" (P23-M4-b).
+                      <div className="mt-1.5 space-y-1">
+                        <span
+                          className="inline-block rounded-full px-2 py-0.5 text-[10px] font-medium"
+                          style={{
+                            background: "color-mix(in oklab, var(--hmuted) 18%, transparent)",
+                            color: "var(--hmuted)",
+                          }}
+                        >
+                          Hasat'ta henüz yok
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => openTalepEt(ing)}
+                          className="block rounded-full px-3 py-1.5 text-xs font-semibold min-h-[32px]"
+                          style={{ background: "var(--saffron)", color: "#fff" }}
+                        >
+                          Talep Et →
+                        </button>
+                      </div>
                     )}
                   </div>
                 </div>
@@ -373,6 +447,23 @@ function RecipeDetailPage() {
           </Link>
         </div>
       )}
+
+      {requestIngredient && (() => {
+        const shop = shopByIngredient.get(requestIngredient.id);
+        const initialQuantity =
+          shop?.purchase_canonical != null ? String(Math.ceil(shop.purchase_canonical)) : "";
+        const initialUnit = (shop?.canonical_unit as "kg" | "g" | "L" | undefined) ?? "kg";
+        return (
+          <CropRequestModal
+            initialCrop={formatCropIngredient(requestIngredient.crop)}
+            lockCropName
+            initialQuantity={initialQuantity}
+            initialUnit={initialUnit}
+            recipeId={recipe.id}
+            onClose={() => setRequestIngredient(null)}
+          />
+        );
+      })()}
     </div>
   );
 }

@@ -42,6 +42,17 @@ type BuyerAovRow = { segment: string; realized_order_count: number; aov: number 
 type BuyerGmvRetRow = { cohort_month: string; cohort_buyers: number; m0_gmv_total: number; m1_gmv_total: number; m1_gmv_retention_pct: number | null };
 type BuyerSellerRatioRow = { region: string; active_buyer_count: number; active_farmer_count: number; buyer_to_seller_ratio: number | null };
 type PriceVsMarketRow = { crop: string; month: string; hasat_avg_price: number | null; market_avg_price: number | null; price_diff_pct: number | null };
+type CropDemandHeatmapRow = {
+  crop: string;
+  crop_display_name: string;
+  key_ingredient_recipe_count: number;
+  requester_count: number;
+  total_quantity_normalized: number | null;
+  normalized_unit: string | null;
+  regions: string[];
+  requested_recipe_titles: string[];
+  has_active_listing: boolean;
+};
 
 type KpiResponse = {
   north_star: NorthStar[] | null;
@@ -64,6 +75,7 @@ type KpiResponse = {
   buyer_gmv_retention: BuyerGmvRetRow[] | null;
   buyer_seller_ratio: BuyerSellerRatioRow[] | null;
   price_vs_market: PriceVsMarketRow[] | null;
+  crop_demand_heatmap: CropDemandHeatmapRow[] | null;
 };
 
 const SEGMENT_LABELS: Record<string, string> = {
@@ -83,7 +95,7 @@ const ROLE_LABELS: Record<string, string> = {
   general: "Genel",
 };
 
-type Tab = "genel" | "ciftci" | "alici" | "platform";
+type Tab = "genel" | "ciftci" | "alici" | "platform" | "talep";
 
 function AdminKpiPage() {
   const [key, setKey] = useState("");
@@ -185,6 +197,7 @@ function AdminKpiPage() {
             ["ciftci", "Çiftçi"],
             ["alici", "Alıcı"],
             ["platform", "Platform"],
+            ["talep", "Talep Isı Haritası"],
           ] as [Tab, string][]).map(([id, label]) => (
             <button
               key={id}
@@ -201,6 +214,7 @@ function AdminKpiPage() {
         {tab === "ciftci" && <CiftciTab d={d} />}
         {tab === "alici" && <AliciTab d={d} />}
         {tab === "platform" && <PlatformTab d={d} />}
+        {tab === "talep" && <TalepTab d={d} />}
       </div>
     </div>
   );
@@ -555,6 +569,85 @@ function PlatformTab({ d }: { d: KpiResponse }) {
             Henüz veri yok — yalnızca İzmir pilot ürünlerinde (domates/elma/patates) satır oluşur.
           </div>
         )}
+      </SectionCard>
+    </div>
+  );
+}
+
+/**
+ * P23-M4-b — çiftçi kazanım öncelik listesi. `v_kpi_crop_demand_heatmap`
+ * (service_role-only, kural #110) iki sinyali birleştiriyor: gerçek buyer
+ * talebi (crop_requests, "Talep Et") ve tarif-korpusu sinyali (kaç yayınlanmış
+ * tarifte bu crop temel malzeme). İkinci sinyal talep sayısı sıfır olsa bile
+ * yüzeye çıkar — "zeytinyağı 9 tarifte temel malzeme ama aktif ilanı yok"
+ * gibi bir satır kimse talep açmamış olsa da görünür.
+ */
+function TalepTab({ d }: { d: KpiResponse }) {
+  const rows = d.crop_demand_heatmap ?? [];
+  const gapRows = rows.filter((r) => !r.has_active_listing && (r.key_ingredient_recipe_count > 0 || r.requester_count > 0));
+  const totalRequesters = rows.reduce((s, r) => s + r.requester_count, 0);
+
+  return (
+    <div className="space-y-6">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <StatCard label="Toplam talep eden alıcı" accent="saffron" value={totalRequesters} />
+        <StatCard label="İzlenen crop sayısı" accent="gold" value={rows.length} />
+        <StatCard
+          label="Aktif ilanı olmayan öncelikli crop"
+          accent="sage"
+          value={gapRows.length}
+        />
+      </div>
+
+      <SectionCard title="Çiftçi Kazanım Öncelik Listesi">
+        {rows.length === 0 ? (
+          <EmptyState />
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead className="text-xs text-hmuted">
+                <tr className="border-b">
+                  <th className="text-left py-2 pr-3">Ürün</th>
+                  <th className="text-right py-2 px-3">Talep eden</th>
+                  <th className="text-right py-2 px-3">Toplam miktar</th>
+                  <th className="text-left py-2 px-3">Bölgeler</th>
+                  <th className="text-left py-2 px-3">Tarif korpusu</th>
+                  <th className="text-left py-2 px-3">Talep eden tarifler</th>
+                  <th className="text-center py-2 pl-3">Aktif ilan</th>
+                </tr>
+              </thead>
+              <tbody>
+                {rows.map((r) => {
+                  const isGap = !r.has_active_listing && (r.key_ingredient_recipe_count > 0 || r.requester_count > 0);
+                  return (
+                    <tr key={r.crop} className={cn("border-b last:border-0", isGap && "bg-[color-mix(in_oklab,var(--saffron)_10%,transparent)]")}>
+                      <td className="py-2 pr-3 font-medium">{r.crop_display_name}</td>
+                      <td className="text-right py-2 px-3 font-mono">{r.requester_count}</td>
+                      <td className="text-right py-2 px-3 font-mono">
+                        {r.total_quantity_normalized != null
+                          ? `${fmtNum(r.total_quantity_normalized, 1)} ${r.normalized_unit ?? ""}`
+                          : "—"}
+                      </td>
+                      <td className="py-2 px-3 text-xs">{r.regions.length > 0 ? r.regions.join(", ") : "—"}</td>
+                      <td className="py-2 px-3 text-xs">
+                        {r.key_ingredient_recipe_count > 0 ? `${r.key_ingredient_recipe_count} tarifte temel malzeme` : "—"}
+                      </td>
+                      <td className="py-2 px-3 text-xs max-w-[240px] truncate" title={r.requested_recipe_titles.join(", ")}>
+                        {r.requested_recipe_titles.length > 0 ? r.requested_recipe_titles.join(", ") : "—"}
+                      </td>
+                      <td className="text-center py-2 pl-3">
+                        {r.has_active_listing ? "✅" : <span className="font-semibold" style={{ color: "var(--saffron)" }}>Yok</span>}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+        <p className="mt-3 text-[11px] text-hmuted">
+          Turuncu satırlar: talep var (buyer talebi ve/veya tarif korpusunda temel malzeme) ama aktif ilan yok — çiftçi edinimi için öncelikli.
+        </p>
       </SectionCard>
     </div>
   );

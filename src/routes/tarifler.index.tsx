@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { Clock, Filter } from "lucide-react";
-import { fetchRecipeList, DIFFICULTY_LABELS, type RecipeListItem } from "@/lib/hasat/recipes";
+import { fetchRecipeList, formatTotalMinutes, DIFFICULTY_LABELS, type RecipeListItem } from "@/lib/hasat/recipes";
 import { RepresentativePhoto } from "@/components/hasat/RepresentativePhoto";
 
 const TITLE = "Tarifler | Hasat";
@@ -182,7 +182,7 @@ function RecipeListPage() {
                   <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] text-hmuted">
                     {totalMinutes(r) > 0 && (
                       <span className="inline-flex items-center gap-1">
-                        <Clock className="h-3 w-3" /> {totalMinutes(r)} dk
+                        <Clock className="h-3 w-3" /> {formatTotalMinutes(totalMinutes(r))}
                       </span>
                     )}
                     {r.difficulty && (

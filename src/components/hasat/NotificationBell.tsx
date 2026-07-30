@@ -21,6 +21,7 @@ const ICON: Record<string, string> = {
   offer_accepted: "✅",
   offer_countered: "↩️",
   order_status: "📦",
+  crop_request_fulfilled: "🎉",
 };
 
 function relTime(iso: string): string {
@@ -42,6 +43,8 @@ function destFor(n: NotificationRow): string {
     case "offer_accepted":
     case "order_status":
       return "/buyer/orders";
+    case "crop_request_fulfilled":
+      return "/tarifler";
     default:
       return "/";
   }

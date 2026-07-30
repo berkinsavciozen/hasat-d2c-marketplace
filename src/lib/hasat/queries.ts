@@ -2733,6 +2733,8 @@ export function useCreateCropRequest() {
       } catch (e) {
         console.warn("crop_request notify failed", e);
       }
+
+      return { id: inserted!.id as string };
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["cropRequests"] });
