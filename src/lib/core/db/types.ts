@@ -4,7 +4,7 @@
 // Yeniden üretmek için:
 //   supabase gen types typescript --project-id efuqpiaavrzimvstpdpm > core/db/types.ts
 // ve üretim sonrası bu başlığı tekrar ekle.
-// Son üretim: 2026-07-29 (P23-M2-ek — recipe_views, offers.source_recipe_id, funnel v2)
+// Son üretim: 2026-07-31 (P23-M5-a-ek — recipes.rest_minutes eklendi, M4-c'den beri bayat kalmıştı)
 
 export type Json =
   | string
@@ -1561,6 +1561,13 @@ export type Database = {
             foreignKeyName: "offers_source_recipe_id_fkey"
             columns: ["source_recipe_id"]
             isOneToOne: false
+            referencedRelation: "v_kpi_recipe_funnel_by_recipe"
+            referencedColumns: ["recipe_id"]
+          },
+          {
+            foreignKeyName: "offers_source_recipe_id_fkey"
+            columns: ["source_recipe_id"]
+            isOneToOne: false
             referencedRelation: "v_recipe_coverage"
             referencedColumns: ["recipe_id"]
           },
@@ -2060,6 +2067,13 @@ export type Database = {
             foreignKeyName: "recipe_ingredients_recipe_id_fkey"
             columns: ["recipe_id"]
             isOneToOne: false
+            referencedRelation: "v_kpi_recipe_funnel_by_recipe"
+            referencedColumns: ["recipe_id"]
+          },
+          {
+            foreignKeyName: "recipe_ingredients_recipe_id_fkey"
+            columns: ["recipe_id"]
+            isOneToOne: false
             referencedRelation: "v_recipe_coverage"
             referencedColumns: ["recipe_id"]
           },
@@ -2103,6 +2117,13 @@ export type Database = {
             foreignKeyName: "recipe_rfq_links_recipe_id_fkey"
             columns: ["recipe_id"]
             isOneToOne: false
+            referencedRelation: "v_kpi_recipe_funnel_by_recipe"
+            referencedColumns: ["recipe_id"]
+          },
+          {
+            foreignKeyName: "recipe_rfq_links_recipe_id_fkey"
+            columns: ["recipe_id"]
+            isOneToOne: false
             referencedRelation: "v_recipe_coverage"
             referencedColumns: ["recipe_id"]
           },
@@ -2134,6 +2155,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "recipes"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "recipe_saves_recipe_id_fkey"
+            columns: ["recipe_id"]
+            isOneToOne: false
+            referencedRelation: "v_kpi_recipe_funnel_by_recipe"
+            referencedColumns: ["recipe_id"]
           },
           {
             foreignKeyName: "recipe_saves_recipe_id_fkey"
@@ -2198,6 +2226,13 @@ export type Database = {
             foreignKeyName: "recipe_steps_recipe_id_fkey"
             columns: ["recipe_id"]
             isOneToOne: false
+            referencedRelation: "v_kpi_recipe_funnel_by_recipe"
+            referencedColumns: ["recipe_id"]
+          },
+          {
+            foreignKeyName: "recipe_steps_recipe_id_fkey"
+            columns: ["recipe_id"]
+            isOneToOne: false
             referencedRelation: "v_recipe_coverage"
             referencedColumns: ["recipe_id"]
           },
@@ -2237,6 +2272,13 @@ export type Database = {
             foreignKeyName: "recipe_views_recipe_id_fkey"
             columns: ["recipe_id"]
             isOneToOne: false
+            referencedRelation: "v_kpi_recipe_funnel_by_recipe"
+            referencedColumns: ["recipe_id"]
+          },
+          {
+            foreignKeyName: "recipe_views_recipe_id_fkey"
+            columns: ["recipe_id"]
+            isOneToOne: false
             referencedRelation: "v_recipe_coverage"
             referencedColumns: ["recipe_id"]
           },
@@ -2270,6 +2312,7 @@ export type Database = {
           id: string
           owner_id: string | null
           prep_minutes: number | null
+          rest_minutes: number | null
           servings: number | null
           slug: string
           source_type: string
@@ -2292,6 +2335,7 @@ export type Database = {
           id?: string
           owner_id?: string | null
           prep_minutes?: number | null
+          rest_minutes?: number | null
           servings?: number | null
           slug: string
           source_type?: string
@@ -2314,6 +2358,7 @@ export type Database = {
           id?: string
           owner_id?: string | null
           prep_minutes?: number | null
+          rest_minutes?: number | null
           servings?: number | null
           slug?: string
           source_type?: string
@@ -2651,6 +2696,20 @@ export type Database = {
         }
         Relationships: []
       }
+      v_kpi_crop_demand_heatmap: {
+        Row: {
+          crop: string | null
+          crop_display_name: string | null
+          has_active_listing: boolean | null
+          key_ingredient_recipe_count: number | null
+          normalized_unit: string | null
+          regions: string[] | null
+          requested_recipe_titles: string[] | null
+          requester_count: number | null
+          total_quantity_normalized: number | null
+        }
+        Relationships: []
+      }
       v_kpi_dispute_rate: {
         Row: {
           delivered_or_completed_orders: number | null
@@ -2833,6 +2892,23 @@ export type Database = {
           recipe_requests: number | null
           recipe_saves: number | null
           recipe_views: number | null
+          unique_viewers: number | null
+          view_to_save_pct: number | null
+        }
+        Relationships: []
+      }
+      v_kpi_recipe_funnel_by_recipe: {
+        Row: {
+          offer_to_order_pct: number | null
+          recipe_id: string | null
+          recipe_offers: number | null
+          recipe_offers_converted: number | null
+          recipe_orders: number | null
+          recipe_requests: number | null
+          recipe_saves: number | null
+          recipe_views: number | null
+          slug: string | null
+          title: string | null
           unique_viewers: number | null
           view_to_save_pct: number | null
         }
