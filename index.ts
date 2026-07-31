@@ -12,3 +12,5 @@
 export { convertQuantity } from "./units";
 export { brand, semanticLight, radius, typography, spacing, tokens } from "./design/tokens";
 export type { BrandColor, SemanticColor } from "./design/tokens";
+export { createHasatSupabaseClient } from "./supabase/client";
+export type { HasatAuthStorageAdapter, CreateHasatSupabaseClientOptions } from "./supabase/client";
