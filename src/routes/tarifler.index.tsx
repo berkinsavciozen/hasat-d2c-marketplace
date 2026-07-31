@@ -1,10 +1,12 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
-import { Clock, Filter } from "lucide-react";
+import { Clock, Filter, AlarmClock } from "lucide-react";
 import {
   fetchRecipeList,
   formatTotalMinutes,
   totalRecipeMinutes,
+  activeRecipeMinutes,
+  needsAdvanceStart,
   DIFFICULTY_LABELS,
   type RecipeListItem,
 } from "@/lib/hasat/recipes";
@@ -44,6 +46,13 @@ function totalMinutes(r: RecipeListItem): number {
   return totalRecipeMinutes(r);
 }
 
+// Süre filtresi "aktif" süreye (hazırlık+pişirme) göre süzer, toplam süreye
+// (dinlenme dahil) göre değil — bkz. activeRecipeMinutes yorumu. Rozet
+// (needsAdvanceStart) filtrelenmeyen bekleme süresini ayrıca gösterir.
+function filterMinutes(r: RecipeListItem): number {
+  return activeRecipeMinutes(r);
+}
+
 function RecipeListPage() {
   const { recipes } = Route.useLoaderData();
   const [difficulty, setDifficulty] = useState<string | null>(null);
@@ -69,7 +78,7 @@ function RecipeListPage() {
       const bucket = DURATION_BUCKETS.find((b) => b.key === duration)!;
       const prevMax =
         DURATION_BUCKETS[DURATION_BUCKETS.findIndex((b) => b.key === duration) - 1]?.max ?? 0;
-      const mins = totalMinutes(r);
+      const mins = filterMinutes(r);
       if (!(mins > prevMax && mins <= bucket.max)) return false;
     }
     if (onlyFullyAvailable && r.coveragePct !== 100) return false;
@@ -196,6 +205,16 @@ function RecipeListPage() {
                     )}
                     {r.cuisine && <span>· {r.cuisine}</span>}
                   </div>
+                  {needsAdvanceStart(r) && (
+                    <div
+                      className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium"
+                      style={{
+                        background: "color-mix(in oklab, var(--gold) 25%, transparent)",
+                      }}
+                    >
+                      <AlarmClock className="h-3 w-3" /> Önceden başlamak gerekir
+                    </div>
+                  )}
                   {r.diet_tags.length > 0 && (
                     <div className="flex flex-wrap gap-1 pt-1">
                       {r.diet_tags.map((d) => (

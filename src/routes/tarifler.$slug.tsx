@@ -1,6 +1,6 @@
 import { createFileRoute, Link, notFound, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
-import { Clock, Minus, Plus, Timer as TimerIcon, Search } from "lucide-react";
+import { Clock, Minus, Plus, Timer as TimerIcon, Search, AlarmClock } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useProfile } from "@/lib/hasat/queries";
 import { formatCropIngredient, formatTRY } from "@/lib/hasat/format";
@@ -14,6 +14,7 @@ import {
   toIsoDuration,
   totalRecipeMinutes,
   formatTimeBreakdown,
+  needsAdvanceStart,
   DIFFICULTY_LABELS,
   type RecipeIngredientRow,
 } from "@/lib/hasat/recipes";
@@ -242,6 +243,14 @@ function RecipeDetailPage() {
             )}
             {recipe.cuisine && <span>{recipe.cuisine}</span>}
           </div>
+          {needsAdvanceStart(recipe) && (
+            <div
+              className="mt-2 inline-flex w-fit items-center gap-1 rounded-full px-2.5 py-1 text-xs font-medium"
+              style={{ background: "color-mix(in oklab, var(--gold) 25%, transparent)" }}
+            >
+              <AlarmClock className="h-3.5 w-3.5" /> Önceden başlamak gerekir
+            </div>
+          )}
           {recipe.diet_tags.length > 0 && (
             <div className="mt-2 flex flex-wrap gap-1">
               {recipe.diet_tags.map((d) => (
