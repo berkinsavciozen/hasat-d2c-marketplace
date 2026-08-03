@@ -4,7 +4,7 @@
 // Yeniden üretmek için:
 //   supabase gen types typescript --project-id efuqpiaavrzimvstpdpm > core/db/types.ts
 // ve üretim sonrası bu başlığı tekrar ekle.
-// Son üretim: 2026-07-31 (P23-M5-a-ek — recipes.rest_minutes eklendi, M4-c'den beri bayat kalmıştı)
+// Son üretim: 2026-08-03 (P23-M6 — device_tokens.updated_at + rpc_register_device_token eklendi)
 
 export type Json =
   | string
@@ -558,6 +558,7 @@ export type Database = {
           id: string
           platform: string
           token: string
+          updated_at: string
           user_id: string
         }
         Insert: {
@@ -565,6 +566,7 @@ export type Database = {
           id?: string
           platform: string
           token: string
+          updated_at?: string
           user_id: string
         }
         Update: {
@@ -572,6 +574,7 @@ export type Database = {
           id?: string
           platform?: string
           token?: string
+          updated_at?: string
           user_id?: string
         }
         Relationships: [
@@ -3099,6 +3102,10 @@ export type Database = {
           scaled_quantity: number
           sort_order: number
         }[]
+      }
+      rpc_register_device_token: {
+        Args: { p_platform: string; p_token: string }
+        Returns: string
       }
       send_subscription_harvest_reminders: { Args: never; Returns: undefined }
     }
