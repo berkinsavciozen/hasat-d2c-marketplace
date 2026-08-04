@@ -4,8 +4,9 @@
 // Yeniden üretmek için:
 //   supabase gen types typescript --project-id efuqpiaavrzimvstpdpm > core/db/types.ts
 // ve üretim sonrası bu başlığı tekrar ekle.
-// Son üretim: 2026-08-04 (P23-M6-ek — recipe_ingredients.ingredient_class,
-// crop_requests.ingredient_class, fn_match_culinary_crop eklendi)
+// Son üretim: 2026-08-05 (P23-M7-a — rpc_create_offer eklendi,
+// v_kpi_crop_demand_heatmap'e requester_count_tarimsal/requester_count_platform_disi
+// kolonları eklendi; kural #111 gereği tip üretimi bu turda tamamlandı)
 
 export type Json =
   | string
@@ -2716,6 +2717,8 @@ export type Database = {
           regions: string[] | null
           requested_recipe_titles: string[] | null
           requester_count: number | null
+          requester_count_platform_disi: number | null
+          requester_count_tarimsal: number | null
           total_quantity_normalized: number | null
         }
         Relationships: []
@@ -3065,6 +3068,45 @@ export type Database = {
         }[]
       }
       increment_ai_usage: { Args: { _user_id: string }; Returns: number }
+      rpc_create_offer: {
+        Args: {
+          p_delivery?: string
+          p_delivery_date?: string
+          p_farmer_id: string
+          p_items: Json
+          p_note?: string
+          p_source_recipe_id?: string
+          p_subscription_id?: string
+        }
+        Returns: {
+          ball_side: string
+          buyer_id: string
+          counter_offer: Json | null
+          created_at: string
+          current_price: number | null
+          current_quantity: number | null
+          delivery: Database["public"]["Enums"]["delivery_type"]
+          delivery_date: string | null
+          farmer_id: string
+          id: string
+          listing_id: string
+          negotiation_history: Json
+          note: string | null
+          payment_status: string
+          price_per_unit: number
+          quantity: number
+          source_recipe_id: string | null
+          status: Database["public"]["Enums"]["offer_status"]
+          subscription_id: string | null
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "offers"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       rpc_recipe_availability: {
         Args: { p_recipe_id: string }
         Returns: {
