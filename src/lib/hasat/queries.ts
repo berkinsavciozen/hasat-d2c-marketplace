@@ -1145,49 +1145,30 @@ export interface MultiBatchOfferInput {
   subscriptionId?: string | null;
 }
 
+// buyerId is unused now — rpc_create_offer derives the buyer from auth.uid() itself
+// (kept in the signature so callers/useCreateOffer/useCreateMultiBatchOffer don't change).
 async function insertOfferWithItems(
-  buyerId: string,
+  _buyerId: string,
   input: MultiBatchOfferInput,
 ): Promise<{ id: string; farmer_id: string; listing_id: string; quantity: number; price_per_unit: number }> {
   if (!input.items.length) throw new Error("En az bir parti seçmelisiniz");
   const totalQty = input.items.reduce((s, i) => s + i.quantity, 0);
   if (totalQty <= 0) throw new Error("Toplam miktar 0'dan büyük olmalı");
-  const weightedSum = input.items.reduce((s, i) => s + i.quantity * i.pricePerUnit, 0);
-  const wavgPrice = weightedSum / totalQty;
-  const primaryListingId = input.items[0].listingId;
 
-  const { data: offer, error: e1 } = await supabase.from("offers").insert({
-    buyer_id: buyerId,
-    farmer_id: input.farmerId,
-    listing_id: primaryListingId,
-    quantity: totalQty,
-    price_per_unit: wavgPrice,
-    current_quantity: totalQty,
-    current_price: wavgPrice,
-    ball_side: "farmer",
-    payment_status: "unpaid",
-    delivery: deliveryToDb(input.delivery),
-    delivery_date: input.deliveryDate || null,
-    note: input.note || null,
-    status: "pending",
-    subscription_id: input.subscriptionId ?? null,
-  }).select("id, farmer_id, listing_id, quantity, price_per_unit").single();
-  if (e1) throw e1;
-
-  const { error: e2 } = await supabase.from("offer_items" as any).insert(
-    input.items.map((i) => ({
-      offer_id: offer.id,
+  const { data, error } = await (supabase as any).rpc("rpc_create_offer", {
+    p_farmer_id: input.farmerId,
+    p_items: input.items.map((i) => ({
       listing_id: i.listingId,
       quantity: i.quantity,
       price_per_unit: i.pricePerUnit,
     })),
-  );
-  if (e2) {
-    // Best-effort rollback so we don't leave an orphan offer with no items.
-    await supabase.from("offers").delete().eq("id", offer.id);
-    throw e2;
-  }
-  return offer as any;
+    p_delivery: deliveryToDb(input.delivery),
+    p_delivery_date: input.deliveryDate || null,
+    p_note: input.note || null,
+    p_subscription_id: input.subscriptionId ?? null,
+  });
+  if (error) throw error;
+  return data as any;
 }
 
 export function useCreateOffer() {
