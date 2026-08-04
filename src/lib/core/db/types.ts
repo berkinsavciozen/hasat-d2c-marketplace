@@ -4,9 +4,7 @@
 // Yeniden üretmek için:
 //   supabase gen types typescript --project-id efuqpiaavrzimvstpdpm > core/db/types.ts
 // ve üretim sonrası bu başlığı tekrar ekle.
-// Son üretim: 2026-08-05 (P23-M7-a — rpc_create_offer eklendi,
-// v_kpi_crop_demand_heatmap'e requester_count_tarimsal/requester_count_platform_disi
-// kolonları eklendi; kural #111 gereği tip üretimi bu turda tamamlandı)
+// Son üretim: 2026-08-04 (in-app hesap silme — rpc_delete_own_account eklendi)
 
 export type Json =
   | string
@@ -3107,6 +3105,7 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      rpc_delete_own_account: { Args: never; Returns: undefined }
       rpc_recipe_availability: {
         Args: { p_recipe_id: string }
         Returns: {
