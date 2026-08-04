@@ -1155,7 +1155,7 @@ async function insertOfferWithItems(
   const totalQty = input.items.reduce((s, i) => s + i.quantity, 0);
   if (totalQty <= 0) throw new Error("Toplam miktar 0'dan büyük olmalı");
 
-  const { data, error } = await (supabase as any).rpc("rpc_create_offer", {
+  const { data, error } = await supabase.rpc("rpc_create_offer", {
     p_farmer_id: input.farmerId,
     p_items: input.items.map((i) => ({
       listing_id: i.listingId,
@@ -1163,12 +1163,16 @@ async function insertOfferWithItems(
       price_per_unit: i.pricePerUnit,
     })),
     p_delivery: deliveryToDb(input.delivery),
-    p_delivery_date: input.deliveryDate || null,
-    p_note: input.note || null,
-    p_subscription_id: input.subscriptionId ?? null,
+    // Args tipi p_delivery_date/p_note/p_subscription_id için `string | undefined`
+    // (SQL tarafında `default null`) — `null` değil `undefined` geçiriliyor,
+    // aynı `rpc_recipe_shopping_list`'in `p_servings ?? undefined` deseni
+    // (recipes.ts). Anahtar hiç gönderilmezse RPC kendi NULL default'unu kullanır.
+    p_delivery_date: input.deliveryDate || undefined,
+    p_note: input.note || undefined,
+    p_subscription_id: input.subscriptionId ?? undefined,
   });
   if (error) throw error;
-  return data as any;
+  return data;
 }
 
 export function useCreateOffer() {
