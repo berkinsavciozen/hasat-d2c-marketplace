@@ -98,11 +98,22 @@ function PrivacyPage() {
         </section>
 
         <section>
-          <h2 className="font-serif text-2xl mb-3" style={{ color: "var(--gold)" }}>6. Veri Saklama Süresi</h2>
+          <h2 className="font-serif text-2xl mb-3" style={{ color: "var(--gold)" }}>6. Veri Saklama Süresi ve Hesap Silme</h2>
           <p className="text-sm text-hwhite/80 leading-relaxed">
-            Hesabınız aktif olduğu sürece veriler saklanır. Hesap silme talebinden
-            sonra kişisel veriler 30 gün içinde silinir. Yasal olarak saklanması gereken
-            mali kayıtlar (fatura, ödeme geçmişi) 10 yıl boyunca saklanır.
+            Hesabınız aktif olduğu sürece veriler saklanır. Uygulama içinden hesabınızı
+            sildiğinizde kişisel verileriniz (telefon numarası, isim, adresler, şirket
+            bilgisi, banka bilgisi, kaydettiğiniz tarifler, cihaz/bildirim kayıtları, AI
+            kullanım geçmişi) <strong className="text-hwhite">anında silinir</strong> ve
+            aynı telefon numarasıyla yeniden kayıt olabilirsiniz.
+          </p>
+          <p className="mt-3 text-sm text-hwhite/80 leading-relaxed">
+            Teklif, sipariş, mesaj ve değerlendirme kayıtlarınız ise{" "}
+            <strong className="text-hwhite">yasal yükümlülük gereği kimliğinizden
+            arındırılarak (anonimleştirilerek) saklanır</strong> — karşı tarafın
+            (alıcı/çiftçi) sipariş geçmişi ve aldığı değerlendirmeler bu sayede
+            kaybolmaz. Bu kayıtlarda adınız/telefonunuz görünmez, yalnızca işlemin
+            kendisi (ör. "Silinmiş Kullanıcı") kalır. Ticari kayıtların saklanması,
+            faturalandırma ve mali mevzuat kapsamındaki yükümlülüklerimizden kaynaklanır.
           </p>
         </section>
 
@@ -118,7 +129,9 @@ function PrivacyPage() {
             <li>Verilerin belirli bir amaç için işlenmesine itiraz etme.</li>
           </ul>
           <p className="mt-3 text-sm text-hwhite/80 leading-relaxed">
-            Bu haklarınızı kullanmak için WhatsApp destek hattımıza ulaşabilirsiniz.
+            Hesabınızı ve kişisel verilerinizi <strong className="text-hwhite">Ayarlar →
+            Hesap</strong> bölümünden uygulama içinden dilediğiniz zaman silebilirsiniz.
+            Diğer haklarınızı kullanmak için WhatsApp destek hattımıza ulaşabilirsiniz.
           </p>
         </section>
 
