@@ -3621,4 +3621,17 @@ export function useCreateCropTypeRequest() {
   });
 }
 
+// ============= Hesap silme (Apple 5.1.1(v) — uygulama içi hesap silme) =============
+// Mantık DB'de (kural #106) — web ve mobil aynı RPC'yi çağırır. auth.uid()
+// kullanılır, user_id parametre alınmaz. Çiftçi hesabında aktif ilan veya
+// açık sipariş varsa RPC reddeder (izlenebilirlik zinciri), hata mesajı
+// olduğu gibi kullanıcıya gösterilir.
 
+export function useDeleteAccount() {
+  return useMutation({
+    mutationFn: async () => {
+      const { error } = await supabase.rpc("rpc_delete_own_account");
+      if (error) throw error;
+    },
+  });
+}

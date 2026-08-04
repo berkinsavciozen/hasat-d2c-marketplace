@@ -12,6 +12,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { TierBadge } from "@/components/hasat/TierBadge";
 import { UpgradeModal } from "@/components/hasat/UpgradeModal";
 import { PhotoUploader } from "@/components/hasat/PhotoUploader";
+import { DeleteAccountModal } from "@/components/hasat/DeleteAccountModal";
 import { vitrinUrl, copyVitrinLink } from "@/lib/hasat/vitrin";
 import { TR_PROVINCES } from "@/lib/hasat/cities";
 import { CropChips } from "@/components/hasat/CropChips";
@@ -36,6 +37,7 @@ function Settings() {
   const [certExpires, setCertExpires] = useState("");
   const [certFile, setCertFile] = useState<File | null>(null);
   const [upgradeOpen, setUpgradeOpen] = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
   const { data: aiUsage } = useAIUsageThisMonth();
   const setRole = useHasat((s) => s.setRole);
 
@@ -136,6 +138,16 @@ function Settings() {
     try { await supabase.auth.signOut(); }
     catch (e) { toast.error((e as Error).message); }
     finally { setRole(null); navigate({ to: "/" }); }
+  };
+
+  const afterAccountDeleted = async () => {
+    try { await supabase.auth.signOut(); }
+    catch { /* oturum zaten hesap silme RPC'siyle geçersizleşti */ }
+    finally {
+      setRole(null);
+      toast.success("Hesabın silindi");
+      navigate({ to: "/" });
+    }
   };
 
   const [exporting, setExporting] = useState(false);
@@ -428,12 +440,25 @@ function Settings() {
         </Section>
 
         <Section title="Hesap">
-          <button onClick={logout}
-            className="flex items-center gap-2 rounded-lg px-4 py-2.5 text-sm font-medium text-destructive border border-destructive/40 hover:bg-destructive/10">
-            <LogOut className="h-4 w-4" /> Çıkış Yap
-          </button>
+          <div className="flex flex-col gap-2">
+            <button onClick={logout}
+              className="flex items-center gap-2 rounded-lg px-4 py-2.5 text-sm font-medium text-destructive border border-destructive/40 hover:bg-destructive/10">
+              <LogOut className="h-4 w-4" /> Çıkış Yap
+            </button>
+            <button onClick={() => setDeleteOpen(true)}
+              className="flex items-center gap-2 rounded-lg px-4 py-2.5 text-sm font-medium text-white min-h-[48px]"
+              style={{ background: "var(--hred, #dc2626)" }}>
+              <Trash2 className="h-4 w-4" /> Hesabımı Sil
+            </button>
+          </div>
         </Section>
       </div>
+
+      <DeleteAccountModal
+        open={deleteOpen}
+        onOpenChange={setDeleteOpen}
+        onDeleted={afterAccountDeleted}
+      />
 
       <Sheet open={!!editing} onOpenChange={(o) => !o && setEditing(null)}>
         <SheetContent side="bottom" className="rounded-t-2xl max-h-[92vh] overflow-y-auto">

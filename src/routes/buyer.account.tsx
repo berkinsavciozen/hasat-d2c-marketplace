@@ -13,6 +13,7 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Bell, ChevronRight, Trash2, Star, Plus, ClipboardList, CalendarClock } from "lucide-react";
+import { DeleteAccountModal } from "@/components/hasat/DeleteAccountModal";
 
 export const Route = createFileRoute("/buyer/account")({
   head: () => ({ meta: [{ title: "Hesap — Hasat" }] }),
@@ -37,6 +38,7 @@ function Account() {
   const [label, setLabel] = useState("");
   const [address, setAddress] = useState("");
   const [city, setCity] = useState("");
+  const [deleteOpen, setDeleteOpen] = useState(false);
 
   const displayName = profile?.name?.trim() || localUser?.company?.name || localUser?.name || "Alıcı";
   const premium = isEffectivelyPremium(profile);
@@ -47,6 +49,16 @@ function Account() {
     try { await supabase.auth.signOut(); }
     catch (e) { toast.error((e as Error).message); }
     finally { reset(); navigate({ to: "/" }); }
+  };
+
+  const afterAccountDeleted = async () => {
+    try { await supabase.auth.signOut(); }
+    catch { /* oturum zaten hesap silme RPC'siyle geçersizleşti */ }
+    finally {
+      reset();
+      toast.success("Hesabın silindi");
+      navigate({ to: "/" });
+    }
   };
 
   const onAdd = async () => {
@@ -212,7 +224,19 @@ function Account() {
           style={{ background: "var(--hred)", color: "var(--hwhite)" }}>
           Çıkış Yap
         </button>
+
+        <button onClick={() => setDeleteOpen(true)}
+          className="w-full rounded-xl py-3 text-sm font-medium min-h-[48px] border"
+          style={{ borderColor: "var(--hred)", color: "var(--hred)" }}>
+          Hesabımı Sil
+        </button>
       </div>
+
+      <DeleteAccountModal
+        open={deleteOpen}
+        onOpenChange={setDeleteOpen}
+        onDeleted={afterAccountDeleted}
+      />
     </>
   );
 }
