@@ -4,7 +4,8 @@
 // Yeniden üretmek için:
 //   supabase gen types typescript --project-id efuqpiaavrzimvstpdpm > core/db/types.ts
 // ve üretim sonrası bu başlığı tekrar ekle.
-// Son üretim: 2026-07-31 (P23-M5-a-ek — recipes.rest_minutes eklendi, M4-c'den beri bayat kalmıştı)
+// Son üretim: 2026-08-04 (P23-M6-ek — recipe_ingredients.ingredient_class,
+// crop_requests.ingredient_class, fn_match_culinary_crop eklendi)
 
 export type Json =
   | string
@@ -440,6 +441,7 @@ export type Database = {
           created_at: string
           crop_name_free_text: string
           id: string
+          ingredient_class: string | null
           note: string | null
           quantity: number | null
           region: string | null
@@ -454,6 +456,7 @@ export type Database = {
           created_at?: string
           crop_name_free_text: string
           id?: string
+          ingredient_class?: string | null
           note?: string | null
           quantity?: number | null
           region?: string | null
@@ -468,6 +471,7 @@ export type Database = {
           created_at?: string
           crop_name_free_text?: string
           id?: string
+          ingredient_class?: string | null
           note?: string | null
           quantity?: number | null
           region?: string | null
@@ -558,6 +562,7 @@ export type Database = {
           id: string
           platform: string
           token: string
+          updated_at: string
           user_id: string
         }
         Insert: {
@@ -565,6 +570,7 @@ export type Database = {
           id?: string
           platform: string
           token: string
+          updated_at?: string
           user_id: string
         }
         Update: {
@@ -572,6 +578,7 @@ export type Database = {
           id?: string
           platform?: string
           token?: string
+          updated_at?: string
           user_id?: string
         }
         Relationships: [
@@ -2017,6 +2024,7 @@ export type Database = {
           crop: string | null
           free_text_name: string | null
           id: string
+          ingredient_class: string | null
           is_key_ingredient: boolean
           note: string | null
           quantity: number | null
@@ -2029,6 +2037,7 @@ export type Database = {
           crop?: string | null
           free_text_name?: string | null
           id?: string
+          ingredient_class?: string | null
           is_key_ingredient?: boolean
           note?: string | null
           quantity?: number | null
@@ -2041,6 +2050,7 @@ export type Database = {
           crop?: string | null
           free_text_name?: string | null
           id?: string
+          ingredient_class?: string | null
           is_key_ingredient?: boolean
           note?: string | null
           quantity?: number | null
@@ -3022,6 +3032,7 @@ export type Database = {
         Args: { p_crop: string; p_quantity: number; p_unit: string }
         Returns: number
       }
+      fn_match_culinary_crop: { Args: { p_text: string }; Returns: string }
       get_buyer_rating_summary: {
         Args: { _buyer_id: string }
         Returns: {
@@ -3099,6 +3110,10 @@ export type Database = {
           scaled_quantity: number
           sort_order: number
         }[]
+      }
+      rpc_register_device_token: {
+        Args: { p_platform: string; p_token: string }
+        Returns: string
       }
       send_subscription_harvest_reminders: { Args: never; Returns: undefined }
     }
