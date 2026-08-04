@@ -2599,6 +2599,9 @@ export interface CreateCropRequestInput {
   targetDateStart?: string | null;
   targetDateEnd?: string | null;
   targetPrice?: number | null;
+  // P23-M7-a — tarım ürünü mü (crop_config'te var) yoksa platform-dışı mı
+  // (tuz, un): admin ısı haritası iki grubu ayırabilsin diye.
+  ingredientClass?: "tarimsal" | "platform_disi" | null;
 }
 
 export interface MyCropRequest {
@@ -2635,6 +2638,7 @@ export function useCreateCropRequest() {
           target_date_start: input.targetDateStart || null,
           target_date_end: input.targetDateEnd || null,
           target_price: input.targetPrice ?? null,
+          ingredient_class: input.ingredientClass ?? null,
         })
         .select("id")
         .single();

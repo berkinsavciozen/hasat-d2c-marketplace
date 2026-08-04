@@ -21,6 +21,10 @@ export interface RecipeListItem {
   displayPhotoUrl: string | null;
   isRepresentativePhoto: boolean;
   coveragePct: number | null;
+  // P23-M7-a — "X malzemeden Y'si Hasat'ta" sayacı, v_recipe_coverage'dan
+  // (coveragePct'in aksine off-platform malzemeleri de içerir).
+  ingredientCount: number | null;
+  availableCount: number | null;
 }
 
 export interface RecipeDetail {
@@ -125,21 +129,32 @@ export async function fetchRecipeList(): Promise<RecipeListItem[]> {
         .eq("visibility", "public")
         .eq("status", "published")
         .order("title", { ascending: true }),
-      supabase.from("v_recipe_coverage" as any).select("recipe_id, coverage_pct"),
+      supabase
+        .from("v_recipe_coverage" as any)
+        .select("recipe_id, coverage_pct, ingredient_count, available_count"),
     ]);
   if (recipeErr) throw recipeErr;
   if (covErr) throw covErr;
-  const coverageByRecipe = new Map<string, number | null>(
-    (
-      (coverageRows ?? []) as unknown as Array<{ recipe_id: string; coverage_pct: number | null }>
-    ).map((c) => [c.recipe_id, c.coverage_pct]),
+  type CoverageRow = {
+    recipe_id: string;
+    coverage_pct: number | null;
+    ingredient_count: number | null;
+    available_count: number | null;
+  };
+  const coverageByRecipe = new Map<string, CoverageRow>(
+    ((coverageRows ?? []) as unknown as CoverageRow[]).map((c) => [c.recipe_id, c]),
   );
   const withCover = await attachCoverFallback((recipeRows ?? []) as any[]);
-  return withCover.map((r) => ({
-    ...r,
-    diet_tags: r.diet_tags ?? [],
-    coveragePct: coverageByRecipe.get(r.id) ?? null,
-  })) as RecipeListItem[];
+  return withCover.map((r) => {
+    const cov = coverageByRecipe.get(r.id);
+    return {
+      ...r,
+      diet_tags: r.diet_tags ?? [],
+      coveragePct: cov?.coverage_pct ?? null,
+      ingredientCount: cov?.ingredient_count ?? null,
+      availableCount: cov?.available_count ?? null,
+    };
+  }) as RecipeListItem[];
 }
 
 export interface RelatedRecipeItem {

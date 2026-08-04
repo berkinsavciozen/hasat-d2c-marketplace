@@ -10,8 +10,12 @@ export interface PendingRecipeRequest {
   recipeId: string;
   recipeSlug: string;
   recipeTitle: string;
+  // ingredientId is the robust resume key — off-platform ingredients (tuz, un)
+  // have crop=null, so matching on crop alone can't find them back (P23-M7-a).
+  ingredientId: string;
   crop: string;
   cropLabel: string;
+  ingredientClass: "tarimsal" | "platform_disi";
   quantity?: string;
   unit?: "kg" | "g" | "L";
 }
@@ -29,7 +33,7 @@ export function loadPendingRecipeRequest(): PendingRecipeRequest | null {
     const raw = localStorage.getItem(KEY);
     if (!raw) return null;
     const parsed = JSON.parse(raw);
-    if (!parsed || typeof parsed !== "object" || !parsed.recipeId || !parsed.crop) return null;
+    if (!parsed || typeof parsed !== "object" || !parsed.recipeId || !parsed.ingredientId) return null;
     return parsed as PendingRecipeRequest;
   } catch {
     return null;

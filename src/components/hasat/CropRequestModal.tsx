@@ -25,6 +25,9 @@ export interface CropRequestModalProps {
   /** When set, a `recipe_rfq_links` row is written linking the new request
    * back to this recipe — the funnel's "talep" step attribution (P23-M2-ek). */
   recipeId?: string;
+  /** Tarım ürünü mü (crop_config'te var) yoksa platform-dışı mı (tuz, un) —
+   * admin ısı haritasının iki grubu ayrı gösterebilmesi için (P23-M7-a). */
+  ingredientClass?: "tarimsal" | "platform_disi" | null;
 }
 
 export function CropRequestModal({
@@ -35,6 +38,7 @@ export function CropRequestModal({
   initialQuantity = "",
   initialUnit = "kg",
   recipeId,
+  ingredientClass = null,
 }: CropRequestModalProps) {
   const create = useCreateCropRequest();
   const [cropName, setCropName] = useState(initialCrop);
@@ -61,6 +65,7 @@ export function CropRequestModal({
         targetDateStart: startDate || null,
         targetDateEnd: endDate || null,
         targetPrice: targetPrice ? Number(targetPrice) : null,
+        ingredientClass,
       });
 
       if (recipeId && result?.id) {

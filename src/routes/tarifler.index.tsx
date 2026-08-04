@@ -11,6 +11,7 @@ import {
   type RecipeListItem,
 } from "@/lib/hasat/recipes";
 import { RepresentativePhoto } from "@/components/hasat/RepresentativePhoto";
+import { MobileNudge } from "@/components/hasat/MobileNudge";
 
 const TITLE = "Tarifler | Hasat";
 const DESCRIPTION =
@@ -59,7 +60,7 @@ function RecipeListPage() {
   const [duration, setDuration] = useState<(typeof DURATION_BUCKETS)[number]["key"] | null>(null);
   const [diet, setDiet] = useState<string | null>(null);
   const [cuisine, setCuisine] = useState<string | null>(null);
-  const [onlyFullyAvailable, setOnlyFullyAvailable] = useState(false);
+  const [onlyWithAvailableIngredient, setOnlyWithAvailableIngredient] = useState(false);
 
   const cuisines = useMemo(
     () => Array.from(new Set(recipes.map((r) => r.cuisine).filter((c): c is string => !!c))).sort(),
@@ -81,7 +82,7 @@ function RecipeListPage() {
       const mins = filterMinutes(r);
       if (!(mins > prevMax && mins <= bucket.max)) return false;
     }
-    if (onlyFullyAvailable && r.coveragePct !== 100) return false;
+    if (onlyWithAvailableIngredient && !((r.availableCount ?? 0) >= 1)) return false;
     return true;
   });
 
@@ -159,22 +160,25 @@ function RecipeListPage() {
           )}
         </div>
 
-        {/* Not the primary discovery path on purpose — real supply rarely covers a whole
-            recipe yet (Build/P23-Mobile.md → "Arz gerçeği ve 'Talep Et'"). Fed by
-            v_recipe_coverage; expected to return few/no results on real data. */}
+        {/* P23-M7-a: isim düzeltildi — bu filtre "tam alınabilir" değil, "en az bir
+            malzemesi Hasat'ta" anlamına geliyor (gerçek isim, gerçek davranış).
+            Gerçek "tam alınabilir" filtresi bugünkü arzda 0 tarif döner — bkz.
+            Build/P23-Mobile.md → "Arz gerçeği ve 'Talep Et'". Fed by v_recipe_coverage. */}
         <label className="flex w-fit items-center gap-2 text-xs text-hmuted">
           <input
             type="checkbox"
-            checked={onlyFullyAvailable}
-            onChange={(e) => setOnlyFullyAvailable(e.target.checked)}
+            checked={onlyWithAvailableIngredient}
+            onChange={(e) => setOnlyWithAvailableIngredient(e.target.checked)}
           />
-          Şu an Hasat'ta tam alınabilir tarifler
+          Malzemesi Hasat'ta olan tarifler
         </label>
+
+        <MobileNudge text="Kitaptaki tarifi telefonla çekip defterine aktar — Hasat mobil uygulamasında" />
 
         {filtered.length === 0 ? (
           <div className="rounded-2xl border border-dashed py-12 text-center text-hmuted">
-            {onlyFullyAvailable
-              ? "Bu filtreyle tam eşleşen tarif yok — Hasat'taki arz henüz her tarifi baştan sona karşılamıyor."
+            {onlyWithAvailableIngredient
+              ? "Bu filtreyle eşleşen tarif yok — Hasat'taki arz henüz hiçbir malzemesini karşılamıyor."
               : "Bu filtrelerle eşleşen tarif yok."}
           </div>
         ) : (
@@ -205,6 +209,11 @@ function RecipeListPage() {
                     )}
                     {r.cuisine && <span>· {r.cuisine}</span>}
                   </div>
+                  {r.ingredientCount != null && r.availableCount != null && (
+                    <div className="text-[11px] text-hmuted">
+                      {r.ingredientCount} malzemeden {r.availableCount}'i Hasat'ta
+                    </div>
+                  )}
                   {needsAdvanceStart(r) && (
                     <div
                       className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium"
