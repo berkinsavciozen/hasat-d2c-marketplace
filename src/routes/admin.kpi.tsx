@@ -47,6 +47,10 @@ type CropDemandHeatmapRow = {
   crop_display_name: string;
   key_ingredient_recipe_count: number;
   requester_count: number;
+  // P23-M7-a — requester_count'un tarımsal/platform-dışı kırılımı
+  // (crop_requests.ingredient_class).
+  requester_count_tarimsal: number;
+  requester_count_platform_disi: number;
   total_quantity_normalized: number | null;
   normalized_unit: string | null;
   regions: string[];
@@ -622,7 +626,14 @@ function TalepTab({ d }: { d: KpiResponse }) {
                   return (
                     <tr key={r.crop} className={cn("border-b last:border-0", isGap && "bg-[color-mix(in_oklab,var(--saffron)_10%,transparent)]")}>
                       <td className="py-2 pr-3 font-medium">{r.crop_display_name}</td>
-                      <td className="text-right py-2 px-3 font-mono">{r.requester_count}</td>
+                      <td className="text-right py-2 px-3 font-mono">
+                        {r.requester_count}
+                        {(r.requester_count_tarimsal > 0 || r.requester_count_platform_disi > 0) && (
+                          <div className="text-[10px] font-normal text-hmuted">
+                            {r.requester_count_tarimsal} tarımsal · {r.requester_count_platform_disi} platform-dışı
+                          </div>
+                        )}
+                      </td>
                       <td className="text-right py-2 px-3 font-mono">
                         {r.total_quantity_normalized != null
                           ? `${fmtNum(r.total_quantity_normalized, 1)} ${r.normalized_unit ?? ""}`

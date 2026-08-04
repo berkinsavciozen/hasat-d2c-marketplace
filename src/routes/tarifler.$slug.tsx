@@ -20,6 +20,7 @@ import {
 } from "@/lib/hasat/recipes";
 import { RepresentativePhoto } from "@/components/hasat/RepresentativePhoto";
 import { CropRequestModal } from "@/components/hasat/CropRequestModal";
+import { MobileNudge } from "@/components/hasat/MobileNudge";
 import {
   savePendingRecipeRequest,
   loadPendingRecipeRequest,
@@ -182,11 +183,16 @@ function RecipeDetailPage() {
     if (!loggedIn) return;
     const pending = loadPendingRecipeRequest();
     if (!pending || pending.recipeId !== recipe.id) return;
-    const match = ingredients.find((i) => i.crop === pending.crop);
+    const match = ingredients.find((i) => i.id === pending.ingredientId);
     if (match) setRequestIngredient(match);
     clearPendingRecipeRequest();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loggedIn, recipe.id]);
+
+  const ingredientLabelFor = (ing: RecipeIngredientRow) =>
+    ing.crop ? formatCropIngredient(ing.crop) : (ing.free_text_name ?? "");
+  const ingredientClassFor = (ing: RecipeIngredientRow): "tarimsal" | "platform_disi" =>
+    ing.crop ? "tarimsal" : "platform_disi";
 
   const openTalepEt = (ing: RecipeIngredientRow) => {
     if (!loggedIn) {
@@ -194,8 +200,10 @@ function RecipeDetailPage() {
         recipeId: recipe.id,
         recipeSlug: recipe.slug,
         recipeTitle: recipe.title,
+        ingredientId: ing.id,
         crop: ing.crop ?? "",
-        cropLabel: formatCropIngredient(ing.crop),
+        cropLabel: ingredientLabelFor(ing),
+        ingredientClass: ingredientClassFor(ing),
       });
       navigate({
         to: "/login",
@@ -268,7 +276,17 @@ function RecipeDetailPage() {
 
         <section className="space-y-3">
           <div className="flex items-center justify-between">
-            <h2 className="text-xs font-medium uppercase tracking-wider text-hmuted">Malzemeler</h2>
+            <div>
+              <h2 className="text-xs font-medium uppercase tracking-wider text-hmuted">
+                Malzemeler
+              </h2>
+              {liveDataReady && (
+                <div className="mt-0.5 text-[11px] text-hmuted">
+                  {availability.length} malzemeden {availability.filter((a) => a.is_matched).length}
+                  'i Hasat'ta
+                </div>
+              )}
+            </div>
             <div className="flex items-center gap-2">
               <button
                 type="button"
@@ -299,7 +317,6 @@ function RecipeDetailPage() {
               // Lowercase — see ingredientLabel() above, same rule applies to the
               // visible card (not just JSON-LD): a list item isn't a sentence start.
               const name = ing.crop ? formatCropIngredient(ing.crop) : ing.free_text_name;
-              const isPlatformCrop = shop?.is_platform_crop ?? !!ing.crop;
               const isMatched = shop?.is_matched ?? false;
               const matchedListingId = ing.crop ? matchedListingIds?.get(ing.crop) : undefined;
 
@@ -337,7 +354,7 @@ function RecipeDetailPage() {
 
                     {!liveDataReady ? (
                       <div className="mt-1 h-3 w-24 animate-pulse rounded bg-muted" />
-                    ) : !isPlatformCrop ? null : isMatched ? (
+                    ) : isMatched ? (
                       <div className="mt-1 space-y-0.5">
                         <button
                           type="button"
@@ -345,7 +362,7 @@ function RecipeDetailPage() {
                           className="text-xs font-medium underline decoration-dotted"
                           style={{ color: "var(--saffron)" }}
                         >
-                          Ürün sayfasına git →
+                          Sipariş Ver →
                         </button>
                         <div className="text-[11px] text-hmuted">
                           {shop?.best_price_per_canonical != null && shop?.canonical_unit && (
@@ -391,9 +408,11 @@ function RecipeDetailPage() {
                         )}
                       </div>
                     ) : (
-                      // Dominant state (68 malzemenin 54'ü) — a real CTA, not a
-                      // grey dead-end pill. "Talep Et" doubles as "bu ürün
-                      // geldiğinde haber ver" (P23-M4-b).
+                      // Dominant state — eşleşmeyen her malzeme (tarımsal ama
+                      // ilansız + platform-dışı, ör. tuz/un) aynı gerçek CTA'yı
+                      // alır, grey dead-end pill değil. "Talep Et" doubles as
+                      // "bu ürün geldiğinde haber ver" (P23-M4-b, P23-M7-a'da
+                      // platform-dışı'na genişletildi — Berkin kararı).
                       <div className="mt-1.5 space-y-1">
                         <span
                           className="inline-block rounded-full px-2 py-0.5 text-[10px] font-medium"
@@ -420,6 +439,8 @@ function RecipeDetailPage() {
             })}
           </div>
         </section>
+
+        <MobileNudge text="Telefonda pişirme modu — adım adım, timer'lı, offline" />
 
         <section className="space-y-3">
           <h2 className="text-xs font-medium uppercase tracking-wider text-hmuted">Hazırlanışı</h2>
@@ -499,7 +520,8 @@ function RecipeDetailPage() {
           const initialUnit = (shop?.canonical_unit as "kg" | "g" | "L" | undefined) ?? "kg";
           return (
             <CropRequestModal
-              initialCrop={formatCropIngredient(requestIngredient.crop)}
+              initialCrop={ingredientLabelFor(requestIngredient)}
+              ingredientClass={ingredientClassFor(requestIngredient)}
               lockCropName
               initialQuantity={initialQuantity}
               initialUnit={initialUnit}
