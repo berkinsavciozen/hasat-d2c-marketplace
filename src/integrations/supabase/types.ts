@@ -290,6 +290,7 @@ export type Database = {
         Row: {
           category_group: string | null
           crop: string
+          default_photo_url: string | null
           default_unit: string
           display_name: string
           harvest_window_end_month: number | null
@@ -304,6 +305,7 @@ export type Database = {
         Insert: {
           category_group?: string | null
           crop: string
+          default_photo_url?: string | null
           default_unit?: string
           display_name: string
           harvest_window_end_month?: number | null
@@ -318,6 +320,7 @@ export type Database = {
         Update: {
           category_group?: string | null
           crop?: string
+          default_photo_url?: string | null
           default_unit?: string
           display_name?: string
           harvest_window_end_month?: number | null
@@ -330,6 +333,41 @@ export type Database = {
           price_window_type?: string
         }
         Relationships: []
+      }
+      crop_culinary_meta: {
+        Row: {
+          conversion_hints: Json
+          created_at: string
+          crop: string
+          culinary_aliases: string[]
+          is_edible: boolean
+          updated_at: string
+        }
+        Insert: {
+          conversion_hints?: Json
+          created_at?: string
+          crop: string
+          culinary_aliases?: string[]
+          is_edible?: boolean
+          updated_at?: string
+        }
+        Update: {
+          conversion_hints?: Json
+          created_at?: string
+          crop?: string
+          culinary_aliases?: string[]
+          is_edible?: boolean
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "crop_culinary_meta_crop_fkey"
+            columns: ["crop"]
+            isOneToOne: true
+            referencedRelation: "crop_config"
+            referencedColumns: ["crop"]
+          },
+        ]
       }
       crop_journal_glossary: {
         Row: {
@@ -394,6 +432,7 @@ export type Database = {
           created_at: string
           crop_name_free_text: string
           id: string
+          ingredient_class: string | null
           note: string | null
           quantity: number | null
           region: string | null
@@ -408,6 +447,7 @@ export type Database = {
           created_at?: string
           crop_name_free_text: string
           id?: string
+          ingredient_class?: string | null
           note?: string | null
           quantity?: number | null
           region?: string | null
@@ -422,6 +462,7 @@ export type Database = {
           created_at?: string
           crop_name_free_text?: string
           id?: string
+          ingredient_class?: string | null
           note?: string | null
           quantity?: number | null
           region?: string | null
@@ -500,6 +541,48 @@ export type Database = {
           {
             foreignKeyName: "crop_type_requests_requested_by_fkey"
             columns: ["requested_by"]
+            isOneToOne: false
+            referencedRelation: "public_farmer_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      device_tokens: {
+        Row: {
+          created_at: string
+          id: string
+          platform: string
+          token: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          platform: string
+          token: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          platform?: string
+          token?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "device_tokens_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "device_tokens_user_id_fkey"
+            columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "public_farmer_profiles"
             referencedColumns: ["id"]
@@ -1380,6 +1463,7 @@ export type Database = {
           payment_status: string
           price_per_unit: number
           quantity: number
+          source_recipe_id: string | null
           status: Database["public"]["Enums"]["offer_status"]
           subscription_id: string | null
           updated_at: string
@@ -1401,6 +1485,7 @@ export type Database = {
           payment_status?: string
           price_per_unit: number
           quantity: number
+          source_recipe_id?: string | null
           status?: Database["public"]["Enums"]["offer_status"]
           subscription_id?: string | null
           updated_at?: string
@@ -1422,6 +1507,7 @@ export type Database = {
           payment_status?: string
           price_per_unit?: number
           quantity?: number
+          source_recipe_id?: string | null
           status?: Database["public"]["Enums"]["offer_status"]
           subscription_id?: string | null
           updated_at?: string
@@ -1461,6 +1547,27 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "listings"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "offers_source_recipe_id_fkey"
+            columns: ["source_recipe_id"]
+            isOneToOne: false
+            referencedRelation: "recipes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "offers_source_recipe_id_fkey"
+            columns: ["source_recipe_id"]
+            isOneToOne: false
+            referencedRelation: "v_kpi_recipe_funnel_by_recipe"
+            referencedColumns: ["recipe_id"]
+          },
+          {
+            foreignKeyName: "offers_source_recipe_id_fkey"
+            columns: ["source_recipe_id"]
+            isOneToOne: false
+            referencedRelation: "v_recipe_coverage"
+            referencedColumns: ["recipe_id"]
           },
           {
             foreignKeyName: "offers_subscription_id_fkey"
@@ -1902,6 +2009,383 @@ export type Database = {
           },
         ]
       }
+      recipe_ingredients: {
+        Row: {
+          created_at: string
+          crop: string | null
+          free_text_name: string | null
+          id: string
+          ingredient_class: string | null
+          is_key_ingredient: boolean
+          note: string | null
+          quantity: number | null
+          recipe_id: string
+          sort_order: number
+          unit: string | null
+        }
+        Insert: {
+          created_at?: string
+          crop?: string | null
+          free_text_name?: string | null
+          id?: string
+          ingredient_class?: string | null
+          is_key_ingredient?: boolean
+          note?: string | null
+          quantity?: number | null
+          recipe_id: string
+          sort_order?: number
+          unit?: string | null
+        }
+        Update: {
+          created_at?: string
+          crop?: string | null
+          free_text_name?: string | null
+          id?: string
+          ingredient_class?: string | null
+          is_key_ingredient?: boolean
+          note?: string | null
+          quantity?: number | null
+          recipe_id?: string
+          sort_order?: number
+          unit?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "recipe_ingredients_crop_fkey"
+            columns: ["crop"]
+            isOneToOne: false
+            referencedRelation: "crop_config"
+            referencedColumns: ["crop"]
+          },
+          {
+            foreignKeyName: "recipe_ingredients_recipe_id_fkey"
+            columns: ["recipe_id"]
+            isOneToOne: false
+            referencedRelation: "recipes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "recipe_ingredients_recipe_id_fkey"
+            columns: ["recipe_id"]
+            isOneToOne: false
+            referencedRelation: "v_kpi_recipe_funnel_by_recipe"
+            referencedColumns: ["recipe_id"]
+          },
+          {
+            foreignKeyName: "recipe_ingredients_recipe_id_fkey"
+            columns: ["recipe_id"]
+            isOneToOne: false
+            referencedRelation: "v_recipe_coverage"
+            referencedColumns: ["recipe_id"]
+          },
+        ]
+      }
+      recipe_rfq_links: {
+        Row: {
+          created_at: string
+          crop_request_id: string
+          id: string
+          recipe_id: string
+        }
+        Insert: {
+          created_at?: string
+          crop_request_id: string
+          id?: string
+          recipe_id: string
+        }
+        Update: {
+          created_at?: string
+          crop_request_id?: string
+          id?: string
+          recipe_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "recipe_rfq_links_crop_request_id_fkey"
+            columns: ["crop_request_id"]
+            isOneToOne: false
+            referencedRelation: "crop_requests"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "recipe_rfq_links_recipe_id_fkey"
+            columns: ["recipe_id"]
+            isOneToOne: false
+            referencedRelation: "recipes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "recipe_rfq_links_recipe_id_fkey"
+            columns: ["recipe_id"]
+            isOneToOne: false
+            referencedRelation: "v_kpi_recipe_funnel_by_recipe"
+            referencedColumns: ["recipe_id"]
+          },
+          {
+            foreignKeyName: "recipe_rfq_links_recipe_id_fkey"
+            columns: ["recipe_id"]
+            isOneToOne: false
+            referencedRelation: "v_recipe_coverage"
+            referencedColumns: ["recipe_id"]
+          },
+        ]
+      }
+      recipe_saves: {
+        Row: {
+          created_at: string
+          id: string
+          recipe_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          recipe_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          recipe_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "recipe_saves_recipe_id_fkey"
+            columns: ["recipe_id"]
+            isOneToOne: false
+            referencedRelation: "recipes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "recipe_saves_recipe_id_fkey"
+            columns: ["recipe_id"]
+            isOneToOne: false
+            referencedRelation: "v_kpi_recipe_funnel_by_recipe"
+            referencedColumns: ["recipe_id"]
+          },
+          {
+            foreignKeyName: "recipe_saves_recipe_id_fkey"
+            columns: ["recipe_id"]
+            isOneToOne: false
+            referencedRelation: "v_recipe_coverage"
+            referencedColumns: ["recipe_id"]
+          },
+          {
+            foreignKeyName: "recipe_saves_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "recipe_saves_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "public_farmer_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      recipe_steps: {
+        Row: {
+          created_at: string
+          id: string
+          instruction: string
+          photo_url: string | null
+          recipe_id: string
+          step_no: number
+          timer_seconds: number | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          instruction: string
+          photo_url?: string | null
+          recipe_id: string
+          step_no: number
+          timer_seconds?: number | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          instruction?: string
+          photo_url?: string | null
+          recipe_id?: string
+          step_no?: number
+          timer_seconds?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "recipe_steps_recipe_id_fkey"
+            columns: ["recipe_id"]
+            isOneToOne: false
+            referencedRelation: "recipes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "recipe_steps_recipe_id_fkey"
+            columns: ["recipe_id"]
+            isOneToOne: false
+            referencedRelation: "v_kpi_recipe_funnel_by_recipe"
+            referencedColumns: ["recipe_id"]
+          },
+          {
+            foreignKeyName: "recipe_steps_recipe_id_fkey"
+            columns: ["recipe_id"]
+            isOneToOne: false
+            referencedRelation: "v_recipe_coverage"
+            referencedColumns: ["recipe_id"]
+          },
+        ]
+      }
+      recipe_views: {
+        Row: {
+          created_at: string
+          id: string
+          recipe_id: string
+          session_id: string | null
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          recipe_id: string
+          session_id?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          recipe_id?: string
+          session_id?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "recipe_views_recipe_id_fkey"
+            columns: ["recipe_id"]
+            isOneToOne: false
+            referencedRelation: "recipes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "recipe_views_recipe_id_fkey"
+            columns: ["recipe_id"]
+            isOneToOne: false
+            referencedRelation: "v_kpi_recipe_funnel_by_recipe"
+            referencedColumns: ["recipe_id"]
+          },
+          {
+            foreignKeyName: "recipe_views_recipe_id_fkey"
+            columns: ["recipe_id"]
+            isOneToOne: false
+            referencedRelation: "v_recipe_coverage"
+            referencedColumns: ["recipe_id"]
+          },
+          {
+            foreignKeyName: "recipe_views_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "recipe_views_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "public_farmer_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      recipes: {
+        Row: {
+          author_type: string
+          cook_minutes: number | null
+          cover_photo_url: string | null
+          created_at: string
+          cuisine: string | null
+          description: string | null
+          diet_tags: string[]
+          difficulty: string | null
+          extraction_confidence: number | null
+          id: string
+          owner_id: string | null
+          prep_minutes: number | null
+          rest_minutes: number | null
+          servings: number | null
+          slug: string
+          source_type: string
+          source_url: string | null
+          status: string
+          title: string
+          updated_at: string
+          visibility: string
+        }
+        Insert: {
+          author_type?: string
+          cook_minutes?: number | null
+          cover_photo_url?: string | null
+          created_at?: string
+          cuisine?: string | null
+          description?: string | null
+          diet_tags?: string[]
+          difficulty?: string | null
+          extraction_confidence?: number | null
+          id?: string
+          owner_id?: string | null
+          prep_minutes?: number | null
+          rest_minutes?: number | null
+          servings?: number | null
+          slug: string
+          source_type?: string
+          source_url?: string | null
+          status?: string
+          title: string
+          updated_at?: string
+          visibility?: string
+        }
+        Update: {
+          author_type?: string
+          cook_minutes?: number | null
+          cover_photo_url?: string | null
+          created_at?: string
+          cuisine?: string | null
+          description?: string | null
+          diet_tags?: string[]
+          difficulty?: string | null
+          extraction_confidence?: number | null
+          id?: string
+          owner_id?: string | null
+          prep_minutes?: number | null
+          rest_minutes?: number | null
+          servings?: number | null
+          slug?: string
+          source_type?: string
+          source_url?: string | null
+          status?: string
+          title?: string
+          updated_at?: string
+          visibility?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "recipes_owner_id_fkey"
+            columns: ["owner_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "recipes_owner_id_fkey"
+            columns: ["owner_id"]
+            isOneToOne: false
+            referencedRelation: "public_farmer_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       referral_qualifications: {
         Row: {
           id: string
@@ -2213,6 +2697,22 @@ export type Database = {
         }
         Relationships: []
       }
+      v_kpi_crop_demand_heatmap: {
+        Row: {
+          crop: string | null
+          crop_display_name: string | null
+          has_active_listing: boolean | null
+          key_ingredient_recipe_count: number | null
+          normalized_unit: string | null
+          regions: string[] | null
+          requested_recipe_titles: string[] | null
+          requester_count: number | null
+          requester_count_platform_disi: number | null
+          requester_count_tarimsal: number | null
+          total_quantity_normalized: number | null
+        }
+        Relationships: []
+      }
       v_kpi_dispute_rate: {
         Row: {
           delivered_or_completed_orders: number | null
@@ -2385,6 +2885,38 @@ export type Database = {
           },
         ]
       }
+      v_kpi_recipe_funnel: {
+        Row: {
+          month: string | null
+          offer_to_order_pct: number | null
+          recipe_offers: number | null
+          recipe_offers_converted: number | null
+          recipe_orders: number | null
+          recipe_requests: number | null
+          recipe_saves: number | null
+          recipe_views: number | null
+          unique_viewers: number | null
+          view_to_save_pct: number | null
+        }
+        Relationships: []
+      }
+      v_kpi_recipe_funnel_by_recipe: {
+        Row: {
+          offer_to_order_pct: number | null
+          recipe_id: string | null
+          recipe_offers: number | null
+          recipe_offers_converted: number | null
+          recipe_orders: number | null
+          recipe_requests: number | null
+          recipe_saves: number | null
+          recipe_views: number | null
+          slug: string | null
+          title: string | null
+          unique_viewers: number | null
+          view_to_save_pct: number | null
+        }
+        Relationships: []
+      }
       v_kpi_review_avg: {
         Row: {
           avg_rating: number | null
@@ -2414,6 +2946,23 @@ export type Database = {
           dense_cell_pct: number | null
           dense_cells: number | null
           total_cells: number | null
+        }
+        Relationships: []
+      }
+      v_recipe_coverage: {
+        Row: {
+          available_count: number | null
+          coverage_pct: number | null
+          crop_linked_count: number | null
+          ingredient_count: number | null
+          key_available_count: number | null
+          key_ingredient_count: number | null
+          off_platform_count: number | null
+          recipe_id: string | null
+          slug: string | null
+          status: string | null
+          title: string | null
+          visibility: string | null
         }
         Relationships: []
       }
@@ -2472,6 +3021,11 @@ export type Database = {
         Args: { _event: string; _message: string; _user_id: string }
         Returns: undefined
       }
+      fn_culinary_to_canonical: {
+        Args: { p_crop: string; p_quantity: number; p_unit: string }
+        Returns: number
+      }
+      fn_match_culinary_crop: { Args: { p_text: string }; Returns: string }
       get_buyer_rating_summary: {
         Args: { _buyer_id: string }
         Returns: {
@@ -2504,6 +3058,96 @@ export type Database = {
         }[]
       }
       increment_ai_usage: { Args: { _user_id: string }; Returns: number }
+      rpc_create_offer: {
+        Args: {
+          p_delivery?: string
+          p_delivery_date?: string
+          p_farmer_id: string
+          p_items: Json
+          p_note?: string
+          p_source_recipe_id?: string
+          p_subscription_id?: string
+        }
+        Returns: {
+          ball_side: string
+          buyer_id: string
+          counter_offer: Json | null
+          created_at: string
+          current_price: number | null
+          current_quantity: number | null
+          delivery: Database["public"]["Enums"]["delivery_type"]
+          delivery_date: string | null
+          farmer_id: string
+          id: string
+          listing_id: string
+          negotiation_history: Json
+          note: string | null
+          payment_status: string
+          price_per_unit: number
+          quantity: number
+          source_recipe_id: string | null
+          status: Database["public"]["Enums"]["offer_status"]
+          subscription_id: string | null
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "offers"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      rpc_delete_own_account: { Args: never; Returns: undefined }
+      rpc_recipe_availability: {
+        Args: { p_recipe_id: string }
+        Returns: {
+          active_listing_count: number
+          best_price_per_canonical: number
+          canonical_unit: string
+          crop: string
+          crop_display_name: string
+          crop_photo_url: string
+          free_text_name: string
+          ingredient_id: string
+          is_key_ingredient: boolean
+          is_matched: boolean
+          is_platform_crop: boolean
+          quantity: number
+          sort_order: number
+          unit: string
+        }[]
+      }
+      rpc_recipe_shopping_list: {
+        Args: { p_recipe_id: string; p_servings?: number }
+        Returns: {
+          best_price_per_canonical: number
+          canonical_unit: string
+          conversion_available: boolean
+          crop: string
+          crop_display_name: string
+          estimated_cost: number
+          free_text_name: string
+          ingredient_id: string
+          is_matched: boolean
+          is_platform_crop: boolean
+          min_order_canonical: number
+          needed_canonical: number
+          purchase_canonical: number
+          recipe_quantity: number
+          recipe_servings: number
+          recipe_unit: string
+          recipes_covered: number
+          requested_servings: number
+          rounded_up_to_min_order: boolean
+          scale_factor: number
+          scaled_quantity: number
+          sort_order: number
+        }[]
+      }
+      rpc_register_device_token: {
+        Args: { p_platform: string; p_token: string }
+        Returns: string
+      }
       send_subscription_harvest_reminders: { Args: never; Returns: undefined }
     }
     Enums: {
