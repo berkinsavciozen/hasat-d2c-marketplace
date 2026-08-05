@@ -9,97 +9,67 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as IndexRouteImport } from './routes/index'
-import { Route as BuyerRouteImport } from './routes/buyer'
-import { Route as FarmerRouteImport } from './routes/farmer'
-import { Route as JoinRouteImport } from './routes/join'
-import { Route as LoginRouteImport } from './routes/login'
-import { Route as McpRouteImport } from './routes/mcp'
-import { Route as PrivacyRouteImport } from './routes/privacy'
-import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
 import { Route as TermsRouteImport } from './routes/terms'
-import { Route as Char91DotmcpChar93ListToolsRouteImport } from './routes/[.mcp]/list-tools'
-import { Route as Char91DotwellKnownChar93OauthProtectedResourceRouteImport } from './routes/[.well-known]/oauth-protected-resource'
-import { Route as AdminKpiRouteImport } from './routes/admin.kpi'
-import { Route as BatchListingIdRouteImport } from './routes/batch.$listingId'
-import { Route as BuyerAccountRouteImport } from './routes/buyer.account'
-import { Route as BuyerCommunityRouteImport } from './routes/buyer.community'
-import { Route as BuyerDiscoverRouteImport } from './routes/buyer.discover'
-import { Route as BuyerMessagesRouteImport } from './routes/buyer.messages'
-import { Route as BuyerOrdersRouteImport } from './routes/buyer.orders'
-import { Route as BuyerPaymentRouteImport } from './routes/buyer.payment'
-import { Route as BuyerReportsRouteImport } from './routes/buyer.reports'
-import { Route as BuyerRequestsRouteImport } from './routes/buyer.requests'
-import { Route as BuyerSubscriptionsRouteImport } from './routes/buyer.subscriptions'
-import { Route as FarmerAnalyticsRouteImport } from './routes/farmer.analytics'
-import { Route as FarmerBillingRouteImport } from './routes/farmer.billing'
-import { Route as FarmerCommunityRouteImport } from './routes/farmer.community'
-import { Route as FarmerHomeRouteImport } from './routes/farmer.home'
-import { Route as FarmerJournalRouteImport } from './routes/farmer.journal'
-import { Route as FarmerPremiumRouteImport } from './routes/farmer.premium'
-import { Route as FarmerReferralRouteImport } from './routes/farmer.referral'
-import { Route as FarmerSettingsRouteImport } from './routes/farmer.settings'
-import { Route as FarmerStorefrontRouteImport } from './routes/farmer.storefront'
-import { Route as FarmerSubscriptionsRouteImport } from './routes/farmer.subscriptions'
-import { Route as OnboardingBuyerRouteImport } from './routes/onboarding.buyer'
-import { Route as OnboardingFarmerRouteImport } from './routes/onboarding.farmer'
-import { Route as SSlugRouteImport } from './routes/s.$slug'
+import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
+import { Route as PrivacyRouteImport } from './routes/privacy'
+import { Route as McpRouteImport } from './routes/mcp'
+import { Route as LoginRouteImport } from './routes/login'
+import { Route as JoinRouteImport } from './routes/join'
+import { Route as FarmerRouteImport } from './routes/farmer'
+import { Route as BuyerRouteImport } from './routes/buyer'
+import { Route as IndexRouteImport } from './routes/index'
 import { Route as TariflerIndexRouteImport } from './routes/tarifler.index'
 import { Route as TariflerSlugRouteImport } from './routes/tarifler.$slug'
-import { Route as DotlovableOauthConsentRouteImport } from './routes/[.]lovable.oauth.consent'
-import { Route as Char91DotmcpChar93InvokeToolToolRouteImport } from './routes/[.mcp]/invoke-tool/$tool'
-import { Route as BuyerNegotiationOfferIdRouteImport } from './routes/buyer.negotiation.$offerId'
-import { Route as BuyerOfferListingIdRouteImport } from './routes/buyer.offer.$listingId'
-import { Route as BuyerOrdersOrderIdRouteImport } from './routes/buyer.orders.$orderId'
-import { Route as BuyerPayOfferIdRouteImport } from './routes/buyer.pay.$offerId'
-import { Route as BuyerPricesIndexRouteImport } from './routes/buyer.prices.index'
-import { Route as BuyerPricesCropRouteImport } from './routes/buyer.prices.$crop'
-import { Route as BuyerProducerIdRouteImport } from './routes/buyer.producer.$id'
-import { Route as BuyerSettingsNotifsRouteImport } from './routes/buyer.settings.notifs'
-import { Route as BuyerSubscriptionProducerIdRouteImport } from './routes/buyer.subscription.$producerId'
-import { Route as FarmerJournalIndexRouteImport } from './routes/farmer.journal.index'
-import { Route as FarmerJournalEntryIdRouteImport } from './routes/farmer.journal.$entryId'
-import { Route as FarmerJournalCustomizeRouteImport } from './routes/farmer.journal.customize'
-import { Route as FarmerJournalNewRouteImport } from './routes/farmer.journal.new'
-import { Route as FarmerOrdersIndexRouteImport } from './routes/farmer.orders.index'
+import { Route as SSlugRouteImport } from './routes/s.$slug'
+import { Route as OnboardingFarmerRouteImport } from './routes/onboarding.farmer'
+import { Route as OnboardingBuyerRouteImport } from './routes/onboarding.buyer'
+import { Route as FarmerSubscriptionsRouteImport } from './routes/farmer.subscriptions'
+import { Route as FarmerStorefrontRouteImport } from './routes/farmer.storefront'
+import { Route as FarmerSettingsRouteImport } from './routes/farmer.settings'
+import { Route as FarmerReferralRouteImport } from './routes/farmer.referral'
+import { Route as FarmerPremiumRouteImport } from './routes/farmer.premium'
+import { Route as FarmerJournalRouteImport } from './routes/farmer.journal'
+import { Route as FarmerHomeRouteImport } from './routes/farmer.home'
+import { Route as FarmerCommunityRouteImport } from './routes/farmer.community'
+import { Route as FarmerBillingRouteImport } from './routes/farmer.billing'
+import { Route as FarmerAnalyticsRouteImport } from './routes/farmer.analytics'
+import { Route as BuyerSubscriptionsRouteImport } from './routes/buyer.subscriptions'
+import { Route as BuyerRequestsRouteImport } from './routes/buyer.requests'
+import { Route as BuyerReportsRouteImport } from './routes/buyer.reports'
+import { Route as BuyerPaymentRouteImport } from './routes/buyer.payment'
+import { Route as BuyerOrdersRouteImport } from './routes/buyer.orders'
+import { Route as BuyerMessagesRouteImport } from './routes/buyer.messages'
+import { Route as BuyerDiscoverRouteImport } from './routes/buyer.discover'
+import { Route as BuyerCommunityRouteImport } from './routes/buyer.community'
+import { Route as BuyerAccountRouteImport } from './routes/buyer.account'
+import { Route as BatchListingIdRouteImport } from './routes/batch.$listingId'
+import { Route as AdminKpiRouteImport } from './routes/admin.kpi'
+import { Route as Char91DotwellKnownChar93OauthProtectedResourceRouteImport } from './routes/[.well-known]/oauth-protected-resource'
+import { Route as Char91DotmcpChar93ListToolsRouteImport } from './routes/[.mcp]/list-tools'
 import { Route as FarmerPricesIndexRouteImport } from './routes/farmer.prices.index'
-import { Route as FarmerPricesCropRouteImport } from './routes/farmer.prices.$crop'
+import { Route as FarmerOrdersIndexRouteImport } from './routes/farmer.orders.index'
+import { Route as FarmerJournalIndexRouteImport } from './routes/farmer.journal.index'
+import { Route as BuyerPricesIndexRouteImport } from './routes/buyer.prices.index'
 import { Route as FarmerSettingsNotifsRouteImport } from './routes/farmer.settings.notifs'
+import { Route as FarmerPricesCropRouteImport } from './routes/farmer.prices.$crop'
+import { Route as FarmerJournalNewRouteImport } from './routes/farmer.journal.new'
+import { Route as FarmerJournalCustomizeRouteImport } from './routes/farmer.journal.customize'
+import { Route as FarmerJournalEntryIdRouteImport } from './routes/farmer.journal.$entryId'
+import { Route as BuyerSubscriptionProducerIdRouteImport } from './routes/buyer.subscription.$producerId'
+import { Route as BuyerSettingsNotifsRouteImport } from './routes/buyer.settings.notifs'
+import { Route as BuyerProducerIdRouteImport } from './routes/buyer.producer.$id'
+import { Route as BuyerPricesCropRouteImport } from './routes/buyer.prices.$crop'
+import { Route as BuyerPayOfferIdRouteImport } from './routes/buyer.pay.$offerId'
+import { Route as BuyerOrdersOrderIdRouteImport } from './routes/buyer.orders.$orderId'
+import { Route as BuyerOfferListingIdRouteImport } from './routes/buyer.offer.$listingId'
+import { Route as BuyerNegotiationOfferIdRouteImport } from './routes/buyer.negotiation.$offerId'
+import { Route as Char91DotmcpChar93InvokeToolToolRouteImport } from './routes/[.mcp]/invoke-tool/$tool'
+import { Route as DotlovableOauthConsentRouteImport } from './routes/[.]lovable.oauth.consent'
 import { Route as BuyerProductFarmerIdCropRouteImport } from './routes/buyer.product.$farmerId.$crop'
 
-const IndexRoute = IndexRouteImport.update({
-  id: '/',
-  path: '/',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const BuyerRoute = BuyerRouteImport.update({
-  id: '/buyer',
-  path: '/buyer',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const FarmerRoute = FarmerRouteImport.update({
-  id: '/farmer',
-  path: '/farmer',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const JoinRoute = JoinRouteImport.update({
-  id: '/join',
-  path: '/join',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const LoginRoute = LoginRouteImport.update({
-  id: '/login',
-  path: '/login',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const McpRoute = McpRouteImport.update({
-  id: '/mcp',
-  path: '/mcp',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const PrivacyRoute = PrivacyRouteImport.update({
-  id: '/privacy',
-  path: '/privacy',
+const TermsRoute = TermsRouteImport.update({
+  id: '/terms',
+  path: '/terms',
   getParentRoute: () => rootRouteImport,
 } as any)
 const SitemapDotxmlRoute = SitemapDotxmlRouteImport.update({
@@ -107,141 +77,39 @@ const SitemapDotxmlRoute = SitemapDotxmlRouteImport.update({
   path: '/sitemap.xml',
   getParentRoute: () => rootRouteImport,
 } as any)
-const TermsRoute = TermsRouteImport.update({
-  id: '/terms',
-  path: '/terms',
+const PrivacyRoute = PrivacyRouteImport.update({
+  id: '/privacy',
+  path: '/privacy',
   getParentRoute: () => rootRouteImport,
 } as any)
-const Char91DotmcpChar93ListToolsRoute =
-  Char91DotmcpChar93ListToolsRouteImport.update({
-    id: '/.mcp/list-tools',
-    path: '/.mcp/list-tools',
-    getParentRoute: () => rootRouteImport,
-  } as any)
-const Char91DotwellKnownChar93OauthProtectedResourceRoute =
-  Char91DotwellKnownChar93OauthProtectedResourceRouteImport.update({
-    id: '/.well-known/oauth-protected-resource',
-    path: '/.well-known/oauth-protected-resource',
-    getParentRoute: () => rootRouteImport,
-  } as any)
-const AdminKpiRoute = AdminKpiRouteImport.update({
-  id: '/admin/kpi',
-  path: '/admin/kpi',
+const McpRoute = McpRouteImport.update({
+  id: '/mcp',
+  path: '/mcp',
   getParentRoute: () => rootRouteImport,
 } as any)
-const BatchListingIdRoute = BatchListingIdRouteImport.update({
-  id: '/batch/$listingId',
-  path: '/batch/$listingId',
+const LoginRoute = LoginRouteImport.update({
+  id: '/login',
+  path: '/login',
   getParentRoute: () => rootRouteImport,
 } as any)
-const BuyerAccountRoute = BuyerAccountRouteImport.update({
-  id: '/account',
-  path: '/account',
-  getParentRoute: () => BuyerRoute,
-} as any)
-const BuyerCommunityRoute = BuyerCommunityRouteImport.update({
-  id: '/community',
-  path: '/community',
-  getParentRoute: () => BuyerRoute,
-} as any)
-const BuyerDiscoverRoute = BuyerDiscoverRouteImport.update({
-  id: '/discover',
-  path: '/discover',
-  getParentRoute: () => BuyerRoute,
-} as any)
-const BuyerMessagesRoute = BuyerMessagesRouteImport.update({
-  id: '/messages',
-  path: '/messages',
-  getParentRoute: () => BuyerRoute,
-} as any)
-const BuyerOrdersRoute = BuyerOrdersRouteImport.update({
-  id: '/orders',
-  path: '/orders',
-  getParentRoute: () => BuyerRoute,
-} as any)
-const BuyerPaymentRoute = BuyerPaymentRouteImport.update({
-  id: '/payment',
-  path: '/payment',
-  getParentRoute: () => BuyerRoute,
-} as any)
-const BuyerReportsRoute = BuyerReportsRouteImport.update({
-  id: '/reports',
-  path: '/reports',
-  getParentRoute: () => BuyerRoute,
-} as any)
-const BuyerRequestsRoute = BuyerRequestsRouteImport.update({
-  id: '/requests',
-  path: '/requests',
-  getParentRoute: () => BuyerRoute,
-} as any)
-const BuyerSubscriptionsRoute = BuyerSubscriptionsRouteImport.update({
-  id: '/subscriptions',
-  path: '/subscriptions',
-  getParentRoute: () => BuyerRoute,
-} as any)
-const FarmerAnalyticsRoute = FarmerAnalyticsRouteImport.update({
-  id: '/analytics',
-  path: '/analytics',
-  getParentRoute: () => FarmerRoute,
-} as any)
-const FarmerBillingRoute = FarmerBillingRouteImport.update({
-  id: '/billing',
-  path: '/billing',
-  getParentRoute: () => FarmerRoute,
-} as any)
-const FarmerCommunityRoute = FarmerCommunityRouteImport.update({
-  id: '/community',
-  path: '/community',
-  getParentRoute: () => FarmerRoute,
-} as any)
-const FarmerHomeRoute = FarmerHomeRouteImport.update({
-  id: '/home',
-  path: '/home',
-  getParentRoute: () => FarmerRoute,
-} as any)
-const FarmerJournalRoute = FarmerJournalRouteImport.update({
-  id: '/journal',
-  path: '/journal',
-  getParentRoute: () => FarmerRoute,
-} as any)
-const FarmerPremiumRoute = FarmerPremiumRouteImport.update({
-  id: '/premium',
-  path: '/premium',
-  getParentRoute: () => FarmerRoute,
-} as any)
-const FarmerReferralRoute = FarmerReferralRouteImport.update({
-  id: '/referral',
-  path: '/referral',
-  getParentRoute: () => FarmerRoute,
-} as any)
-const FarmerSettingsRoute = FarmerSettingsRouteImport.update({
-  id: '/settings',
-  path: '/settings',
-  getParentRoute: () => FarmerRoute,
-} as any)
-const FarmerStorefrontRoute = FarmerStorefrontRouteImport.update({
-  id: '/storefront',
-  path: '/storefront',
-  getParentRoute: () => FarmerRoute,
-} as any)
-const FarmerSubscriptionsRoute = FarmerSubscriptionsRouteImport.update({
-  id: '/subscriptions',
-  path: '/subscriptions',
-  getParentRoute: () => FarmerRoute,
-} as any)
-const OnboardingBuyerRoute = OnboardingBuyerRouteImport.update({
-  id: '/onboarding/buyer',
-  path: '/onboarding/buyer',
+const JoinRoute = JoinRouteImport.update({
+  id: '/join',
+  path: '/join',
   getParentRoute: () => rootRouteImport,
 } as any)
-const OnboardingFarmerRoute = OnboardingFarmerRouteImport.update({
-  id: '/onboarding/farmer',
-  path: '/onboarding/farmer',
+const FarmerRoute = FarmerRouteImport.update({
+  id: '/farmer',
+  path: '/farmer',
   getParentRoute: () => rootRouteImport,
 } as any)
-const SSlugRoute = SSlugRouteImport.update({
-  id: '/s/$slug',
-  path: '/s/$slug',
+const BuyerRoute = BuyerRouteImport.update({
+  id: '/buyer',
+  path: '/buyer',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const IndexRoute = IndexRouteImport.update({
+  id: '/',
+  path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
 const TariflerIndexRoute = TariflerIndexRouteImport.update({
@@ -254,71 +122,171 @@ const TariflerSlugRoute = TariflerSlugRouteImport.update({
   path: '/tarifler/$slug',
   getParentRoute: () => rootRouteImport,
 } as any)
-const DotlovableOauthConsentRoute = DotlovableOauthConsentRouteImport.update({
-  id: '/.lovable/oauth/consent',
-  path: '/.lovable/oauth/consent',
+const SSlugRoute = SSlugRouteImport.update({
+  id: '/s/$slug',
+  path: '/s/$slug',
   getParentRoute: () => rootRouteImport,
 } as any)
-const Char91DotmcpChar93InvokeToolToolRoute =
-  Char91DotmcpChar93InvokeToolToolRouteImport.update({
-    id: '/.mcp/invoke-tool/$tool',
-    path: '/.mcp/invoke-tool/$tool',
+const OnboardingFarmerRoute = OnboardingFarmerRouteImport.update({
+  id: '/onboarding/farmer',
+  path: '/onboarding/farmer',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const OnboardingBuyerRoute = OnboardingBuyerRouteImport.update({
+  id: '/onboarding/buyer',
+  path: '/onboarding/buyer',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const FarmerSubscriptionsRoute = FarmerSubscriptionsRouteImport.update({
+  id: '/subscriptions',
+  path: '/subscriptions',
+  getParentRoute: () => FarmerRoute,
+} as any)
+const FarmerStorefrontRoute = FarmerStorefrontRouteImport.update({
+  id: '/storefront',
+  path: '/storefront',
+  getParentRoute: () => FarmerRoute,
+} as any)
+const FarmerSettingsRoute = FarmerSettingsRouteImport.update({
+  id: '/settings',
+  path: '/settings',
+  getParentRoute: () => FarmerRoute,
+} as any)
+const FarmerReferralRoute = FarmerReferralRouteImport.update({
+  id: '/referral',
+  path: '/referral',
+  getParentRoute: () => FarmerRoute,
+} as any)
+const FarmerPremiumRoute = FarmerPremiumRouteImport.update({
+  id: '/premium',
+  path: '/premium',
+  getParentRoute: () => FarmerRoute,
+} as any)
+const FarmerJournalRoute = FarmerJournalRouteImport.update({
+  id: '/journal',
+  path: '/journal',
+  getParentRoute: () => FarmerRoute,
+} as any)
+const FarmerHomeRoute = FarmerHomeRouteImport.update({
+  id: '/home',
+  path: '/home',
+  getParentRoute: () => FarmerRoute,
+} as any)
+const FarmerCommunityRoute = FarmerCommunityRouteImport.update({
+  id: '/community',
+  path: '/community',
+  getParentRoute: () => FarmerRoute,
+} as any)
+const FarmerBillingRoute = FarmerBillingRouteImport.update({
+  id: '/billing',
+  path: '/billing',
+  getParentRoute: () => FarmerRoute,
+} as any)
+const FarmerAnalyticsRoute = FarmerAnalyticsRouteImport.update({
+  id: '/analytics',
+  path: '/analytics',
+  getParentRoute: () => FarmerRoute,
+} as any)
+const BuyerSubscriptionsRoute = BuyerSubscriptionsRouteImport.update({
+  id: '/subscriptions',
+  path: '/subscriptions',
+  getParentRoute: () => BuyerRoute,
+} as any)
+const BuyerRequestsRoute = BuyerRequestsRouteImport.update({
+  id: '/requests',
+  path: '/requests',
+  getParentRoute: () => BuyerRoute,
+} as any)
+const BuyerReportsRoute = BuyerReportsRouteImport.update({
+  id: '/reports',
+  path: '/reports',
+  getParentRoute: () => BuyerRoute,
+} as any)
+const BuyerPaymentRoute = BuyerPaymentRouteImport.update({
+  id: '/payment',
+  path: '/payment',
+  getParentRoute: () => BuyerRoute,
+} as any)
+const BuyerOrdersRoute = BuyerOrdersRouteImport.update({
+  id: '/orders',
+  path: '/orders',
+  getParentRoute: () => BuyerRoute,
+} as any)
+const BuyerMessagesRoute = BuyerMessagesRouteImport.update({
+  id: '/messages',
+  path: '/messages',
+  getParentRoute: () => BuyerRoute,
+} as any)
+const BuyerDiscoverRoute = BuyerDiscoverRouteImport.update({
+  id: '/discover',
+  path: '/discover',
+  getParentRoute: () => BuyerRoute,
+} as any)
+const BuyerCommunityRoute = BuyerCommunityRouteImport.update({
+  id: '/community',
+  path: '/community',
+  getParentRoute: () => BuyerRoute,
+} as any)
+const BuyerAccountRoute = BuyerAccountRouteImport.update({
+  id: '/account',
+  path: '/account',
+  getParentRoute: () => BuyerRoute,
+} as any)
+const BatchListingIdRoute = BatchListingIdRouteImport.update({
+  id: '/batch/$listingId',
+  path: '/batch/$listingId',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminKpiRoute = AdminKpiRouteImport.update({
+  id: '/admin/kpi',
+  path: '/admin/kpi',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const Char91DotwellKnownChar93OauthProtectedResourceRoute =
+  Char91DotwellKnownChar93OauthProtectedResourceRouteImport.update({
+    id: '/.well-known/oauth-protected-resource',
+    path: '/.well-known/oauth-protected-resource',
     getParentRoute: () => rootRouteImport,
   } as any)
-const BuyerNegotiationOfferIdRoute = BuyerNegotiationOfferIdRouteImport.update({
-  id: '/negotiation/$offerId',
-  path: '/negotiation/$offerId',
-  getParentRoute: () => BuyerRoute,
+const Char91DotmcpChar93ListToolsRoute =
+  Char91DotmcpChar93ListToolsRouteImport.update({
+    id: '/.mcp/list-tools',
+    path: '/.mcp/list-tools',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const FarmerPricesIndexRoute = FarmerPricesIndexRouteImport.update({
+  id: '/prices/',
+  path: '/prices/',
+  getParentRoute: () => FarmerRoute,
 } as any)
-const BuyerOfferListingIdRoute = BuyerOfferListingIdRouteImport.update({
-  id: '/offer/$listingId',
-  path: '/offer/$listingId',
-  getParentRoute: () => BuyerRoute,
+const FarmerOrdersIndexRoute = FarmerOrdersIndexRouteImport.update({
+  id: '/orders/',
+  path: '/orders/',
+  getParentRoute: () => FarmerRoute,
 } as any)
-const BuyerOrdersOrderIdRoute = BuyerOrdersOrderIdRouteImport.update({
-  id: '/$orderId',
-  path: '/$orderId',
-  getParentRoute: () => BuyerOrdersRoute,
-} as any)
-const BuyerPayOfferIdRoute = BuyerPayOfferIdRouteImport.update({
-  id: '/pay/$offerId',
-  path: '/pay/$offerId',
-  getParentRoute: () => BuyerRoute,
+const FarmerJournalIndexRoute = FarmerJournalIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => FarmerJournalRoute,
 } as any)
 const BuyerPricesIndexRoute = BuyerPricesIndexRouteImport.update({
   id: '/prices/',
   path: '/prices/',
   getParentRoute: () => BuyerRoute,
 } as any)
-const BuyerPricesCropRoute = BuyerPricesCropRouteImport.update({
+const FarmerSettingsNotifsRoute = FarmerSettingsNotifsRouteImport.update({
+  id: '/notifs',
+  path: '/notifs',
+  getParentRoute: () => FarmerSettingsRoute,
+} as any)
+const FarmerPricesCropRoute = FarmerPricesCropRouteImport.update({
   id: '/prices/$crop',
   path: '/prices/$crop',
-  getParentRoute: () => BuyerRoute,
+  getParentRoute: () => FarmerRoute,
 } as any)
-const BuyerProducerIdRoute = BuyerProducerIdRouteImport.update({
-  id: '/producer/$id',
-  path: '/producer/$id',
-  getParentRoute: () => BuyerRoute,
-} as any)
-const BuyerSettingsNotifsRoute = BuyerSettingsNotifsRouteImport.update({
-  id: '/settings/notifs',
-  path: '/settings/notifs',
-  getParentRoute: () => BuyerRoute,
-} as any)
-const BuyerSubscriptionProducerIdRoute =
-  BuyerSubscriptionProducerIdRouteImport.update({
-    id: '/subscription/$producerId',
-    path: '/subscription/$producerId',
-    getParentRoute: () => BuyerRoute,
-  } as any)
-const FarmerJournalIndexRoute = FarmerJournalIndexRouteImport.update({
-  id: '/',
-  path: '/',
-  getParentRoute: () => FarmerJournalRoute,
-} as any)
-const FarmerJournalEntryIdRoute = FarmerJournalEntryIdRouteImport.update({
-  id: '/$entryId',
-  path: '/$entryId',
+const FarmerJournalNewRoute = FarmerJournalNewRouteImport.update({
+  id: '/new',
+  path: '/new',
   getParentRoute: () => FarmerJournalRoute,
 } as any)
 const FarmerJournalCustomizeRoute = FarmerJournalCustomizeRouteImport.update({
@@ -326,30 +294,62 @@ const FarmerJournalCustomizeRoute = FarmerJournalCustomizeRouteImport.update({
   path: '/customize',
   getParentRoute: () => FarmerJournalRoute,
 } as any)
-const FarmerJournalNewRoute = FarmerJournalNewRouteImport.update({
-  id: '/new',
-  path: '/new',
+const FarmerJournalEntryIdRoute = FarmerJournalEntryIdRouteImport.update({
+  id: '/$entryId',
+  path: '/$entryId',
   getParentRoute: () => FarmerJournalRoute,
 } as any)
-const FarmerOrdersIndexRoute = FarmerOrdersIndexRouteImport.update({
-  id: '/orders/',
-  path: '/orders/',
-  getParentRoute: () => FarmerRoute,
+const BuyerSubscriptionProducerIdRoute =
+  BuyerSubscriptionProducerIdRouteImport.update({
+    id: '/subscription/$producerId',
+    path: '/subscription/$producerId',
+    getParentRoute: () => BuyerRoute,
+  } as any)
+const BuyerSettingsNotifsRoute = BuyerSettingsNotifsRouteImport.update({
+  id: '/settings/notifs',
+  path: '/settings/notifs',
+  getParentRoute: () => BuyerRoute,
 } as any)
-const FarmerPricesIndexRoute = FarmerPricesIndexRouteImport.update({
-  id: '/prices/',
-  path: '/prices/',
-  getParentRoute: () => FarmerRoute,
+const BuyerProducerIdRoute = BuyerProducerIdRouteImport.update({
+  id: '/producer/$id',
+  path: '/producer/$id',
+  getParentRoute: () => BuyerRoute,
 } as any)
-const FarmerPricesCropRoute = FarmerPricesCropRouteImport.update({
+const BuyerPricesCropRoute = BuyerPricesCropRouteImport.update({
   id: '/prices/$crop',
   path: '/prices/$crop',
-  getParentRoute: () => FarmerRoute,
+  getParentRoute: () => BuyerRoute,
 } as any)
-const FarmerSettingsNotifsRoute = FarmerSettingsNotifsRouteImport.update({
-  id: '/notifs',
-  path: '/notifs',
-  getParentRoute: () => FarmerSettingsRoute,
+const BuyerPayOfferIdRoute = BuyerPayOfferIdRouteImport.update({
+  id: '/pay/$offerId',
+  path: '/pay/$offerId',
+  getParentRoute: () => BuyerRoute,
+} as any)
+const BuyerOrdersOrderIdRoute = BuyerOrdersOrderIdRouteImport.update({
+  id: '/$orderId',
+  path: '/$orderId',
+  getParentRoute: () => BuyerOrdersRoute,
+} as any)
+const BuyerOfferListingIdRoute = BuyerOfferListingIdRouteImport.update({
+  id: '/offer/$listingId',
+  path: '/offer/$listingId',
+  getParentRoute: () => BuyerRoute,
+} as any)
+const BuyerNegotiationOfferIdRoute = BuyerNegotiationOfferIdRouteImport.update({
+  id: '/negotiation/$offerId',
+  path: '/negotiation/$offerId',
+  getParentRoute: () => BuyerRoute,
+} as any)
+const Char91DotmcpChar93InvokeToolToolRoute =
+  Char91DotmcpChar93InvokeToolToolRouteImport.update({
+    id: '/.mcp/invoke-tool/$tool',
+    path: '/.mcp/invoke-tool/$tool',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const DotlovableOauthConsentRoute = DotlovableOauthConsentRouteImport.update({
+  id: '/.lovable/oauth/consent',
+  path: '/.lovable/oauth/consent',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const BuyerProductFarmerIdCropRoute =
   BuyerProductFarmerIdCropRouteImport.update({
@@ -739,53 +739,11 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/': {
-      id: '/'
-      path: '/'
-      fullPath: '/'
-      preLoaderRoute: typeof IndexRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/buyer': {
-      id: '/buyer'
-      path: '/buyer'
-      fullPath: '/buyer'
-      preLoaderRoute: typeof BuyerRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/farmer': {
-      id: '/farmer'
-      path: '/farmer'
-      fullPath: '/farmer'
-      preLoaderRoute: typeof FarmerRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/join': {
-      id: '/join'
-      path: '/join'
-      fullPath: '/join'
-      preLoaderRoute: typeof JoinRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/login': {
-      id: '/login'
-      path: '/login'
-      fullPath: '/login'
-      preLoaderRoute: typeof LoginRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/mcp': {
-      id: '/mcp'
-      path: '/mcp'
-      fullPath: '/mcp'
-      preLoaderRoute: typeof McpRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/privacy': {
-      id: '/privacy'
-      path: '/privacy'
-      fullPath: '/privacy'
-      preLoaderRoute: typeof PrivacyRouteImport
+    '/terms': {
+      id: '/terms'
+      path: '/terms'
+      fullPath: '/terms'
+      preLoaderRoute: typeof TermsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/sitemap.xml': {
@@ -795,193 +753,53 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SitemapDotxmlRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/terms': {
-      id: '/terms'
-      path: '/terms'
-      fullPath: '/terms'
-      preLoaderRoute: typeof TermsRouteImport
+    '/privacy': {
+      id: '/privacy'
+      path: '/privacy'
+      fullPath: '/privacy'
+      preLoaderRoute: typeof PrivacyRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/.mcp/list-tools': {
-      id: '/.mcp/list-tools'
-      path: '/.mcp/list-tools'
-      fullPath: '/.mcp/list-tools'
-      preLoaderRoute: typeof Char91DotmcpChar93ListToolsRouteImport
+    '/mcp': {
+      id: '/mcp'
+      path: '/mcp'
+      fullPath: '/mcp'
+      preLoaderRoute: typeof McpRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/.well-known/oauth-protected-resource': {
-      id: '/.well-known/oauth-protected-resource'
-      path: '/.well-known/oauth-protected-resource'
-      fullPath: '/.well-known/oauth-protected-resource'
-      preLoaderRoute: typeof Char91DotwellKnownChar93OauthProtectedResourceRouteImport
+    '/login': {
+      id: '/login'
+      path: '/login'
+      fullPath: '/login'
+      preLoaderRoute: typeof LoginRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/admin/kpi': {
-      id: '/admin/kpi'
-      path: '/admin/kpi'
-      fullPath: '/admin/kpi'
-      preLoaderRoute: typeof AdminKpiRouteImport
+    '/join': {
+      id: '/join'
+      path: '/join'
+      fullPath: '/join'
+      preLoaderRoute: typeof JoinRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/batch/$listingId': {
-      id: '/batch/$listingId'
-      path: '/batch/$listingId'
-      fullPath: '/batch/$listingId'
-      preLoaderRoute: typeof BatchListingIdRouteImport
+    '/farmer': {
+      id: '/farmer'
+      path: '/farmer'
+      fullPath: '/farmer'
+      preLoaderRoute: typeof FarmerRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/buyer/account': {
-      id: '/buyer/account'
-      path: '/account'
-      fullPath: '/buyer/account'
-      preLoaderRoute: typeof BuyerAccountRouteImport
-      parentRoute: typeof BuyerRoute
-    }
-    '/buyer/community': {
-      id: '/buyer/community'
-      path: '/community'
-      fullPath: '/buyer/community'
-      preLoaderRoute: typeof BuyerCommunityRouteImport
-      parentRoute: typeof BuyerRoute
-    }
-    '/buyer/discover': {
-      id: '/buyer/discover'
-      path: '/discover'
-      fullPath: '/buyer/discover'
-      preLoaderRoute: typeof BuyerDiscoverRouteImport
-      parentRoute: typeof BuyerRoute
-    }
-    '/buyer/messages': {
-      id: '/buyer/messages'
-      path: '/messages'
-      fullPath: '/buyer/messages'
-      preLoaderRoute: typeof BuyerMessagesRouteImport
-      parentRoute: typeof BuyerRoute
-    }
-    '/buyer/orders': {
-      id: '/buyer/orders'
-      path: '/orders'
-      fullPath: '/buyer/orders'
-      preLoaderRoute: typeof BuyerOrdersRouteImport
-      parentRoute: typeof BuyerRoute
-    }
-    '/buyer/payment': {
-      id: '/buyer/payment'
-      path: '/payment'
-      fullPath: '/buyer/payment'
-      preLoaderRoute: typeof BuyerPaymentRouteImport
-      parentRoute: typeof BuyerRoute
-    }
-    '/buyer/reports': {
-      id: '/buyer/reports'
-      path: '/reports'
-      fullPath: '/buyer/reports'
-      preLoaderRoute: typeof BuyerReportsRouteImport
-      parentRoute: typeof BuyerRoute
-    }
-    '/buyer/requests': {
-      id: '/buyer/requests'
-      path: '/requests'
-      fullPath: '/buyer/requests'
-      preLoaderRoute: typeof BuyerRequestsRouteImport
-      parentRoute: typeof BuyerRoute
-    }
-    '/buyer/subscriptions': {
-      id: '/buyer/subscriptions'
-      path: '/subscriptions'
-      fullPath: '/buyer/subscriptions'
-      preLoaderRoute: typeof BuyerSubscriptionsRouteImport
-      parentRoute: typeof BuyerRoute
-    }
-    '/farmer/analytics': {
-      id: '/farmer/analytics'
-      path: '/analytics'
-      fullPath: '/farmer/analytics'
-      preLoaderRoute: typeof FarmerAnalyticsRouteImport
-      parentRoute: typeof FarmerRoute
-    }
-    '/farmer/billing': {
-      id: '/farmer/billing'
-      path: '/billing'
-      fullPath: '/farmer/billing'
-      preLoaderRoute: typeof FarmerBillingRouteImport
-      parentRoute: typeof FarmerRoute
-    }
-    '/farmer/community': {
-      id: '/farmer/community'
-      path: '/community'
-      fullPath: '/farmer/community'
-      preLoaderRoute: typeof FarmerCommunityRouteImport
-      parentRoute: typeof FarmerRoute
-    }
-    '/farmer/home': {
-      id: '/farmer/home'
-      path: '/home'
-      fullPath: '/farmer/home'
-      preLoaderRoute: typeof FarmerHomeRouteImport
-      parentRoute: typeof FarmerRoute
-    }
-    '/farmer/journal': {
-      id: '/farmer/journal'
-      path: '/journal'
-      fullPath: '/farmer/journal'
-      preLoaderRoute: typeof FarmerJournalRouteImport
-      parentRoute: typeof FarmerRoute
-    }
-    '/farmer/premium': {
-      id: '/farmer/premium'
-      path: '/premium'
-      fullPath: '/farmer/premium'
-      preLoaderRoute: typeof FarmerPremiumRouteImport
-      parentRoute: typeof FarmerRoute
-    }
-    '/farmer/referral': {
-      id: '/farmer/referral'
-      path: '/referral'
-      fullPath: '/farmer/referral'
-      preLoaderRoute: typeof FarmerReferralRouteImport
-      parentRoute: typeof FarmerRoute
-    }
-    '/farmer/settings': {
-      id: '/farmer/settings'
-      path: '/settings'
-      fullPath: '/farmer/settings'
-      preLoaderRoute: typeof FarmerSettingsRouteImport
-      parentRoute: typeof FarmerRoute
-    }
-    '/farmer/storefront': {
-      id: '/farmer/storefront'
-      path: '/storefront'
-      fullPath: '/farmer/storefront'
-      preLoaderRoute: typeof FarmerStorefrontRouteImport
-      parentRoute: typeof FarmerRoute
-    }
-    '/farmer/subscriptions': {
-      id: '/farmer/subscriptions'
-      path: '/subscriptions'
-      fullPath: '/farmer/subscriptions'
-      preLoaderRoute: typeof FarmerSubscriptionsRouteImport
-      parentRoute: typeof FarmerRoute
-    }
-    '/onboarding/buyer': {
-      id: '/onboarding/buyer'
-      path: '/onboarding/buyer'
-      fullPath: '/onboarding/buyer'
-      preLoaderRoute: typeof OnboardingBuyerRouteImport
+    '/buyer': {
+      id: '/buyer'
+      path: '/buyer'
+      fullPath: '/buyer'
+      preLoaderRoute: typeof BuyerRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/onboarding/farmer': {
-      id: '/onboarding/farmer'
-      path: '/onboarding/farmer'
-      fullPath: '/onboarding/farmer'
-      preLoaderRoute: typeof OnboardingFarmerRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/s/$slug': {
-      id: '/s/$slug'
-      path: '/s/$slug'
-      fullPath: '/s/$slug'
-      preLoaderRoute: typeof SSlugRouteImport
+    '/': {
+      id: '/'
+      path: '/'
+      fullPath: '/'
+      preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/tarifler/': {
@@ -998,82 +816,201 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof TariflerSlugRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/.lovable/oauth/consent': {
-      id: '/.lovable/oauth/consent'
-      path: '/.lovable/oauth/consent'
-      fullPath: '/.lovable/oauth/consent'
-      preLoaderRoute: typeof DotlovableOauthConsentRouteImport
+    '/s/$slug': {
+      id: '/s/$slug'
+      path: '/s/$slug'
+      fullPath: '/s/$slug'
+      preLoaderRoute: typeof SSlugRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/.mcp/invoke-tool/$tool': {
-      id: '/.mcp/invoke-tool/$tool'
-      path: '/.mcp/invoke-tool/$tool'
-      fullPath: '/.mcp/invoke-tool/$tool'
-      preLoaderRoute: typeof Char91DotmcpChar93InvokeToolToolRouteImport
+    '/onboarding/farmer': {
+      id: '/onboarding/farmer'
+      path: '/onboarding/farmer'
+      fullPath: '/onboarding/farmer'
+      preLoaderRoute: typeof OnboardingFarmerRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/buyer/negotiation/$offerId': {
-      id: '/buyer/negotiation/$offerId'
-      path: '/negotiation/$offerId'
-      fullPath: '/buyer/negotiation/$offerId'
-      preLoaderRoute: typeof BuyerNegotiationOfferIdRouteImport
+    '/onboarding/buyer': {
+      id: '/onboarding/buyer'
+      path: '/onboarding/buyer'
+      fullPath: '/onboarding/buyer'
+      preLoaderRoute: typeof OnboardingBuyerRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/farmer/subscriptions': {
+      id: '/farmer/subscriptions'
+      path: '/subscriptions'
+      fullPath: '/farmer/subscriptions'
+      preLoaderRoute: typeof FarmerSubscriptionsRouteImport
+      parentRoute: typeof FarmerRoute
+    }
+    '/farmer/storefront': {
+      id: '/farmer/storefront'
+      path: '/storefront'
+      fullPath: '/farmer/storefront'
+      preLoaderRoute: typeof FarmerStorefrontRouteImport
+      parentRoute: typeof FarmerRoute
+    }
+    '/farmer/settings': {
+      id: '/farmer/settings'
+      path: '/settings'
+      fullPath: '/farmer/settings'
+      preLoaderRoute: typeof FarmerSettingsRouteImport
+      parentRoute: typeof FarmerRoute
+    }
+    '/farmer/referral': {
+      id: '/farmer/referral'
+      path: '/referral'
+      fullPath: '/farmer/referral'
+      preLoaderRoute: typeof FarmerReferralRouteImport
+      parentRoute: typeof FarmerRoute
+    }
+    '/farmer/premium': {
+      id: '/farmer/premium'
+      path: '/premium'
+      fullPath: '/farmer/premium'
+      preLoaderRoute: typeof FarmerPremiumRouteImport
+      parentRoute: typeof FarmerRoute
+    }
+    '/farmer/journal': {
+      id: '/farmer/journal'
+      path: '/journal'
+      fullPath: '/farmer/journal'
+      preLoaderRoute: typeof FarmerJournalRouteImport
+      parentRoute: typeof FarmerRoute
+    }
+    '/farmer/home': {
+      id: '/farmer/home'
+      path: '/home'
+      fullPath: '/farmer/home'
+      preLoaderRoute: typeof FarmerHomeRouteImport
+      parentRoute: typeof FarmerRoute
+    }
+    '/farmer/community': {
+      id: '/farmer/community'
+      path: '/community'
+      fullPath: '/farmer/community'
+      preLoaderRoute: typeof FarmerCommunityRouteImport
+      parentRoute: typeof FarmerRoute
+    }
+    '/farmer/billing': {
+      id: '/farmer/billing'
+      path: '/billing'
+      fullPath: '/farmer/billing'
+      preLoaderRoute: typeof FarmerBillingRouteImport
+      parentRoute: typeof FarmerRoute
+    }
+    '/farmer/analytics': {
+      id: '/farmer/analytics'
+      path: '/analytics'
+      fullPath: '/farmer/analytics'
+      preLoaderRoute: typeof FarmerAnalyticsRouteImport
+      parentRoute: typeof FarmerRoute
+    }
+    '/buyer/subscriptions': {
+      id: '/buyer/subscriptions'
+      path: '/subscriptions'
+      fullPath: '/buyer/subscriptions'
+      preLoaderRoute: typeof BuyerSubscriptionsRouteImport
       parentRoute: typeof BuyerRoute
     }
-    '/buyer/offer/$listingId': {
-      id: '/buyer/offer/$listingId'
-      path: '/offer/$listingId'
-      fullPath: '/buyer/offer/$listingId'
-      preLoaderRoute: typeof BuyerOfferListingIdRouteImport
+    '/buyer/requests': {
+      id: '/buyer/requests'
+      path: '/requests'
+      fullPath: '/buyer/requests'
+      preLoaderRoute: typeof BuyerRequestsRouteImport
       parentRoute: typeof BuyerRoute
     }
-    '/buyer/orders/$orderId': {
-      id: '/buyer/orders/$orderId'
-      path: '/$orderId'
-      fullPath: '/buyer/orders/$orderId'
-      preLoaderRoute: typeof BuyerOrdersOrderIdRouteImport
-      parentRoute: typeof BuyerOrdersRoute
-    }
-    '/buyer/pay/$offerId': {
-      id: '/buyer/pay/$offerId'
-      path: '/pay/$offerId'
-      fullPath: '/buyer/pay/$offerId'
-      preLoaderRoute: typeof BuyerPayOfferIdRouteImport
+    '/buyer/reports': {
+      id: '/buyer/reports'
+      path: '/reports'
+      fullPath: '/buyer/reports'
+      preLoaderRoute: typeof BuyerReportsRouteImport
       parentRoute: typeof BuyerRoute
     }
-    '/buyer/prices/': {
-      id: '/buyer/prices/'
+    '/buyer/payment': {
+      id: '/buyer/payment'
+      path: '/payment'
+      fullPath: '/buyer/payment'
+      preLoaderRoute: typeof BuyerPaymentRouteImport
+      parentRoute: typeof BuyerRoute
+    }
+    '/buyer/orders': {
+      id: '/buyer/orders'
+      path: '/orders'
+      fullPath: '/buyer/orders'
+      preLoaderRoute: typeof BuyerOrdersRouteImport
+      parentRoute: typeof BuyerRoute
+    }
+    '/buyer/messages': {
+      id: '/buyer/messages'
+      path: '/messages'
+      fullPath: '/buyer/messages'
+      preLoaderRoute: typeof BuyerMessagesRouteImport
+      parentRoute: typeof BuyerRoute
+    }
+    '/buyer/discover': {
+      id: '/buyer/discover'
+      path: '/discover'
+      fullPath: '/buyer/discover'
+      preLoaderRoute: typeof BuyerDiscoverRouteImport
+      parentRoute: typeof BuyerRoute
+    }
+    '/buyer/community': {
+      id: '/buyer/community'
+      path: '/community'
+      fullPath: '/buyer/community'
+      preLoaderRoute: typeof BuyerCommunityRouteImport
+      parentRoute: typeof BuyerRoute
+    }
+    '/buyer/account': {
+      id: '/buyer/account'
+      path: '/account'
+      fullPath: '/buyer/account'
+      preLoaderRoute: typeof BuyerAccountRouteImport
+      parentRoute: typeof BuyerRoute
+    }
+    '/batch/$listingId': {
+      id: '/batch/$listingId'
+      path: '/batch/$listingId'
+      fullPath: '/batch/$listingId'
+      preLoaderRoute: typeof BatchListingIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin/kpi': {
+      id: '/admin/kpi'
+      path: '/admin/kpi'
+      fullPath: '/admin/kpi'
+      preLoaderRoute: typeof AdminKpiRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/.well-known/oauth-protected-resource': {
+      id: '/.well-known/oauth-protected-resource'
+      path: '/.well-known/oauth-protected-resource'
+      fullPath: '/.well-known/oauth-protected-resource'
+      preLoaderRoute: typeof Char91DotwellKnownChar93OauthProtectedResourceRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/.mcp/list-tools': {
+      id: '/.mcp/list-tools'
+      path: '/.mcp/list-tools'
+      fullPath: '/.mcp/list-tools'
+      preLoaderRoute: typeof Char91DotmcpChar93ListToolsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/farmer/prices/': {
+      id: '/farmer/prices/'
       path: '/prices'
-      fullPath: '/buyer/prices/'
-      preLoaderRoute: typeof BuyerPricesIndexRouteImport
-      parentRoute: typeof BuyerRoute
+      fullPath: '/farmer/prices/'
+      preLoaderRoute: typeof FarmerPricesIndexRouteImport
+      parentRoute: typeof FarmerRoute
     }
-    '/buyer/prices/$crop': {
-      id: '/buyer/prices/$crop'
-      path: '/prices/$crop'
-      fullPath: '/buyer/prices/$crop'
-      preLoaderRoute: typeof BuyerPricesCropRouteImport
-      parentRoute: typeof BuyerRoute
-    }
-    '/buyer/producer/$id': {
-      id: '/buyer/producer/$id'
-      path: '/producer/$id'
-      fullPath: '/buyer/producer/$id'
-      preLoaderRoute: typeof BuyerProducerIdRouteImport
-      parentRoute: typeof BuyerRoute
-    }
-    '/buyer/settings/notifs': {
-      id: '/buyer/settings/notifs'
-      path: '/settings/notifs'
-      fullPath: '/buyer/settings/notifs'
-      preLoaderRoute: typeof BuyerSettingsNotifsRouteImport
-      parentRoute: typeof BuyerRoute
-    }
-    '/buyer/subscription/$producerId': {
-      id: '/buyer/subscription/$producerId'
-      path: '/subscription/$producerId'
-      fullPath: '/buyer/subscription/$producerId'
-      preLoaderRoute: typeof BuyerSubscriptionProducerIdRouteImport
-      parentRoute: typeof BuyerRoute
+    '/farmer/orders/': {
+      id: '/farmer/orders/'
+      path: '/orders'
+      fullPath: '/farmer/orders/'
+      preLoaderRoute: typeof FarmerOrdersIndexRouteImport
+      parentRoute: typeof FarmerRoute
     }
     '/farmer/journal/': {
       id: '/farmer/journal/'
@@ -1082,11 +1019,32 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof FarmerJournalIndexRouteImport
       parentRoute: typeof FarmerJournalRoute
     }
-    '/farmer/journal/$entryId': {
-      id: '/farmer/journal/$entryId'
-      path: '/$entryId'
-      fullPath: '/farmer/journal/$entryId'
-      preLoaderRoute: typeof FarmerJournalEntryIdRouteImport
+    '/buyer/prices/': {
+      id: '/buyer/prices/'
+      path: '/prices'
+      fullPath: '/buyer/prices/'
+      preLoaderRoute: typeof BuyerPricesIndexRouteImport
+      parentRoute: typeof BuyerRoute
+    }
+    '/farmer/settings/notifs': {
+      id: '/farmer/settings/notifs'
+      path: '/notifs'
+      fullPath: '/farmer/settings/notifs'
+      preLoaderRoute: typeof FarmerSettingsNotifsRouteImport
+      parentRoute: typeof FarmerSettingsRoute
+    }
+    '/farmer/prices/$crop': {
+      id: '/farmer/prices/$crop'
+      path: '/prices/$crop'
+      fullPath: '/farmer/prices/$crop'
+      preLoaderRoute: typeof FarmerPricesCropRouteImport
+      parentRoute: typeof FarmerRoute
+    }
+    '/farmer/journal/new': {
+      id: '/farmer/journal/new'
+      path: '/new'
+      fullPath: '/farmer/journal/new'
+      preLoaderRoute: typeof FarmerJournalNewRouteImport
       parentRoute: typeof FarmerJournalRoute
     }
     '/farmer/journal/customize': {
@@ -1096,40 +1054,82 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof FarmerJournalCustomizeRouteImport
       parentRoute: typeof FarmerJournalRoute
     }
-    '/farmer/journal/new': {
-      id: '/farmer/journal/new'
-      path: '/new'
-      fullPath: '/farmer/journal/new'
-      preLoaderRoute: typeof FarmerJournalNewRouteImport
+    '/farmer/journal/$entryId': {
+      id: '/farmer/journal/$entryId'
+      path: '/$entryId'
+      fullPath: '/farmer/journal/$entryId'
+      preLoaderRoute: typeof FarmerJournalEntryIdRouteImport
       parentRoute: typeof FarmerJournalRoute
     }
-    '/farmer/orders/': {
-      id: '/farmer/orders/'
-      path: '/orders'
-      fullPath: '/farmer/orders/'
-      preLoaderRoute: typeof FarmerOrdersIndexRouteImport
-      parentRoute: typeof FarmerRoute
+    '/buyer/subscription/$producerId': {
+      id: '/buyer/subscription/$producerId'
+      path: '/subscription/$producerId'
+      fullPath: '/buyer/subscription/$producerId'
+      preLoaderRoute: typeof BuyerSubscriptionProducerIdRouteImport
+      parentRoute: typeof BuyerRoute
     }
-    '/farmer/prices/': {
-      id: '/farmer/prices/'
-      path: '/prices'
-      fullPath: '/farmer/prices/'
-      preLoaderRoute: typeof FarmerPricesIndexRouteImport
-      parentRoute: typeof FarmerRoute
+    '/buyer/settings/notifs': {
+      id: '/buyer/settings/notifs'
+      path: '/settings/notifs'
+      fullPath: '/buyer/settings/notifs'
+      preLoaderRoute: typeof BuyerSettingsNotifsRouteImport
+      parentRoute: typeof BuyerRoute
     }
-    '/farmer/prices/$crop': {
-      id: '/farmer/prices/$crop'
+    '/buyer/producer/$id': {
+      id: '/buyer/producer/$id'
+      path: '/producer/$id'
+      fullPath: '/buyer/producer/$id'
+      preLoaderRoute: typeof BuyerProducerIdRouteImport
+      parentRoute: typeof BuyerRoute
+    }
+    '/buyer/prices/$crop': {
+      id: '/buyer/prices/$crop'
       path: '/prices/$crop'
-      fullPath: '/farmer/prices/$crop'
-      preLoaderRoute: typeof FarmerPricesCropRouteImport
-      parentRoute: typeof FarmerRoute
+      fullPath: '/buyer/prices/$crop'
+      preLoaderRoute: typeof BuyerPricesCropRouteImport
+      parentRoute: typeof BuyerRoute
     }
-    '/farmer/settings/notifs': {
-      id: '/farmer/settings/notifs'
-      path: '/notifs'
-      fullPath: '/farmer/settings/notifs'
-      preLoaderRoute: typeof FarmerSettingsNotifsRouteImport
-      parentRoute: typeof FarmerSettingsRoute
+    '/buyer/pay/$offerId': {
+      id: '/buyer/pay/$offerId'
+      path: '/pay/$offerId'
+      fullPath: '/buyer/pay/$offerId'
+      preLoaderRoute: typeof BuyerPayOfferIdRouteImport
+      parentRoute: typeof BuyerRoute
+    }
+    '/buyer/orders/$orderId': {
+      id: '/buyer/orders/$orderId'
+      path: '/$orderId'
+      fullPath: '/buyer/orders/$orderId'
+      preLoaderRoute: typeof BuyerOrdersOrderIdRouteImport
+      parentRoute: typeof BuyerOrdersRoute
+    }
+    '/buyer/offer/$listingId': {
+      id: '/buyer/offer/$listingId'
+      path: '/offer/$listingId'
+      fullPath: '/buyer/offer/$listingId'
+      preLoaderRoute: typeof BuyerOfferListingIdRouteImport
+      parentRoute: typeof BuyerRoute
+    }
+    '/buyer/negotiation/$offerId': {
+      id: '/buyer/negotiation/$offerId'
+      path: '/negotiation/$offerId'
+      fullPath: '/buyer/negotiation/$offerId'
+      preLoaderRoute: typeof BuyerNegotiationOfferIdRouteImport
+      parentRoute: typeof BuyerRoute
+    }
+    '/.mcp/invoke-tool/$tool': {
+      id: '/.mcp/invoke-tool/$tool'
+      path: '/.mcp/invoke-tool/$tool'
+      fullPath: '/.mcp/invoke-tool/$tool'
+      preLoaderRoute: typeof Char91DotmcpChar93InvokeToolToolRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/.lovable/oauth/consent': {
+      id: '/.lovable/oauth/consent'
+      path: '/.lovable/oauth/consent'
+      fullPath: '/.lovable/oauth/consent'
+      preLoaderRoute: typeof DotlovableOauthConsentRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/buyer/product/$farmerId/$crop': {
       id: '/buyer/product/$farmerId/$crop'
