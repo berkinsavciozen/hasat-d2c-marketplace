@@ -6,7 +6,7 @@ import { BuyerHeader } from "@/components/hasat/BuyerHeader";
 import { LoadingDots } from "@/components/hasat/LoadingDots";
 import { CoverageBadge } from "@/components/hasat/CoverageBadge";
 import { CropRequestModal } from "@/components/hasat/CropRequestModal";
-import { formatTRY, formatCrop } from "@/lib/hasat/format";
+import { formatTRY, formatCrop, formatQuantity } from "@/lib/hasat/format";
 import {
   useActiveListings,
 
@@ -364,7 +364,7 @@ function ListingGroupCard({ items, canonicalUnit, cropConfig, onOpen }: { items:
       <div className="p-4">
         <div className="flex items-center justify-between gap-2">
           <div className="text-xs text-hmuted">
-            Toplam mevcut {Number(totalAvail.toFixed(2))} {canonicalUnit}
+            Toplam mevcut {formatQuantity(totalAvail, canonicalUnit)} {canonicalUnit}
           </div>
           <CoverageBadge listingId={first.id} crop={first.crop} compact />
         </div>

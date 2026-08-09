@@ -6,7 +6,7 @@ import { useFarmerOffers, useUpdateOfferStatus, useFarmerOrders, useCounterOffer
 import { OfferBatchBreakdown } from "@/components/hasat/OfferBatchBreakdown";
 import { WaitingBanner } from "@/components/hasat/WaitingBanner";
 import { LoadingDots } from "@/components/hasat/LoadingDots";
-import { formatTRY, formatCrop } from "@/lib/hasat/format";
+import { formatTRY, formatCrop, formatQuantity } from "@/lib/hasat/format";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -137,7 +137,7 @@ function OfferCard({ offer }: { offer: Offer }) {
             <BuyerRatingBadge buyerId={offer.buyerId} />
             {offer.subscriptionId && <SubscriptionOrderBadge />}
           </div>
-          <div className="mt-1 text-sm text-hmuted">{formatCrop(offer.crop)} · {offer.quantity} {offer.unit}</div>
+          <div className="mt-1 text-sm text-hmuted">{formatCrop(offer.crop)} · {formatQuantity(offer.quantity, offer.unit)} {offer.unit}</div>
           <div className="mt-1.5 flex items-baseline gap-2 flex-wrap">
             <span className="font-mono text-lg font-semibold">{formatTRY(total)}</span>
             <span className="text-xs text-hmuted">({formatTRY(offer.pricePerUnit)}/{offer.unit})</span>
@@ -202,7 +202,7 @@ function OfferCard({ offer }: { offer: Offer }) {
         <DialogContent>
           <DialogHeader><DialogTitle>Teklifi Kabul Et</DialogTitle></DialogHeader>
           <p className="text-sm text-hmuted">
-            <b>{offer.buyerName}</b> teklifini kabul ediyorsunuz: {offer.quantity} {offer.unit} {formatCrop(offer.crop)} @ {formatTRY(offer.pricePerUnit)}/{offer.unit}.
+            <b>{offer.buyerName}</b> teklifini kabul ediyorsunuz: {formatQuantity(offer.quantity, offer.unit)} {offer.unit} {formatCrop(offer.crop)} @ {formatTRY(offer.pricePerUnit)}/{offer.unit}.
             <br />Toplam: <b className="font-mono">{formatTRY(total)}</b>. Onaylar mısınız?
           </p>
           <DialogFooter>
@@ -342,7 +342,7 @@ function OrderCard({ order, muted }: { order: Order; muted?: boolean }) {
             <BuyerRatingBadge buyerId={order.buyerId} />
             {order.subscriptionId && <SubscriptionOrderBadge />}
           </div>
-          <div className="text-xs text-hmuted">{formatCrop(order.crop)} · {order.quantity} {order.unit} · {order.delivery}</div>
+          <div className="text-xs text-hmuted">{formatCrop(order.crop)} · {formatQuantity(order.quantity, order.unit)} {order.unit} · {order.delivery}</div>
           <div className="mt-1.5 font-mono text-lg font-semibold">{formatTRY(order.total)}</div>
           {order.status === "shipped" && order.trackingNumber && (
             <div className="mt-1 text-xs text-hmuted">

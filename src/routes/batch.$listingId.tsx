@@ -7,7 +7,7 @@ import { CoverageBadge } from "@/components/hasat/CoverageBadge";
 import { cropEmoji, findCropConfig, resolveListingPhoto, useCropConfigMap } from "@/lib/hasat/crop-config";
 import { RepresentativePhoto, RepresentativeBadge } from "@/components/hasat/RepresentativePhoto";
 import { labelForStepKey } from "@/lib/hasat/coverage";
-import { formatCrop, formatTRY } from "@/lib/hasat/format";
+import { formatCrop, formatQuantity, formatTRY } from "@/lib/hasat/format";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/batch/$listingId")({
@@ -83,15 +83,15 @@ function BatchPage() {
         <div className="grid grid-cols-3 gap-3">
           <div className="rounded-2xl bg-card border p-4">
             <div className="text-xs text-hmuted">Toplam Parti</div>
-            <div className="font-mono text-xl mt-1">{stock?.base ?? "—"}<span className="text-xs ml-1 text-hmuted">{listing.unit}</span></div>
+            <div className="font-mono text-xl mt-1">{stock ? formatQuantity(stock.base, listing.unit) : "—"}<span className="text-xs ml-1 text-hmuted">{listing.unit}</span></div>
           </div>
           <div className="rounded-2xl bg-card border p-4">
             <div className="text-xs text-hmuted">Rezerve</div>
-            <div className="font-mono text-xl mt-1 text-hred">−{stock?.reserved ?? 0}<span className="text-xs ml-1 text-hmuted">{listing.unit}</span></div>
+            <div className="font-mono text-xl mt-1 text-hred">−{formatQuantity(stock?.reserved ?? 0, listing.unit)}<span className="text-xs ml-1 text-hmuted">{listing.unit}</span></div>
           </div>
           <div className="rounded-2xl bg-card border p-4">
             <div className="text-xs text-hmuted">Mevcut</div>
-            <div className="font-mono text-xl mt-1 text-sage">{stock?.available ?? 0}<span className="text-xs ml-1 text-hmuted">{listing.unit}</span></div>
+            <div className="font-mono text-xl mt-1 text-sage">{formatQuantity(stock?.available ?? 0, listing.unit)}<span className="text-xs ml-1 text-hmuted">{listing.unit}</span></div>
           </div>
         </div>
         {stock?.usingFallback && isOwner && (
@@ -125,7 +125,7 @@ function BatchPage() {
                           {labelForStepKey(cfg, e.step_key)} · {new Date(e.date).toLocaleDateString("tr-TR")}
                         </div>
                         <div className="text-xs text-hmuted mt-0.5">
-                          {e.quantity > 0 ? `${e.quantity} ${e.unit} · ` : ""}Kalite {e.quality}
+                          {e.quantity > 0 ? `${formatQuantity(e.quantity, e.unit)} ${e.unit} · ` : ""}Kalite {e.quality}
                           {backdated && e.createdAt ? ` · kayıt ${new Date(e.createdAt).toLocaleDateString("tr-TR")}` : ""}
                         </div>
                         {e.notes ? <div className="text-xs text-hmuted mt-0.5">{e.notes}</div> : null}
@@ -162,7 +162,7 @@ function BatchPage() {
                   <li key={o.id} className="py-3 flex items-center gap-3 text-sm">
                     <div className="flex-1">
                       <div className="font-medium">{o.order_ref ?? o.id.slice(0, 8)}</div>
-                      <div className="text-xs text-hmuted">{qty} {listing.unit} · {formatTRY(qty * price)} · {o.status}</div>
+                      <div className="text-xs text-hmuted">{formatQuantity(qty, listing.unit)} {listing.unit} · {formatTRY(qty * price)} · {o.status}</div>
                     </div>
                     {isOwner && o.offer?.buyer?.name ? <div className="text-xs text-hmuted">{o.offer.buyer.name}</div> : null}
                   </li>

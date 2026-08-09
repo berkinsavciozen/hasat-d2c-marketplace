@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { ChevronDown, ChevronUp } from "lucide-react";
 import { useOfferItems, useListingBatchEntries } from "@/lib/hasat/queries";
-import { formatTRY } from "@/lib/hasat/format";
+import { formatTRY, formatQuantity } from "@/lib/hasat/format";
 
 /**
  * Shows the batch breakdown of an offer (from `offer_items`). Each row
@@ -40,7 +40,7 @@ function BatchLine({
         <div className="min-w-0">
           <div className="text-sm font-medium truncate">{label}</div>
           <div className="text-xs text-hmuted">
-            {qty} {unit} × <span className="font-mono">{formatTRY(price)}</span>
+            {formatQuantity(qty, unit)} {unit} × <span className="font-mono">{formatTRY(price)}</span>
           </div>
         </div>
         <div className="flex items-center gap-2 shrink-0">
@@ -58,7 +58,7 @@ function BatchLine({
               {entries.map((e) => (
                 <li key={e.id} className="flex items-baseline justify-between gap-3 text-xs">
                   <span className="text-hmuted shrink-0">{new Date(e.date).toLocaleDateString("tr-TR")}</span>
-                  <span className="flex-1 truncate">{e.quantity} {e.unit} · {e.quality}{e.notes ? ` — ${e.notes}` : ""}</span>
+                  <span className="flex-1 truncate">{formatQuantity(e.quantity, e.unit)} {e.unit} · {e.quality}{e.notes ? ` — ${e.notes}` : ""}</span>
                 </li>
               ))}
             </ul>

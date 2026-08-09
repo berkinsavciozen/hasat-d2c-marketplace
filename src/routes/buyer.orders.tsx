@@ -3,7 +3,7 @@ import { useState, useEffect } from "react";
 import { BuyerHeader } from "@/components/hasat/BuyerHeader";
 import { LoadingDots } from "@/components/hasat/LoadingDots";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { formatTRY } from "@/lib/hasat/format";
+import { formatTRY, formatQuantity } from "@/lib/hasat/format";
 import { useBuyerOrders, useBuyerOffers, useUpdateOfferStatus, useOrderReviews, useCreateReview, useAuthUserId } from "@/lib/hasat/queries";
 import { toast } from "sonner";
 import type { Order, Offer } from "@/lib/hasat/types";
@@ -123,7 +123,7 @@ function OrdersList() {
                 <div className="min-w-0">
                   <div className="font-mono text-xs text-hmuted">{o.code}</div>
                   <div className="font-medium mt-1 truncate">{o.crop}</div>
-                  <div className="text-xs text-hmuted">{o.quantity} {o.unit} · {formatTRY(o.total)}</div>
+                  <div className="text-xs text-hmuted">{formatQuantity(o.quantity, o.unit)} {o.unit} · {formatTRY(o.total)}</div>
                 </div>
                 <span className="shrink-0 rounded-full px-2.5 py-0.5 text-[11px]" style={{ background: s.bg, color: s.fg }}>{s.label}</span>
               </div>
@@ -232,7 +232,7 @@ function OfferCard({ offer, onAccept, onReject, onCounter, onPay, pending }: {
       <div className="flex items-start justify-between gap-3">
         <div className="flex-1 min-w-0">
           <div className="font-medium truncate">{offer.crop}</div>
-          <div className="text-xs text-hmuted mt-0.5">{offer.quantity} {offer.unit} · {offer.buyerName}</div>
+          <div className="text-xs text-hmuted mt-0.5">{formatQuantity(offer.quantity, offer.unit)} {offer.unit} · {offer.buyerName}</div>
           <div className="mt-1 font-mono text-base font-semibold">{formatTRY(total)}</div>
         </div>
         <span className="rounded-full px-2.5 py-0.5 text-[11px] font-medium shrink-0" style={{ background: s.bg, color: s.fg }}>
@@ -309,7 +309,7 @@ function DoneOrderRow({ order, onOpen }: { order: Order; onOpen: () => void }) {
         <span className="rounded-full px-2.5 py-0.5 text-[11px]" style={{ background: s.bg, color: s.fg }}>{s.label}</span>
       </div>
       <div className="mt-3 flex items-center justify-between text-xs">
-        <span className="text-hmuted">{order.quantity} {order.unit} · {order.delivery}</span>
+        <span className="text-hmuted">{formatQuantity(order.quantity, order.unit)} {order.unit} · {order.delivery}</span>
         <span className="font-mono" style={{ color: "var(--gold)" }}>{formatTRY(order.total)}</span>
       </div>
 
