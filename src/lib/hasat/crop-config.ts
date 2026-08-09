@@ -16,6 +16,7 @@ export interface CropConfig {
   lifecycle_steps: LifecycleStep[] | null;
   price_benchmark_source: string | null;
   category_group: string | null;
+  default_photo_url?: string | null;
   has_official_price_source?: boolean;
   official_source_name?: string | null;
   price_window_type?: "rolling_30d" | "rolling_365d";
@@ -145,6 +146,23 @@ export function findCropConfig(map: Map<string, CropConfig>, crop: string | null
   const key = normalizeCropKey(crop);
   if (!key) return null;
   return map.get(key) ?? null;
+}
+
+/**
+ * Marketplace fallback chain (M3 kararı, marketplace yüzeylerine bu turda
+ * uygulandı): gerçek ilan fotoğrafı → crop_config.default_photo_url → null
+ * (çağıran taraf null'ı nötr placeholder'a çevirir, bkz. RepresentativePhoto).
+ * `isRepresentative`, gösterilen görsel gerçek ilan fotoğrafı DEĞİLSE true —
+ * "Temsili görsel" etiketinin zorunlu olduğu tek koşul.
+ */
+export function resolveListingPhoto(
+  photos: string[] | null | undefined,
+  cfg: CropConfig | null | undefined,
+): { photoUrl: string | null; isRepresentative: boolean } {
+  const real = photos?.[0];
+  if (real) return { photoUrl: real, isRepresentative: false };
+  const fallback = cfg?.default_photo_url ?? null;
+  return { photoUrl: fallback, isRepresentative: !!fallback };
 }
 
 /**

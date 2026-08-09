@@ -15,7 +15,8 @@ import {
   useFarmerRatingSummary,
   useFarmerRecentReviews,
 } from "@/lib/hasat/queries";
-import { useCropConfigMap, findCropConfig, cropEmoji } from "@/lib/hasat/crop-config";
+import { useCropConfigMap, findCropConfig, cropEmoji, resolveListingPhoto } from "@/lib/hasat/crop-config";
+import { RepresentativePhoto, RepresentativeBadge } from "@/components/hasat/RepresentativePhoto";
 
 function useIsLoggedIn() {
   const [loggedIn, setLoggedIn] = useState<boolean | null>(null);
@@ -194,15 +195,29 @@ function ProducerProfile() {
             </div>
           ) : (
             <div className="grid gap-3 md:grid-cols-2">
-              {listings.map((l) => (
+              {listings.map((l) => {
+                const cfg = findCropConfig(cropMap, l.crop);
+                const hasRealPhotos = l.photos && l.photos.length > 0;
+                const { photoUrl, isRepresentative } = resolveListingPhoto(l.photos, cfg);
+                return (
                 <div key={l.id} className="rounded-2xl bg-card border overflow-hidden">
-                  {l.photos && l.photos.length > 0 && (
+                  {hasRealPhotos ? (
                     <div className="flex gap-1 overflow-x-auto snap-x snap-mandatory">
-                      {l.photos.map((u, i) => (
+                      {l.photos!.map((u, i) => (
                         <img key={i} src={u} alt={l.crop}
                           className="h-40 w-full min-w-full snap-start object-cover" />
                       ))}
                     </div>
+                  ) : (
+                    <RepresentativePhoto
+                      src={photoUrl}
+                      isRepresentative={isRepresentative}
+                      alt={formatCrop(l.crop)}
+                      placeholderEmoji={cropEmoji(l.crop, cfg)}
+                      className="h-40 w-full"
+                    >
+                      {isRepresentative && <RepresentativeBadge className="absolute top-2 right-2" />}
+                    </RepresentativePhoto>
                   )}
                   <div className="p-4">
                     <div className="flex items-start justify-between">
@@ -224,7 +239,8 @@ function ProducerProfile() {
 
                   </div>
                 </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </div>

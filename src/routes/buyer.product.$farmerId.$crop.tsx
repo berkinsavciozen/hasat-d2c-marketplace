@@ -8,7 +8,8 @@ import { LoadingDots } from "@/components/hasat/LoadingDots";
 import { DeliveryFields, DELIVERY_OPTIONS } from "@/components/hasat/DeliveryFields";
 import { formatTRY, formatCrop } from "@/lib/hasat/format";
 import { convertQuantity } from "@/lib/core";
-import { findCropConfig, useCropConfigMap } from "@/lib/hasat/crop-config";
+import { cropEmoji, findCropConfig, resolveListingPhoto, useCropConfigMap } from "@/lib/hasat/crop-config";
+import { RepresentativePhoto, RepresentativeBadge } from "@/components/hasat/RepresentativePhoto";
 import { useHasat } from "@/lib/hasat/store";
 import {
   dbToActiveListing,
@@ -78,6 +79,8 @@ function BuyerProduct() {
   const first = listings[0];
   const cfg = findCropConfig(cropMap, crop);
   const canonicalUnit = cfg?.default_unit ?? first.unit;
+  const realPhoto = listings.find((l) => l.photos && l.photos.length > 0)?.photos?.[0] ?? null;
+  const { photoUrl, isRepresentative } = resolveListingPhoto(realPhoto ? [realPhoto] : [], cfg);
   const items = Object.entries(selected)
     .filter(([, q]) => q > 0)
     .map(([listingId, quantity]) => {
@@ -123,6 +126,16 @@ function BuyerProduct() {
           <div className="text-xs opacity-80 truncate">{first.farmerName}{first.farmerCity ? ` · ${first.farmerCity}` : ""}</div>
         </div>
       </div>
+
+      <RepresentativePhoto
+        src={photoUrl}
+        isRepresentative={isRepresentative}
+        alt={formatCrop(first.crop)}
+        placeholderEmoji={cropEmoji(first.crop, cfg)}
+        className="h-40 md:h-52 w-full"
+      >
+        {isRepresentative && <RepresentativeBadge className="absolute top-3 right-3" />}
+      </RepresentativePhoto>
 
       <div className="p-4 md:p-8 max-w-3xl space-y-4">
         <div className="text-sm text-hmuted">
