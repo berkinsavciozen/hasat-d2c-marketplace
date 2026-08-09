@@ -3,7 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Clock, Minus, Plus, Timer as TimerIcon, Search, AlarmClock } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useProfile } from "@/lib/hasat/queries";
-import { formatCropIngredient, formatTRY } from "@/lib/hasat/format";
+import { formatCropIngredient, formatQuantity, formatTRY } from "@/lib/hasat/format";
 import { cropEmoji } from "@/lib/hasat/crop-config";
 import {
   fetchRecipeBySlug,
@@ -18,7 +18,7 @@ import {
   DIFFICULTY_LABELS,
   type RecipeIngredientRow,
 } from "@/lib/hasat/recipes";
-import { RepresentativePhoto } from "@/components/hasat/RepresentativePhoto";
+import { RepresentativePhoto, RepresentativeBadge } from "@/components/hasat/RepresentativePhoto";
 import { CropRequestModal } from "@/components/hasat/CropRequestModal";
 import { MobileNudge } from "@/components/hasat/MobileNudge";
 import {
@@ -322,15 +322,21 @@ function RecipeDetailPage() {
 
               return (
                 <div key={ing.id} className="flex items-center gap-3 rounded-xl border bg-card p-3">
-                  <div className="grid h-11 w-11 shrink-0 place-items-center rounded-lg bg-cream text-xl overflow-hidden">
+                  <div className="relative grid h-11 w-11 shrink-0 place-items-center rounded-lg bg-cream text-xl overflow-hidden">
                     {avail?.crop_photo_url ? (
                       <img
                         src={avail.crop_photo_url}
-                        alt={name ?? ""}
+                        alt={`${name ?? ""} (temsili görsel)`}
                         className="h-11 w-11 object-cover"
                       />
                     ) : (
                       cropEmoji(ing.crop ?? undefined)
+                    )}
+                    {/* crop_photo_url her zaman crop_config'in stok fotoğrafı —
+                        malzeme belirli bir ilana değil crop'a bağlı, bu yüzden
+                        her göründüğünde temsili (P23-M7-g). */}
+                    {avail?.crop_photo_url && (
+                      <RepresentativeBadge className="absolute bottom-0 right-0 scale-90" />
                     )}
                   </div>
                   <div className="min-w-0 flex-1">
@@ -343,9 +349,11 @@ function RecipeDetailPage() {
                       )}
                     </div>
                     <div className="text-xs text-hmuted">
-                      {shop
-                        ? `${shop.scaled_quantity ?? shop.recipe_quantity ?? ""} ${shop.recipe_unit ?? ""}`.trim()
-                        : `${ing.quantity ?? ""} ${ing.unit ?? ""}`.trim()}
+                      {(() => {
+                        const q = shop ? shop.scaled_quantity ?? shop.recipe_quantity : ing.quantity;
+                        const unit = shop ? shop.recipe_unit : ing.unit;
+                        return `${q != null ? formatQuantity(q, unit) : ""} ${unit ?? ""}`.trim();
+                      })()}
                       {shop && shop.scale_factor !== 1 && (
                         <span className="ml-1 opacity-70">(×{shop.scale_factor})</span>
                       )}
@@ -373,7 +381,7 @@ function RecipeDetailPage() {
                           {shop?.min_order_canonical != null && shop?.canonical_unit && (
                             <>
                               {" "}
-                              · Min. sipariş {shop.min_order_canonical} {shop.canonical_unit}
+                              · Min. sipariş {formatQuantity(shop.min_order_canonical, shop.canonical_unit)} {shop.canonical_unit}
                             </>
                           )}
                           {avail && avail.active_listing_count > 0 && (
@@ -382,8 +390,8 @@ function RecipeDetailPage() {
                         </div>
                         {shop?.rounded_up_to_min_order && shop.canonical_unit && (
                           <div className="text-[11px] text-hmuted">
-                            Bu tarif için {shop.needed_canonical} {shop.canonical_unit} yeterli, ama
-                            minimum sipariş {shop.purchase_canonical} {shop.canonical_unit}
+                            Bu tarif için {formatQuantity(shop.needed_canonical, shop.canonical_unit)} {shop.canonical_unit} yeterli, ama
+                            minimum sipariş {formatQuantity(shop.purchase_canonical, shop.canonical_unit)} {shop.canonical_unit}
                             {shop.recipes_covered != null && (
                               <> — bu miktar ~{Math.round(shop.recipes_covered)} tarif yapar.</>
                             )}

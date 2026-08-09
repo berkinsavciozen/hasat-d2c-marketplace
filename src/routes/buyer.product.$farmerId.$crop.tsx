@@ -6,7 +6,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
 import { LoadingDots } from "@/components/hasat/LoadingDots";
 import { DeliveryFields, DELIVERY_OPTIONS } from "@/components/hasat/DeliveryFields";
-import { formatTRY, formatCrop } from "@/lib/hasat/format";
+import { formatTRY, formatCrop, formatQuantity } from "@/lib/hasat/format";
 import { convertQuantity } from "@/lib/core";
 import { cropEmoji, findCropConfig, resolveListingPhoto, useCropConfigMap } from "@/lib/hasat/crop-config";
 import { RepresentativePhoto, RepresentativeBadge } from "@/components/hasat/RepresentativePhoto";
@@ -176,7 +176,7 @@ function BuyerProduct() {
             <div className="text-xs text-hmuted">Toplam</div>
             <div className="font-mono text-lg" style={{ color: "var(--saffron)" }}>
               {formatTRY(totalPrice)}
-              <span className="text-xs text-hmuted ml-2">{Number(totalQty.toFixed(2))} {canonicalUnit} · {items.length} parti</span>
+              <span className="text-xs text-hmuted ml-2">{formatQuantity(totalQty, canonicalUnit)} {canonicalUnit} · {items.length} parti</span>
             </div>
           </div>
           <button
@@ -221,7 +221,7 @@ function BatchRow({
               <span className="text-[10px] rounded-full bg-saffron/20 text-saffron px-2 py-0.5">Kalite {l.quality}</span>
             </div>
             <div className="text-xs text-hmuted mt-1">
-              Mevcut {available} {l.unit} · <span className="font-mono" style={{ color: "var(--saffron)" }}>{formatTRY(l.pricePerUnit)}/{l.unit}</span>
+              Mevcut {formatQuantity(available, l.unit)} {l.unit} · <span className="font-mono" style={{ color: "var(--saffron)" }}>{formatTRY(l.pricePerUnit)}/{l.unit}</span>
             </div>
           </div>
           <button onClick={onToggle} aria-label="Detay" className="shrink-0 grid h-9 w-9 place-items-center rounded-lg hover:bg-muted">
@@ -260,7 +260,7 @@ function BatchRow({
               {entries.map((e) => (
                 <li key={e.id} className="flex items-baseline justify-between gap-3 text-xs">
                   <span className="text-hmuted shrink-0">{new Date(e.date).toLocaleDateString("tr-TR")}</span>
-                  <span className="flex-1 truncate">{e.quantity} {e.unit} · {e.quality}{e.notes ? ` — ${e.notes}` : ""}</span>
+                  <span className="flex-1 truncate">{formatQuantity(e.quantity, e.unit)} {e.unit} · {e.quality}{e.notes ? ` — ${e.notes}` : ""}</span>
                 </li>
               ))}
             </ul>

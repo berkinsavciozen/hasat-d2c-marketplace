@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { LoadingDots } from "@/components/hasat/LoadingDots";
-import { formatTRY, formatCrop } from "@/lib/hasat/format";
+import { formatTRY, formatCrop, formatQuantity } from "@/lib/hasat/format";
 import { useHasat } from "@/lib/hasat/store";
 import { useListing, useListingStock, useListingProvenanceEntries } from "@/lib/hasat/queries";
 import { ProvenanceTimeline } from "@/components/hasat/ProvenanceTimeline";
@@ -79,7 +79,7 @@ function MakeOffer() {
 
   const submit = () => {
     if (belowMin) {
-      import("sonner").then(({ toast }) => toast.error(`Minimum ${listing.minOrder} ${listing.unit} sipariş vermelisiniz`));
+      import("sonner").then(({ toast }) => toast.error(`Minimum ${formatQuantity(listing.minOrder, listing.unit)} ${listing.unit} sipariş vermelisiniz`));
       return;
     }
     setPendingOffer({
@@ -124,7 +124,7 @@ function MakeOffer() {
           <div className="font-serif text-lg mt-1">{formatCrop(listing.crop)}</div>
           <div className="mt-3 flex items-baseline justify-between">
             <div className="text-xs text-hmuted">
-              Mevcut: {stock ? stock.available : listing.quantity} {listing.unit} · Min {listing.minOrder} {listing.unit}
+              Mevcut: {formatQuantity(stock ? stock.available : listing.quantity, listing.unit)} {listing.unit} · Min {formatQuantity(listing.minOrder, listing.unit)} {listing.unit}
             </div>
             <div style={{ fontFamily: "Courier New, monospace", color: "var(--saffron)" }} className="text-base">
               {formatTRY(listing.pricePerUnit)}<span className="text-xs text-hmuted">/{listing.unit}</span>
@@ -170,7 +170,7 @@ function MakeOffer() {
         <div className="rounded-2xl p-4" style={{ background: "color-mix(in oklab, var(--sage) 18%, transparent)" }}>
           <div className="text-xs text-hmuted">Toplam</div>
           <div className="font-mono text-2xl mt-1" style={{ color: "var(--sage)" }}>{formatTRY(total)}</div>
-          <div className="text-[11px] text-hmuted mt-1">{qty} {listing.unit} × {formatTRY(price)}/{listing.unit}</div>
+          <div className="text-[11px] text-hmuted mt-1">{formatQuantity(qty, listing.unit)} {listing.unit} × {formatTRY(price)}/{listing.unit}</div>
         </div>
 
         <div>

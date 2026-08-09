@@ -6,10 +6,11 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { dbToListing, dbToParcel, useProfile } from "@/lib/hasat/queries";
 import { LoadingDots } from "@/components/hasat/LoadingDots";
-import { formatTRY } from "@/lib/hasat/format";
+import { formatTRY, formatQuantity } from "@/lib/hasat/format";
 import { formatCrop } from "@/lib/hasat/format";
 import { TrustBadge } from "@/components/hasat/TrustBadge";
 import { CoverageBadge } from "@/components/hasat/CoverageBadge";
+import { RepresentativeBadge } from "@/components/hasat/RepresentativePhoto";
 import type { Listing, Parcel } from "@/lib/hasat/types";
 
 export const Route = createFileRoute("/s/$slug")({
@@ -20,7 +21,7 @@ export const Route = createFileRoute("/s/$slug")({
   ),
 });
 
-import { cropEmoji } from "@/lib/hasat/crop-config";
+import { cropEmoji, findCropConfig, resolveListingPhoto, useCropConfigMap } from "@/lib/hasat/crop-config";
 
 function slugify(input: string): string {
   return input
@@ -99,6 +100,7 @@ function PublicStorefront() {
   const { data, isLoading } = useStorefront(slug);
   const loggedIn = useIsLoggedIn();
   const { data: myProfile } = useProfile();
+  const { map: cropMap } = useCropConfigMap();
 
   if (isLoading) return <div className="p-8"><LoadingDots /></div>;
   if (!data) throw notFound();
@@ -108,9 +110,18 @@ function PublicStorefront() {
   const isOwnStorefront = myProfile?.id === profile.id;
   const showSubscribeCTA = isBuyer && !isOwnStorefront;
   const parcelsWithPhotos = parcels.filter((p: Parcel) => (p.photos ?? []).length > 0);
-  const heroPhoto = parcelsWithPhotos[0]?.photos?.[0]
+  const realHeroPhoto = parcelsWithPhotos[0]?.photos?.[0]
     ?? listings.find((l) => (l.photos ?? []).length > 0)?.photos?.[0]
     ?? null;
+  // P23-M7-g: M7-f'de hero bilinçli dışarıda bırakılmıştı ama gerekçe (56px
+  // avatarda etiket okunaklı basmıyor) hero'ya uygulanmıyordu — burada gerçek
+  // foto yoksa crop fallback + ⓘ ile Keşfet'le tutarlı hale getirildi. 56px
+  // ilan avatarı (aşağıda) kasıtlı olarak dokunulmadı, o karar geçerli.
+  const heroCfg = findCropConfig(cropMap, listings[0]?.crop);
+  const { photoUrl: heroPhoto, isRepresentative: heroIsRepresentative } = resolveListingPhoto(
+    realHeroPhoto ? [realHeroPhoto] : [],
+    heroCfg,
+  );
   const activeCerts = certs.filter((c) => {
     if (!c.expires_at) return true;
     const t = new Date(c.expires_at).getTime();
@@ -146,6 +157,7 @@ function PublicStorefront() {
           color: "var(--hwhite)",
         }}
       >
+        {heroIsRepresentative && <RepresentativeBadge className="absolute bottom-3 right-4 z-20" />}
         <div className="relative z-10">
           <div className="flex items-center justify-between">
             <Link to="/buyer/discover" className="inline-grid h-11 w-11 place-items-center rounded-full bg-white/10 hover:bg-white/15">
@@ -218,7 +230,7 @@ function PublicStorefront() {
                   <div className="flex-1 min-w-0">
                     <div className="font-medium">{formatCrop(l.crop)}</div>
                     <div className="text-xs text-hmuted">
-                      {l.quantity} {l.unit} · Min {l.minOrder} {l.unit} · Kalite {l.quality}
+                      {formatQuantity(l.quantity, l.unit)} {l.unit} · Min {formatQuantity(l.minOrder, l.unit)} {l.unit} · Kalite {l.quality}
                     </div>
                     <div className="mt-1"><CoverageBadge listingId={l.id} crop={l.crop} compact /></div>
                   </div>

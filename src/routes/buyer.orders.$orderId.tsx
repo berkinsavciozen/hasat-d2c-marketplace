@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
-import { formatTRY, formatCrop } from "@/lib/hasat/format";
+import { formatTRY, formatCrop, formatQuantity } from "@/lib/hasat/format";
 import { useBuyerOrders, useOrderTimeline, useConfirmDelivery, useOpenDispute, useOrderDispute, useOrderReviews, useCreateReview, useOrderOfferId } from "@/lib/hasat/queries";
 import { OfferBatchBreakdown } from "@/components/hasat/OfferBatchBreakdown";
 
@@ -86,7 +86,7 @@ function OrderTracker() {
       <div className="p-4 md:p-8 space-y-5 max-w-2xl">
         <div className="rounded-2xl bg-card border p-4">
           <div className="font-medium">{formatCrop(order.crop)} — {order.producerName}</div>
-          <div className="text-xs text-hmuted mt-1">{order.quantity} {order.unit} · {order.delivery}</div>
+          <div className="text-xs text-hmuted mt-1">{formatQuantity(order.quantity, order.unit)} {order.unit} · {order.delivery}</div>
           {order.status === "shipped" && order.trackingNumber && (
             <div className="mt-2 rounded-lg bg-muted/40 p-2.5 text-xs">
               📦 <span className="text-hmuted">{order.carrier ?? "Kargo"}:</span>{" "}

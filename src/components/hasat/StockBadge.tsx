@@ -1,4 +1,5 @@
 import { useListingStock } from "@/lib/hasat/queries";
+import { formatQuantity } from "@/lib/hasat/format";
 
 export function StockBadge({ listingId, unit, className }: { listingId: string; unit: string; className?: string }) {
   const { data: stock } = useListingStock(listingId);
@@ -12,7 +13,7 @@ export function StockBadge({ listingId, unit, className }: { listingId: string; 
         color: soldOut ? "var(--hred)" : "var(--sage)",
       }}
     >
-      {soldOut ? "Tükendi" : `Mevcut: ${stock.available} ${unit}`}
+      {soldOut ? "Tükendi" : `Mevcut: ${formatQuantity(stock.available, unit)} ${unit}`}
     </span>
   );
 }
