@@ -4,7 +4,8 @@ import { useAuthUserId, useListing, useListingStock, useListingBatchEntries, use
 import { LoadingDots } from "@/components/hasat/LoadingDots";
 import { ProvenanceTimeline } from "@/components/hasat/ProvenanceTimeline";
 import { CoverageBadge } from "@/components/hasat/CoverageBadge";
-import { findCropConfig, useCropConfigMap } from "@/lib/hasat/crop-config";
+import { cropEmoji, findCropConfig, resolveListingPhoto, useCropConfigMap } from "@/lib/hasat/crop-config";
+import { RepresentativePhoto, RepresentativeBadge } from "@/components/hasat/RepresentativePhoto";
 import { labelForStepKey } from "@/lib/hasat/coverage";
 import { formatCrop, formatTRY } from "@/lib/hasat/format";
 import { toast } from "sonner";
@@ -23,6 +24,7 @@ function BatchPage() {
   const { data: entries = [] } = useListingBatchEntries(listingId);
   const { data: orders = [] } = useListingOrders(listingId);
   const unlink = useUnlinkHarvestFromListing();
+  const { map: cropMap } = useCropConfigMap();
 
   if (isLoading) return <div className="p-8"><LoadingDots /></div>;
   if (!listing) {
@@ -34,8 +36,9 @@ function BatchPage() {
   }
 
   const isOwner = !!userId && userId === listing.producerId;
-  const { map: cropMap } = useCropConfigMap();
   const cfg = findCropConfig(cropMap, listing.crop);
+  const hasRealPhotos = listing.photos && listing.photos.length > 0;
+  const { photoUrl, isRepresentative } = resolveListingPhoto(listing.photos, cfg);
 
   return (
     <>
@@ -51,10 +54,10 @@ function BatchPage() {
       </div>
 
       <div className="p-4 md:p-8 space-y-4 max-w-3xl mx-auto">
-        {listing.photos && listing.photos.length > 0 && (
+        {hasRealPhotos ? (
           <div className="rounded-2xl overflow-hidden border bg-card">
             <div className="flex gap-1 overflow-x-auto snap-x snap-mandatory">
-              {listing.photos.map((u, i) => (
+              {listing.photos!.map((u, i) => (
                 <img
                   key={i}
                   src={u}
@@ -64,6 +67,16 @@ function BatchPage() {
               ))}
             </div>
           </div>
+        ) : (
+          <RepresentativePhoto
+            src={photoUrl}
+            isRepresentative={isRepresentative}
+            alt={formatCrop(listing.crop)}
+            placeholderEmoji={cropEmoji(listing.crop, cfg)}
+            className="h-48 w-full rounded-2xl border"
+          >
+            {isRepresentative && <RepresentativeBadge className="absolute top-3 right-3" />}
+          </RepresentativePhoto>
         )}
 
         {/* Stock summary */}

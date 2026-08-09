@@ -13,6 +13,8 @@ import { formatTRY, formatCrop } from "@/lib/hasat/format";
 import { useHasat } from "@/lib/hasat/store";
 import { useListing, useListingStock, useListingProvenanceEntries } from "@/lib/hasat/queries";
 import { ProvenanceTimeline } from "@/components/hasat/ProvenanceTimeline";
+import { cropEmoji, findCropConfig, resolveListingPhoto, useCropConfigMap } from "@/lib/hasat/crop-config";
+import { RepresentativePhoto, RepresentativeBadge } from "@/components/hasat/RepresentativePhoto";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/buyer/offer/$listingId")({
@@ -43,6 +45,7 @@ function MakeOffer() {
   const { data: listing, isLoading } = useListing(listingId);
   const { data: stock } = useListingStock(listingId);
   const { data: provenance = [] } = useListingProvenanceEntries(listingId);
+  const { map: cropMap } = useCropConfigMap();
 
   const search = Route.useSearch();
 
@@ -66,6 +69,8 @@ function MakeOffer() {
   if (isLoading) return <div className="p-8"><LoadingDots /></div>;
   if (!listing) throw notFound();
 
+  const cfg = findCropConfig(cropMap, listing.crop);
+  const { photoUrl, isRepresentative } = resolveListingPhoto(listing.photos, cfg);
 
   const total = qty * price;
   const negotiated = price !== listing.pricePerUnit;
@@ -102,6 +107,16 @@ function MakeOffer() {
         </Link>
         <h1 className="font-serif text-xl">Teklif Ver</h1>
       </div>
+
+      <RepresentativePhoto
+        src={photoUrl}
+        isRepresentative={isRepresentative}
+        alt={formatCrop(listing.crop)}
+        placeholderEmoji={cropEmoji(listing.crop, cfg)}
+        className="h-40 md:h-52 w-full"
+      >
+        {isRepresentative && <RepresentativeBadge className="absolute top-3 right-3" />}
+      </RepresentativePhoto>
 
       <div className="p-4 md:p-8 space-y-5 max-w-2xl">
         <div className="rounded-2xl bg-card border p-4">

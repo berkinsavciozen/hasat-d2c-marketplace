@@ -14,10 +14,11 @@ import {
   useMySubscriptions,
   usePriceAlerts,
 } from "@/lib/hasat/queries";
-import { CATEGORY_GROUP_META, cropEmoji, findCropConfig, useCropConfigMap } from "@/lib/hasat/crop-config";
+import { CATEGORY_GROUP_META, cropEmoji, findCropConfig, resolveListingPhoto, useCropConfigMap, type CropConfig } from "@/lib/hasat/crop-config";
 import { slugifyFarmer } from "@/lib/hasat/vitrin";
 import { convertQuantity } from "@/lib/core";
 import { loadPendingRecipeRequest } from "@/lib/hasat/recipe-intent";
+import { RepresentativePhoto, RepresentativeBadge } from "@/components/hasat/RepresentativePhoto";
 
 
 
@@ -273,6 +274,7 @@ function Discover() {
                       key={g.key}
                       items={g.items}
                       canonicalUnit={canonicalUnit}
+                      cropConfig={cfg}
                       onOpen={() =>
                         g.items.length === 1
                           ? navigate({ to: "/buyer/offer/$listingId", params: { listingId: g.items[0].id } })
@@ -301,7 +303,7 @@ function Discover() {
 
 type ListingRow = ReturnType<typeof useActiveListings>["data"] extends (infer U)[] | undefined ? U : never;
 
-function ListingGroupCard({ items, canonicalUnit, onOpen }: { items: ListingRow[]; canonicalUnit: string; onOpen: () => void }) {
+function ListingGroupCard({ items, canonicalUnit, cropConfig, onOpen }: { items: ListingRow[]; canonicalUnit: string; cropConfig: CropConfig | null; onOpen: () => void }) {
   // Kanonik birime çevirerek topla (g↔kg). Diğer birimler tek preset olduğu için değişmez.
   const totalAvail = items.reduce(
     (s, l) => s + convertQuantity(Number(l.quantity ?? 0), l.unit, canonicalUnit),
@@ -309,6 +311,7 @@ function ListingGroupCard({ items, canonicalUnit, onOpen }: { items: ListingRow[
   );
   const soldOut = totalAvail <= 0;
   const first = items[0];
+  const { photoUrl, isRepresentative } = resolveListingPhoto(first.photos, cropConfig);
 
   const farmerSlug = first.farmerName ? (slugifyFarmer(first.farmerName) || (first.producerId ?? "")) : (first.producerId ?? "");
   const prices = items.map((l) => l.pricePerUnit);
@@ -325,20 +328,22 @@ function ListingGroupCard({ items, canonicalUnit, onOpen }: { items: ListingRow[
       onKeyDown={(e) => { if (e.key === "Enter" && !soldOut) onOpen(); }}
       className={`text-left rounded-2xl bg-card border overflow-hidden hover:border-saffron transition ${soldOut ? "opacity-60 cursor-not-allowed" : "cursor-pointer"}`}
     >
-      <div className="h-28 relative overflow-hidden" style={
-        first.photos && first.photos[0]
-          ? undefined
-          : { background: `repeating-linear-gradient(45deg, color-mix(in oklab, var(--saffron) 30%, var(--dark)) 0 12px, color-mix(in oklab, var(--saffron) 20%, var(--dark)) 12px 24px)` }
-      }>
-        {first.photos && first.photos[0] && (
-          <img src={first.photos[0]} alt={formatCrop(first.crop)} className="absolute inset-0 h-full w-full object-cover" />
-        )}
+      <RepresentativePhoto
+        src={photoUrl}
+        isRepresentative={isRepresentative}
+        alt={formatCrop(first.crop)}
+        placeholderEmoji={cropEmoji(first.crop, cropConfig)}
+        className="h-28"
+      >
         <div className="absolute inset-0" style={{ background: "linear-gradient(180deg, transparent 40%, rgba(0,0,0,0.55))" }} />
-        {items.length > 1 && (
-          <div className="absolute top-2 left-2 inline-flex items-center gap-1 rounded-full bg-saffron text-white text-[10px] font-bold px-2 py-0.5">
-            {items.length} parti
-          </div>
-        )}
+        <div className="absolute top-2 left-2 flex flex-col items-start gap-1">
+          {items.length > 1 && (
+            <div className="inline-flex items-center gap-1 rounded-full bg-saffron text-white text-[10px] font-bold px-2 py-0.5">
+              {items.length} parti
+            </div>
+          )}
+          {isRepresentative && <RepresentativeBadge />}
+        </div>
         {soldOut && (
           <div className="absolute top-2 right-2 inline-flex items-center rounded-full bg-hred text-white text-[10px] font-bold px-2 py-0.5">
             Tükendi
@@ -355,7 +360,7 @@ function ListingGroupCard({ items, canonicalUnit, onOpen }: { items: ListingRow[
             {first.farmerCity ? ` · ${first.farmerCity}` : ""}
           </div>
         </div>
-      </div>
+      </RepresentativePhoto>
       <div className="p-4">
         <div className="flex items-center justify-between gap-2">
           <div className="text-xs text-hmuted">
