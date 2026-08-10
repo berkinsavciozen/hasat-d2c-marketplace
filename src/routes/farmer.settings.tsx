@@ -1,7 +1,6 @@
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { FarmerHeader } from "./farmer";
-import { useHasat } from "@/lib/hasat/store";
 import { useParcels, useCreateParcel, useUpdateParcel, useDeleteParcel, useCertifications, useProfile, useUpdateProfile, useUploadCertification, useDeleteCertification, getCertificationSignedUrl, useAIUsageThisMonth, isEffectivelyPremium, CERT_TYPES, type CertType } from "@/lib/hasat/queries";
 import { ProgressDots } from "@/components/hasat/ProgressDots";
 import { Input } from "@/components/ui/input";
@@ -13,6 +12,7 @@ import { TierBadge } from "@/components/hasat/TierBadge";
 import { UpgradeModal } from "@/components/hasat/UpgradeModal";
 import { PhotoUploader } from "@/components/hasat/PhotoUploader";
 import { DeleteAccountModal } from "@/components/hasat/DeleteAccountModal";
+import { markExpectedSignOut } from "@/lib/hasat/sessionGuard";
 import { vitrinUrl, copyVitrinLink } from "@/lib/hasat/vitrin";
 import { TR_PROVINCES } from "@/lib/hasat/cities";
 import { CropChips } from "@/components/hasat/CropChips";
@@ -22,7 +22,6 @@ import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from "@/
 export const Route = createFileRoute("/farmer/settings")({ component: Settings });
 
 function Settings() {
-  const navigate = useNavigate();
   const { data: profile } = useProfile();
   const updateProfile = useUpdateProfile();
   const { data: parcels = [], isLoading: parcelsLoading } = useParcels();
@@ -39,7 +38,6 @@ function Settings() {
   const [upgradeOpen, setUpgradeOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const { data: aiUsage } = useAIUsageThisMonth();
-  const setRole = useHasat((s) => s.setRole);
 
   const [name, setName] = useState("");
   const [city, setCity] = useState("");
@@ -134,20 +132,23 @@ function Settings() {
     } catch (e) { toast.error((e as Error).message); }
   };
 
+  // P23-M8-b — `setRole(null)` + yönlendirme artık burada değil, tek yerde
+  // (`__root.tsx` → `AuthBootstrap`, `SIGNED_OUT` dinleyicisi, `reset()` ile
+  // aynı şey — `setRole(null)` da `user: null` yazıyor, bkz. store.ts) —
+  // sessionGuard.ts dosya başlığı ("çıkış fatal hata" kök nedeni).
   const logout = async () => {
+    markExpectedSignOut();
     try { await supabase.auth.signOut(); }
     catch (e) { toast.error((e as Error).message); }
-    finally { setRole(null); navigate({ to: "/" }); }
   };
 
   const afterAccountDeleted = async () => {
-    try { await supabase.auth.signOut(); }
+    markExpectedSignOut();
+    // scope:"local" kasıtlı — bkz. buyer.account.tsx'teki aynı gerekçe
+    // (banned_until='infinity' hesaba global signOut ağ bağımlılığı katar).
+    try { await supabase.auth.signOut({ scope: "local" }); }
     catch { /* oturum zaten hesap silme RPC'siyle geçersizleşti */ }
-    finally {
-      setRole(null);
-      toast.success("Hesabın silindi");
-      navigate({ to: "/" });
-    }
+    toast.success("Hesabın silindi");
   };
 
   const [exporting, setExporting] = useState(false);
