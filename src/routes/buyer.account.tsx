@@ -1,4 +1,4 @@
-import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState } from "react";
 import { BuyerHeader } from "@/components/hasat/BuyerHeader";
 import { useHasat } from "@/lib/hasat/store";
@@ -14,6 +14,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Bell, ChevronRight, Trash2, Star, Plus, ClipboardList, CalendarClock } from "lucide-react";
 import { DeleteAccountModal } from "@/components/hasat/DeleteAccountModal";
+import { markExpectedSignOut } from "@/lib/hasat/sessionGuard";
 
 export const Route = createFileRoute("/buyer/account")({
   head: () => ({ meta: [{ title: "Hesap — Hasat" }] }),
@@ -25,8 +26,6 @@ const TYPE_LABEL: Record<string, string> = {
 };
 
 function Account() {
-  const navigate = useNavigate();
-  const reset = useHasat((s) => s.reset);
   const localUser = useHasat((s) => s.user);
   const { data: profile } = useProfile();
   const { data: addresses = [] } = useBuyerAddresses();
@@ -45,20 +44,24 @@ function Account() {
   const buyerType = localUser?.company?.type ?? "diger";
   const needsName = !profile?.name?.trim();
 
+  // P23-M8-b — `reset()` + yönlendirme artık burada değil, tek yerde
+  // (`__root.tsx` → `AuthBootstrap`, `SIGNED_OUT` dinleyicisi) yapılıyor;
+  // bkz. sessionGuard.ts dosya başlığı ("çıkış fatal hata" kök nedeni).
   const logout = async () => {
+    markExpectedSignOut();
     try { await supabase.auth.signOut(); }
     catch (e) { toast.error((e as Error).message); }
-    finally { reset(); navigate({ to: "/" }); }
   };
 
   const afterAccountDeleted = async () => {
-    try { await supabase.auth.signOut(); }
+    markExpectedSignOut();
+    // scope:"local" kasıtlı: hesap artık banned_until='infinity' — sunucuya
+    // global signOut isteği atmak gereksiz bir ağ bağımlılığı yaratır ve
+    // banlı hesapta reddedilme riski taşır (mobil sessionGuard.ts'teki aynı
+    // gerekçe).
+    try { await supabase.auth.signOut({ scope: "local" }); }
     catch { /* oturum zaten hesap silme RPC'siyle geçersizleşti */ }
-    finally {
-      reset();
-      toast.success("Hesabın silindi");
-      navigate({ to: "/" });
-    }
+    toast.success("Hesabın silindi");
   };
 
   const onAdd = async () => {

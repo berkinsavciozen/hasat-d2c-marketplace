@@ -1,4 +1,4 @@
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { QueryClient, QueryClientProvider, useQueryClient } from "@tanstack/react-query";
 import {
   Outlet,
   Link,
@@ -8,9 +8,11 @@ import {
   Scripts,
 } from "@tanstack/react-router";
 import { useEffect, type ReactNode } from "react";
+import { toast } from "sonner";
 
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
+import { takeExpectedSignOut } from "@/lib/hasat/sessionGuard";
 
 function NotFoundComponent() {
   return (
@@ -125,6 +127,7 @@ import { useHasat } from "@/lib/hasat/store";
 
 function AuthBootstrap() {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const setRole = useHasat((s) => s.setRole);
   const updateUser = useHasat((s) => s.updateUser);
   const reset = useHasat((s) => s.reset);
@@ -158,9 +161,20 @@ function AuthBootstrap() {
       });
     })();
 
+    // P23-M8-b — TEK temizlik noktası: `reset()` + query cache + yönlendirme
+    // yalnızca burada yapılır. Sayfa içi çıkış/hesap silme handler'ları
+    // (`buyer.account.tsx`, `farmer.settings.tsx`) artık kendi `reset()`/
+    // `navigate()`'ini çağırmıyor — ikisi de aynı temizliği neredeyse aynı
+    // anda tetiklediğinde (`signOut()` bu event'i kendi promise'i
+    // sonuçlanmadan ateşliyor) yarışan iki `navigate()` çağrısı "çıkış fatal
+    // hata veriyor" bug'ının kök nedeniydi (bkz. sessionGuard.ts).
     const { data: sub } = supabase.auth.onAuthStateChange((event) => {
       if (event === "SIGNED_OUT") {
         reset();
+        queryClient.clear();
+        if (!takeExpectedSignOut()) {
+          toast.error("Oturumun sona erdi. Lütfen tekrar giriş yap.");
+        }
         router.navigate({ to: "/" });
       }
     });
