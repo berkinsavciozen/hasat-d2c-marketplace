@@ -12,6 +12,7 @@ import { applyStoredReferral } from "@/lib/hasat/queries";
 import type { CertificationType } from "@/lib/hasat/types";
 import { TR_PROVINCES } from "@/lib/hasat/cities";
 import { CropChips } from "@/components/hasat/CropChips";
+import { markExpectedSignOut, isNetworkAuthError } from "@/lib/hasat/sessionGuard";
 
 export const Route = createFileRoute("/onboarding/farmer")({
   head: () => ({ meta: [{ title: "Kayıt — Hasat Çiftçi" }] }),
@@ -41,9 +42,15 @@ function Onboarding() {
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      const { data: { session } } = await supabase.auth.getSession();
+      const { data: { session }, error } = await supabase.auth.getSession();
       if (cancelled) return;
       if (!session?.user) {
+        // P23-M8-b-2 — `onboarding.buyer.tsx` ile aynı düzeltme (bkz. orada
+        // ki not): geçici ağ hatasında giriş yapmış bir kullanıcıyı
+        // /login'e geri fırlatma.
+        if (isNetworkAuthError(error) && useHasat.getState().user?.role === "farmer") {
+          return;
+        }
         navigate({ to: "/login", search: { role: "farmer" } });
         return;
       }
@@ -61,6 +68,13 @@ function Onboarding() {
     return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // P23-M8-b-2 — `onboarding.buyer.tsx` ile aynı bulgu: bu sayfanın da hiç
+  // çıkış yolu yoktu.
+  const handleSignOut = async () => {
+    markExpectedSignOut();
+    await supabase.auth.signOut();
+  };
 
   const finish = async (skip = false) => {
     if (saving) return;
@@ -144,6 +158,14 @@ function Onboarding() {
   return (
     <div className="min-h-screen p-6" style={{ background: "var(--dark)", color: "var(--hwhite)" }}>
       <div className="mx-auto max-w-md">
+        <div className="mb-2 flex items-center justify-end">
+          <button
+            onClick={handleSignOut}
+            className="text-xs underline text-hwhite/60 hover:text-hwhite"
+          >
+            Çıkış Yap
+          </button>
+        </div>
         {step > 1 && (
           <div className="mb-6">
             <ProgressDots current={step} total={3} />

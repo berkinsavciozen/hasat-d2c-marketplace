@@ -8,6 +8,7 @@ import { Switch } from "@/components/ui/switch";
 import { supabase } from "@/integrations/supabase/client";
 import { CropChips } from "@/components/hasat/CropChips";
 import { activatePremium } from "@/lib/api/premium.functions";
+import { markExpectedSignOut, isNetworkAuthError } from "@/lib/hasat/sessionGuard";
 
 export const Route = createFileRoute("/onboarding/buyer")({
   head: () => ({ meta: [{ title: "Kayıt — Hasat Alıcı" }] }),
@@ -43,9 +44,17 @@ function BuyerOnboarding() {
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      const { data: { session } } = await supabase.auth.getSession();
+      const { data: { session }, error } = await supabase.auth.getSession();
       if (cancelled) return;
       if (!session?.user) {
+        // P23-M8-b-2 — geçici bir ağ hatası bu sayfaya doğru şekilde
+        // ulaşmış (giriş yapılmış) bir kullanıcıyı /login'e geri
+        // fırlatmasın; bir sonraki adımda (Devam Et) zaten gerçek bir
+        // Supabase çağrısı yapılıyor, o an gerçekten oturum yoksa orada
+        // ortaya çıkar.
+        if (isNetworkAuthError(error) && useHasat.getState().user?.role === "buyer") {
+          return;
+        }
         navigate({ to: "/login", search: { role: "buyer" } });
         return;
       }
@@ -63,6 +72,18 @@ function BuyerOnboarding() {
     return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // P23-M8-b-2 — bu sayfanın hiç çıkış yolu yoktu: bir kullanıcı buraya
+  // yanlışlıkla düşerse (ör. geçici ağ hatası) ne devam edebiliyordu (henüz
+  // kayıt tamamlanmadığı için "Zaten hesabın var mı?" linki işine yaramıyor)
+  // ne de çıkış yapabiliyordu — "o sayfada tamamen kilitleniyor" bulgusunun
+  // kök nedeni buydu. `markExpectedSignOut()` + `signOut()`, merkezi
+  // `AuthBootstrap` dinleyicisinin (kural #106 deseni) aynı temizliği
+  // yapmasına bırakıyor.
+  const handleSignOut = async () => {
+    markExpectedSignOut();
+    await supabase.auth.signOut();
+  };
 
   const toggle = (arr: string[], setter: (v: string[]) => void, v: string) =>
     setter(arr.includes(v) ? arr.filter((x) => x !== v) : [...arr, v]);
@@ -126,7 +147,15 @@ function BuyerOnboarding() {
   return (
     <div className="min-h-screen p-6" style={{ background: "var(--dark)", color: "var(--hwhite)" }}>
       <div className="mx-auto max-w-md">
-        <div className="mb-6"><ProgressDots current={step} total={3} /></div>
+        <div className="mb-6 flex items-center justify-between">
+          <ProgressDots current={step} total={3} />
+          <button
+            onClick={handleSignOut}
+            className="text-xs underline text-hwhite/60 hover:text-hwhite"
+          >
+            Çıkış Yap
+          </button>
+        </div>
 
         {step === 1 && (
           <div className="mt-4">
