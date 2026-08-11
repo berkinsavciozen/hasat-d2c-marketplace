@@ -4,7 +4,7 @@
 // Yeniden üretmek için:
 //   supabase gen types typescript --project-id efuqpiaavrzimvstpdpm > core/db/types.ts
 // ve üretim sonrası bu başlığı tekrar ekle.
-// Son üretim: 2026-08-04 (in-app hesap silme — rpc_delete_own_account eklendi)
+// Son üretim: 2026-08-10 (P23-M8-b — notif_prefs push kolonları eklendi)
 
 export type Json =
   | string
@@ -1238,7 +1238,9 @@ export type Database = {
       notif_prefs: {
         Row: {
           community_push: boolean
+          crop_request_match_push: boolean
           crop_request_match_sms: boolean
+          dispute_opened_push: boolean
           dispute_opened_sms: boolean
           harvest_time_push: boolean
           harvest_time_sms: boolean
@@ -1246,22 +1248,33 @@ export type Database = {
           new_offer_push: boolean
           new_offer_sms: boolean
           new_offer_whatsapp: boolean
+          offer_accepted_push: boolean
           offer_accepted_sms: boolean
+          offer_countered_push: boolean
+          order_cancelled_push: boolean
           order_cancelled_sms: boolean
+          order_delivered_push: boolean
           order_delivered_sms: boolean
+          order_shipped_push: boolean
           order_shipped_sms: boolean
+          payment_confirmed_push: boolean
           payment_confirmed_sms: boolean
           price_alert_push: boolean
           price_alert_sms: boolean
           price_alert_whatsapp: boolean
+          subscription_accepted_push: boolean
           subscription_accepted_sms: boolean
+          subscription_new_push: boolean
           subscription_new_sms: boolean
+          subscription_rejected_push: boolean
           subscription_rejected_sms: boolean
           user_id: string
         }
         Insert: {
           community_push?: boolean
+          crop_request_match_push?: boolean
           crop_request_match_sms?: boolean
+          dispute_opened_push?: boolean
           dispute_opened_sms?: boolean
           harvest_time_push?: boolean
           harvest_time_sms?: boolean
@@ -1269,22 +1282,33 @@ export type Database = {
           new_offer_push?: boolean
           new_offer_sms?: boolean
           new_offer_whatsapp?: boolean
+          offer_accepted_push?: boolean
           offer_accepted_sms?: boolean
+          offer_countered_push?: boolean
+          order_cancelled_push?: boolean
           order_cancelled_sms?: boolean
+          order_delivered_push?: boolean
           order_delivered_sms?: boolean
+          order_shipped_push?: boolean
           order_shipped_sms?: boolean
+          payment_confirmed_push?: boolean
           payment_confirmed_sms?: boolean
           price_alert_push?: boolean
           price_alert_sms?: boolean
           price_alert_whatsapp?: boolean
+          subscription_accepted_push?: boolean
           subscription_accepted_sms?: boolean
+          subscription_new_push?: boolean
           subscription_new_sms?: boolean
+          subscription_rejected_push?: boolean
           subscription_rejected_sms?: boolean
           user_id: string
         }
         Update: {
           community_push?: boolean
+          crop_request_match_push?: boolean
           crop_request_match_sms?: boolean
+          dispute_opened_push?: boolean
           dispute_opened_sms?: boolean
           harvest_time_push?: boolean
           harvest_time_sms?: boolean
@@ -1292,16 +1316,25 @@ export type Database = {
           new_offer_push?: boolean
           new_offer_sms?: boolean
           new_offer_whatsapp?: boolean
+          offer_accepted_push?: boolean
           offer_accepted_sms?: boolean
+          offer_countered_push?: boolean
+          order_cancelled_push?: boolean
           order_cancelled_sms?: boolean
+          order_delivered_push?: boolean
           order_delivered_sms?: boolean
+          order_shipped_push?: boolean
           order_shipped_sms?: boolean
+          payment_confirmed_push?: boolean
           payment_confirmed_sms?: boolean
           price_alert_push?: boolean
           price_alert_sms?: boolean
           price_alert_whatsapp?: boolean
+          subscription_accepted_push?: boolean
           subscription_accepted_sms?: boolean
+          subscription_new_push?: boolean
           subscription_new_sms?: boolean
+          subscription_rejected_push?: boolean
           subscription_rejected_sms?: boolean
           user_id?: string
         }
@@ -3023,6 +3056,15 @@ export type Database = {
       check_and_record_mcp_call: { Args: never; Returns: boolean }
       create_draft_listings_for_parcel: {
         Args: { _crops: string[]; _farmer_id: string; _parcel_id: string }
+        Returns: undefined
+      }
+      dispatch_push: {
+        Args: {
+          _event: string
+          _message: string
+          _title: string
+          _user_id: string
+        }
         Returns: undefined
       }
       dispatch_sms: {
