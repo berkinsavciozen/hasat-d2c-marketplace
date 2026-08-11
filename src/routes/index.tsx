@@ -24,6 +24,7 @@ import {
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useHasat } from "@/lib/hasat/store";
+import { isNetworkAuthError } from "@/lib/hasat/sessionGuard";
 import { HASAT_WHATSAPP_NUMBER } from "@/lib/hasat/constants";
 import { submitIndoorInterest } from "@/lib/api/indoor-interest.functions";
 
@@ -135,9 +136,22 @@ function LandingPage() {
     let cancelled = false;
     (async () => {
       try {
-        const { data: { session } } = await supabase.auth.getSession();
+        const { data: { session }, error } = await supabase.auth.getSession();
         if (cancelled) return;
         if (!session?.user) {
+          // P23-M8-b-2 — mobil `app/index.tsx`'teki (P23-M8-b) aynı
+          // düzeltmenin web karşılığı: `getSession()` token yenileme ağ
+          // kaynaklı başarısız olduğunda da `session: null` döndürür (storage
+          // token'ı SİLMEZ). Önceki kod bunu "oturum yok" ile eşitleyip
+          // kullanıcıyı hâlâ giriş yapmışken açılış ekranında bırakıyordu —
+          // "sürekli Onboarding/Buyer'a düşme" bulgusunun kök nedenlerinden
+          // biri buydu. Ağ kaynaklıysa ve önbellekte bilinen bir kullanıcı
+          // varsa ona güvenip devam ediyoruz.
+          const cached = useHasat.getState().user;
+          if (isNetworkAuthError(error) && cached) {
+            router.navigate({ to: cached.role === "buyer" ? "/buyer/discover" : "/farmer/home" });
+            return;
+          }
           setChecking(false);
           return;
         }

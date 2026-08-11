@@ -168,11 +168,32 @@ function AuthBootstrap() {
     // anda tetiklediğinde (`signOut()` bu event'i kendi promise'i
     // sonuçlanmadan ateşliyor) yarışan iki `navigate()` çağrısı "çıkış fatal
     // hata veriyor" bug'ının kök nedeniydi (bkz. sessionGuard.ts).
+    //
+    // P23-M8-b-2 — T1'in kendi düzeltmesinin açtığı regresyon: bu handler
+    // HER `SIGNED_OUT`'u gerçek çıkış sayıyordu. İki savunma eklendi:
+    // (1) `navigator.onLine` false ise (captive-portal/geçici bağlantı
+    // sorunu — gotrue-js saf ağ hatalarında zaten SIGNED_OUT yayınlamıyor,
+    // bkz. sessionGuard.ts başlık notu, ama sunucudan gelen tuhaf bir yanıt
+    // yine de yanlışlıkla non-retryable sayılabilir) temizlik atlanır —
+    // token storage'da kalıyor, bir sonraki başarılı yenilemede kendiliğinden
+    // düzelir. (2) `useHasat.getState().user` zaten null'sa (önceki bir
+    // SIGNED_OUT'ta veya hiç giriş yapılmadıysa) tekrar temizlenecek/
+    // bildirilecek bir şey yok — bu, "oturumunuz sonlandı" toast'ının art
+    // arda tekrar tekrar çıkmasının kök nedeniydi (her başarısız yenileme
+    // denemesi kendi SIGNED_OUT'unu üretiyordu).
     const { data: sub } = supabase.auth.onAuthStateChange((event) => {
       if (event === "SIGNED_OUT") {
+        const wasKnownAuthenticated = !!useHasat.getState().user;
+        const expected = takeExpectedSignOut();
+        if (!expected && typeof navigator !== "undefined" && !navigator.onLine) {
+          return;
+        }
+        if (!wasKnownAuthenticated && !expected) {
+          return;
+        }
         reset();
         queryClient.clear();
-        if (!takeExpectedSignOut()) {
+        if (!expected) {
           toast.error("Oturumun sona erdi. Lütfen tekrar giriş yap.");
         }
         router.navigate({ to: "/" });
