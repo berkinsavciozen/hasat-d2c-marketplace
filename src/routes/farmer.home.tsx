@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { useHasat } from "@/lib/hasat/store";
-import { useFarmerListings, useEntries, useFarmerOffers, useFarmerOrders } from "@/lib/hasat/queries";
+import { useFarmerListings, useEntries, useFarmerOffers, useFarmerOrders, useParcels } from "@/lib/hasat/queries";
 import { AIBox } from "@/components/hasat/AIBox";
 import { FarmerHeader } from "./farmer";
 import { formatTRY, formatCrop } from "@/lib/hasat/format";
@@ -60,6 +60,7 @@ function Home() {
   const { data: listings = [] } = useFarmerListings();
   const { data: offers = [] } = useFarmerOffers();
   const { data: orders = [] } = useFarmerOrders();
+  const { data: parcels = [] } = useParcels();
 
   const [tourOpen, setTourOpen] = useState(false);
   useEffect(() => {
@@ -198,24 +199,35 @@ function Home() {
         </div>
 
         {isEmpty ? (
-          <div className="rounded-2xl border border-dashed p-8 text-center">
-            <div className="text-4xl mb-2">🌾</div>
-            <div className="font-serif text-lg">Hasat'a hoş geldiniz</div>
-            <div className="text-sm text-hmuted mt-1">
-              Başlamak için sohbete yazın, vitrininize bir ürün ekleyin veya WhatsApp'tan gönderin.
+          <div className="rounded-2xl border border-dashed p-6">
+            <div className="text-center">
+              <div className="text-4xl mb-2">🌾</div>
+              <div className="font-serif text-lg">Hasat'a hoş geldiniz</div>
+              <div className="text-sm text-hmuted mt-1">Nasıl başlarım? Üç adım:</div>
             </div>
-            <div className="mt-4 flex flex-wrap justify-center gap-2">
-              <button
-                type="button"
+            <ol className="mt-5 space-y-3">
+              <StartStep
+                done={parcels.length > 0}
+                label="Parsel ekleyin"
+                desc="Arazinizi ve yetiştirdiğiniz ürünü tanımlayın."
+                to="/farmer/journal"
+                cta="Parsel Ekle"
+              />
+              <StartStep
+                done={entries.length > 0}
+                label="Hasadınızı kaydedin"
+                desc="Sohbete yazın ya da WhatsApp'tan gönderin — opsiyonel ama önerilir."
+                cta="Hasat Kaydet"
                 onClick={() => openChat("Hasat kaydı eklemek istiyorum: ")}
-                className="rounded-full bg-saffron px-4 py-2 text-sm font-medium text-white"
-              >
-                Hasat Kaydet
-              </button>
-              <Link to="/farmer/storefront" className="rounded-full border border-saffron px-4 py-2 text-sm font-medium text-saffron">
-                Vitrine Ekle
-              </Link>
-            </div>
+              />
+              <StartStep
+                done={listings.length > 0}
+                label="Vitrine ilan ekleyin"
+                desc="Ürününüzü yayınlayın, alıcılar teklif versin."
+                to="/farmer/storefront"
+                cta="Vitrine Ekle"
+              />
+            </ol>
           </div>
         ) : (
           <>
@@ -279,5 +291,63 @@ function Home() {
         onClose={() => setTourOpen(false)}
       />
     </>
+  );
+}
+
+// P23-M8-c (E4): "Nasıl başlarım" rehberi — boş hesaplı bir çiftçiye ilk
+// parsel/ilan oluşturma sırasını (parsel → hasat kaydı (opsiyonel) →
+// vitrin) gösterir. `ListingSheet` (farmer.storefront.tsx) parsel
+// seçilmeden yeni ilan kaydetmeyi reddediyor, bu yüzden sıra önemli —
+// önceki metin ("Vitrine bir ürün ekleyin") parsel adımını hiç
+// söylemiyordu.
+function StartStep({
+  done,
+  label,
+  desc,
+  cta,
+  to,
+  onClick,
+}: {
+  done: boolean;
+  label: string;
+  desc: string;
+  cta: string;
+  to?: "/farmer/journal" | "/farmer/storefront";
+  onClick?: () => void;
+}) {
+  return (
+    <li className="flex items-start gap-3">
+      <span
+        className="grid h-6 w-6 shrink-0 place-items-center rounded-full text-xs font-bold"
+        style={{
+          background: done ? "var(--sage)" : "var(--saffron)",
+          color: "white",
+        }}
+      >
+        {done ? "✓" : ""}
+      </span>
+      <div className="min-w-0 flex-1">
+        <div className="text-sm font-medium">{label}</div>
+        <div className="text-xs text-hmuted">{desc}</div>
+      </div>
+      {!done && (
+        to ? (
+          <Link
+            to={to}
+            className="shrink-0 rounded-full border border-saffron px-3 py-1.5 text-xs font-medium text-saffron whitespace-nowrap"
+          >
+            {cta}
+          </Link>
+        ) : (
+          <button
+            type="button"
+            onClick={onClick}
+            className="shrink-0 rounded-full border border-saffron px-3 py-1.5 text-xs font-medium text-saffron whitespace-nowrap"
+          >
+            {cta}
+          </button>
+        )
+      )}
+    </li>
   );
 }

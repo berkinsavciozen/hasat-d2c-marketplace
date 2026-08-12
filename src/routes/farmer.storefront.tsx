@@ -366,6 +366,20 @@ function ListingSheet({ open, editing, onClose }: { open: boolean; editing: List
       );
       if (!ok) return;
     }
+    // P23-M8-c (E4): fotoğraf zorunlu değil (Berkin kararı) — ama ilan
+    // alıcılara görünür hale gelmeden (yeni aktif ilan ya da taslağın
+    // yayınlanması) hemen önce yumuşak bir uyarı gösteriliyor. Zaten aktif
+    // bir ilanın diğer alanlarını düzenlerken (fotoğraf durumu değişmediği
+    // sürece) tekrar sormuyoruz — her düzenlemede aynı uyarıyı görmek
+    // rahatsız edici olurdu.
+    const hasPhoto = existingPhotos.length > 0 || photoFiles.length > 0;
+    const becomingActive = editing ? isDraft : !batchDecisionOverride;
+    if (becomingActive && !hasPhoto) {
+      const ok = window.confirm(
+        "Fotoğraflı ilanlar daha çok teklif alıyor. Fotoğrafsız devam etmek istiyor musunuz?"
+      );
+      if (!ok) return;
+    }
     try {
       if (editing) {
         const patch: Partial<Listing> = {
