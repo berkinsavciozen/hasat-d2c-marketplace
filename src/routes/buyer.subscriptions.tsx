@@ -3,7 +3,7 @@ import { useState } from "react";
 import { BuyerHeader } from "@/components/hasat/BuyerHeader";
 import { LoadingDots } from "@/components/hasat/LoadingDots";
 import { useMySubscriptions, useCancelSubscription, useFarmerActiveListings, useSubscriptionFulfillment } from "@/lib/hasat/queries";
-import { formatTRY, formatCrop } from "@/lib/hasat/format";
+import { formatTRY, formatCrop, formatQuantity } from "@/lib/hasat/format";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -39,7 +39,7 @@ function FulfillmentBar({ id, target }: { id: string; target: number | null }) {
     <div className="mt-3">
       <div className="flex items-center justify-between text-[10px] text-hmuted uppercase tracking-wider mb-1">
         <span>Teslim edildi</span>
-        <span>{data.deliveredQty.toFixed(0)} / {target} · {pct}%</span>
+        <span>{formatQuantity(data.deliveredQty, "kg")} / {formatQuantity(target, "kg")} · {pct}%</span>
       </div>
       <div className="h-1.5 w-full rounded-full bg-muted overflow-hidden">
         <div className="h-full" style={{ width: `${pct}%`, background: "var(--saffron)" }} />
@@ -137,7 +137,7 @@ function Subscriptions() {
                     <CalendarDays className="h-3.5 w-3.5" style={{ color: "var(--saffron)" }} />
                     <span className="text-dark">
                       Sonraki hasat: <span className="font-medium">{nextLabel}</span>
-                      {s.estimatedQty != null ? ` · ~${s.estimatedQty} kg` : ""}
+                      {s.estimatedQty != null ? ` · ~${formatQuantity(s.estimatedQty, "kg")} kg` : ""}
                     </span>
                   </div>
                 )}
@@ -148,7 +148,7 @@ function Subscriptions() {
                       <div className="flex items-center gap-1 text-hmuted text-[10px] uppercase tracking-wider">
                         <ShieldCheck className="h-3 w-3" /> Taahhüt
                       </div>
-                      <div className="font-mono text-dark mt-0.5">{s.volumeCommitment} kg/ay</div>
+                      <div className="font-mono text-dark mt-0.5">{formatQuantity(s.volumeCommitment, "kg")} kg/ay</div>
                     </div>
                   )}
                   {s.priceLock && s.lockedPrice != null && (
@@ -235,7 +235,7 @@ function Subscriptions() {
                       <div className="min-w-0">
                         <div className="font-medium text-dark truncate">{formatCrop(l.crop)}</div>
                         <div className="text-[11px] text-hmuted">
-                          Min. {l.minOrder} {l.unit} · Stok {l.quantity} {l.unit}
+                          Min. {formatQuantity(l.minOrder, l.unit)} {l.unit} · Stok {formatQuantity(l.quantity, l.unit)} {l.unit}
                         </div>
                       </div>
                       <div className="text-right">

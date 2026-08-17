@@ -6,6 +6,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
 import { LoadingDots } from "@/components/hasat/LoadingDots";
 import { DeliveryFields, DELIVERY_OPTIONS } from "@/components/hasat/DeliveryFields";
+import { CropRequestModal } from "@/components/hasat/CropRequestModal";
 import { formatTRY, formatCrop, formatQuantity } from "@/lib/hasat/format";
 import { convertQuantity } from "@/lib/core";
 import { cropEmoji, findCropConfig, resolveListingPhoto, useCropConfigMap } from "@/lib/hasat/crop-config";
@@ -36,8 +37,43 @@ export const Route = createFileRoute("/buyer/product/$farmerId/$crop")({
       <button onClick={reset} className="rounded-full bg-saffron text-white px-4 py-2 text-sm">Yeniden dene</button>
     </div>
   ),
-  notFoundComponent: () => <div className="p-8 text-center text-hmuted">Bu üreticinin bu üründe aktif partisi yok.</div>,
+  notFoundComponent: ProductNotFound,
 });
+
+// P23-M8-c2 (T3) — bu ekran daha önce `notFoundComponent` olarak ölü bir
+// mesaj gösteriyordu: hiçbir CTA/geri linki yok, kullanıcı burada tıkanıp
+// kalıyordu. 9/70 crop'ta aktif ilan olduğu gerçeğiyle (bkz. `_Context.md`
+// → "Arz gerçeği") bu ekranın gerçek bir çıkmaz olma ihtimali düşük değil —
+// eşleşen bir malzemenin partisi teklif oluşturulurken tükenirse de aynı
+// yola düşülür. Diğer boş-durum yüzeyleriyle (`buyer.discover.tsx`, tarif
+// malzeme kartı) aynı desen: "Talep Et" CTA'sı, aynı paylaşılan
+// `CropRequestModal`.
+function ProductNotFound() {
+  const { crop } = Route.useParams();
+  const [requestOpen, setRequestOpen] = useState(false);
+  return (
+    <div className="p-8 text-center">
+      <Link to="/buyer/discover" className="inline-flex items-center gap-1.5 text-xs text-hmuted hover:underline">
+        <ArrowLeft className="h-3.5 w-3.5" /> Keşfet'e dön
+      </Link>
+      <div className="mt-6 text-6xl">🌾</div>
+      <div className="mt-3 font-serif text-lg">Bu üreticinin bu üründe aktif partisi yok</div>
+      <div className="mt-1 text-sm text-hmuted">
+        {formatCrop(crop)} için şu an satılık parti bulunmuyor — üretici tükenmiş veya ilanı kapatmış olabilir.
+      </div>
+      <button
+        onClick={() => setRequestOpen(true)}
+        className="mt-4 inline-flex items-center rounded-full px-4 py-2 text-xs font-medium min-h-[44px]"
+        style={{ background: "var(--saffron)", color: "#fff" }}
+      >
+        Bu ürünü talep et
+      </button>
+      {requestOpen && (
+        <CropRequestModal initialCrop={crop} lockCropName onClose={() => setRequestOpen(false)} />
+      )}
+    </div>
+  );
+}
 
 function useFarmerCropListings(farmerId: string, crop: string) {
   return useQuery({

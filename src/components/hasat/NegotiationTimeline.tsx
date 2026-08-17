@@ -1,4 +1,4 @@
-import { formatTRY } from "@/lib/hasat/format";
+import { formatTRY, formatQuantity } from "@/lib/hasat/format";
 import type { NegotiationSnapshot, Offer, OfferSnapshot } from "@/lib/hasat/types";
 
 type Props = {
@@ -117,7 +117,7 @@ function Round({
       <div className="grid grid-cols-2 gap-x-3 gap-y-1 text-xs">
         <Field
           label="Miktar"
-          value={`${snap.quantity} ${unit}`}
+          value={`${formatQuantity(snap.quantity, unit)} ${unit}`}
           changed={!!prev && prev.quantity !== snap.quantity}
         />
         <Field

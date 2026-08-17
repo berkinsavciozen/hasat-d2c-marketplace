@@ -10,7 +10,7 @@ import {
   useUpdateSubscriptionSchedule,
   useSubscriptionFulfillment,
 } from "@/lib/hasat/queries";
-import { formatCrop, formatTRY } from "@/lib/hasat/format";
+import { formatCrop, formatTRY, formatQuantity } from "@/lib/hasat/format";
 
 export const Route = createFileRoute("/farmer/subscriptions")({
   head: () => ({
@@ -38,7 +38,7 @@ function FulfillmentBar({ id, target }: { id: string; target: number | null }) {
     <div className="mt-3">
       <div className="flex items-center justify-between text-[10px] text-hmuted uppercase tracking-wider mb-1">
         <span>Teslim edildi</span>
-        <span>{data.deliveredQty.toFixed(0)} / {target} · {pct}%</span>
+        <span>{formatQuantity(data.deliveredQty, "kg")} / {formatQuantity(target, "kg")} · {pct}%</span>
       </div>
       <div className="h-1.5 w-full rounded-full bg-muted overflow-hidden">
         <div className="h-full" style={{ width: `${pct}%`, background: "var(--saffron)" }} />
@@ -234,7 +234,7 @@ function Card({ sub, children }: { sub: SubCard; children?: React.ReactNode }) {
             {sub.buyerCity ?? ""}
             {sub.buyerCity ? " · " : ""}
             {sub.crop ? `${formatCrop(sub.crop)}` : ""}
-            {sub.volumeCommitment != null ? ` · ${sub.volumeCommitment} kg/ay` : ""}
+            {sub.volumeCommitment != null ? ` · ${formatQuantity(sub.volumeCommitment, "kg")} kg/ay` : ""}
           </div>
         </div>
         <span
