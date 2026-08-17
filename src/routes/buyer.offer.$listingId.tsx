@@ -29,7 +29,21 @@ export const Route = createFileRoute("/buyer/offer/$listingId")({
     return out;
   },
   component: MakeOffer,
-  notFoundComponent: () => <div className="p-8 text-center text-hmuted">Ürün bulunamadı.</div>,
+  // P23-M8-c2 (T3) — önceden yönlendirme yoktu (kullanıcı tıkanıp kalıyordu,
+  // bkz. `buyer.product.$farmerId.$crop.tsx`'teki aynı sınıf düzeltme). Bu
+  // ekranda `crop` URL'de yok (yalnızca `listingId`) — ilan zaten bulunamadığı
+  // için hangi ürün olduğu bilinmiyor, bu yüzden "Talep Et" CTA'sı yerine
+  // Keşfet'e geri dönüş sunuluyor.
+  notFoundComponent: () => (
+    <div className="p-8 text-center">
+      <Link to="/buyer/discover" className="inline-flex items-center gap-1.5 text-xs text-hmuted hover:underline">
+        <ArrowLeft className="h-3.5 w-3.5" /> Keşfet'e dön
+      </Link>
+      <div className="mt-4 text-sm text-hmuted">
+        Bu ilan bulunamadı — kaldırılmış veya tükenmiş olabilir.
+      </div>
+    </div>
+  ),
 });
 
 const DELIVERY = [

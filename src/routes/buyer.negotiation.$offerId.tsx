@@ -4,7 +4,7 @@ import { useState } from "react";
 import { ArrowLeft } from "lucide-react";
 import { useBuyerOffers, useUpdateOfferStatus, useCounterOffer } from "@/lib/hasat/queries";
 import { LoadingDots } from "@/components/hasat/LoadingDots";
-import { formatTRY, formatCrop } from "@/lib/hasat/format";
+import { formatTRY, formatCrop, formatQuantity } from "@/lib/hasat/format";
 import { Stepper } from "@/components/hasat/Stepper";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Input } from "@/components/ui/input";
@@ -138,7 +138,7 @@ function SideCard({ title, snap, unit, total, highlight, original }: { title: st
     <div className={`rounded-2xl border p-4 ${highlight ? "border-saffron bg-saffron/5" : "bg-card"}`}>
       <div className="text-xs font-medium uppercase tracking-wider text-hmuted">{title}</div>
       <div className="mt-3 space-y-2 text-sm">
-        <Row label="Miktar" value={`${snap.quantity} ${unit}`} cls={diffCls(!!original && snap.quantity !== original.quantity)} />
+        <Row label="Miktar" value={`${formatQuantity(snap.quantity, unit)} ${unit}`} cls={diffCls(!!original && snap.quantity !== original.quantity)} />
         <Row label="Birim Fiyat" value={`${formatTRY(snap.pricePerUnit)}/${unit}`} cls={diffCls(!!original && snap.pricePerUnit !== original.pricePerUnit)} />
         <Row label="Teslimat" value={snap.delivery ?? "—"} cls={diffCls(!!original && snap.delivery !== original.delivery)} />
         <Row label="Teslim Tarihi" value={snap.deliveryDate || "—"} cls={diffCls(!!original && snap.deliveryDate !== original.deliveryDate)} />

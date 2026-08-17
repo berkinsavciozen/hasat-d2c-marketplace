@@ -30,7 +30,7 @@ import {
   cropChipColor,
 } from "@/lib/hasat/journal-meta";
 import { toast } from "sonner";
-import { formatCrop } from "@/lib/hasat/format";
+import { formatCrop, formatQuantity } from "@/lib/hasat/format";
 import { AIBox } from "@/components/hasat/AIBox";
 import { CropChips } from "@/components/hasat/CropChips";
 
@@ -335,7 +335,7 @@ function Journal() {
                               <HealthDots value={meta.health} />
                               {e.quantity > 0 && (
                                 <div className="mt-1.5 text-right font-mono text-[11px] text-hmuted">
-                                  {e.quantity}{e.unit}
+                                  {formatQuantity(e.quantity, e.unit)}{e.unit}
                                 </div>
                               )}
                             </div>
@@ -658,7 +658,7 @@ function LogRoutineEntrySheet({ row, cropConfigMap, onClose }: { row: RoutineMai
                         borderColor: active ? "var(--saffron)" : "var(--border)",
                       }}
                     >
-                      {b.batchName ?? `${b.quantity} ${b.unit}`}
+                      {b.batchName ?? `${formatQuantity(b.quantity, b.unit)} ${b.unit}`}
                     </button>
                   );
                 })}

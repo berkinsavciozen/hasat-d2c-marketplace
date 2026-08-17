@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useEntry, useEntries, useDeleteEntry, useFarmerListings, useHarvestListingLinks, useLinkHarvestToListing, useUnlinkHarvestFromListing } from "@/lib/hasat/queries";
 import { ProgressDots } from "@/components/hasat/ProgressDots";
 import { toast } from "sonner";
-import { formatTRY, formatDelta } from "@/lib/hasat/format";
+import { formatTRY, formatDelta, formatQuantity } from "@/lib/hasat/format";
 import { formatCrop } from "@/lib/hasat/format";
 import { AIInsightBanner } from "@/components/hasat/AIInsightBanner";
 import { BarChart, Bar, XAxis, ResponsiveContainer, Cell } from "recharts";
@@ -83,7 +83,7 @@ function EntryDetail() {
         <div className="grid grid-cols-2 gap-3">
           <div className="rounded-2xl bg-card border p-4">
             <div className="text-xs text-hmuted">Toplam</div>
-            <div className="font-mono text-2xl mt-1">{entry.quantity}<span className="text-sm ml-1 text-hmuted">{entry.unit}</span></div>
+            <div className="font-mono text-2xl mt-1">{formatQuantity(entry.quantity, entry.unit)}<span className="text-sm ml-1 text-hmuted">{entry.unit}</span></div>
           </div>
           <div className="rounded-2xl bg-card border p-4">
             <div className="text-xs text-hmuted">Kalite</div>
@@ -225,7 +225,7 @@ function BatchLinkSection({ entryId, entryCrop }: { entryId: string; entryCrop: 
             <option value="">Ürün seç…</option>
             {candidates.map((l) => (
               <option key={l.id} value={l.id}>
-                {formatCrop(l.crop)} · {l.quantity} {l.unit} · ₺{l.pricePerUnit}/{l.unit}
+                {formatCrop(l.crop)} · {formatQuantity(l.quantity, l.unit)} {l.unit} · ₺{l.pricePerUnit}/{l.unit}
               </option>
             ))}
           </select>
