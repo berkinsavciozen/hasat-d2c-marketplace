@@ -4,9 +4,9 @@
 // Yeniden üretmek için:
 //   supabase gen types typescript --project-id efuqpiaavrzimvstpdpm > core/db/types.ts
 // ve üretim sonrası bu başlığı tekrar ekle.
-// Son üretim: 2026-08-18 (konsolide şema migration'ı — allergen_labels, required_equipment,
-// besin değerleri kolonları, share_token, cloned_from_recipe_id eklendi;
-// notif_prefs.community_push düşürüldü. Bkz. hasat-vault Build/Launch-Scope-Plan.md §4)
+// Son üretim: 2026-08-18 (F3 migration round 2 — notif_prefs.price_alert_push/sms/whatsapp
+// düşürüldü; offer_rejected_push/sms, order_preparing_push/sms, order_completed_push/sms
+// eklendi. Bkz. hasat-vault Build/Launch-Scope-Plan.md → F3.)
 
 export type Json =
   | string
@@ -1252,17 +1252,20 @@ export type Database = {
           offer_accepted_push: boolean
           offer_accepted_sms: boolean
           offer_countered_push: boolean
+          offer_rejected_push: boolean
+          offer_rejected_sms: boolean
           order_cancelled_push: boolean
           order_cancelled_sms: boolean
+          order_completed_push: boolean
+          order_completed_sms: boolean
           order_delivered_push: boolean
           order_delivered_sms: boolean
+          order_preparing_push: boolean
+          order_preparing_sms: boolean
           order_shipped_push: boolean
           order_shipped_sms: boolean
           payment_confirmed_push: boolean
           payment_confirmed_sms: boolean
-          price_alert_push: boolean
-          price_alert_sms: boolean
-          price_alert_whatsapp: boolean
           subscription_accepted_push: boolean
           subscription_accepted_sms: boolean
           subscription_new_push: boolean
@@ -1285,17 +1288,20 @@ export type Database = {
           offer_accepted_push?: boolean
           offer_accepted_sms?: boolean
           offer_countered_push?: boolean
+          offer_rejected_push?: boolean
+          offer_rejected_sms?: boolean
           order_cancelled_push?: boolean
           order_cancelled_sms?: boolean
+          order_completed_push?: boolean
+          order_completed_sms?: boolean
           order_delivered_push?: boolean
           order_delivered_sms?: boolean
+          order_preparing_push?: boolean
+          order_preparing_sms?: boolean
           order_shipped_push?: boolean
           order_shipped_sms?: boolean
           payment_confirmed_push?: boolean
           payment_confirmed_sms?: boolean
-          price_alert_push?: boolean
-          price_alert_sms?: boolean
-          price_alert_whatsapp?: boolean
           subscription_accepted_push?: boolean
           subscription_accepted_sms?: boolean
           subscription_new_push?: boolean
@@ -1318,17 +1324,20 @@ export type Database = {
           offer_accepted_push?: boolean
           offer_accepted_sms?: boolean
           offer_countered_push?: boolean
+          offer_rejected_push?: boolean
+          offer_rejected_sms?: boolean
           order_cancelled_push?: boolean
           order_cancelled_sms?: boolean
+          order_completed_push?: boolean
+          order_completed_sms?: boolean
           order_delivered_push?: boolean
           order_delivered_sms?: boolean
+          order_preparing_push?: boolean
+          order_preparing_sms?: boolean
           order_shipped_push?: boolean
           order_shipped_sms?: boolean
           payment_confirmed_push?: boolean
           payment_confirmed_sms?: boolean
-          price_alert_push?: boolean
-          price_alert_sms?: boolean
-          price_alert_whatsapp?: boolean
           subscription_accepted_push?: boolean
           subscription_accepted_sms?: boolean
           subscription_new_push?: boolean
