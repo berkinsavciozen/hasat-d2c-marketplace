@@ -29,8 +29,10 @@ import {
   Store,
   NotebookPen,
   LineChart,
+  Smartphone,
 } from "lucide-react";
 import { BUYER_VALUES, FARMER_VALUES, type LandingValue } from "@/lib/hasat/landing-values";
+import { StoreBadges } from "@/components/hasat/StoreBadges";
 import { supabase } from "@/integrations/supabase/client";
 import { useHasat } from "@/lib/hasat/store";
 import { isNetworkAuthError } from "@/lib/hasat/sessionGuard";
@@ -228,6 +230,7 @@ function LandingPage() {
       <AISection />
       <TrustScoreLadder />
       <IndoorSection />
+      <MobileAppSection />
       <FAQ />
       <Footer />
     </div>
@@ -1447,6 +1450,48 @@ function CountUp({ to, duration = 1200 }: { to: number; duration?: number }) {
     return () => io.disconnect();
   }, [to, duration]);
   return <span ref={ref}>{val}</span>;
+}
+
+/* ---------- Mobile app awareness ---------- */
+function MobileAppSection() {
+  const ref = useReveal<HTMLDivElement>();
+  return (
+    <section
+      className="px-4 py-16 md:py-20 border-t"
+      style={{ borderColor: "var(--lp-line)", background: "var(--lp-cream)" }}
+      ref={ref}
+    >
+      <div className="mx-auto max-w-4xl">
+        <div
+          className="lp-card rounded-3xl p-8 md:p-12 text-center lp-reveal"
+          style={{ background: "var(--lp-cream-2)" }}
+        >
+          <div
+            className="mx-auto mb-4 grid place-items-center w-12 h-12 rounded-2xl"
+            style={{
+              background: "color-mix(in oklab, var(--lp-primary) 12%, transparent)",
+              color: "var(--lp-primary)",
+            }}
+          >
+            <Smartphone className="w-6 h-6" />
+          </div>
+          <h2 className="font-serif text-2xl md:text-3xl mb-3" style={{ color: "var(--lp-ink)" }}>
+            Hasat artık cebinde.
+          </h2>
+          <p
+            className="text-sm md:text-base max-w-lg mx-auto mb-7"
+            style={{ color: "var(--lp-muted)" }}
+          >
+            Bildirim al, tarif üzerinden ürün talep et, teklif oluştur ve siparişini takip et —
+            Hasat mobil uygulaması çok yakında App Store ve Google Play'de.
+          </p>
+          <div className="flex justify-center">
+            <StoreBadges />
+          </div>
+        </div>
+      </div>
+    </section>
+  );
 }
 
 /* ---------- FAQ ---------- */

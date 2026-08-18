@@ -478,7 +478,7 @@ function RecipeDetailPage() {
           </div>
         </section>
 
-        <MobileNudge text="Telefonda pişirme modu — adım adım, timer'lı, offline" />
+        <MobileNudge text="Telefonda pişirme modu — adım adım, timer'lı, offline" withInfoCta />
 
         <section className="space-y-3">
           <h2 className="text-xs font-medium uppercase tracking-wider text-hmuted">Hazırlanışı</h2>
