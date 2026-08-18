@@ -4,7 +4,9 @@
 // Yeniden üretmek için:
 //   supabase gen types typescript --project-id efuqpiaavrzimvstpdpm > core/db/types.ts
 // ve üretim sonrası bu başlığı tekrar ekle.
-// Son üretim: 2026-08-10 (P23-M8-b — notif_prefs push kolonları eklendi)
+// Son üretim: 2026-08-18 (konsolide şema migration'ı — allergen_labels, required_equipment,
+// besin değerleri kolonları, share_token, cloned_from_recipe_id eklendi;
+// notif_prefs.community_push düşürüldü. Bkz. hasat-vault Build/Launch-Scope-Plan.md §4)
 
 export type Json =
   | string
@@ -1237,7 +1239,6 @@ export type Database = {
       }
       notif_prefs: {
         Row: {
-          community_push: boolean
           crop_request_match_push: boolean
           crop_request_match_sms: boolean
           dispute_opened_push: boolean
@@ -1271,7 +1272,6 @@ export type Database = {
           user_id: string
         }
         Insert: {
-          community_push?: boolean
           crop_request_match_push?: boolean
           crop_request_match_sms?: boolean
           dispute_opened_push?: boolean
@@ -1305,7 +1305,6 @@ export type Database = {
           user_id: string
         }
         Update: {
-          community_push?: boolean
           crop_request_match_push?: boolean
           crop_request_match_sms?: boolean
           dispute_opened_push?: boolean
@@ -2342,7 +2341,11 @@ export type Database = {
       }
       recipes: {
         Row: {
+          allergen_labels: string[] | null
           author_type: string
+          calories: number | null
+          carbs_g: number | null
+          cloned_from_recipe_id: string | null
           cook_minutes: number | null
           cover_photo_url: string | null
           created_at: string
@@ -2351,11 +2354,18 @@ export type Database = {
           diet_tags: string[]
           difficulty: string | null
           extraction_confidence: number | null
+          fat_g: number | null
+          fiber_g: number | null
           id: string
+          micronutrients: Json | null
+          nutrition_calculated_at: string | null
           owner_id: string | null
           prep_minutes: number | null
+          protein_g: number | null
+          required_equipment: string[] | null
           rest_minutes: number | null
           servings: number | null
+          share_token: string | null
           slug: string
           source_type: string
           source_url: string | null
@@ -2365,7 +2375,11 @@ export type Database = {
           visibility: string
         }
         Insert: {
+          allergen_labels?: string[] | null
           author_type?: string
+          calories?: number | null
+          carbs_g?: number | null
+          cloned_from_recipe_id?: string | null
           cook_minutes?: number | null
           cover_photo_url?: string | null
           created_at?: string
@@ -2374,11 +2388,18 @@ export type Database = {
           diet_tags?: string[]
           difficulty?: string | null
           extraction_confidence?: number | null
+          fat_g?: number | null
+          fiber_g?: number | null
           id?: string
+          micronutrients?: Json | null
+          nutrition_calculated_at?: string | null
           owner_id?: string | null
           prep_minutes?: number | null
+          protein_g?: number | null
+          required_equipment?: string[] | null
           rest_minutes?: number | null
           servings?: number | null
+          share_token?: string | null
           slug: string
           source_type?: string
           source_url?: string | null
@@ -2388,7 +2409,11 @@ export type Database = {
           visibility?: string
         }
         Update: {
+          allergen_labels?: string[] | null
           author_type?: string
+          calories?: number | null
+          carbs_g?: number | null
+          cloned_from_recipe_id?: string | null
           cook_minutes?: number | null
           cover_photo_url?: string | null
           created_at?: string
@@ -2397,11 +2422,18 @@ export type Database = {
           diet_tags?: string[]
           difficulty?: string | null
           extraction_confidence?: number | null
+          fat_g?: number | null
+          fiber_g?: number | null
           id?: string
+          micronutrients?: Json | null
+          nutrition_calculated_at?: string | null
           owner_id?: string | null
           prep_minutes?: number | null
+          protein_g?: number | null
+          required_equipment?: string[] | null
           rest_minutes?: number | null
           servings?: number | null
+          share_token?: string | null
           slug?: string
           source_type?: string
           source_url?: string | null
@@ -2411,6 +2443,27 @@ export type Database = {
           visibility?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "recipes_cloned_from_recipe_id_fkey"
+            columns: ["cloned_from_recipe_id"]
+            isOneToOne: false
+            referencedRelation: "recipes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "recipes_cloned_from_recipe_id_fkey"
+            columns: ["cloned_from_recipe_id"]
+            isOneToOne: false
+            referencedRelation: "v_kpi_recipe_funnel_by_recipe"
+            referencedColumns: ["recipe_id"]
+          },
+          {
+            foreignKeyName: "recipes_cloned_from_recipe_id_fkey"
+            columns: ["cloned_from_recipe_id"]
+            isOneToOne: false
+            referencedRelation: "v_recipe_coverage"
+            referencedColumns: ["recipe_id"]
+          },
           {
             foreignKeyName: "recipes_owner_id_fkey"
             columns: ["owner_id"]
