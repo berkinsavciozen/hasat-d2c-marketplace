@@ -67,6 +67,10 @@ const FAQ_ITEMS: { q: string; a: string }[] = [
     q: "Çiftçi olarak nasıl başlarım?",
     a: "Telefon numaranla ücretsiz kaydolur, parselini ve ürününü eklersin — ilk ilanın otomatik olarak taslak oluşturulur, sen onayladığında yayınlanır.",
   },
+  {
+    q: "Tarifler ne işe yarıyor?",
+    a: "Hasat'ın editoryal tarifleri mevsimine göre yazılır; her tarifte hangi malzemenin Hasat'ta bulunabildiğini görür, malzemeyi doğrudan üreticiden istersin. Tarifleri süreye, diyet etiketine ve malzemesi Hasat'ta olup olmamasına göre filtreleyebilirsin.",
+  },
 ];
 
 export const Route = createFileRoute("/")({
