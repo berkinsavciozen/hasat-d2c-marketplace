@@ -1,6 +1,5 @@
 import { toast } from "sonner";
-
-const PUBLIC_BASE = "https://hasat.lovable.app";
+import { PUBLIC_BASE_URL as PUBLIC_BASE } from "@/lib/hasat/constants";
 
 export function slugifyFarmer(input: string): string {
   return input

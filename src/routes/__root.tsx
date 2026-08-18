@@ -13,6 +13,7 @@ import { toast } from "sonner";
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 import { takeExpectedSignOut } from "@/lib/hasat/sessionGuard";
+import { PUBLIC_BASE_URL } from "@/lib/hasat/constants";
 
 function NotFoundComponent() {
   return (
@@ -85,7 +86,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { property: "og:title", content: "Hasat — Çiftçi & Alıcı Platformu" },
       { property: "og:description", content: "Hasat, çiftçileri doğrudan restoran ve perakendecilere bağlayan izlenebilir tarım pazar yeridir." },
       { property: "og:type", content: "website" },
-      { property: "og:url", content: "https://hasat.lovable.app/" },
+      { property: "og:url", content: `${PUBLIC_BASE_URL}/` },
       { name: "twitter:card", content: "summary" },
       { name: "twitter:site", content: "@Lovable" },
       { name: "twitter:title", content: "Hasat — Çiftçi & Alıcı Platformu" },

@@ -4,13 +4,12 @@ import { toast } from "sonner";
 import { FarmerHeader } from "./farmer";
 import { useProfile, useReferredFarmers, useReferralQualifications, isEffectivelyPremium } from "@/lib/hasat/queries";
 import { LoadingDots } from "@/components/hasat/LoadingDots";
+import { PUBLIC_BASE_URL as PUBLIC_BASE } from "@/lib/hasat/constants";
 
 export const Route = createFileRoute("/farmer/referral")({
   head: () => ({ meta: [{ title: "Arkadaşını Davet Et — Hasat" }] }),
   component: ReferralPage,
 });
-
-const PUBLIC_BASE = "https://hasat.lovable.app";
 
 function ReferralPage() {
   const { data: profile, isLoading } = useProfile();
