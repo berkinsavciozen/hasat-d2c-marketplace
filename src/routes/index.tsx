@@ -1015,6 +1015,108 @@ function FarmerStory() {
   );
 }
 
+/* ---------- Role-based value propositions (config: @/lib/hasat/landing-values) ---------- */
+const ROLE_VALUE_ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
+  ChefHat,
+  SlidersHorizontal,
+  Sprout,
+  Package,
+  Bell,
+  Repeat,
+  Store,
+  NotebookPen,
+  LineChart,
+  MessageCircle,
+};
+
+function ValueList({
+  values,
+  accent,
+  tint,
+}: {
+  values: LandingValue[];
+  accent: string;
+  tint: string;
+}) {
+  return (
+    <ul className="space-y-3">
+      {values.map((v) => {
+        const Icon = ROLE_VALUE_ICONS[v.icon] ?? Sprout;
+        return (
+          <li key={v.title} className="lp-card rounded-2xl p-4 flex gap-3">
+            <span
+              className="grid place-items-center w-9 h-9 shrink-0 rounded-xl"
+              style={{ background: tint, color: accent }}
+            >
+              <Icon className="w-4 h-4" />
+            </span>
+            <div className="min-w-0">
+              <div className="font-serif text-base leading-tight mb-1" style={{ color: "var(--lp-ink)" }}>
+                {v.title}
+              </div>
+              <p className="text-sm" style={{ color: "var(--lp-muted)" }}>{v.body}</p>
+              {v.href ? (
+                <Link
+                  to={v.href}
+                  className="mt-2 inline-flex items-center gap-1 text-sm font-medium"
+                  style={{ color: accent }}
+                >
+                  {v.linkLabel ?? "İncele"} <ArrowRight className="w-3.5 h-3.5" />
+                </Link>
+              ) : null}
+            </div>
+          </li>
+        );
+      })}
+    </ul>
+  );
+}
+
+function RoleValues() {
+  const ref = useReveal<HTMLDivElement>();
+  return (
+    <section
+      className="px-4 py-16 md:py-24 border-t"
+      style={{ borderColor: "var(--lp-line)", background: "var(--lp-cream-2)" }}
+      ref={ref}
+    >
+      <div className="mx-auto max-w-6xl">
+        <div className="text-center mb-10 lp-reveal">
+          <h2 className="font-serif text-3xl md:text-4xl" style={{ color: "var(--lp-ink)" }}>
+            Hasat'ta ne yapabilirsin?
+          </h2>
+          <p className="mt-3 text-sm md:text-base max-w-2xl mx-auto" style={{ color: "var(--lp-muted)" }}>
+            Aynı platformun iki yüzü: alıcı mutfağından tarlaya ulaşır, üretici tarlasından
+            doğrudan alıcıya.
+          </p>
+        </div>
+        <div className="grid gap-6 md:grid-cols-2">
+          <div className="lp-reveal lp-reveal-d1">
+            <div className="text-[11px] uppercase tracking-widest mb-3" style={{ color: "var(--lp-muted)" }}>
+              Alıcı için
+            </div>
+            <ValueList
+              values={BUYER_VALUES}
+              accent="var(--lp-primary)"
+              tint="color-mix(in oklab, var(--lp-primary) 12%, transparent)"
+            />
+          </div>
+          <div className="lp-reveal lp-reveal-d2">
+            <div className="text-[11px] uppercase tracking-widest mb-3" style={{ color: "var(--lp-muted)" }}>
+              Üretici için
+            </div>
+            <ValueList
+              values={FARMER_VALUES}
+              accent="var(--lp-accent)"
+              tint="color-mix(in oklab, var(--lp-accent) 15%, transparent)"
+            />
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
 /* ---------- Buyer personas ---------- */
 function BuyerPersonas() {
   const ref = useReveal<HTMLDivElement>();
