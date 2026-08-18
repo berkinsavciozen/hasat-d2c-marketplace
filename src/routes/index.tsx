@@ -21,7 +21,16 @@ import {
   Users2,
   Lock,
   Percent,
+  ChefHat,
+  SlidersHorizontal,
+  Package,
+  Bell,
+  Repeat,
+  Store,
+  NotebookPen,
+  LineChart,
 } from "lucide-react";
+import { BUYER_VALUES, FARMER_VALUES, type LandingValue } from "@/lib/hasat/landing-values";
 import { supabase } from "@/integrations/supabase/client";
 import { useHasat } from "@/lib/hasat/store";
 import { isNetworkAuthError } from "@/lib/hasat/sessionGuard";
