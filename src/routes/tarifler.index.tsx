@@ -174,7 +174,7 @@ function RecipeListPage() {
           Malzemesi Hasat'ta olan tarifler
         </label>
 
-        <MobileNudge text="Kitaptaki tarifi telefonla çekip defterine aktar — Hasat mobil uygulamasında" />
+        <MobileNudge text="Kitaptaki tarifi telefonla çekip defterine aktar — Hasat mobil uygulamasında" withInfoCta />
 
         {filtered.length === 0 ? (
           <div className="rounded-2xl border border-dashed py-12 text-center text-hmuted">
