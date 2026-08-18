@@ -1229,8 +1229,9 @@ export type Database = {
       }
       notif_prefs: {
         Row: {
-          community_push: boolean
+          crop_request_match_push: boolean
           crop_request_match_sms: boolean
+          dispute_opened_push: boolean
           dispute_opened_sms: boolean
           harvest_time_push: boolean
           harvest_time_sms: boolean
@@ -1238,22 +1239,35 @@ export type Database = {
           new_offer_push: boolean
           new_offer_sms: boolean
           new_offer_whatsapp: boolean
+          offer_accepted_push: boolean
           offer_accepted_sms: boolean
+          offer_countered_push: boolean
+          offer_rejected_push: boolean
+          offer_rejected_sms: boolean
+          order_cancelled_push: boolean
           order_cancelled_sms: boolean
+          order_completed_push: boolean
+          order_completed_sms: boolean
+          order_delivered_push: boolean
           order_delivered_sms: boolean
+          order_preparing_push: boolean
+          order_preparing_sms: boolean
+          order_shipped_push: boolean
           order_shipped_sms: boolean
+          payment_confirmed_push: boolean
           payment_confirmed_sms: boolean
-          price_alert_push: boolean
-          price_alert_sms: boolean
-          price_alert_whatsapp: boolean
+          subscription_accepted_push: boolean
           subscription_accepted_sms: boolean
+          subscription_new_push: boolean
           subscription_new_sms: boolean
+          subscription_rejected_push: boolean
           subscription_rejected_sms: boolean
           user_id: string
         }
         Insert: {
-          community_push?: boolean
+          crop_request_match_push?: boolean
           crop_request_match_sms?: boolean
+          dispute_opened_push?: boolean
           dispute_opened_sms?: boolean
           harvest_time_push?: boolean
           harvest_time_sms?: boolean
@@ -1261,22 +1275,35 @@ export type Database = {
           new_offer_push?: boolean
           new_offer_sms?: boolean
           new_offer_whatsapp?: boolean
+          offer_accepted_push?: boolean
           offer_accepted_sms?: boolean
+          offer_countered_push?: boolean
+          offer_rejected_push?: boolean
+          offer_rejected_sms?: boolean
+          order_cancelled_push?: boolean
           order_cancelled_sms?: boolean
+          order_completed_push?: boolean
+          order_completed_sms?: boolean
+          order_delivered_push?: boolean
           order_delivered_sms?: boolean
+          order_preparing_push?: boolean
+          order_preparing_sms?: boolean
+          order_shipped_push?: boolean
           order_shipped_sms?: boolean
+          payment_confirmed_push?: boolean
           payment_confirmed_sms?: boolean
-          price_alert_push?: boolean
-          price_alert_sms?: boolean
-          price_alert_whatsapp?: boolean
+          subscription_accepted_push?: boolean
           subscription_accepted_sms?: boolean
+          subscription_new_push?: boolean
           subscription_new_sms?: boolean
+          subscription_rejected_push?: boolean
           subscription_rejected_sms?: boolean
           user_id: string
         }
         Update: {
-          community_push?: boolean
+          crop_request_match_push?: boolean
           crop_request_match_sms?: boolean
+          dispute_opened_push?: boolean
           dispute_opened_sms?: boolean
           harvest_time_push?: boolean
           harvest_time_sms?: boolean
@@ -1284,16 +1311,28 @@ export type Database = {
           new_offer_push?: boolean
           new_offer_sms?: boolean
           new_offer_whatsapp?: boolean
+          offer_accepted_push?: boolean
           offer_accepted_sms?: boolean
+          offer_countered_push?: boolean
+          offer_rejected_push?: boolean
+          offer_rejected_sms?: boolean
+          order_cancelled_push?: boolean
           order_cancelled_sms?: boolean
+          order_completed_push?: boolean
+          order_completed_sms?: boolean
+          order_delivered_push?: boolean
           order_delivered_sms?: boolean
+          order_preparing_push?: boolean
+          order_preparing_sms?: boolean
+          order_shipped_push?: boolean
           order_shipped_sms?: boolean
+          payment_confirmed_push?: boolean
           payment_confirmed_sms?: boolean
-          price_alert_push?: boolean
-          price_alert_sms?: boolean
-          price_alert_whatsapp?: boolean
+          subscription_accepted_push?: boolean
           subscription_accepted_sms?: boolean
+          subscription_new_push?: boolean
           subscription_new_sms?: boolean
+          subscription_rejected_push?: boolean
           subscription_rejected_sms?: boolean
           user_id?: string
         }
@@ -2301,7 +2340,11 @@ export type Database = {
       }
       recipes: {
         Row: {
+          allergen_labels: string[] | null
           author_type: string
+          calories: number | null
+          carbs_g: number | null
+          cloned_from_recipe_id: string | null
           cook_minutes: number | null
           cover_photo_url: string | null
           created_at: string
@@ -2310,11 +2353,18 @@ export type Database = {
           diet_tags: string[]
           difficulty: string | null
           extraction_confidence: number | null
+          fat_g: number | null
+          fiber_g: number | null
           id: string
+          micronutrients: Json | null
+          nutrition_calculated_at: string | null
           owner_id: string | null
           prep_minutes: number | null
+          protein_g: number | null
+          required_equipment: string[] | null
           rest_minutes: number | null
           servings: number | null
+          share_token: string | null
           slug: string
           source_type: string
           source_url: string | null
@@ -2324,7 +2374,11 @@ export type Database = {
           visibility: string
         }
         Insert: {
+          allergen_labels?: string[] | null
           author_type?: string
+          calories?: number | null
+          carbs_g?: number | null
+          cloned_from_recipe_id?: string | null
           cook_minutes?: number | null
           cover_photo_url?: string | null
           created_at?: string
@@ -2333,11 +2387,18 @@ export type Database = {
           diet_tags?: string[]
           difficulty?: string | null
           extraction_confidence?: number | null
+          fat_g?: number | null
+          fiber_g?: number | null
           id?: string
+          micronutrients?: Json | null
+          nutrition_calculated_at?: string | null
           owner_id?: string | null
           prep_minutes?: number | null
+          protein_g?: number | null
+          required_equipment?: string[] | null
           rest_minutes?: number | null
           servings?: number | null
+          share_token?: string | null
           slug: string
           source_type?: string
           source_url?: string | null
@@ -2347,7 +2408,11 @@ export type Database = {
           visibility?: string
         }
         Update: {
+          allergen_labels?: string[] | null
           author_type?: string
+          calories?: number | null
+          carbs_g?: number | null
+          cloned_from_recipe_id?: string | null
           cook_minutes?: number | null
           cover_photo_url?: string | null
           created_at?: string
@@ -2356,11 +2421,18 @@ export type Database = {
           diet_tags?: string[]
           difficulty?: string | null
           extraction_confidence?: number | null
+          fat_g?: number | null
+          fiber_g?: number | null
           id?: string
+          micronutrients?: Json | null
+          nutrition_calculated_at?: string | null
           owner_id?: string | null
           prep_minutes?: number | null
+          protein_g?: number | null
+          required_equipment?: string[] | null
           rest_minutes?: number | null
           servings?: number | null
+          share_token?: string | null
           slug?: string
           source_type?: string
           source_url?: string | null
@@ -2370,6 +2442,27 @@ export type Database = {
           visibility?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "recipes_cloned_from_recipe_id_fkey"
+            columns: ["cloned_from_recipe_id"]
+            isOneToOne: false
+            referencedRelation: "recipes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "recipes_cloned_from_recipe_id_fkey"
+            columns: ["cloned_from_recipe_id"]
+            isOneToOne: false
+            referencedRelation: "v_kpi_recipe_funnel_by_recipe"
+            referencedColumns: ["recipe_id"]
+          },
+          {
+            foreignKeyName: "recipes_cloned_from_recipe_id_fkey"
+            columns: ["cloned_from_recipe_id"]
+            isOneToOne: false
+            referencedRelation: "v_recipe_coverage"
+            referencedColumns: ["recipe_id"]
+          },
           {
             foreignKeyName: "recipes_owner_id_fkey"
             columns: ["owner_id"]
@@ -3015,6 +3108,15 @@ export type Database = {
       check_and_record_mcp_call: { Args: never; Returns: boolean }
       create_draft_listings_for_parcel: {
         Args: { _crops: string[]; _farmer_id: string; _parcel_id: string }
+        Returns: undefined
+      }
+      dispatch_push: {
+        Args: {
+          _event: string
+          _message: string
+          _title: string
+          _user_id: string
+        }
         Returns: undefined
       }
       dispatch_sms: {
