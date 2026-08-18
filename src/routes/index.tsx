@@ -220,6 +220,7 @@ function LandingPage() {
       <TurkeyMap />
       <FarmerStory />
       <BuyerPersonas />
+      <RoleValues />
       <AISection />
       <TrustScoreLadder />
       <IndoorSection />
