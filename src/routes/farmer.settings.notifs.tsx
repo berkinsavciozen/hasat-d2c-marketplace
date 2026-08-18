@@ -59,11 +59,6 @@ const EVENTS: EventDef[] = [
     label: "Yeni Abonelik Talebi",
     cols: { sms: "subscription_new_sms" },
   },
-  {
-    label: "Topluluk",
-    cols: { push: "community_push" },
-  },
-
 ];
 
 const CHANNELS: { key: Channel; label: string }[] = [

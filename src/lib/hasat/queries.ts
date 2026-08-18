@@ -2918,7 +2918,6 @@ export interface NotifPrefsRow {
   harvest_time_whatsapp: boolean;
   harvest_time_push: boolean;
   harvest_time_sms: boolean;
-  community_push: boolean;
   offer_accepted_sms: boolean;
   payment_confirmed_sms: boolean;
   order_shipped_sms: boolean;
@@ -2943,7 +2942,6 @@ const NOTIF_PREF_DEFAULTS: NotifPrefsRow = {
   harvest_time_whatsapp: true,
   harvest_time_push: true,
   harvest_time_sms: false,
-  community_push: false,
   offer_accepted_sms: false,
   payment_confirmed_sms: false,
   order_shipped_sms: true,

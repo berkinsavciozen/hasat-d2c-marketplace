@@ -26,8 +26,6 @@ const EVENTS: EventDef[] = [
   { label: "İhtilaf Açıldı", cols: { sms: "dispute_opened_sms" } },
   { label: "Abonelik Kabul Edildi", cols: { sms: "subscription_accepted_sms" } },
   { label: "Abonelik Reddedildi", cols: { sms: "subscription_rejected_sms" } },
-  { label: "Topluluk", cols: { push: "community_push" } },
-
 ];
 
 const CHANNELS: { key: Channel; label: string }[] = [
