@@ -1,10 +1,12 @@
 import { createFileRoute, Link, notFound, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
-import { Clock, Minus, Plus, Timer as TimerIcon, Search, AlarmClock } from "lucide-react";
+import { Clock, Minus, Plus, Timer as TimerIcon, Search, AlarmClock, Share2 } from "lucide-react";
+import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useProfile } from "@/lib/hasat/queries";
 import { formatCropIngredient, formatQuantity, formatTRY } from "@/lib/hasat/format";
 import { cropEmoji } from "@/lib/hasat/crop-config";
+import { PUBLIC_BASE_URL } from "@/lib/hasat/constants";
 import {
   fetchRecipeBySlug,
   useRecipeAvailability,
@@ -55,7 +57,7 @@ export const Route = createFileRoute("/tarifler/$slug")({
     const title = `${recipe.title} | Hasat Tarifleri`;
     const description =
       recipe.description ?? `${recipe.title} tarifi — Hasat'ın editoryal tarif koleksiyonundan.`;
-    const canonical = `https://hasat.lovable.app/tarifler/${recipe.slug}`;
+    const canonical = `${PUBLIC_BASE_URL}/tarifler/${recipe.slug}`;
     // totalTime = prep + cook + rest (schema.org has no separate "rest" field —
     // it folds into totalTime by definition; prepTime/cookTime stay pure, P23-M4-c).
     const totalMinutes = totalRecipeMinutes(recipe);
@@ -223,6 +225,24 @@ function RecipeDetailPage() {
     recipe.rest_minutes,
   );
 
+  const shareUrl = `${PUBLIC_BASE_URL}/tarifler/${recipe.slug}`;
+  const handleShare = async () => {
+    if (navigator.share) {
+      try {
+        await navigator.share({ title: recipe.title, url: shareUrl });
+      } catch {
+        // Kullanıcı share sheet'i iptal etti — sessizce yut.
+      }
+      return;
+    }
+    try {
+      await navigator.clipboard.writeText(shareUrl);
+      toast.success("Tarif linki kopyalandı");
+    } catch {
+      toast.error("Kopyalanamadı");
+    }
+  };
+
   return (
     <div className="min-h-screen pb-24">
       <RepresentativePhoto
@@ -235,9 +255,19 @@ function RecipeDetailPage() {
 
       <div className="px-4 py-5 md:px-8 space-y-6 max-w-2xl mx-auto">
         <div>
-          <Link to="/tarifler" className="text-xs text-hmuted hover:underline">
-            ← Tüm tarifler
-          </Link>
+          <div className="flex items-center justify-between">
+            <Link to="/tarifler" className="text-xs text-hmuted hover:underline">
+              ← Tüm tarifler
+            </Link>
+            <button
+              type="button"
+              onClick={handleShare}
+              className="flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs text-hmuted hover:bg-muted"
+              aria-label="Tarifi paylaş"
+            >
+              <Share2 className="h-3.5 w-3.5" /> Paylaş
+            </button>
+          </div>
           <h1 className="mt-2 font-serif text-2xl md:text-3xl">{recipe.title}</h1>
           {recipe.description && <p className="mt-2 text-sm text-hmuted">{recipe.description}</p>}
           <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-hmuted">

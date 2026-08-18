@@ -25,13 +25,13 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import { useHasat } from "@/lib/hasat/store";
 import { isNetworkAuthError } from "@/lib/hasat/sessionGuard";
-import { HASAT_WHATSAPP_NUMBER } from "@/lib/hasat/constants";
+import { HASAT_WHATSAPP_NUMBER, PUBLIC_BASE_URL } from "@/lib/hasat/constants";
 import { submitIndoorInterest } from "@/lib/api/indoor-interest.functions";
 
 const HASAT_TITLE = "Hasat | Çiftçiden Doğrudan Alışveriş — İzlenebilir Tarım Pazarı";
 const HASAT_DESC =
   "Hasat, üreticiyi alıcıyla doğrudan buluşturan, her ürünün geçmişini kanıtlı şekilde gösteren Türkiye'nin izlenebilir tarım pazarıdır.";
-const HASAT_URL = "https://hasat.lovable.app";
+const HASAT_URL = PUBLIC_BASE_URL;
 
 const FAQ_ITEMS: { q: string; a: string }[] = [
   {

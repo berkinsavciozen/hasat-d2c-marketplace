@@ -12,11 +12,12 @@ import {
 } from "@/lib/hasat/recipes";
 import { RepresentativePhoto } from "@/components/hasat/RepresentativePhoto";
 import { MobileNudge } from "@/components/hasat/MobileNudge";
+import { PUBLIC_BASE_URL } from "@/lib/hasat/constants";
 
 const TITLE = "Tarifler | Hasat";
 const DESCRIPTION =
   "Hasat'ın editoryal tarifleriyle mevsiminde, çiftçiden doğrudan malzeme kullanarak pişirin. Her tarifte hangi malzemenin Hasat'ta bulunabildiğini görün.";
-const CANONICAL = "https://hasat.lovable.app/tarifler";
+const CANONICAL = `${PUBLIC_BASE_URL}/tarifler`;
 
 export const Route = createFileRoute("/tarifler/")({
   loader: async () => {

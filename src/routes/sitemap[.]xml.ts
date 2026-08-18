@@ -1,8 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import type {} from "@tanstack/react-start";
 import { supabase } from "@/integrations/supabase/client";
-
-const BASE_URL = "https://hasat.lovable.app";
+import { PUBLIC_BASE_URL as BASE_URL } from "@/lib/hasat/constants";
 
 interface SitemapEntry {
   path: string;
