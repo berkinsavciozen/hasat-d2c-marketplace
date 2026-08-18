@@ -2912,45 +2912,75 @@ export interface NotifPrefsRow {
   new_offer_whatsapp: boolean;
   new_offer_push: boolean;
   new_offer_sms: boolean;
-  price_alert_whatsapp: boolean;
-  price_alert_push: boolean;
-  price_alert_sms: boolean;
+  offer_accepted_push: boolean;
+  offer_accepted_sms: boolean;
+  offer_countered_push: boolean;
+  offer_rejected_push: boolean;
+  offer_rejected_sms: boolean;
+  payment_confirmed_push: boolean;
+  payment_confirmed_sms: boolean;
+  order_preparing_push: boolean;
+  order_preparing_sms: boolean;
+  order_shipped_push: boolean;
+  order_shipped_sms: boolean;
+  order_delivered_push: boolean;
+  order_delivered_sms: boolean;
+  order_cancelled_push: boolean;
+  order_cancelled_sms: boolean;
+  dispute_opened_push: boolean;
+  dispute_opened_sms: boolean;
+  order_completed_push: boolean;
+  order_completed_sms: boolean;
+  crop_request_match_push: boolean;
+  crop_request_match_sms: boolean;
   harvest_time_whatsapp: boolean;
   harvest_time_push: boolean;
   harvest_time_sms: boolean;
-  offer_accepted_sms: boolean;
-  payment_confirmed_sms: boolean;
-  order_shipped_sms: boolean;
-  order_delivered_sms: boolean;
-  order_cancelled_sms: boolean;
-  dispute_opened_sms: boolean;
-  crop_request_match_sms: boolean;
+  subscription_new_push: boolean;
   subscription_new_sms: boolean;
+  subscription_accepted_push: boolean;
   subscription_accepted_sms: boolean;
+  subscription_rejected_push: boolean;
   subscription_rejected_sms: boolean;
 }
 
 export type NotifPrefKey = keyof NotifPrefsRow;
 
+// Kolon varsayılanları: hasat-vault Supabase projesindeki (efuqpiaavrzimvstpdpm)
+// gerçek information_schema.columns.column_default değerleriyle birebir.
 const NOTIF_PREF_DEFAULTS: NotifPrefsRow = {
   new_offer_whatsapp: true,
   new_offer_push: true,
-  new_offer_sms: true,
-  price_alert_whatsapp: true,
-  price_alert_push: false,
-  price_alert_sms: false,
+  new_offer_sms: false,
+  offer_accepted_push: true,
+  offer_accepted_sms: false,
+  offer_countered_push: true,
+  offer_rejected_push: true,
+  offer_rejected_sms: false,
+  payment_confirmed_push: true,
+  payment_confirmed_sms: false,
+  order_preparing_push: true,
+  order_preparing_sms: false,
+  order_shipped_push: true,
+  order_shipped_sms: false,
+  order_delivered_push: true,
+  order_delivered_sms: false,
+  order_cancelled_push: true,
+  order_cancelled_sms: false,
+  dispute_opened_push: true,
+  dispute_opened_sms: false,
+  order_completed_push: true,
+  order_completed_sms: false,
+  crop_request_match_push: true,
+  crop_request_match_sms: false,
   harvest_time_whatsapp: true,
   harvest_time_push: true,
   harvest_time_sms: false,
-  offer_accepted_sms: false,
-  payment_confirmed_sms: false,
-  order_shipped_sms: true,
-  order_delivered_sms: true,
-  order_cancelled_sms: true,
-  dispute_opened_sms: true,
-  crop_request_match_sms: true,
+  subscription_new_push: true,
   subscription_new_sms: true,
+  subscription_accepted_push: true,
   subscription_accepted_sms: true,
+  subscription_rejected_push: true,
   subscription_rejected_sms: true,
 };
 
