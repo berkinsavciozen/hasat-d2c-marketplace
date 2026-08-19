@@ -1,0 +1,56 @@
+// Canonical TypeScript types for the Hasat Recipe Automation pipeline (F2, Step 02).
+//
+// Every type here is inferred directly from the Zod schemas in `./schemas.ts` — there is no
+// hand-maintained duplicate shape to drift out of sync. Import from this file (as `import type`)
+// wherever only the compile-time type is needed; import from `./schemas.ts` wherever runtime
+// validation is required.
+import type { z } from "npm:zod@3.23.8";
+import type {
+  recipeAuthorTypeSchema,
+  recipeBatchInputSchema,
+  recipeBriefSchema,
+  recipeDifficultySchema,
+  recipeDraftPayloadSchema,
+  recipeErrorPayloadSchema,
+  recipeImageCropTargetSchema,
+  recipeImageSpecSchema,
+  recipeIngredientClassSchema,
+  recipeIngredientDraftSchema,
+  recipeJobStageSchema,
+  recipeJobStatusSchema,
+  recipePlanBatchSchema,
+  recipeQAResultSchema,
+  recipeSafetyReviewSchema,
+  recipeSourceTypeSchema,
+  recipeStageResultSchema,
+  recipeStepDraftSchema,
+  recipeVisibilitySchema,
+} from "./schemas.ts";
+
+export type RecipeDifficulty = z.infer<typeof recipeDifficultySchema>;
+export type RecipeAuthorType = z.infer<typeof recipeAuthorTypeSchema>;
+export type RecipeSourceType = z.infer<typeof recipeSourceTypeSchema>;
+export type RecipeVisibility = z.infer<typeof recipeVisibilitySchema>;
+export type RecipeIngredientClass = z.infer<typeof recipeIngredientClassSchema>;
+
+/** Pipeline stage — separate value space from `recipes.status` (draft | published only). */
+export type RecipeJobStage = z.infer<typeof recipeJobStageSchema>;
+export type RecipeJobStatus = z.infer<typeof recipeJobStatusSchema>;
+
+export type RecipeErrorPayload = z.infer<typeof recipeErrorPayloadSchema>;
+
+export type RecipeBatchInput = z.infer<typeof recipeBatchInputSchema>;
+export type RecipeBrief = z.infer<typeof recipeBriefSchema>;
+export type RecipePlanBatch = z.infer<typeof recipePlanBatchSchema>;
+
+export type RecipeIngredientDraft = z.infer<typeof recipeIngredientDraftSchema>;
+export type RecipeStepDraft = z.infer<typeof recipeStepDraftSchema>;
+export type RecipeDraftPayload = z.infer<typeof recipeDraftPayloadSchema>;
+
+export type RecipeSafetyReview = z.infer<typeof recipeSafetyReviewSchema>;
+export type RecipeQAResult = z.infer<typeof recipeQAResultSchema>;
+
+export type RecipeImageCropTarget = z.infer<typeof recipeImageCropTargetSchema>;
+export type RecipeImageSpec = z.infer<typeof recipeImageSpecSchema>;
+
+export type RecipeStageResult = z.infer<typeof recipeStageResultSchema>;
