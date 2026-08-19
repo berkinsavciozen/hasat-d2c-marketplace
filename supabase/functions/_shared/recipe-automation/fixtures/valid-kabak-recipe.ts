@@ -1,0 +1,140 @@
+// Shared valid fixtures for schemas.test.ts. Kept separate from the test file so other stages'
+// future tests (drafting, QA, image generation) can reuse the same known-good baseline instead of
+// re-typing a full draft payload each time.
+import type {
+  RecipeBatchInput,
+  RecipeBrief,
+  RecipeDraftPayload,
+  RecipeImageSpec,
+  RecipePlanBatch,
+  RecipeQAResult,
+} from "../types.ts";
+
+export const JOB_ID = "11111111-1111-4111-8111-111111111111";
+export const BATCH_ID = "22222222-2222-4222-8222-222222222222";
+export const BRIEF_ID = "33333333-3333-4333-8333-333333333333";
+export const RECIPE_ID = "44444444-4444-4444-8444-444444444444";
+export const REVIEWER_ID = "55555555-5555-4555-8555-555555555555";
+
+export const validBatchInput: RecipeBatchInput = {
+  batchId: BATCH_ID,
+  requestedBy: null,
+  targetCount: 5,
+  focusCrops: ["kabak"],
+  dietFocus: [],
+  locale: "tr",
+  notes: "F13 sebze serisi icin kabak agirlikli tarifler.",
+  requestedAt: "2026-08-19T09:00:00Z",
+};
+
+export const validBrief: RecipeBrief = {
+  briefId: BRIEF_ID,
+  batchId: BATCH_ID,
+  workingTitle: "Firinda Kabak Musakka",
+  focusCrop: "kabak",
+  angle: "Mevsimlik kabaklarla hafif bir aksam yemegi.",
+  targetDifficulty: "orta",
+  dietTags: ["vejetaryen"],
+  locale: "tr",
+};
+
+export const validPlanBatch: RecipePlanBatch = {
+  batchId: BATCH_ID,
+  jobId: JOB_ID,
+  briefs: [validBrief],
+  plannedAt: "2026-08-19T09:05:00Z",
+  plannerModel: "google/gemini-2.5-flash",
+};
+
+/** "valid kabak recipe" fixture required by Step 02's fixture list. */
+export const validKabakRecipeDraft: RecipeDraftPayload = {
+  jobId: JOB_ID,
+  briefId: BRIEF_ID,
+  title: "Firinda Kabak Musakka",
+  description: "Mevsimlik kabak, domates ve sogan ile hazirlanan firin yemegi.",
+  coverPhotoUrl: null,
+  servings: 4,
+  prepMinutes: 20,
+  cookMinutes: 40,
+  restMinutes: 5,
+  difficulty: "orta",
+  cuisine: "turk",
+  dietTags: ["vejetaryen"],
+  allergenLabels: ["sut"],
+  requiredEquipment: ["firin_tepsisi"],
+  sourceType: "manual",
+  authorType: "hasat",
+  visibility: "private",
+  ownerId: null,
+  extractionConfidence: 0.92,
+  ingredients: [
+    {
+      crop: "kabak",
+      freeTextName: null,
+      quantity: 3,
+      unit: "adet",
+      note: "orta boy",
+      isKeyIngredient: true,
+      ingredientClass: "tarimsal",
+      sortOrder: 0,
+    },
+    {
+      crop: null,
+      freeTextName: "kasar peyniri",
+      quantity: 100,
+      unit: "g",
+      note: null,
+      isKeyIngredient: false,
+      ingredientClass: "platform_disi",
+      sortOrder: 1,
+    },
+  ],
+  steps: [
+    { stepNo: 1, instruction: "Kabaklari yikayip ince dilimleyin.", photoUrl: null, timerSeconds: null },
+    { stepNo: 2, instruction: "Firini 200 derecede on isitin.", photoUrl: null, timerSeconds: 600 },
+    { stepNo: 3, instruction: "Malzemeleri tepside katman katman dizip 40 dakika pisirin.", photoUrl: null, timerSeconds: 2400 },
+  ],
+};
+
+export const validQAResult: RecipeQAResult = {
+  jobId: JOB_ID,
+  recipeId: RECIPE_ID,
+  passed: true,
+  issues: [],
+  safetyReview: {
+    temperature: { flagged: false, notes: null },
+    timing: { flagged: false, notes: null },
+    allergens: { flagged: true, notes: "Sut icerir.", detectedLabels: ["sut"] },
+    requiresHumanReview: true,
+    reviewedBy: REVIEWER_ID,
+    reviewedAt: "2026-08-19T10:00:00Z",
+    approved: true,
+  },
+  checkedAt: "2026-08-19T09:45:00Z",
+  model: "google/gemini-2.5-flash",
+};
+
+export const validImageSpec1024: RecipeImageSpec = {
+  targetKind: "recipe_cover",
+  recipeId: RECIPE_ID,
+  stepId: null,
+  provider: "google-gemini",
+  modelId: "google/gemini-2.5-flash-image",
+  sourceWidthPx: 1024,
+  sourceHeightPx: 1024,
+  chopFraction: 0.14,
+  cropTargets: ["1:1", "16:9"],
+  cropAlignment: "center",
+  outputFormat: "webp",
+  outputQuality: 82,
+  stripMetadata: true,
+  geometryEngine: "imagescript",
+  webpEncoder: null,
+  storageBucket: "crop-photos",
+};
+
+export const validImageSpec2048: RecipeImageSpec = {
+  ...validImageSpec1024,
+  sourceWidthPx: 2048,
+  sourceHeightPx: 2048,
+};
