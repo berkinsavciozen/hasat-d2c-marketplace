@@ -4,7 +4,7 @@ import { useHasat } from "@/lib/hasat/store";
 import { useFarmerListings, useEntries, useFarmerOffers, useFarmerOrders, useParcels } from "@/lib/hasat/queries";
 import { AIBox } from "@/components/hasat/AIBox";
 import { FarmerHeader } from "./farmer";
-import { formatTRY, formatCrop } from "@/lib/hasat/format";
+import { formatTRY, formatCrop, formatQuantity } from "@/lib/hasat/format";
 import { BookOpen, LineChart, Store, Users2, MessageCircle, Inbox, PackageCheck } from "lucide-react";
 import { MarketDeviationAlert } from "@/components/hasat/MarketDeviationAlert";
 import { HASAT_WHATSAPP_NUMBER } from "@/lib/hasat/constants";
@@ -273,7 +273,7 @@ function Home() {
                   {listings.map((l) => (
                     <li key={l.id} className="rounded-lg bg-background/60 px-3 py-2 text-sm">
                       <div className="flex items-center justify-between">
-                        <span>🌾 {formatCrop(l.crop)} · {l.quantity}{l.unit}</span>
+                        <span>🌾 {formatCrop(l.crop)} · {formatQuantity(l.quantity, l.unit)} {l.unit}</span>
                         <span className="font-mono">{formatTRY(l.pricePerUnit)}/{l.unit}</span>
                       </div>
                       <MarketDeviationAlert crop={l.crop} pricePerUnit={l.pricePerUnit} unit={l.unit} />
