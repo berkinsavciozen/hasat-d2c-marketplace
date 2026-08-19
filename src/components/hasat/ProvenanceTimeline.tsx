@@ -2,6 +2,7 @@ import { Sprout, Camera, Calendar } from "lucide-react";
 import type { HarvestEntry } from "@/lib/hasat/types";
 import { findCropConfig, useCropConfigMap } from "@/lib/hasat/crop-config";
 import { labelForStepKey, computeCoverage, COVERAGE_META } from "@/lib/hasat/coverage";
+import { formatQuantity } from "@/lib/hasat/format";
 import { FirstSeasonBadge } from "@/components/hasat/CoverageBadge";
 
 /**
@@ -64,7 +65,7 @@ export function ProvenanceTimeline({
                 </span>
               </div>
               <div className="text-xs text-hmuted mt-0.5">
-                {e.quantity ? `${e.quantity} ${e.unit} · ` : ""}Kalite {e.quality}
+                {e.quantity ? `${formatQuantity(e.quantity, e.unit)} ${e.unit} · ` : ""}Kalite {e.quality}
               </div>
               {backdated && e.createdAt && (
                 <div className="text-[11px] text-hmuted mt-0.5 italic">

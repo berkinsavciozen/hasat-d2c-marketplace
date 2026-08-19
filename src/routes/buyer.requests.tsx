@@ -2,7 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { BuyerHeader } from "@/components/hasat/BuyerHeader";
 import { LoadingDots } from "@/components/hasat/LoadingDots";
 import { useMyCropRequests } from "@/lib/hasat/queries";
-import { formatTRY } from "@/lib/hasat/format";
+import { formatTRY, formatQuantity } from "@/lib/hasat/format";
 import { ChevronLeft } from "lucide-react";
 
 export const Route = createFileRoute("/buyer/requests")({
@@ -74,7 +74,7 @@ function MyRequests() {
                   {r.quantity != null && (
                     <div>
                       <div className="text-hmuted">Miktar</div>
-                      <div className="font-medium">{r.quantity} {r.unit ?? ""}</div>
+                      <div className="font-medium">{formatQuantity(r.quantity, r.unit)} {r.unit ?? ""}</div>
                     </div>
                   )}
                   {r.region && (
