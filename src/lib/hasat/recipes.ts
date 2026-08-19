@@ -17,6 +17,7 @@ export interface RecipeListItem {
   difficulty: string | null;
   cuisine: string | null;
   diet_tags: string[];
+  required_equipment: string[];
   // computed client-side (P16-H fallback pattern, see Build/DB-Schema.md "Fotoğraf stratejisi")
   displayPhotoUrl: string | null;
   isRepresentativePhoto: boolean;
@@ -64,7 +65,7 @@ export interface RecipeIngredientRow {
 }
 
 const RECIPE_LIST_COLUMNS =
-  "id, slug, title, description, cover_photo_url, servings, prep_minutes, cook_minutes, rest_minutes, difficulty, cuisine, diet_tags";
+  "id, slug, title, description, cover_photo_url, servings, prep_minutes, cook_minutes, rest_minutes, difficulty, cuisine, diet_tags, required_equipment";
 
 /**
  * Recipe's own cover photo if it has one, else the crop photo of its first
@@ -150,6 +151,7 @@ export async function fetchRecipeList(): Promise<RecipeListItem[]> {
     return {
       ...r,
       diet_tags: r.diet_tags ?? [],
+      required_equipment: r.required_equipment ?? [],
       coveragePct: cov?.coverage_pct ?? null,
       ingredientCount: cov?.ingredient_count ?? null,
       availableCount: cov?.available_count ?? null,
@@ -460,4 +462,20 @@ export const DIFFICULTY_LABELS: Record<string, string> = {
   kolay: "Kolay",
   orta: "Orta",
   zor: "Zor",
+};
+
+/**
+ * F13-geniş — kontrollü ekipman listesi (Berkin onayı, değiştirme).
+ * `recipes.required_equipment` bu slug'ları içerir.
+ */
+export const EQUIPMENT_LABELS: Record<string, string> = {
+  firin: "Fırın",
+  ocak: "Ocak/Tencere",
+  mikrodalga: "Mikrodalga",
+  airfryer: "Air Fryer",
+  blender: "Blender",
+  "mutfak-robotu": "Mutfak Robotu",
+  "duduklu-tencere": "Düdüklü Tencere",
+  izgara: "Izgara/Barbekü",
+  "ozel-ekipman-gerekmiyor": "Özel Ekipman Gerekmiyor",
 };
