@@ -8,6 +8,7 @@ import {
   activeRecipeMinutes,
   needsAdvanceStart,
   DIFFICULTY_LABELS,
+  EQUIPMENT_LABELS,
   type RecipeListItem,
 } from "@/lib/hasat/recipes";
 import { RepresentativePhoto } from "@/components/hasat/RepresentativePhoto";
@@ -61,7 +62,14 @@ function RecipeListPage() {
   const [duration, setDuration] = useState<(typeof DURATION_BUCKETS)[number]["key"] | null>(null);
   const [diet, setDiet] = useState<string | null>(null);
   const [cuisine, setCuisine] = useState<string | null>(null);
+  const [equipment, setEquipment] = useState<string[]>([]);
   const [onlyWithAvailableIngredient, setOnlyWithAvailableIngredient] = useState(false);
+
+  const toggleEquipment = (slug: string) => {
+    setEquipment((prev) =>
+      prev.includes(slug) ? prev.filter((e) => e !== slug) : [...prev, slug],
+    );
+  };
 
   const cuisines = useMemo(
     () => Array.from(new Set(recipes.map((r) => r.cuisine).filter((c): c is string => !!c))).sort(),
@@ -76,6 +84,8 @@ function RecipeListPage() {
     if (difficulty && r.difficulty !== difficulty) return false;
     if (cuisine && r.cuisine !== cuisine) return false;
     if (diet && !r.diet_tags.includes(diet)) return false;
+    if (equipment.length > 0 && !equipment.every((e) => r.required_equipment.includes(e)))
+      return false;
     if (duration) {
       const bucket = DURATION_BUCKETS.find((b) => b.key === duration)!;
       const prevMax =
@@ -161,6 +171,33 @@ function RecipeListPage() {
           )}
         </div>
 
+        {/* F13-geniş: kontrollü ekipman listesi — dietTags/cuisine'in aksine
+            veriden türetilmiyor (recipes.required_equipment henüz boş), sabit
+            listeden render edilir ki filtre UI'ı veri dolmadan da kullanılabilir
+            olsun. Çoklu seçim, diğer filtrelerle AND (üstteki `filtered`). */}
+        <div className="flex flex-wrap items-center gap-2 text-xs">
+          <span className="text-hmuted">Ekipman:</span>
+          {Object.entries(EQUIPMENT_LABELS).map(([slug, label]) => {
+            const active = equipment.includes(slug);
+            return (
+              <button
+                key={slug}
+                type="button"
+                aria-pressed={active}
+                onClick={() => toggleEquipment(slug)}
+                className="rounded-full border px-3 py-1.5 transition"
+                style={
+                  active
+                    ? { background: "color-mix(in oklab, var(--sage) 25%, transparent)" }
+                    : undefined
+                }
+              >
+                {label}
+              </button>
+            );
+          })}
+        </div>
+
         {/* P23-M7-a: isim düzeltildi — bu filtre "tam alınabilir" değil, "en az bir
             malzemesi Hasat'ta" anlamına geliyor (gerçek isim, gerçek davranış).
             Gerçek "tam alınabilir" filtresi bugünkü arzda 0 tarif döner — bkz.
@@ -180,7 +217,9 @@ function RecipeListPage() {
           <div className="rounded-2xl border border-dashed py-12 text-center text-hmuted">
             {onlyWithAvailableIngredient
               ? "Bu filtreyle eşleşen tarif yok — Hasat'taki arz henüz hiçbir malzemesini karşılamıyor."
-              : "Bu filtrelerle eşleşen tarif yok."}
+              : equipment.length > 0
+                ? "Bu ekipmanla eşleşen tarif yok."
+                : "Bu filtrelerle eşleşen tarif yok."}
           </div>
         ) : (
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
