@@ -1,33 +1,96 @@
 -- F2 Recipe Automation — Step 04: reusable Postgres validation/query RPCs for recipe automation.
 --
--- Eleven new, additive functions. Nothing here changes any existing function, table, trigger, or
--- RLS policy — this migration only adds new `public.*` functions so a later step (extract-recipe,
--- and the drafting/QA stages of the F2 pipeline) can call them instead of re-implementing the same
--- deterministic checks in application code. No Edge Function is wired to call these yet.
+-- Eleven new, additive functions (plus two `fn_` internal helpers). Nothing here changes any
+-- existing function, table, trigger, or RLS policy — this migration only adds new `public.*`
+-- functions so a later step (extract-recipe, and the drafting/QA stages of the F2 pipeline) can
+-- call them instead of re-implementing the same deterministic checks in application code. No Edge
+-- Function is wired to call these yet.
 --
--- Conventions followed (verified live against project efuqpiaavrzimvstpdpm before writing this):
---   * SECURITY DEFINER + `SET search_path TO 'public'` on every function, matching every existing
---     function in this database (both DEFINER and INVOKER ones pin search_path; see
---     `fn_match_culinary_crop`, `get_price_history_series`, `set_updated_at`, etc). DEFINER is used
---     here (not just for consistency) because `recipes`/`recipe_ingredients`/`recipe_steps` carry
---     RLS that hides draft/private rows from anon/authenticated (`recipes anon read public
---     published`, `recipes auth read public or own`) — slug-uniqueness and duplicate-detection
---     checks must see ALL recipes regardless of caller, the same reasoning `get_price_history_series`
---     already relies on to aggregate across `price_history` for every farmer.
+-- Step 03A reconciliation (2026-08-19/20): this migration was merged (PR #42) out of order, ahead
+-- of the Step 03A foundation-reconciliation gate, and before either it or the Step 03 schema
+-- migration had been applied to any Supabase environment (verified via `list_migrations`/
+-- `list_branches` against project efuqpiaavrzimvstpdpm immediately before this revision — neither
+-- migration timestamp appears applied anywhere, and no branches exist). Because both are unapplied
+-- everywhere, this file is corrected IN PLACE — same filename/timestamp, same migration identity —
+-- rather than superseded by a forward corrective migration. This revision:
+--   1. Reconciles every `issues` array element with the rebuilt `recipeQAIssueSchema` (schemas.ts):
+--      adds a stable `code` (SCREAMING_SNAKE_CASE, never renamed once shipped) and a nullable
+--      `requiredChange` to every issue object emitted below, alongside the existing `field`/
+--      `severity`/`message` keys, so a caller can push these objects directly into a
+--      `RecipeQAResult.blockingIssues`/`nonBlockingSuggestions` array with zero transformation.
+--   2. Fixes `get_seasonal_crop_candidates` silently narrowing the seasonal candidate universe: a
+--      `crop_config` row with no matching `crop_culinary_meta` row was being dropped entirely
+--      (INNER JOIN + is_edible filter baked into the base query) instead of surfaced as
+--      "edibility unknown". Now a LEFT JOIN, with edibility filtering only applied when the new
+--      `p_edible_only` parameter is explicitly requested, and a missing auxiliary row treated as
+--      edible-by-default (`coalesce(is_edible, true)`) rather than silently excluded.
+--   3. Switches every function from `SECURITY DEFINER` to `SECURITY INVOKER`. The DEFINER
+--      rationale in the original header (RLS hides draft/private recipes from anon/authenticated,
+--      so duplicate/uniqueness checks need to see every row) does not hold: EXECUTE is granted
+--      ONLY to `service_role`, and `service_role` already has `rolbypassrls = true` on this
+--      project (confirmed live: `select rolbypassrls from pg_roles where rolname='service_role'`
+--      returns true) — it bypasses RLS on every table regardless of DEFINER/INVOKER, so DEFINER
+--      here was a needless privilege escalation with no corresponding need. `set search_path`
+--      is tightened from `'public'` to `''` (empty) for defense-in-depth against search_path
+--      hijacking, safe because every table/function reference below was already fully qualified
+--      with `public.` (built-ins like `unnest`/`jsonb_array_elements`/`generate_series` live in
+--      `pg_catalog`, which Postgres always searches regardless of `search_path`).
+--   4. Hardens JSON input handling that could previously raise an unhandled Postgres error (or, in
+--      one case, silently corrupt data) instead of returning a structured issue:
+--        - `normalize_recipe_units`: fixed a `jsonb_set` NULL-strict bug — when an ingredient's
+--          unit normalizes to NULL (e.g. an empty-string unit), `to_jsonb(NULL::text)` is a SQL
+--          NULL, and `jsonb_set(..., new_value := NULL, ...)` returns SQL NULL for the WHOLE
+--          call, not just the `unit` key. That NULL then flowed into
+--          `jsonb_build_array(v_ing)` as a literal JSON `null`, silently replacing the entire
+--          ingredient object in the returned array. Fixed by coalescing to an explicit JSON
+--          `null` literal (`coalesce(to_jsonb(v_canonical), 'null'::jsonb)`) before calling
+--          `jsonb_set`, so only the `unit` key becomes JSON null — the ingredient object survives.
+--        - `validate_recipe_structure`: `stepNo`/`timerSeconds` (and `servings`/`prepMinutes`/
+--          `cookMinutes`/`restMinutes`) map to `int` live columns, but were cast straight to
+--          `::integer` (or range-checked as `::numeric` without an integer check) — a fractional
+--          JSON number (e.g. `stepNo: 2.5`) raised "invalid input syntax for type integer" and
+--          aborted the whole validation call instead of producing a structured
+--          `*_NOT_INTEGER` blocking issue. Every such field now stages through `::numeric`, checks
+--          `v_num <> trunc(v_num)`, and only casts to `::integer` once confirmed whole.
+--        - `validate_recipe_ingredient_coverage`: `isKeyIngredient` was cast straight to
+--          `::boolean` — a non-boolean JSON value (e.g. a string or number) raised "invalid input
+--          syntax for type boolean". Now type-checked first; a non-boolean value produces an
+--          `INGREDIENT_IS_KEY_NOT_BOOLEAN` warning and is treated as `false` (the item is simply
+--          excluded from the key-ingredient coverage check) instead of crashing the whole call.
+--        - Dynamic regex construction (`'\m' || v_root`, `'\m' || crop display name`) could raise
+--          "invalid regular expression" — or silently mismatch — if the interpolated text
+--          contained a regex metacharacter (`.`, `(`, `[`, `+`, ...). Both sites now escape the
+--          interpolated text through the new `fn_recipe_escape_regex` helper before building the
+--          pattern.
+--   5. Resolves severity/routing for duplicate plan titles: two briefs in the SAME
+--      `RecipePlanBatch` sharing a `workingTitle` is upgraded from a silently-passable 'warning'
+--      to 'blocking'. `validate_recipe_plan` gates job creation ("Planner output'u
+--      validate_recipe_plan geçmeden job yaratılmaz", RecipeAutomation.md §5.1) — a same-batch
+--      title collision is a planning-stage correctness defect the Planner should simply be forced
+--      to fix before any job exists, not a soft suggestion that could silently reach drafting.
+--      Unused-key-ingredient and step-references-unlisted-crop remain 'warning' — both are
+--      documented, deliberately heuristic, substring-based checks with a real false-positive rate
+--      (see `validate_recipe_ingredient_coverage`'s own header), and the Step 03A brief explicitly
+--      allows "heuristic findings [to] carry confidence or warning semantics". What changes here
+--      is that they now carry a stable `code` and land in `RecipeQAResult.nonBlockingSuggestions`
+--      (schemas.ts) rather than a bare warning string, so QA routing always sees them instead of a
+--      caller being able to silently drop untyped warning text.
+--
+-- Conventions preserved from the original migration (verified live against project
+-- efuqpiaavrzimvstpdpm before writing this):
 --   * No unrestricted dynamic SQL anywhere below (no `EXECUTE format(...)` over caller-controlled
---     text) — every query is a fixed, parameterized statement.
+--     text) — every query is a fixed, parameterized statement. `fn_recipe_escape_regex` (new)
+--     builds a regex pattern from a runtime value, but only ever consumed by the fixed `~`
+--     operator below — never fed to `EXECUTE`.
 --   * `crop_config` is treated as the sole authoritative crop/seasonality source, per the Step 04
 --     brief. Text crop slugs only — no `crop_id` anywhere, matching Step 02/03.
 --   * Every function is granted to `service_role` only (`REVOKE ... FROM PUBLIC` +
 --     `GRANT EXECUTE ... TO service_role`), mirroring the Step 03 tables' "no public/client access
 --     yet" stance — this is pipeline plumbing, not a new public surface.
---   * The four `validate_recipe_*` functions return the same `{field, severity, message}` issue
---     shape as `recipeQAResultSchema.issues` (`schemas.ts`, Step 02) — `severity` is one of
---     'info' | 'warning' | 'blocking'; `valid` is true iff no issue has severity = 'blocking'. Any
---     extra context (brief index, step number, crop code, ...) is folded into `message` text rather
---     than added as extra keys, specifically so a caller can push these objects directly into a
---     `recipeQAResultSchema`-shaped `issues` array without transformation — that schema's issue
---     object is `.strict()` and would reject an unrecognized key.
+--   * The four `validate_recipe_*` functions return the same `{code, field, severity, message,
+--     requiredChange}` issue shape as `recipeQAIssueSchema` (`schemas.ts`, Step 03A) — `severity`
+--     is one of 'info' | 'warning' | 'blocking'; `valid` is true iff no issue has severity =
+--     'blocking'.
 --   * Draft/plan jsonb inputs mirror `recipeDraftPayloadSchema` / `recipePlanBatchSchema` /
 --     `recipeIngredientDraftSchema` / `recipeStepDraftSchema` field names verbatim (camelCase:
 --     `freeTextName`, `isKeyIngredient`, `ingredientClass`, `sortOrder`, `stepNo`, `timerSeconds`,
@@ -39,6 +102,10 @@
 --     to `is_key_ingredient = true` ingredients (optional/garnish ingredients are never flagged —
 --     see "optional ingredient behavior" in the completion report's test list) and only to crops in
 --     `crop_config` for the reverse check, to keep false positives bounded.
+--   * `find_recipe_duplicates`'s word-overlap matching still has no `pg_trgm` dependency (checked
+--     live: not installed) — deterministic word-overlap + exact slug/title, not fuzzy similarity.
+--   * Live-tested season boundary (wrap-around harvest window) math is unchanged.
+--   * No `extract-recipe` wiring — still not called from anywhere.
 
 -- =================================================================================================
 -- Internal helpers (fn_ prefix, matching fn_match_culinary_crop / fn_culinary_to_canonical)
@@ -51,7 +118,7 @@ create or replace function public.fn_recipe_canonical_unit(p_unit text)
 returns text
 language plpgsql
 immutable
-set search_path to 'public'
+set search_path = ''
 as $$
 declare
   v text := lower(btrim(coalesce(p_unit, '')));
@@ -108,16 +175,35 @@ $$;
 revoke all on function public.fn_recipe_canonical_unit(text) from public;
 grant execute on function public.fn_recipe_canonical_unit(text) to service_role;
 
+-- Step 03A (new): escapes ARE/regex metacharacters in dynamically-interpolated text before it is
+-- spliced into a pattern used with `~`. Used by validate_recipe_ingredient_coverage, whose
+-- word-boundary matching interpolates ingredient names / crop display names that are ordinary
+-- user/config-authored Turkish text, not guaranteed metacharacter-free.
+create or replace function public.fn_recipe_escape_regex(p_text text)
+returns text
+language sql
+immutable
+set search_path = ''
+as $$
+  select regexp_replace(coalesce(p_text, ''), '([.^$*+?()\[\]{}\\|])', '\\\1', 'g');
+$$;
+
+revoke all on function public.fn_recipe_escape_regex(text) from public;
+grant execute on function public.fn_recipe_escape_regex(text) to service_role;
+
 -- =================================================================================================
 -- 1. get_seasonal_crop_candidates — crop_config rows, flagged for whether a given month falls in
 --    their harvest window (wrap-around aware, mirrors `isInHarvestWindow` in
---    src/lib/hasat/crop-config.ts exactly). Edible crops only (crop_culinary_meta.is_edible).
+--    src/lib/hasat/crop-config.ts exactly). `crop_config` is always the full candidate universe;
+--    `crop_culinary_meta` only narrows results when `p_edible_only` is explicitly requested, and a
+--    crop with no `crop_culinary_meta` row is treated as edible-by-default (see file header §2).
 -- =================================================================================================
 
 create or replace function public.get_seasonal_crop_candidates(
   p_month integer default null,
   p_category_group text default null,
   p_only_in_season boolean default false,
+  p_edible_only boolean default false,
   p_limit integer default 20
 )
 returns table (
@@ -128,12 +214,13 @@ returns table (
   harvest_window_start_month integer,
   harvest_window_end_month integer,
   in_season boolean,
+  is_edible boolean,
   default_photo_url text
 )
 language sql
 stable
-security definer
-set search_path to 'public'
+security invoker
+set search_path = ''
 as $$
   with month as (
     select greatest(1, least(12, coalesce(p_month, extract(month from now())::int))) as m
@@ -154,31 +241,33 @@ as $$
       end,
       false
     ) as in_season,
+    -- A crop_config row with no crop_culinary_meta row is edibility-UNKNOWN, not inedible — it
+    -- stays in the candidate universe by default (coalesce to true), never silently dropped.
+    coalesce(m.is_edible, true) as is_edible,
     cc.default_photo_url
   from public.crop_config cc
   cross join month
-  where exists (
-    select 1 from public.crop_culinary_meta m where m.crop = cc.crop and m.is_edible
-  )
-  and (p_category_group is null or cc.category_group = p_category_group)
-  and (
-    not coalesce(p_only_in_season, false)
-    or coalesce(
-      case
-        when cc.harvest_window_start_month is null or cc.harvest_window_end_month is null then false
-        when cc.harvest_window_start_month <= cc.harvest_window_end_month
-          then month.m between cc.harvest_window_start_month and cc.harvest_window_end_month
-        else month.m >= cc.harvest_window_start_month or month.m <= cc.harvest_window_end_month
-      end,
-      false
+  left join public.crop_culinary_meta m on m.crop = cc.crop
+  where (p_category_group is null or cc.category_group = p_category_group)
+    and (not coalesce(p_edible_only, false) or coalesce(m.is_edible, true))
+    and (
+      not coalesce(p_only_in_season, false)
+      or coalesce(
+        case
+          when cc.harvest_window_start_month is null or cc.harvest_window_end_month is null then false
+          when cc.harvest_window_start_month <= cc.harvest_window_end_month
+            then month.m between cc.harvest_window_start_month and cc.harvest_window_end_month
+          else month.m >= cc.harvest_window_start_month or month.m <= cc.harvest_window_end_month
+        end,
+        false
+      )
     )
-  )
   order by in_season desc, cc.display_name asc
   limit greatest(1, least(100, coalesce(p_limit, 20)));
 $$;
 
-revoke all on function public.get_seasonal_crop_candidates(integer, text, boolean, integer) from public;
-grant execute on function public.get_seasonal_crop_candidates(integer, text, boolean, integer) to service_role;
+revoke all on function public.get_seasonal_crop_candidates(integer, text, boolean, boolean, integer) from public;
+grant execute on function public.get_seasonal_crop_candidates(integer, text, boolean, boolean, integer) to service_role;
 
 -- =================================================================================================
 -- 2. get_crop_context — single-crop context blob for prompt building. Unknown crop returns
@@ -193,8 +282,8 @@ create or replace function public.get_crop_context(
 returns jsonb
 language plpgsql
 stable
-security definer
-set search_path to 'public'
+security invoker
+set search_path = ''
 as $$
 declare
   v_month integer := greatest(1, least(12, coalesce(p_month, extract(month from now())::int)));
@@ -256,8 +345,8 @@ returns table (
 )
 language sql
 stable
-security definer
-set search_path to 'public'
+security invoker
+set search_path = ''
 as $$
   select
     ri.crop,
@@ -279,8 +368,9 @@ revoke all on function public.get_recent_recipe_mix(integer, integer) from publi
 grant execute on function public.get_recent_recipe_mix(integer, integer) to service_role;
 
 -- =================================================================================================
--- 4. search_existing_recipes — filtered lookup across ALL recipes (any status/visibility; see file
---    header re: SECURITY DEFINER) for duplicate-avoidance during planning.
+-- 4. search_existing_recipes — filtered lookup across ALL recipes (any status/visibility;
+--    service_role already bypasses RLS regardless of DEFINER/INVOKER — see file header §3) for
+--    duplicate-avoidance during planning.
 -- =================================================================================================
 
 create or replace function public.search_existing_recipes(
@@ -299,8 +389,8 @@ returns table (
 )
 language sql
 stable
-security definer
-set search_path to 'public'
+security invoker
+set search_path = ''
 as $$
   select r.id, r.slug, r.title, r.status, r.visibility, r.created_at
   from public.recipes r
@@ -342,8 +432,8 @@ returns table (
 )
 language sql
 stable
-security definer
-set search_path to 'public'
+security invoker
+set search_path = ''
 as $$
   with candidate_words as (
     select array_agg(distinct w) as words
@@ -404,8 +494,8 @@ create or replace function public.validate_recipe_slug(
 returns jsonb
 language plpgsql
 stable
-security definer
-set search_path to 'public'
+security invoker
+set search_path = ''
 as $$
 declare
   v_issues jsonb := '[]'::jsonb;
@@ -413,13 +503,15 @@ declare
 begin
   if v_slug = '' then
     v_issues := v_issues || jsonb_build_object(
-      'field', 'slug', 'severity', 'blocking', 'message', 'slug is required'
+      'code', 'SLUG_REQUIRED', 'field', 'slug', 'severity', 'blocking',
+      'message', 'slug is required', 'requiredChange', 'Slug alanini doldurun.'
     );
   else
     if v_slug !~ '^[a-z0-9]+(-[a-z0-9]+)*$' then
       v_issues := v_issues || jsonb_build_object(
-        'field', 'slug', 'severity', 'blocking',
-        'message', 'slug must be lowercase alphanumeric segments separated by single hyphens (got "' || v_slug || '")'
+        'code', 'SLUG_INVALID_FORMAT', 'field', 'slug', 'severity', 'blocking',
+        'message', 'slug must be lowercase alphanumeric segments separated by single hyphens (got "' || v_slug || '")',
+        'requiredChange', 'Slug sadece kucuk harf/rakam icersin ve bolumler tek tire ile ayrilsin.'
       );
     end if;
 
@@ -429,8 +521,9 @@ begin
         and (p_exclude_recipe_id is null or r.id <> p_exclude_recipe_id)
     ) then
       v_issues := v_issues || jsonb_build_object(
-        'field', 'slug', 'severity', 'blocking',
-        'message', 'slug "' || v_slug || '" is already used by an existing recipe'
+        'code', 'SLUG_ALREADY_USED', 'field', 'slug', 'severity', 'blocking',
+        'message', 'slug "' || v_slug || '" is already used by an existing recipe',
+        'requiredChange', 'Farkli, benzersiz bir slug secin.'
       );
     end if;
   end if;
@@ -450,15 +543,17 @@ grant execute on function public.validate_recipe_slug(text, uuid) to service_rol
 
 -- =================================================================================================
 -- 7. validate_recipe_plan — deterministic checks over a recipePlanBatchSchema-shaped plan: each
---    brief's focusCrop must exist in crop_config, targetDifficulty must be a live enum value.
+--    brief's focusCrop must exist in crop_config, targetDifficulty must be a live enum value, and
+--    (Step 03A) no two briefs in the same batch may share a workingTitle — promoted from a
+--    'warning' to 'blocking' because this function gates job creation (see file header §5).
 -- =================================================================================================
 
 create or replace function public.validate_recipe_plan(p_plan jsonb)
 returns jsonb
 language plpgsql
 stable
-security definer
-set search_path to 'public'
+security invoker
+set search_path = ''
 as $$
 declare
   v_issues jsonb := '[]'::jsonb;
@@ -475,7 +570,8 @@ begin
     return jsonb_build_object(
       'valid', false,
       'issues', jsonb_build_array(jsonb_build_object(
-        'field', 'plan', 'severity', 'blocking', 'message', 'plan must be a JSON object'
+        'code', 'PLAN_NOT_OBJECT', 'field', 'plan', 'severity', 'blocking',
+        'message', 'plan must be a JSON object', 'requiredChange', 'Plani bir JSON nesnesi olarak gonderin.'
       )),
       'briefCount', 0
     );
@@ -484,7 +580,9 @@ begin
   v_briefs := p_plan->'briefs';
   if jsonb_typeof(v_briefs) is distinct from 'array' or jsonb_array_length(v_briefs) = 0 then
     v_issues := v_issues || jsonb_build_object(
-      'field', 'briefs', 'severity', 'blocking', 'message', 'briefs must be a non-empty array'
+      'code', 'BRIEFS_EMPTY', 'field', 'briefs', 'severity', 'blocking',
+      'message', 'briefs must be a non-empty array',
+      'requiredChange', 'Plana en az bir brief ekleyin.'
     );
     v_briefs := '[]'::jsonb;
   end if;
@@ -497,15 +595,18 @@ begin
 
     if v_working_title = '' then
       v_issues := v_issues || jsonb_build_object(
-        'field', format('briefs[%s].workingTitle', v_idx), 'severity', 'blocking',
-        'message', format('brief #%s is missing a workingTitle', v_idx)
+        'code', 'BRIEF_TITLE_MISSING', 'field', format('briefs[%s].workingTitle', v_idx), 'severity', 'blocking',
+        'message', format('brief #%s is missing a workingTitle', v_idx),
+        'requiredChange', 'Brief icin bir workingTitle belirleyin.'
       );
     else
       v_norm_title := lower(v_working_title);
       if v_norm_title = any (v_seen_titles) then
+        -- Step 03A: upgraded warning -> blocking. See file header §5 for why.
         v_issues := v_issues || jsonb_build_object(
-          'field', format('briefs[%s].workingTitle', v_idx), 'severity', 'warning',
-          'message', format('brief #%s ("%s") repeats another brief''s workingTitle in the same batch', v_idx, v_working_title)
+          'code', 'BRIEF_TITLE_DUPLICATE', 'field', format('briefs[%s].workingTitle', v_idx), 'severity', 'blocking',
+          'message', format('brief #%s ("%s") repeats another brief''s workingTitle in the same batch', v_idx, v_working_title),
+          'requiredChange', 'Bu brief icin farkli, benzersiz bir workingTitle secin.'
         );
       else
         v_seen_titles := v_seen_titles || v_norm_title;
@@ -516,15 +617,17 @@ begin
       select 1 from public.crop_config cc where cc.crop = v_focus_crop
     ) then
       v_issues := v_issues || jsonb_build_object(
-        'field', format('briefs[%s].focusCrop', v_idx), 'severity', 'blocking',
-        'message', format('brief #%s references unknown crop "%s" (not in crop_config)', v_idx, v_focus_crop)
+        'code', 'BRIEF_CROP_UNKNOWN', 'field', format('briefs[%s].focusCrop', v_idx), 'severity', 'blocking',
+        'message', format('brief #%s references unknown crop "%s" (not in crop_config)', v_idx, v_focus_crop),
+        'requiredChange', 'crop_config icinde tanimli gecerli bir crop secin.'
       );
     end if;
 
     if v_difficulty is not null and v_difficulty not in ('kolay', 'orta', 'zor') then
       v_issues := v_issues || jsonb_build_object(
-        'field', format('briefs[%s].targetDifficulty', v_idx), 'severity', 'blocking',
-        'message', format('brief #%s has invalid targetDifficulty "%s" (must be kolay|orta|zor)', v_idx, v_difficulty)
+        'code', 'BRIEF_DIFFICULTY_INVALID', 'field', format('briefs[%s].targetDifficulty', v_idx), 'severity', 'blocking',
+        'message', format('brief #%s has invalid targetDifficulty "%s" (must be kolay|orta|zor)', v_idx, v_difficulty),
+        'requiredChange', 'targetDifficulty degerini kolay, orta veya zor olarak ayarlayin.'
       );
     end if;
 
@@ -547,14 +650,18 @@ grant execute on function public.validate_recipe_plan(jsonb) to service_role;
 -- =================================================================================================
 -- 8. validate_recipe_structure — top-level shape of a recipeDraftPayloadSchema-shaped draft:
 --    title, numeric ranges, difficulty enum, ingredients/steps presence, sequential step_no.
+--    Step 03A: every field that maps to a live `int` column (servings, prepMinutes, cookMinutes,
+--    restMinutes, stepNo, timerSeconds) is now staged through `::numeric` first and checked for
+--    whole-number-ness BEFORE any `::integer` cast, so a fractional JSON number produces a
+--    structured `*_NOT_INTEGER` blocking issue instead of raising and aborting the whole call.
 -- =================================================================================================
 
 create or replace function public.validate_recipe_structure(p_draft jsonb)
 returns jsonb
 language plpgsql
 stable
-security definer
-set search_path to 'public'
+security invoker
+set search_path = ''
 as $$
 declare
   v_issues jsonb := '[]'::jsonb;
@@ -570,30 +677,41 @@ begin
     return jsonb_build_object(
       'valid', false,
       'issues', jsonb_build_array(jsonb_build_object(
-        'field', 'draft', 'severity', 'blocking', 'message', 'draft must be a JSON object'
+        'code', 'DRAFT_NOT_OBJECT', 'field', 'draft', 'severity', 'blocking',
+        'message', 'draft must be a JSON object', 'requiredChange', 'Taslagi bir JSON nesnesi olarak gonderin.'
       ))
     );
   end if;
 
   if btrim(coalesce(p_draft->>'title', '')) = '' then
     v_issues := v_issues || jsonb_build_object(
-      'field', 'title', 'severity', 'blocking', 'message', 'title is required'
+      'code', 'TITLE_MISSING', 'field', 'title', 'severity', 'blocking',
+      'message', 'title is required', 'requiredChange', 'Baslik alanini doldurun.'
     );
   end if;
 
-  -- servings > 0, prepMinutes/cookMinutes/restMinutes >= 0 — mirrors the live recipes_* CHECK
-  -- constraints exactly (recipes_servings_check, recipes_prep_minutes_check, ...).
+  -- servings > 0 and an integer; prepMinutes/cookMinutes/restMinutes >= 0 and integers — mirrors
+  -- the live recipes_* CHECK constraints (recipes_servings_check, recipes_prep_minutes_check, ...)
+  -- plus the column's actual `int` type, which the original numeric-only range check didn't.
   if p_draft ? 'servings' and jsonb_typeof(p_draft->'servings') is distinct from 'null' then
     if jsonb_typeof(p_draft->'servings') is distinct from 'number' then
       v_issues := v_issues || jsonb_build_object(
-        'field', 'servings', 'severity', 'blocking', 'message', 'servings must be a number'
+        'code', 'SERVINGS_NOT_NUMBER', 'field', 'servings', 'severity', 'blocking',
+        'message', 'servings must be a number', 'requiredChange', 'servings alanina sayisal bir deger girin.'
       );
     else
       v_num := (p_draft->>'servings')::numeric;
-      if v_num <= 0 then
+      if v_num <> trunc(v_num) then
         v_issues := v_issues || jsonb_build_object(
-          'field', 'servings', 'severity', 'blocking',
-          'message', format('servings must be > 0 (got %s)', v_num)
+          'code', 'SERVINGS_NOT_INTEGER', 'field', 'servings', 'severity', 'blocking',
+          'message', format('servings must be a whole number (got %s)', v_num),
+          'requiredChange', 'servings degerini tam sayi olarak girin.'
+        );
+      elsif v_num <= 0 then
+        v_issues := v_issues || jsonb_build_object(
+          'code', 'SERVINGS_NOT_POSITIVE', 'field', 'servings', 'severity', 'blocking',
+          'message', format('servings must be > 0 (got %s)', v_num),
+          'requiredChange', 'servings degerini 0''dan buyuk yapin.'
         );
       end if;
     end if;
@@ -601,25 +719,73 @@ begin
 
   if p_draft ? 'prepMinutes' and jsonb_typeof(p_draft->'prepMinutes') is distinct from 'null' then
     if jsonb_typeof(p_draft->'prepMinutes') is distinct from 'number' then
-      v_issues := v_issues || jsonb_build_object('field', 'prepMinutes', 'severity', 'blocking', 'message', 'prepMinutes must be a number');
-    elsif (p_draft->>'prepMinutes')::numeric < 0 then
-      v_issues := v_issues || jsonb_build_object('field', 'prepMinutes', 'severity', 'blocking', 'message', format('prepMinutes must be >= 0 (got %s)', p_draft->>'prepMinutes'));
+      v_issues := v_issues || jsonb_build_object(
+        'code', 'PREP_MINUTES_NOT_NUMBER', 'field', 'prepMinutes', 'severity', 'blocking',
+        'message', 'prepMinutes must be a number', 'requiredChange', 'prepMinutes alanina sayisal bir deger girin.'
+      );
+    else
+      v_num := (p_draft->>'prepMinutes')::numeric;
+      if v_num <> trunc(v_num) then
+        v_issues := v_issues || jsonb_build_object(
+          'code', 'PREP_MINUTES_NOT_INTEGER', 'field', 'prepMinutes', 'severity', 'blocking',
+          'message', format('prepMinutes must be a whole number (got %s)', v_num),
+          'requiredChange', 'prepMinutes degerini tam sayi olarak girin.'
+        );
+      elsif v_num < 0 then
+        v_issues := v_issues || jsonb_build_object(
+          'code', 'PREP_MINUTES_NEGATIVE', 'field', 'prepMinutes', 'severity', 'blocking',
+          'message', format('prepMinutes must be >= 0 (got %s)', v_num),
+          'requiredChange', 'prepMinutes degerini 0 veya daha buyuk yapin.'
+        );
+      end if;
     end if;
   end if;
 
   if p_draft ? 'cookMinutes' and jsonb_typeof(p_draft->'cookMinutes') is distinct from 'null' then
     if jsonb_typeof(p_draft->'cookMinutes') is distinct from 'number' then
-      v_issues := v_issues || jsonb_build_object('field', 'cookMinutes', 'severity', 'blocking', 'message', 'cookMinutes must be a number');
-    elsif (p_draft->>'cookMinutes')::numeric < 0 then
-      v_issues := v_issues || jsonb_build_object('field', 'cookMinutes', 'severity', 'blocking', 'message', format('cookMinutes must be >= 0 (got %s)', p_draft->>'cookMinutes'));
+      v_issues := v_issues || jsonb_build_object(
+        'code', 'COOK_MINUTES_NOT_NUMBER', 'field', 'cookMinutes', 'severity', 'blocking',
+        'message', 'cookMinutes must be a number', 'requiredChange', 'cookMinutes alanina sayisal bir deger girin.'
+      );
+    else
+      v_num := (p_draft->>'cookMinutes')::numeric;
+      if v_num <> trunc(v_num) then
+        v_issues := v_issues || jsonb_build_object(
+          'code', 'COOK_MINUTES_NOT_INTEGER', 'field', 'cookMinutes', 'severity', 'blocking',
+          'message', format('cookMinutes must be a whole number (got %s)', v_num),
+          'requiredChange', 'cookMinutes degerini tam sayi olarak girin.'
+        );
+      elsif v_num < 0 then
+        v_issues := v_issues || jsonb_build_object(
+          'code', 'COOK_MINUTES_NEGATIVE', 'field', 'cookMinutes', 'severity', 'blocking',
+          'message', format('cookMinutes must be >= 0 (got %s)', v_num),
+          'requiredChange', 'cookMinutes degerini 0 veya daha buyuk yapin.'
+        );
+      end if;
     end if;
   end if;
 
   if p_draft ? 'restMinutes' and jsonb_typeof(p_draft->'restMinutes') is distinct from 'null' then
     if jsonb_typeof(p_draft->'restMinutes') is distinct from 'number' then
-      v_issues := v_issues || jsonb_build_object('field', 'restMinutes', 'severity', 'blocking', 'message', 'restMinutes must be a number');
-    elsif (p_draft->>'restMinutes')::numeric < 0 then
-      v_issues := v_issues || jsonb_build_object('field', 'restMinutes', 'severity', 'blocking', 'message', format('restMinutes must be >= 0 (got %s)', p_draft->>'restMinutes'));
+      v_issues := v_issues || jsonb_build_object(
+        'code', 'REST_MINUTES_NOT_NUMBER', 'field', 'restMinutes', 'severity', 'blocking',
+        'message', 'restMinutes must be a number', 'requiredChange', 'restMinutes alanina sayisal bir deger girin.'
+      );
+    else
+      v_num := (p_draft->>'restMinutes')::numeric;
+      if v_num <> trunc(v_num) then
+        v_issues := v_issues || jsonb_build_object(
+          'code', 'REST_MINUTES_NOT_INTEGER', 'field', 'restMinutes', 'severity', 'blocking',
+          'message', format('restMinutes must be a whole number (got %s)', v_num),
+          'requiredChange', 'restMinutes degerini tam sayi olarak girin.'
+        );
+      elsif v_num < 0 then
+        v_issues := v_issues || jsonb_build_object(
+          'code', 'REST_MINUTES_NEGATIVE', 'field', 'restMinutes', 'severity', 'blocking',
+          'message', format('restMinutes must be >= 0 (got %s)', v_num),
+          'requiredChange', 'restMinutes degerini 0 veya daha buyuk yapin.'
+        );
+      end if;
     end if;
   end if;
 
@@ -628,70 +794,99 @@ begin
   v_difficulty := nullif(btrim(coalesce(p_draft->>'difficulty', '')), '');
   if v_difficulty is not null and v_difficulty not in ('kolay', 'orta', 'zor') then
     v_issues := v_issues || jsonb_build_object(
-      'field', 'difficulty', 'severity', 'blocking',
-      'message', format('difficulty must be kolay|orta|zor (got "%s")', v_difficulty)
+      'code', 'DIFFICULTY_INVALID', 'field', 'difficulty', 'severity', 'blocking',
+      'message', format('difficulty must be kolay|orta|zor (got "%s")', v_difficulty),
+      'requiredChange', 'difficulty degerini kolay, orta veya zor olarak ayarlayin.'
     );
   end if;
 
   v_ingredients := p_draft->'ingredients';
   if jsonb_typeof(v_ingredients) is distinct from 'array' or jsonb_array_length(v_ingredients) = 0 then
     v_issues := v_issues || jsonb_build_object(
-      'field', 'ingredients', 'severity', 'blocking', 'message', 'ingredients must be a non-empty array'
+      'code', 'INGREDIENTS_EMPTY', 'field', 'ingredients', 'severity', 'blocking',
+      'message', 'ingredients must be a non-empty array', 'requiredChange', 'En az bir malzeme ekleyin.'
     );
   end if;
 
   v_steps := p_draft->'steps';
   if jsonb_typeof(v_steps) is distinct from 'array' or jsonb_array_length(v_steps) = 0 then
     v_issues := v_issues || jsonb_build_object(
-      'field', 'steps', 'severity', 'blocking', 'message', 'steps must be a non-empty array'
+      'code', 'STEPS_EMPTY', 'field', 'steps', 'severity', 'blocking',
+      'message', 'steps must be a non-empty array', 'requiredChange', 'En az bir adim ekleyin.'
     );
   else
     for v_step in select * from jsonb_array_elements(v_steps)
     loop
       if btrim(coalesce(v_step->>'instruction', '')) = '' then
         v_issues := v_issues || jsonb_build_object(
+          'code', 'STEP_INSTRUCTION_MISSING',
           'field', format('steps[%s].instruction', coalesce(v_step->>'stepNo', '?')),
-          'severity', 'blocking', 'message', 'step instruction is required'
+          'severity', 'blocking', 'message', 'step instruction is required',
+          'requiredChange', 'Adim icin bir talimat metni girin.'
         );
       end if;
 
       if jsonb_typeof(v_step->'stepNo') is distinct from 'number' then
         v_issues := v_issues || jsonb_build_object(
-          'field', 'steps[].stepNo', 'severity', 'blocking', 'message', 'every step needs a numeric stepNo'
+          'code', 'STEP_NO_NOT_NUMBER', 'field', 'steps[].stepNo', 'severity', 'blocking',
+          'message', 'every step needs a numeric stepNo', 'requiredChange', 'Her adima sayisal bir stepNo verin.'
         );
       else
-        v_step_nos := v_step_nos || (v_step->>'stepNo')::integer;
-        if (v_step->>'stepNo')::integer <= 0 then
+        v_num := (v_step->>'stepNo')::numeric;
+        if v_num <> trunc(v_num) then
           v_issues := v_issues || jsonb_build_object(
-            'field', format('steps[%s].stepNo', v_step->>'stepNo'), 'severity', 'blocking',
-            'message', format('stepNo must be > 0 (got %s)', v_step->>'stepNo')
+            'code', 'STEP_NO_NOT_INTEGER', 'field', format('steps[%s].stepNo', v_step->>'stepNo'), 'severity', 'blocking',
+            'message', format('stepNo must be a whole number (got %s)', v_num),
+            'requiredChange', 'stepNo degerini tam sayi olarak girin.'
           );
+        elsif v_num <= 0 then
+          v_issues := v_issues || jsonb_build_object(
+            'code', 'STEP_NO_NOT_POSITIVE', 'field', format('steps[%s].stepNo', v_step->>'stepNo'), 'severity', 'blocking',
+            'message', format('stepNo must be > 0 (got %s)', v_num),
+            'requiredChange', 'stepNo degerini 0''dan buyuk yapin.'
+          );
+        else
+          v_step_nos := v_step_nos || v_num::integer;
         end if;
       end if;
 
       if v_step ? 'timerSeconds' and jsonb_typeof(v_step->'timerSeconds') is distinct from 'null' then
         if jsonb_typeof(v_step->'timerSeconds') is distinct from 'number' then
           v_issues := v_issues || jsonb_build_object(
-            'field', format('steps[%s].timerSeconds', v_step->>'stepNo'), 'severity', 'blocking',
-            'message', 'timerSeconds must be a number'
+            'code', 'STEP_TIMER_NOT_NUMBER', 'field', format('steps[%s].timerSeconds', v_step->>'stepNo'), 'severity', 'blocking',
+            'message', 'timerSeconds must be a number', 'requiredChange', 'timerSeconds alanina sayisal bir deger girin.'
           );
-        elsif (v_step->>'timerSeconds')::numeric <= 0 then
-          v_issues := v_issues || jsonb_build_object(
-            'field', format('steps[%s].timerSeconds', v_step->>'stepNo'), 'severity', 'blocking',
-            'message', format('timerSeconds must be > 0 (got %s)', v_step->>'timerSeconds')
-          );
+        else
+          v_num := (v_step->>'timerSeconds')::numeric;
+          if v_num <> trunc(v_num) then
+            v_issues := v_issues || jsonb_build_object(
+              'code', 'STEP_TIMER_NOT_INTEGER', 'field', format('steps[%s].timerSeconds', v_step->>'stepNo'), 'severity', 'blocking',
+              'message', format('timerSeconds must be a whole number (got %s)', v_num),
+              'requiredChange', 'timerSeconds degerini tam sayi (saniye) olarak girin.'
+            );
+          elsif v_num <= 0 then
+            v_issues := v_issues || jsonb_build_object(
+              'code', 'STEP_TIMER_NOT_POSITIVE', 'field', format('steps[%s].timerSeconds', v_step->>'stepNo'), 'severity', 'blocking',
+              'message', format('timerSeconds must be > 0 (got %s)', v_num),
+              'requiredChange', 'timerSeconds degerini 0''dan buyuk yapin.'
+            );
+          end if;
         end if;
       end if;
     end loop;
 
     -- Sequential step_no starting at 1, no gaps/duplicates — mirrors the Zod refine in schemas.ts.
+    -- Only evaluated once every step contributed a valid (integer, positive) stepNo to
+    -- v_step_nos above; an invalid stepNo already produced its own blocking issue, so skipping
+    -- this check for that case (rather than double-reporting) is deliberate.
     if array_length(v_step_nos, 1) = jsonb_array_length(v_steps) then
       select array_agg(n order by n) into v_step_nos from unnest(v_step_nos) as n;
       select array_agg(g) into v_expected from generate_series(1, jsonb_array_length(v_steps)) as g;
       if v_step_nos is distinct from v_expected then
         v_issues := v_issues || jsonb_build_object(
-          'field', 'steps', 'severity', 'blocking',
-          'message', 'steps must have sequential stepNo starting at 1, with no gaps or duplicates'
+          'code', 'STEPS_NOT_SEQUENTIAL', 'field', 'steps', 'severity', 'blocking',
+          'message', 'steps must have sequential stepNo starting at 1, with no gaps or duplicates',
+          'requiredChange', 'Adimlari 1''den baslayarak, bosluksuz ve tekrarsiz sirala.'
         );
       end if;
     end if;
@@ -719,8 +914,8 @@ create or replace function public.validate_recipe_crop_values(p_draft jsonb)
 returns jsonb
 language plpgsql
 stable
-security definer
-set search_path to 'public'
+security invoker
+set search_path = ''
 as $$
 declare
   v_issues jsonb := '[]'::jsonb;
@@ -735,7 +930,8 @@ begin
     return jsonb_build_object(
       'valid', false,
       'issues', jsonb_build_array(jsonb_build_object(
-        'field', 'ingredients', 'severity', 'blocking', 'message', 'ingredients must be an array'
+        'code', 'INGREDIENTS_NOT_ARRAY', 'field', 'ingredients', 'severity', 'blocking',
+        'message', 'ingredients must be an array', 'requiredChange', 'ingredients alanini bir dizi olarak gonderin.'
       ))
     );
   end if;
@@ -747,28 +943,32 @@ begin
 
     if v_crop is null and v_free_text is null then
       v_issues := v_issues || jsonb_build_object(
-        'field', format('ingredients[%s]', v_idx), 'severity', 'blocking',
-        'message', format('ingredient #%s needs either crop or freeTextName', v_idx)
+        'code', 'INGREDIENT_NAME_MISSING', 'field', format('ingredients[%s]', v_idx), 'severity', 'blocking',
+        'message', format('ingredient #%s needs either crop or freeTextName', v_idx),
+        'requiredChange', 'Malzeme icin crop veya freeTextName degerlerinden birini belirtin.'
       );
     end if;
 
     if v_crop is not null and not exists (select 1 from public.crop_config cc where cc.crop = v_crop) then
       v_issues := v_issues || jsonb_build_object(
-        'field', format('ingredients[%s].crop', v_idx), 'severity', 'blocking',
-        'message', format('ingredient #%s references unknown crop "%s" (not in crop_config)', v_idx, v_crop)
+        'code', 'INGREDIENT_CROP_UNKNOWN', 'field', format('ingredients[%s].crop', v_idx), 'severity', 'blocking',
+        'message', format('ingredient #%s references unknown crop "%s" (not in crop_config)', v_idx, v_crop),
+        'requiredChange', 'crop_config icinde tanimli gecerli bir crop secin.'
       );
     end if;
 
     if v_ing ? 'quantity' and jsonb_typeof(v_ing->'quantity') is distinct from 'null' then
       if jsonb_typeof(v_ing->'quantity') is distinct from 'number' then
         v_issues := v_issues || jsonb_build_object(
-          'field', format('ingredients[%s].quantity', v_idx), 'severity', 'blocking',
-          'message', format('ingredient #%s quantity must be a number', v_idx)
+          'code', 'INGREDIENT_QUANTITY_NOT_NUMBER', 'field', format('ingredients[%s].quantity', v_idx), 'severity', 'blocking',
+          'message', format('ingredient #%s quantity must be a number', v_idx),
+          'requiredChange', 'quantity alanina sayisal bir deger girin.'
         );
       elsif (v_ing->>'quantity')::numeric <= 0 then
         v_issues := v_issues || jsonb_build_object(
-          'field', format('ingredients[%s].quantity', v_idx), 'severity', 'blocking',
-          'message', format('ingredient #%s quantity must be > 0 (got %s)', v_idx, v_ing->>'quantity')
+          'code', 'INGREDIENT_QUANTITY_NOT_POSITIVE', 'field', format('ingredients[%s].quantity', v_idx), 'severity', 'blocking',
+          'message', format('ingredient #%s quantity must be > 0 (got %s)', v_idx, v_ing->>'quantity'),
+          'requiredChange', 'quantity degerini 0''dan buyuk yapin.'
         );
       end if;
     end if;
@@ -793,19 +993,23 @@ grant execute on function public.validate_recipe_crop_values(jsonb) to service_r
 --     steps (see file header for the documented heuristic and its scope). Two checks:
 --       a) every KEY ingredient (is_key_ingredient = true) should be mentioned somewhere in the
 --          steps' combined instruction text -> 'warning' if not (never 'blocking': wording is the
---          author's call, not a hard DB rule). Non-key ingredients are never checked (optional /
---          garnish items are allowed to go unmentioned by name).
+--          author's call, not a hard DB rule; see file header §5 for why this stays a warning).
+--          Non-key ingredients are never checked (optional/garnish items are allowed to go
+--          unmentioned by name).
 --       b) every step should not mention a crop_config crop, by name, that isn't one of this
 --          draft's own ingredients -> 'warning' (likely a missing ingredient row, not necessarily
 --          wrong — kept as warning, not blocking, since it's a heuristic).
+--     Step 03A: `isKeyIngredient` is now type-checked before the `::boolean` cast (a non-boolean
+--     value produces a warning instead of raising), and both dynamic regex sites now escape their
+--     interpolated text through `fn_recipe_escape_regex` instead of splicing it in raw.
 -- =================================================================================================
 
 create or replace function public.validate_recipe_ingredient_coverage(p_draft jsonb)
 returns jsonb
 language plpgsql
 stable
-security definer
-set search_path to 'public'
+security invoker
+set search_path = ''
 as $$
 declare
   v_issues jsonb := '[]'::jsonb;
@@ -816,6 +1020,7 @@ declare
   v_idx integer := 0;
   v_name text;
   v_root text;
+  v_is_key boolean;
   v_draft_crops text[] := array[]::text[];
   v_step jsonb;
   v_step_text text;
@@ -825,7 +1030,8 @@ begin
     return jsonb_build_object(
       'valid', false,
       'issues', jsonb_build_array(jsonb_build_object(
-        'field', 'draft', 'severity', 'blocking', 'message', 'draft must be a JSON object'
+        'code', 'DRAFT_NOT_OBJECT', 'field', 'draft', 'severity', 'blocking',
+        'message', 'draft must be a JSON object', 'requiredChange', 'Taslagi bir JSON nesnesi olarak gonderin.'
       ))
     );
   end if;
@@ -846,7 +1052,20 @@ begin
   -- a) unused key ingredients.
   for v_ing in select * from jsonb_array_elements(v_ingredients)
   loop
-    if coalesce((v_ing->>'isKeyIngredient')::boolean, false) then
+    -- Step 03A: guard the isKeyIngredient cast — a non-boolean JSON value (string/number/array/
+    -- object) used to raise "invalid input syntax for type boolean" and abort the whole call.
+    if (v_ing ? 'isKeyIngredient') and jsonb_typeof(v_ing->'isKeyIngredient') not in ('boolean', 'null') then
+      v_issues := v_issues || jsonb_build_object(
+        'code', 'INGREDIENT_IS_KEY_NOT_BOOLEAN', 'field', format('ingredients[%s].isKeyIngredient', v_idx),
+        'severity', 'warning', 'message', format('ingredient #%s isKeyIngredient must be a boolean; treated as false', v_idx),
+        'requiredChange', 'isKeyIngredient alanini true veya false olarak ayarlayin.'
+      );
+      v_is_key := false;
+    else
+      v_is_key := coalesce((v_ing->>'isKeyIngredient')::boolean, false);
+    end if;
+
+    if v_is_key then
       v_name := coalesce(
         (select cc.display_name from public.crop_config cc where cc.crop = v_ing->>'crop'),
         nullif(btrim(coalesce(v_ing->>'freeTextName', '')), '')
@@ -857,22 +1076,20 @@ begin
         -- false-positived here during testing: "bakla" (fava bean) matched inside "kabaklarI"
         -- (kabak + -lari suffix) because "bakla" happens to appear mid-word there. `\m` requires
         -- the match to start at a word boundary, which "kabak" itself still satisfies (it's the
-        -- literal prefix of "kabaklari"). Assumes crop/ingredient names carry no regex
-        -- metacharacters, true for the natural-language Turkish food names this operates on.
-        if length(v_root) >= 3 and v_all_text !~ ('\m' || v_root) then
+        -- literal prefix of "kabaklari"). `v_root` is escaped via fn_recipe_escape_regex before
+        -- being spliced into the pattern — it comes from crop_config/freeTextName, which is
+        -- ordinary Turkish food-name text, not guaranteed free of regex metacharacters.
+        if length(v_root) >= 3 and v_all_text !~ ('\m' || public.fn_recipe_escape_regex(v_root)) then
           v_issues := v_issues || jsonb_build_object(
-            'field', format('ingredients[%s]', v_idx), 'severity', 'warning',
-            'message', format('key ingredient "%s" is never mentioned in any step instruction', v_name)
+            'code', 'INGREDIENT_UNUSED', 'field', format('ingredients[%s]', v_idx), 'severity', 'warning',
+            'message', format('key ingredient "%s" is never mentioned in any step instruction', v_name),
+            'requiredChange', null
           );
         end if;
       end if;
-      if v_ing->>'crop' is not null then
-        v_draft_crops := v_draft_crops || (v_ing->>'crop');
-      end if;
-    else
-      if v_ing->>'crop' is not null then
-        v_draft_crops := v_draft_crops || (v_ing->>'crop');
-      end if;
+    end if;
+    if v_ing->>'crop' is not null then
+      v_draft_crops := v_draft_crops || (v_ing->>'crop');
     end if;
     v_idx := v_idx + 1;
   end loop;
@@ -887,14 +1104,15 @@ begin
         from public.crop_config cc
         where length(cc.display_name) >= 4
           and not (cc.crop = any (v_draft_crops))
-          and v_step_text ~ ('\m' || lower(split_part(cc.display_name, ' ', 1)))
+          and v_step_text ~ ('\m' || public.fn_recipe_escape_regex(lower(split_part(cc.display_name, ' ', 1))))
       loop
         v_issues := v_issues || jsonb_build_object(
-          'field', format('steps[%s]', coalesce(v_step->>'stepNo', '?')), 'severity', 'warning',
+          'code', 'STEP_UNKNOWN_CROP_MENTION', 'field', format('steps[%s]', coalesce(v_step->>'stepNo', '?')), 'severity', 'warning',
           'message', format(
             'step %s mentions "%s" (crop "%s"), which is not among this draft''s ingredients',
             coalesce(v_step->>'stepNo', '?'), v_other.display_name, v_other.crop
-          )
+          ),
+          'requiredChange', null
         );
       end loop;
     end if;
@@ -916,14 +1134,15 @@ grant execute on function public.validate_recipe_ingredient_coverage(jsonb) to s
 -- 11. normalize_recipe_units — canonicalizes each ingredient's `unit` spelling in place (see
 --     fn_recipe_canonical_unit above for the alias table). Returns the same ingredients array with
 --     only `unit` rewritten; every other field/key is passed through untouched.
+--     Step 03A: fixed a jsonb_set NULL-strict bug — see file header §4 for the full write-up.
 -- =================================================================================================
 
 create or replace function public.normalize_recipe_units(p_ingredients jsonb)
 returns jsonb
 language plpgsql
 stable
-security definer
-set search_path to 'public'
+security invoker
+set search_path = ''
 as $$
 declare
   v_result jsonb := '[]'::jsonb;
@@ -938,7 +1157,12 @@ begin
   loop
     if v_ing ? 'unit' and jsonb_typeof(v_ing->'unit') = 'string' then
       v_canonical := public.fn_recipe_canonical_unit(v_ing->>'unit');
-      v_ing := jsonb_set(v_ing, '{unit}', to_jsonb(v_canonical), true);
+      -- `to_jsonb(v_canonical)` is a SQL NULL when v_canonical is NULL (e.g. an empty-string
+      -- unit) — passing a SQL NULL as jsonb_set's new_value makes jsonb_set return SQL NULL for
+      -- the ENTIRE call, not just the 'unit' key, which previously turned the whole ingredient
+      -- object into a JSON null in the result array. coalesce(..., 'null'::jsonb) converts that
+      -- SQL NULL into an actual JSON null VALUE first, so jsonb_set only nulls out the unit key.
+      v_ing := jsonb_set(v_ing, '{unit}', coalesce(to_jsonb(v_canonical), 'null'::jsonb), true);
     end if;
     v_result := v_result || jsonb_build_array(v_ing);
   end loop;

@@ -8,6 +8,7 @@ import type { z } from "npm:zod@3.23.8";
 import type {
   recipeAuthorTypeSchema,
   recipeBatchInputSchema,
+  recipeBatchStatusSchema,
   recipeBriefSchema,
   recipeDifficultySchema,
   recipeDraftPayloadSchema,
@@ -19,6 +20,8 @@ import type {
   recipeJobStageSchema,
   recipeJobStatusSchema,
   recipePlanBatchSchema,
+  recipeQADecisionSchema,
+  recipeQAIssueSchema,
   recipeQAResultSchema,
   recipeSafetyReviewSchema,
   recipeSourceTypeSchema,
@@ -36,6 +39,7 @@ export type RecipeIngredientClass = z.infer<typeof recipeIngredientClassSchema>;
 /** Pipeline stage — separate value space from `recipes.status` (draft | published only). */
 export type RecipeJobStage = z.infer<typeof recipeJobStageSchema>;
 export type RecipeJobStatus = z.infer<typeof recipeJobStatusSchema>;
+export type RecipeBatchStatus = z.infer<typeof recipeBatchStatusSchema>;
 
 export type RecipeErrorPayload = z.infer<typeof recipeErrorPayloadSchema>;
 
@@ -48,6 +52,8 @@ export type RecipeStepDraft = z.infer<typeof recipeStepDraftSchema>;
 export type RecipeDraftPayload = z.infer<typeof recipeDraftPayloadSchema>;
 
 export type RecipeSafetyReview = z.infer<typeof recipeSafetyReviewSchema>;
+export type RecipeQADecision = z.infer<typeof recipeQADecisionSchema>;
+export type RecipeQAIssue = z.infer<typeof recipeQAIssueSchema>;
 export type RecipeQAResult = z.infer<typeof recipeQAResultSchema>;
 
 export type RecipeImageCropTarget = z.infer<typeof recipeImageCropTargetSchema>;

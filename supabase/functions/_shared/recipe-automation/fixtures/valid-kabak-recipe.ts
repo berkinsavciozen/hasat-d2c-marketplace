@@ -40,7 +40,6 @@ export const validBrief: RecipeBrief = {
 
 export const validPlanBatch: RecipePlanBatch = {
   batchId: BATCH_ID,
-  jobId: JOB_ID,
   briefs: [validBrief],
   plannedAt: "2026-08-19T09:05:00Z",
   plannerModel: "google/gemini-2.5-flash",
@@ -96,11 +95,24 @@ export const validKabakRecipeDraft: RecipeDraftPayload = {
   ],
 };
 
+export const DRAFT_ID = "66666666-6666-4666-8666-666666666666";
+
 export const validQAResult: RecipeQAResult = {
   jobId: JOB_ID,
+  draftId: DRAFT_ID,
+  draftVersion: 1,
   recipeId: RECIPE_ID,
-  passed: true,
-  issues: [],
+  decision: "approved",
+  overallScore: 88,
+  scores: {
+    clarity: 90,
+    feasibility: 85,
+    ingredientConsistency: 90,
+    originality: 80,
+    hasatRelevance: 95,
+  },
+  blockingIssues: [],
+  nonBlockingSuggestions: [],
   safetyReview: {
     temperature: { flagged: false, notes: null },
     timing: { flagged: false, notes: null },
@@ -110,8 +122,31 @@ export const validQAResult: RecipeQAResult = {
     reviewedAt: "2026-08-19T10:00:00Z",
     approved: true,
   },
+  approvedForImaging: true,
   checkedAt: "2026-08-19T09:45:00Z",
   model: "google/gemini-2.5-flash",
+};
+
+export const validQAResultRevisionRequired: RecipeQAResult = {
+  ...validQAResult,
+  decision: "revision_required",
+  overallScore: 62,
+  blockingIssues: [
+    {
+      code: "UNUSED_INGREDIENT",
+      field: "ingredients[1]",
+      severity: "blocking",
+      message: "kasar peyniri hicbir adimda kullanilmiyor.",
+      requiredChange: "Son adima ekleyin veya malzeme listesinden cikarin.",
+    },
+  ],
+  safetyReview: {
+    ...validQAResult.safetyReview,
+    reviewedBy: null,
+    reviewedAt: null,
+    approved: null,
+  },
+  approvedForImaging: false,
 };
 
 export const validImageSpec1024: RecipeImageSpec = {

@@ -1,9 +1,17 @@
-// Canonical Zod contracts for the Hasat Recipe Automation pipeline (F2, Step 02).
+// Canonical Zod contracts for the Hasat Recipe Automation pipeline (F2, Step 02 + Step 03A
+// foundation reconciliation).
 //
 // These schemas are the single runtime-validated source of truth for every payload that
 // crosses a stage boundary in the chained, short-lived Edge Function pipeline described in
 // RecipeAutomation.md. `types.ts` in this same directory re-exports the inferred TypeScript
 // types so callers can `import type` without pulling Zod into type-only positions.
+//
+// Step 03A reconciliation (2026-08-19/20): this file's Step 02 version was merged (PR #40)
+// before the Master Plan's canonical state-machine vocabulary (RecipeAutomation.md §3) and the
+// `RecipeQAResult` decision/score/blocking-issue contract (§5.3) were fully implemented. This
+// revision aligns the stage/status enums and QA contract to those sections and to
+// 02_Execution_Tracker.md's Step 03A gate, while keeping every previously-accepted live-schema
+// mapping below unchanged.
 //
 // Live-schema alignment (verified against Supabase project `efuqpiaavrzimvstpdpm`, see
 // docs/recipe-automation/00-repo-audit-decision-log.md for the full audit):
@@ -45,6 +53,8 @@ import { z } from "npm:zod@3.23.8";
 const uuidSchema = z.string().uuid();
 const isoDateTimeSchema = z.string().datetime({ offset: true });
 const nonEmptyTrimmedString = z.string().trim().min(1);
+/** 0-100 inclusive, matches the RecipeQAResult `scores`/`overallScore` range in RecipeAutomation.md §5.3. */
+const scoreSchema = z.number().min(0).max(100);
 
 /** `recipes.difficulty` CHECK constraint, verbatim. */
 export const RECIPE_DIFFICULTY_VALUES = ["kolay", "orta", "zor"] as const;
@@ -69,32 +79,54 @@ export const recipeIngredientClassSchema = z.enum(RECIPE_INGREDIENT_CLASS_VALUES
 // ---------------------------------------------------------------------------
 // Pipeline job stage / status (deliberately separate from recipes.status)
 // ---------------------------------------------------------------------------
+//
+// Step 03A: adopted VERBATIM from RecipeAutomation.md §3 ("Önerilen job stage değerleri" /
+// "Önerilen job status değerleri") instead of the Step 02 paraphrase (planning/drafting/
+// qa_review/safety_review/image_generation/publish_ready/published), which omitted the revise
+// loop, finalize step and awaiting-approval gate as distinct, addressable states. Using the
+// Master Plan's own names — rather than a re-mapped equivalent — removes any translation layer
+// between this contract and the canonical doc, which is the smallest-drift option available.
+//
+// `stage` is WHICH pipeline node a job is at; `status` is the OUTCOME of the job's current
+// attempt at that stage. The two are orthogonal (e.g. stage='qa', status='running' while the QA
+// agent call is in flight; stage='awaiting_approval', status='awaiting_approval' while a human
+// reviewer hasn't acted yet — the Master Plan's own vocabulary reuses the same word for both,
+// which is intentional: it is the natural resting state, not a modeling error).
+//
+// Standalone `safety_review` is NOT a pipeline stage here (Step 02 had one). Per §5.3 and §9,
+// temperature/timing/allergen findings are always emitted as part of the QA agent's structured
+// output (`recipeQAResultSchema.safetyReview` below) and are re-checked as an admin approval
+// precondition (§9's publish contract) — they are a mandatory field on every QA result and a gate
+// before `publish`, not a separate Edge Function stage node of their own.
 
-/**
- * Where a `recipe_generation_jobs` row currently is in the chained-Edge-Function pipeline.
- * This is NEVER written to `recipes.status` (which only ever accepts 'draft' | 'published').
- */
 export const RECIPE_JOB_STAGE_VALUES = [
-  "planning",
-  "drafting",
-  "qa_review",
-  "safety_review",
-  "image_generation",
-  "publish_ready",
-  "published",
+  "plan",
+  "write",
+  "qa",
+  "revise",
+  "image",
+  "finalize",
+  "awaiting_approval",
+  "publish",
 ] as const;
 export const recipeJobStageSchema = z.enum(RECIPE_JOB_STAGE_VALUES);
 
-/** Outcome of the job's current stage — orthogonal to which stage it is in. */
 export const RECIPE_JOB_STATUS_VALUES = [
-  "pending",
-  "in_progress",
-  "succeeded",
+  "queued",
+  "running",
+  "retryable",
   "failed",
-  "needs_human_review",
+  "awaiting_approval",
+  "approved",
+  "rejected",
+  "completed",
   "cancelled",
 ] as const;
 export const recipeJobStatusSchema = z.enum(RECIPE_JOB_STATUS_VALUES);
+
+/** Batch-level lifecycle — coarser than a job's stage/status; see recipe_generation_batches. */
+export const RECIPE_BATCH_STATUS_VALUES = ["active", "completed", "failed", "cancelled"] as const;
+export const recipeBatchStatusSchema = z.enum(RECIPE_BATCH_STATUS_VALUES);
 
 // ---------------------------------------------------------------------------
 // Standard safe error payload
@@ -149,10 +181,19 @@ export const recipeBriefSchema = z.object({
 // ---------------------------------------------------------------------------
 // RecipePlanBatch — planning-stage output: a batch of briefs
 // ---------------------------------------------------------------------------
-
+//
+// Step 03A: the Step 02 version carried a singular `jobId` alongside `briefs: RecipeBrief[]`.
+// That is not representable: one planning pass creates MANY briefs, and only later — one at a
+// time, as each brief is independently approved — does a single `recipe_generation_jobs` row
+// (one job per approved brief) get created. A `RecipePlanBatch` is emitted before any job exists,
+// so it cannot carry a `jobId` at all. `jobId` is removed outright (not renamed) rather than
+// justified, because there is no reading of "the plan's job" that is coherent for a batch of N
+// briefs. Stable identity going forward is `RecipeBrief.briefId` (already present, UUID,
+// generated by the Planner) — `recipeDraftPayloadSchema.briefId` below carries that same value
+// through drafting/QA/revision history, so a draft (and everything derived from it) can always be
+// traced back to the exact brief it was written from, without a job-level indirection.
 export const recipePlanBatchSchema = z.object({
   batchId: uuidSchema,
-  jobId: uuidSchema,
   briefs: z.array(recipeBriefSchema).min(1).max(25),
   plannedAt: isoDateTimeSchema,
   /** Which model/provider produced the plan. Intentionally free text — not hard-coded. */
@@ -161,6 +202,10 @@ export const recipePlanBatchSchema = z.object({
   .refine(
     (batch) => batch.briefs.every((brief) => brief.batchId === batch.batchId),
     { message: "every brief.batchId must match the batch's own batchId", path: ["briefs"] },
+  )
+  .refine(
+    (batch) => new Set(batch.briefs.map((brief) => brief.briefId)).size === batch.briefs.length,
+    { message: "every brief.briefId in a batch must be unique", path: ["briefs"] },
   );
 
 // ---------------------------------------------------------------------------
@@ -257,25 +302,86 @@ export const recipeSafetyReviewSchema = z.object({
   );
 
 // ---------------------------------------------------------------------------
-// RecipeQAResult — automated QA pass, safety review always nested and human-gated
+// RecipeQAResult — the real routing contract (Step 03A rebuild)
 // ---------------------------------------------------------------------------
+//
+// Step 02's version (`passed: boolean` + a flat `issues[]` + nested `safetyReview`) collapsed
+// the Master Plan's three-way routing decision (§5.3: approved | revision_required |
+// manual_review_required) into a boolean, had no blocking/non-blocking issue split, no named
+// score groups, and did not identify which exact draft/version was reviewed — so a QA result
+// could not be unambiguously tied back to the draft it graded once a job had multiple draft
+// versions (revision loop). This rebuild is a direct, field-for-field mapping of §5.3's
+// structured output, plus `draftId`/`draftVersion` for exact-draft identity (enforced at the DB
+// layer too — see the Step 03 migration's composite FK from recipe_qa_results to recipe_drafts).
 
-const qaIssueSeveritySchema = z.enum(["info", "warning", "blocking"]);
+/**
+ * Shared issue shape for QA blocking issues, non-blocking suggestions, AND every Postgres
+ * validation RPC's `issues` array (Step 04) — deliberately the SAME schema in both places so an
+ * RPC's jsonb issue objects can be pushed directly into a `recipeQAResultSchema`-shaped array
+ * without transformation. `code` is a stable, machine-matchable identifier (never renamed once
+ * shipped); `field`/`message` remain human-readable location + description; `requiredChange` is
+ * the concrete fix a reviision pass should make, non-null for anything actually actionable.
+ */
+export const recipeQAIssueSchema = z.object({
+  code: z.string().regex(/^[A-Z][A-Z0-9_]*$/, "code must be SCREAMING_SNAKE_CASE"),
+  field: nonEmptyTrimmedString,
+  severity: z.enum(["info", "warning", "blocking"]),
+  message: nonEmptyTrimmedString.max(1000),
+  requiredChange: z.string().trim().min(1).max(1000).nullable().default(null),
+}).strict();
+
+export const RECIPE_QA_DECISION_VALUES = ["approved", "revision_required", "manual_review_required"] as const;
+export const recipeQADecisionSchema = z.enum(RECIPE_QA_DECISION_VALUES);
 
 export const recipeQAResultSchema = z.object({
   jobId: uuidSchema,
+  /** Exact draft reviewed — both required so a result can never be ambiguous about its target. */
+  draftId: uuidSchema,
+  draftVersion: z.number().int().positive(),
   recipeId: uuidSchema.nullable().default(null),
-  passed: z.boolean(),
-  issues: z.array(z.object({
-    field: nonEmptyTrimmedString,
-    severity: qaIssueSeveritySchema,
-    message: nonEmptyTrimmedString.max(1000),
-  }).strict()).default([]),
+  decision: recipeQADecisionSchema,
+  overallScore: scoreSchema,
+  /** Named score groups, verbatim from RecipeAutomation.md §5.3's structured-output example. */
+  scores: z.object({
+    clarity: scoreSchema,
+    feasibility: scoreSchema,
+    ingredientConsistency: scoreSchema,
+    originality: scoreSchema,
+    hasatRelevance: scoreSchema,
+  }).strict(),
+  blockingIssues: z.array(recipeQAIssueSchema.extend({ severity: z.literal("blocking") }).strict()).default([]),
+  nonBlockingSuggestions: z.array(
+    recipeQAIssueSchema.extend({ severity: z.enum(["info", "warning"]) }).strict(),
+  ).default([]),
+  /** Mandatory temperature/timing/allergen findings — never resolvable by score, always human-gated. */
   safetyReview: recipeSafetyReviewSchema,
+  approvedForImaging: z.boolean(),
   checkedAt: isoDateTimeSchema,
   /** Which model/provider ran QA. Intentionally free text — not hard-coded. */
   model: z.string().trim().min(1).nullable().default(null),
-}).strict();
+}).strict()
+  .refine(
+    (qa) => qa.decision !== "approved" || qa.blockingIssues.length === 0,
+    { message: "decision cannot be 'approved' while blockingIssues is non-empty", path: ["decision"] },
+  )
+  .refine(
+    (qa) => qa.blockingIssues.length === 0 || !qa.approvedForImaging,
+    { message: "approvedForImaging cannot be true while blockingIssues is non-empty", path: ["approvedForImaging"] },
+  )
+  .refine(
+    (qa) => qa.approvedForImaging === (qa.decision === "approved" && qa.blockingIssues.length === 0),
+    {
+      message: "approvedForImaging must be true iff decision is 'approved' and there are no blockingIssues",
+      path: ["approvedForImaging"],
+    },
+  );
+// Note on "QA must not impersonate a human reviewer" (Step 03A brief item 3): this QA result's
+// own `decision` is an automated content/structure verdict, deliberately independent from
+// `safetyReview.approved` — the human temperature/timing/allergen sign-off happens later, at the
+// admin draft-review gate (RecipeAutomation.md §10), not inside this schema. What this schema DOES
+// enforce is that `safetyReview.approved` itself can never be true without a human identity/
+// timestamp (`reviewedBy`/`reviewedAt`, required by `recipeSafetyReviewSchema`'s own refine above)
+// — an automated QA pass has no way to set that field to true on its own, regardless of `decision`.
 
 // ---------------------------------------------------------------------------
 // RecipeImageSpec — Gemini generation + Edge-compatible processing contract
