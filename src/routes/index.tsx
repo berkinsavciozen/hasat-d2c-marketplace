@@ -27,6 +27,7 @@ import { useHasat } from "@/lib/hasat/store";
 import { isNetworkAuthError } from "@/lib/hasat/sessionGuard";
 import { HASAT_WHATSAPP_NUMBER } from "@/lib/hasat/constants";
 import { submitIndoorInterest } from "@/lib/api/indoor-interest.functions";
+import { BrandLogo } from "@/components/hasat/BrandLogo";
 
 const HASAT_TITLE = "Hasat | Çiftçiden Doğrudan Alışveriş — İzlenebilir Tarım Pazarı";
 const HASAT_DESC =
@@ -192,8 +193,7 @@ function LandingPage() {
         style={{ ...lpVars, background: "var(--lp-cream)", color: "var(--lp-ink)" }}
       >
         <div className="text-center opacity-70">
-          <div className="text-4xl mb-2 animate-pulse">🌸</div>
-          <div className="text-xs font-mono">Hasat</div>
+          <BrandLogo variant="wordmark" height={28} className="mx-auto mb-2 animate-pulse" />
         </div>
       </div>
     );
@@ -308,8 +308,7 @@ function Nav({ onRole }: { onRole: (r: "farmer" | "buyer") => void }) {
     >
       <div className="mx-auto max-w-6xl px-4 py-3 flex items-center justify-between">
         <div className="flex items-center gap-2 min-w-0">
-          <span className="text-lg">🌸</span>
-          <span className="font-serif text-lg" style={{ color: "var(--lp-primary)" }}>Hasat</span>
+          <BrandLogo variant="wordmark" height={22} />
           <span className="hidden sm:inline text-[10px] uppercase tracking-widest ml-2" style={{ color: "var(--lp-muted)" }}>
             GÜVEN PLATFORMU
           </span>
@@ -1099,7 +1098,8 @@ function ChatCard({ title, messages }: { title: string; messages: { who: "farmer
           >
             {m.who === "hasat" && (
               <div className="flex items-center gap-1 text-[10px] mb-0.5" style={{ color: "var(--lp-muted)" }}>
-                <span>🌸</span><span>Hasat</span>
+                <BrandLogo variant="monogram" height={12} />
+                <span>Hasat</span>
               </div>
             )}
             {m.text}
@@ -1388,8 +1388,7 @@ function Footer() {
       className="px-4 py-12 border-t text-center text-xs"
       style={{ borderColor: "var(--lp-line)", background: "var(--lp-cream)", color: "var(--lp-muted)" }}
     >
-      <div className="text-2xl mb-1">🌸</div>
-      <div className="font-serif text-base" style={{ color: "var(--lp-primary)" }}>Hasat</div>
+      <BrandLogo variant="wordmark" height={20} className="mx-auto mb-1" />
       <div className="mt-1">Tarımda güven altyapısı.</div>
       <div className="mt-4 flex items-center justify-center gap-4 flex-wrap">
         <a href={waHref} target="_blank" rel="noopener noreferrer" className="underline hover:opacity-80">

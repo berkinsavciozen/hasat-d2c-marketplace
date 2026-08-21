@@ -6,6 +6,7 @@ import { useProfile, useParcels, useRealtimeSync, useAuthUserId, useFarmerOffers
 import { SeasonBanner } from "@/components/hasat/SeasonBanner";
 import { FarmPill } from "@/components/hasat/FarmPill";
 import { NotificationBell } from "@/components/hasat/NotificationBell";
+import { BrandLogo } from "@/components/hasat/BrandLogo";
 
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { FarmerAIChat } from "@/components/hasat/ai-chat/FarmerAIChat";
@@ -102,12 +103,9 @@ function FarmerShell() {
       {/* Sidebar (desktop) */}
       <aside className="hidden md:flex flex-col gap-4 p-4 sticky top-0 h-screen" style={{ background: "var(--dark)", color: "var(--hwhite)" }}>
         <div>
-          <div className="flex items-center gap-2">
-            <span className="text-2xl">🌸</span>
-            <div>
-              <div className="font-serif text-lg leading-tight">Hasat</div>
-              <div className="font-mono text-[10px] opacity-50 tracking-widest">ÇİFTÇİ PANELİ</div>
-            </div>
+          <div>
+            <BrandLogo variant="wordmark" tone="white" height={20} />
+            <div className="font-mono text-[10px] opacity-50 tracking-widest mt-1">ÇİFTÇİ PANELİ</div>
           </div>
           <div className="mt-3">
             <FarmPill city={city} area={areaForChip} crop={primaryCrop} />

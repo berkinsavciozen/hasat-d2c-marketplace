@@ -3,6 +3,7 @@ import { useState } from "react";
 import { Search, Package, BarChart3, MessageCircle, User, Repeat, MoreHorizontal, Users } from "lucide-react";
 import { useRealtimeSync, useAuthUserId } from "@/lib/hasat/queries";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { BrandLogo } from "@/components/hasat/BrandLogo";
 
 export const Route = createFileRoute("/buyer")({
   beforeLoad: ({ location }) => {
@@ -53,12 +54,9 @@ function BuyerShell() {
   return (
     <div className="min-h-screen md:grid md:grid-cols-[230px_1fr]">
       <aside className="hidden md:flex flex-col gap-1 p-4 sticky top-0 h-screen" style={{ background: "var(--dark)", color: "var(--hwhite)" }}>
-        <div className="flex items-center gap-2 mb-6">
-          <span className="text-2xl">🌸</span>
-          <div>
-            <div className="font-serif text-lg leading-tight">Hasat</div>
-            <div className="font-mono text-[10px] opacity-50 tracking-widest">ALICI PANELİ</div>
-          </div>
+        <div className="mb-6">
+          <BrandLogo variant="wordmark" tone="white" height={20} />
+          <div className="font-mono text-[10px] opacity-50 tracking-widest mt-1">ALICI PANELİ</div>
         </div>
         {tabs.map(({ to, label, icon: Icon }) => {
           const active = pathname.startsWith(to);

@@ -4,6 +4,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { useHasat } from "@/lib/hasat/store";
 import { supabase } from "@/integrations/supabase/client";
+import { BrandLogo } from "@/components/hasat/BrandLogo";
 
 export const Route = createFileRoute("/login")({
   head: () => ({ meta: [{ title: "Giriş — Hasat" }] }),
@@ -193,8 +194,7 @@ function LoginPage() {
   return (
     <div className="min-h-screen flex flex-col items-center justify-center p-6" style={{ background: "var(--dark)", color: "var(--hwhite)" }}>
       <div className="mb-10 text-center">
-        <div className="text-5xl mb-2">🌸</div>
-        <h1 className="font-serif text-4xl" style={{ color: titleColor }}>Hasat</h1>
+        <BrandLogo variant="wordmark" tone="white" height={36} className="mx-auto mb-2" />
         <div style={{ fontFamily: "Courier New, monospace", fontSize: 11, color: "var(--hmuted)" }}>هارست</div>
         <div className="mt-2 text-xs text-hwhite/60">{role === "buyer" ? "Alıcı Girişi" : "Çiftçi Girişi"}</div>
       </div>

@@ -2,6 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { z } from "zod";
 import { lookupReferralOwner } from "@/lib/hasat/queries";
+import { BrandLogo } from "@/components/hasat/BrandLogo";
 
 export const Route = createFileRoute("/join")({
   head: () => ({
@@ -39,7 +40,7 @@ function JoinPage() {
     <div className="min-h-screen p-6" style={{ background: "var(--dark)", color: "var(--hwhite)" }}>
       <div className="mx-auto max-w-md pt-10">
         <div className="text-center">
-          <div className="text-6xl mb-3">🌸</div>
+          <BrandLogo variant="monogram" tone="white" height={52} className="mx-auto mb-3" />
           <h1 style={{ fontFamily: "Georgia, serif", fontSize: 34, color: "var(--saffron)" }}>Hasat'a Hoş Geldin</h1>
           {checking ? (
             <p className="mt-3 text-sm text-hwhite/60">Davet doğrulanıyor…</p>
