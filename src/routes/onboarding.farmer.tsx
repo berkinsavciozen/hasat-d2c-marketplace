@@ -13,6 +13,7 @@ import type { CertificationType } from "@/lib/hasat/types";
 import { TR_PROVINCES } from "@/lib/hasat/cities";
 import { CropChips } from "@/components/hasat/CropChips";
 import { markExpectedSignOut, isNetworkAuthError } from "@/lib/hasat/sessionGuard";
+import { BrandLogo } from "@/components/hasat/BrandLogo";
 
 export const Route = createFileRoute("/onboarding/farmer")({
   head: () => ({ meta: [{ title: "Kayıt — Hasat Çiftçi" }] }),
@@ -175,7 +176,7 @@ function Onboarding() {
         {step === 1 && (
           <>
             <div className="text-center mb-8 mt-8">
-              <div className="text-5xl mb-2">🌸</div>
+              <BrandLogo variant="monogram" tone="white" height={44} className="mx-auto mb-2" />
               <h1 style={{ fontFamily: "Georgia, serif", fontSize: 38, color: "var(--saffron)" }}>Hasat'a Hoş Geldin</h1>
               <p className="text-sm text-hwhite/60 mt-2">Tarlandan doğrudan sofraya</p>
             </div>

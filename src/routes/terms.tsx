@@ -1,4 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { BrandLogo } from "@/components/hasat/BrandLogo";
 
 export const Route = createFileRoute("/terms")({
   head: () => ({
@@ -18,8 +19,7 @@ function TermsPage() {
       <header className="border-b border-white/10">
         <div className="mx-auto max-w-3xl px-4 py-4 flex items-center justify-between">
           <Link to="/" className="flex items-center gap-2">
-            <span className="text-xl">🌸</span>
-            <span className="font-serif text-lg" style={{ color: "var(--saffron)" }}>Hasat</span>
+            <BrandLogo variant="wordmark" tone="white" height={18} />
           </Link>
           <Link to="/" className="text-xs text-hwhite/70 hover:text-hwhite">← Anasayfa</Link>
         </div>
