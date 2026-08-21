@@ -92,12 +92,18 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { name: "twitter:description", content: "Hasat, çiftçileri doğrudan restoran ve perakendecilere bağlayan izlenebilir tarım pazar yeridir." },
       { property: "og:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/a4aef110-8537-4306-8849-45326916aaee/id-preview-91b0abdf--0618c152-09fd-4b12-bfeb-a933f5cc1238.lovable.app-1781172310882.png" },
       { name: "twitter:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/a4aef110-8537-4306-8849-45326916aaee/id-preview-91b0abdf--0618c152-09fd-4b12-bfeb-a933f5cc1238.lovable.app-1781172310882.png" },
+      { name: "theme-color", content: "#0D3B66" },
     ],
     links: [
       {
         rel: "stylesheet",
         href: appCss,
       },
+      { rel: "icon", href: "/favicon.ico", sizes: "48x48" },
+      { rel: "icon", type: "image/png", sizes: "16x16", href: "/favicon-16x16.png" },
+      { rel: "icon", type: "image/png", sizes: "32x32", href: "/favicon-32x32.png" },
+      { rel: "apple-touch-icon", sizes: "180x180", href: "/apple-touch-icon.png" },
+      { rel: "manifest", href: "/site.webmanifest" },
     ],
   }),
   shellComponent: RootShell,
