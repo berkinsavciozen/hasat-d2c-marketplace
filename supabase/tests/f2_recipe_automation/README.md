@@ -36,7 +36,9 @@ Each run drops and recreates the test database from scratch, then applies, in or
    lock states, QA imaging-approval-with-blocking-issues, an automated QA decision='approved'
    with safety review still pending (Step 03B: accepted — decision is independent of the later
    human safety sign-off, which stays required at the awaiting_approval/publish stage) alongside
-   the still-rejected case of safety_approved=true with no recorded reviewer identity, cross-job
+   the still-rejected cases of safety_approved=true with no recorded reviewer identity/timestamp
+   at all, with only a timestamp and no reviewer, and with only a reviewer and no timestamp
+   (Step 03B follow-up — isolates each conjunct of the identity+timestamp CHECK), cross-job
    draft/QA-result and draft/asset mismatches (relational-integrity fix), duplicate asset
    rejection, RPC hardening (fractional stepNo/servings/timerSeconds, invalid `isKeyIngredient`,
    regex-metacharacter ingredient names, empty-unit normalization), the
