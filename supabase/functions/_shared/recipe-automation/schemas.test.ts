@@ -23,6 +23,7 @@ import {
   validKabakRecipeDraft,
   validPlanBatch,
   validQAResult,
+  validQAResultApprovedPendingSafetyReview,
   validQAResultRevisionRequired,
 } from "./fixtures/valid-kabak-recipe.ts";
 
@@ -141,6 +142,11 @@ Deno.test("RecipeQAResult: valid approved result with human-reviewed safety revi
 
 Deno.test("RecipeQAResult: valid revision_required result with a blocking issue parses", () => {
   const result = recipeQAResultSchema.safeParse(validQAResultRevisionRequired);
+  assert(result.success, JSON.stringify(result.success ? null : result.error.format()));
+});
+
+Deno.test("RecipeQAResult: decision:'approved' with a pending (not-yet-human-reviewed) safety review still parses — decision is independent of safetyReview.approved (Step 03B; DB parity with 01_assertions.sql test 5a)", () => {
+  const result = recipeQAResultSchema.safeParse(validQAResultApprovedPendingSafetyReview);
   assert(result.success, JSON.stringify(result.success ? null : result.error.format()));
 });
 

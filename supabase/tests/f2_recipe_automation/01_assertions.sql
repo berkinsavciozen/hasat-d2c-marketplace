@@ -1,8 +1,11 @@
--- F2 Recipe Automation — Step 03A SQL test suite.
+-- F2 Recipe Automation — Step 03A/03B SQL test suite.
 --
 -- Plain psql assertions (no pgTAP dependency — none is installed in this project). Run with
 -- `psql -v ON_ERROR_STOP=1`; any RAISE EXCEPTION aborts the script with a non-zero exit code, so
 -- CI/manual runs fail loudly. See run.sh for the full fresh-database apply-and-test sequence.
+--
+-- Step 03B: test 5 (originally "QA approved without human safety sign-off is rejected") was
+-- replaced with 5a/5b below — see those tests' headers for why.
 
 \set ON_ERROR_STOP on
 
@@ -195,7 +198,61 @@ end;
 $$;
 
 -- ===================================================================================================
--- 5. Negative: QA decision='approved' without the mandatory human safety sign-off
+-- 5a. Positive (Step 03B): QA decision='approved' with safety review still PENDING
+--     (safety_approved NULL, no human reviewer yet) is ACCEPTED — the automated QA decision is
+--     independent of the later human safety approval (RecipeAutomation.md §2.1/§9's canonical
+--     qa -> image -> finalize -> awaiting_approval -> publish order requires this; the Step 03A
+--     migration wrongly rejected exactly this case). Same literal values as
+--     fixtures/valid-kabak-recipe.ts's validQAResultApprovedPendingSafetyReview, for Zod/DB parity.
+-- ===================================================================================================
+
+do $$
+declare
+  v_batch_id uuid;
+  v_job_id uuid;
+  v_draft_id uuid;
+  v_qa_id uuid;
+  v_job_status text;
+begin
+  insert into public.recipe_generation_batches (target_count) values (1) returning id into v_batch_id;
+  insert into public.recipe_generation_jobs (batch_id, brief_id, working_title)
+  values (v_batch_id, gen_random_uuid(), 'QA Safety Pending Job') returning id into v_job_id;
+  insert into public.recipe_drafts (job_id, version, title, ingredients, steps)
+  values (v_job_id, 1, 'QA Safety Pending Job', '[{"crop":"kabak","quantity":1,"unit":"adet"}]'::jsonb, '[{"stepNo":1,"instruction":"x"}]'::jsonb)
+  returning id into v_draft_id;
+
+  insert into public.recipe_qa_results (
+    job_id, draft_id, draft_version, decision, overall_score, scores,
+    blocking_issues, safety_review, approved_for_imaging
+  ) values (
+    v_job_id, v_draft_id, 1, 'approved', 95,
+    '{"clarity":95,"feasibility":95,"ingredientConsistency":95,"originality":95,"hasatRelevance":95}'::jsonb,
+    '[]'::jsonb,
+    '{"temperature":{"flagged":false},"timing":{"flagged":false},"allergens":{"flagged":false,"detectedLabels":[]},"requiresHumanReview":true}'::jsonb,
+    true
+    -- safety_reviewed_by / safety_reviewed_at / safety_approved all left at their NULL default —
+    -- no human has reviewed this draft yet, and the insert must still succeed.
+  ) returning id into v_qa_id;
+
+  perform pg_temp.assert(
+    (select safety_approved from public.recipe_qa_results where id = v_qa_id) is null,
+    'expected safety_approved to remain NULL — an automated QA decision must never set or imply human sign-off'
+  );
+
+  -- Proves the human safety gate is still required later, at the awaiting_approval/publish
+  -- contract (§9) — not impersonated here: nothing about this QA-approved insert silently
+  -- promotes the job itself to the human-approved job status.
+  select status into v_job_status from public.recipe_generation_jobs where id = v_job_id;
+  perform pg_temp.assert(
+    v_job_status is distinct from 'approved',
+    'expected the job''s own status to be untouched by this QA insert — job-level ''approved'' is a later human decision (awaiting_approval/publish, Step 05/12), never a side effect of an automated QA row'
+  );
+end;
+$$;
+
+-- ===================================================================================================
+-- 5b. Negative (unchanged invariant): safety_approved=true without a recorded human reviewer
+--     identity/timestamp is still rejected — Step 03B keeps this half of the original CHECK.
 -- ===================================================================================================
 
 do $$
@@ -207,24 +264,26 @@ declare
 begin
   insert into public.recipe_generation_batches (target_count) values (1) returning id into v_batch_id;
   insert into public.recipe_generation_jobs (batch_id, brief_id, working_title)
-  values (v_batch_id, gen_random_uuid(), 'QA Safety Gate Job') returning id into v_job_id;
+  values (v_batch_id, gen_random_uuid(), 'QA Safety Identity Gate Job') returning id into v_job_id;
   insert into public.recipe_drafts (job_id, version, title, ingredients, steps)
-  values (v_job_id, 1, 'QA Safety Gate Job', '[{"crop":"kabak","quantity":1,"unit":"adet"}]'::jsonb, '[{"stepNo":1,"instruction":"x"}]'::jsonb)
+  values (v_job_id, 1, 'QA Safety Identity Gate Job', '[{"crop":"kabak","quantity":1,"unit":"adet"}]'::jsonb, '[{"stepNo":1,"instruction":"x"}]'::jsonb)
   returning id into v_draft_id;
 
   begin
     insert into public.recipe_qa_results (
-      job_id, draft_id, draft_version, decision, overall_score, scores, safety_review
+      job_id, draft_id, draft_version, decision, overall_score, scores,
+      safety_review, safety_approved
     ) values (
       v_job_id, v_draft_id, 1, 'approved', 95,
       '{"clarity":95,"feasibility":95,"ingredientConsistency":95,"originality":95,"hasatRelevance":95}'::jsonb,
-      '{"temperature":{"flagged":false},"timing":{"flagged":false},"allergens":{"flagged":false,"detectedLabels":[]},"requiresHumanReview":true}'::jsonb
-      -- safety_approved defaults to NULL — no human sign-off recorded.
+      '{"temperature":{"flagged":false},"timing":{"flagged":false},"allergens":{"flagged":false,"detectedLabels":[]},"requiresHumanReview":true}'::jsonb,
+      true
+      -- safety_reviewed_by / safety_reviewed_at left NULL — no reviewer identity recorded.
     );
   exception when check_violation then
     v_failed := true;
   end;
-  perform pg_temp.assert(v_failed, 'expected decision=approved with no human safety sign-off (safety_approved NULL) to be rejected');
+  perform pg_temp.assert(v_failed, 'expected safety_approved=true without safety_reviewed_by/safety_reviewed_at to be rejected');
 end;
 $$;
 
