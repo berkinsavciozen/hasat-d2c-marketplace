@@ -82,7 +82,7 @@ function MessageBubble({ m }: { m: ChatMessage }) {
 
 function UsageMeter({ count }: { count: number }) {
   const pct = Math.min(100, (count / FREE_LIMIT) * 100);
-  const color = count <= 35 ? "#16a34a" : count <= 45 ? "#d97706" : "#dc2626";
+  const color = count <= 35 ? "var(--sage)" : count <= 45 ? "var(--saffron)" : "var(--hred)";
   return (
     <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
       <div className="h-1.5 w-24 rounded-full bg-muted overflow-hidden">
@@ -275,7 +275,7 @@ export function FarmerAIChat() {
             rel="noopener noreferrer"
             className="flex items-center gap-1.5 px-4 py-1.5 text-[11px] text-muted-foreground hover:bg-muted/40 border-b"
           >
-            <MessageCircle className="h-3.5 w-3.5" style={{ color: "#25D366" }} />
+            <MessageCircle className="h-3.5 w-3.5" style={{ color: "var(--whatsapp)" }} />
             <span>WhatsApp'tan da yazabilirsin →</span>
           </a>
 

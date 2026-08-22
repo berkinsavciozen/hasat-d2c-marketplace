@@ -181,7 +181,7 @@ export function CropDetailBody({ crop }: { crop: string }) {
                 )}
                 {ser.length >= 2 && (
                   <div className="mt-3">
-                    <PriceChart data={ser} color="var(--sage)" unit={unit} />
+                    <PriceChart data={ser} color="var(--teal)" unit={unit} />
                   </div>
                 )}
               </SectionCard>

@@ -195,7 +195,7 @@ export function JournalEntryCard({ initial }: Props) {
         className="mt-2 rounded-xl border-l-2 px-3 py-2 text-sm flex items-center gap-2"
         style={{ borderLeftColor: "var(--gold)", background: "color-mix(in oklab, var(--gold) 10%, white)" }}
       >
-        <Check className="h-4 w-4" style={{ color: "var(--sage, #16a34a)" }} />
+        <Check className="h-4 w-4" style={{ color: "var(--sage)" }} />
         <span>{saveState.updated ? "Güncellendi" : "Kaydedildi"}</span>
         <Link
           to="/farmer/journal"
@@ -227,7 +227,7 @@ export function JournalEntryCard({ initial }: Props) {
 
       {existing && !forceInsert && (
         <div className="rounded-lg px-2.5 py-2 text-xs flex items-start gap-2"
-          style={{ background: "color-mix(in oklab, #f59e0b 15%, white)", color: "#92400e" }}>
+          style={{ background: "color-mix(in oklab, var(--saffron) 15%, white)", color: "var(--saffron)" }}>
           <AlertTriangle className="h-3.5 w-3.5 mt-0.5 shrink-0" />
           <span>Bu tarihte aynı ürün için bir kayıt var.</span>
         </div>
@@ -341,7 +341,7 @@ export function JournalEntryCard({ initial }: Props) {
       </div>
 
       {saveState.kind === "error" && (
-        <div className="text-xs rounded-md px-2.5 py-1.5" style={{ background: "color-mix(in oklab, #dc2626 12%, white)", color: "#991b1b" }}>
+        <div className="text-xs rounded-md px-2.5 py-1.5" style={{ background: "color-mix(in oklab, var(--hred) 12%, white)", color: "var(--hred)" }}>
           {saveState.message}
         </div>
       )}
@@ -354,7 +354,7 @@ export function JournalEntryCard({ initial }: Props) {
               disabled={saving}
               onClick={doUpdate}
               className="rounded-lg px-3 py-1.5 text-xs font-medium border disabled:opacity-50"
-              style={{ borderColor: "var(--sage, #16a34a)", color: "var(--sage, #16a34a)" }}
+              style={{ borderColor: "var(--sage)", color: "var(--sage)" }}
             >
               Mevcut Kaydı Güncelle
             </button>

@@ -74,7 +74,7 @@ export function PhotoListingCard({
         </div>
       </div>
       <div className="p-4 flex items-center justify-between gap-2">
-        <div style={{ fontFamily: "Courier New, monospace", color: "var(--saffron)" }} className="text-base truncate min-w-0">
+        <div style={{ color: "var(--saffron)" }} className="font-mono text-base truncate min-w-0">
           {formatTRY(price)}
           <span className="text-xs text-hmuted">/{unit}</span>
         </div>
