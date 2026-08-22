@@ -288,6 +288,84 @@ end;
 $$;
 
 -- ===================================================================================================
+-- 5c. Negative (Step 03B follow-up): safety_approved=true with safety_reviewed_at present but
+--     safety_reviewed_by NULL is still rejected — the CHECK requires BOTH halves of the reviewer
+--     identity/timestamp pair, not just a timestamp. Isolates the `safety_reviewed_by is not null`
+--     conjunct of the CHECK from 5b (which left both columns NULL and so could not distinguish
+--     which conjunct was doing the rejecting).
+-- ===================================================================================================
+
+do $$
+declare
+  v_batch_id uuid;
+  v_job_id uuid;
+  v_draft_id uuid;
+  v_failed boolean := false;
+begin
+  insert into public.recipe_generation_batches (target_count) values (1) returning id into v_batch_id;
+  insert into public.recipe_generation_jobs (batch_id, brief_id, working_title)
+  values (v_batch_id, gen_random_uuid(), 'QA Safety Missing Reviewer Job') returning id into v_job_id;
+  insert into public.recipe_drafts (job_id, version, title, ingredients, steps)
+  values (v_job_id, 1, 'QA Safety Missing Reviewer Job', '[{"crop":"kabak","quantity":1,"unit":"adet"}]'::jsonb, '[{"stepNo":1,"instruction":"x"}]'::jsonb)
+  returning id into v_draft_id;
+
+  begin
+    insert into public.recipe_qa_results (
+      job_id, draft_id, draft_version, decision, overall_score, scores,
+      safety_review, safety_reviewed_by, safety_reviewed_at, safety_approved
+    ) values (
+      v_job_id, v_draft_id, 1, 'approved', 95,
+      '{"clarity":95,"feasibility":95,"ingredientConsistency":95,"originality":95,"hasatRelevance":95}'::jsonb,
+      '{"temperature":{"flagged":false},"timing":{"flagged":false},"allergens":{"flagged":false,"detectedLabels":[]},"requiresHumanReview":true}'::jsonb,
+      -- safety_reviewed_by left NULL — only a timestamp is recorded, no reviewer identity.
+      null, now(), true
+    );
+  exception when check_violation then
+    v_failed := true;
+  end;
+  perform pg_temp.assert(v_failed, 'expected safety_approved=true with safety_reviewed_at but no safety_reviewed_by to be rejected');
+end;
+$$;
+
+-- ===================================================================================================
+-- 5d. Negative (Step 03B follow-up): safety_approved=true with safety_reviewed_by present but
+--     safety_reviewed_at NULL is still rejected — the mirror image of 5c, isolating the
+--     `safety_reviewed_at is not null` conjunct.
+-- ===================================================================================================
+
+do $$
+declare
+  v_batch_id uuid;
+  v_job_id uuid;
+  v_draft_id uuid;
+  v_failed boolean := false;
+begin
+  insert into public.recipe_generation_batches (target_count) values (1) returning id into v_batch_id;
+  insert into public.recipe_generation_jobs (batch_id, brief_id, working_title)
+  values (v_batch_id, gen_random_uuid(), 'QA Safety Missing Timestamp Job') returning id into v_job_id;
+  insert into public.recipe_drafts (job_id, version, title, ingredients, steps)
+  values (v_job_id, 1, 'QA Safety Missing Timestamp Job', '[{"crop":"kabak","quantity":1,"unit":"adet"}]'::jsonb, '[{"stepNo":1,"instruction":"x"}]'::jsonb)
+  returning id into v_draft_id;
+
+  begin
+    insert into public.recipe_qa_results (
+      job_id, draft_id, draft_version, decision, overall_score, scores,
+      safety_review, safety_reviewed_by, safety_reviewed_at, safety_approved
+    ) values (
+      v_job_id, v_draft_id, 1, 'approved', 95,
+      '{"clarity":95,"feasibility":95,"ingredientConsistency":95,"originality":95,"hasatRelevance":95}'::jsonb,
+      '{"temperature":{"flagged":false},"timing":{"flagged":false},"allergens":{"flagged":false,"detectedLabels":[]},"requiresHumanReview":true}'::jsonb,
+      -- safety_reviewed_at left NULL — only a reviewer identity is recorded, no timestamp.
+      (select id from public.profiles limit 1), null, true
+    );
+  exception when check_violation then
+    v_failed := true;
+  end;
+  perform pg_temp.assert(v_failed, 'expected safety_approved=true with safety_reviewed_by but no safety_reviewed_at to be rejected');
+end;
+$$;
+
+-- ===================================================================================================
 -- 6. Negative: cross-job draft/QA-result mismatch (relational-integrity fix)
 -- ===================================================================================================
 

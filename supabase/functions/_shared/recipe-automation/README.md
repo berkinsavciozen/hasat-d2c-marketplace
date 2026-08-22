@@ -13,6 +13,12 @@ validation RPCs (`supabase/migrations/20260819150000_f2s04_recipe_validation_rpc
 these contracts field-for-field; see `supabase/tests/f2_recipe_automation/` for their SQL test
 suite.
 
+**Step 05 (Edge Function infrastructure):** `infra/` (this directory) holds the shared,
+content-agent-agnostic Edge Function plumbing every stage-runner will import — admin/dispatch
+auth, the service-role client, atomic job claim, compare-and-set stage transitions, next-stage
+dispatch, the agent-runner seam, error/redaction helpers, and stage-run telemetry. See
+`infra/README.md`. Still no Planner/Writer/QA logic — that starts at Step 06+.
+
 **Step 03A (foundation reconciliation, PRs #40–#42):** the stage/status enums, `RecipeQAResult`,
 and `RecipePlanBatch` below were realigned to RecipeAutomation.md §3/§5.3's canonical
 state-machine and QA-routing contract. In particular: `RecipeJobStage`/`RecipeJobStatus` now use
