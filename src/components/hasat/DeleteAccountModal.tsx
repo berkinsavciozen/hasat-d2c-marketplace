@@ -68,7 +68,7 @@ export function DeleteAccountModal({
           onClick={onConfirm}
           disabled={!canConfirm || deleteAccount.isPending}
           className="mt-4 w-full rounded-xl py-2.5 text-sm font-medium text-white disabled:opacity-40 min-h-[48px]"
-          style={{ background: "var(--hred, #dc2626)" }}
+          style={{ background: "var(--hred)" }}
         >
           {deleteAccount.isPending ? "Siliniyor…" : "Hesabımı Kalıcı Olarak Sil"}
         </button>

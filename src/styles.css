@@ -5,10 +5,16 @@
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
-  --radius-sm: calc(var(--radius) - 4px);
-  --radius-md: calc(var(--radius) - 2px);
-  --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) + 4px);
+  /*
+   * Radius scale — explicit, not calc()-derived. `--radius` is the single
+   * source of truth for the default/primary-control step (12px). Only
+   * `sm` and `md` are overridden here; `lg`/`xl`/`2xl`/`3xl` intentionally
+   * fall through to Tailwind's own built-in scale (8 / 12 / 16 / 24px),
+   * which already lines up with the approved 4/8/12/16/24 ladder — see
+   * the Batch 1 delivery note in 04.11 for the full reasoning.
+   */
+  --radius-sm: 4px;
+  --radius-md: var(--radius);
 
   --color-background: var(--background);
   --color-foreground: var(--foreground);
@@ -40,24 +46,34 @@
   --color-lav: var(--lav);
   --color-hred: var(--hred);
   --color-hwhite: var(--hwhite);
+  --color-teal: var(--teal);
+  --color-whatsapp: var(--whatsapp);
 
-  --font-serif: Georgia, "Times New Roman", serif;
-  --font-mono: "Courier New", ui-monospace, monospace;
+  --font-sans: "Inter", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+  /* Historical name, repointed: controlled buyer/editorial display headings only (Manrope), never a body font. */
+  --font-serif: "Manrope", "Inter", ui-sans-serif, system-ui, sans-serif;
+  /* Historical name, repointed: price/number display (Inter + tabular numerals), not literal monospace. */
+  --font-mono: "Inter", ui-sans-serif, system-ui, sans-serif;
 }
 
 :root {
-  --radius: 0.625rem;
+  /* Primary control radius. Primary controls (buttons, inputs, selects,
+     textareas, badges, cards, floating menus/popovers/tooltips) consume
+     this via the `rounded-md` utility. See @theme inline note above. */
+  --radius: 12px;
 
   /* Hasat palette */
-  --saffron: #C8833B;
-  --sage: #6B8F5E;
+  --saffron: #C8833B;   /* amber — discovery / editorial / attention only */
+  --sage: #6B8F5E;       /* verified / success / completed states only */
   --cream: #F7F2E8;
   --dark: #1A1A14;
   --hmuted: #8A8678;
-  --gold: #D4A843;
+  --gold: #D4A843;       /* amber (secondary) — commercial / editorial accent only */
   --lav: #8B9BF0;
-  --hred: #C0392B;
+  --hred: #C0392B;       /* destructive / error / unavailable only */
   --hwhite: #FDFAF5;
+  --teal: #1F6E82;       /* blue-teal — neutral data, in-progress, informational (not success, not a CTA) */
+  --whatsapp: #25D366;   /* WhatsApp brand green — distinct from --sage verification green */
 
   /* shadcn tokens mapped to Hasat */
   --background: #F0EBE0;
@@ -66,19 +82,19 @@
   --card-foreground: #1A1A14;
   --popover: #FDFAF5;
   --popover-foreground: #1A1A14;
-  --primary: #C8833B;
+  --primary: #0D3B66;             /* deep blue — primary actions, active navigation, focus */
   --primary-foreground: #FDFAF5;
   --secondary: #F7F2E8;
   --secondary-foreground: #1A1A14;
   --muted: #E8E1D3;
   --muted-foreground: #8A8678;
-  --accent: #D4A843;
+  --accent: #E1E9EE;               /* neutral hover/highlight surface for menus, dropdowns, toggles, calendar — not a brand color */
   --accent-foreground: #1A1A14;
   --destructive: #C0392B;
   --destructive-foreground: #FDFAF5;
   --border: #E1D9C7;
   --input: #FDFAF5;
-  --ring: #C8833B;
+  --ring: #0D3B66;                 /* focus ring — matches primary */
 }
 
 @layer base {
@@ -88,11 +104,22 @@
   body {
     background-color: var(--color-background);
     color: var(--color-foreground);
-    font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+    font-family: var(--font-sans);
   }
   h1, h2, h3, h4 {
-    font-family: var(--font-serif);
     font-weight: 700;
+  }
+  .font-mono {
+    font-variant-numeric: tabular-nums;
+  }
+  /* Fallback visible focus indicator for interactive elements that don't
+     (yet) use a shadcn primitive with its own focus-visible ring. Shadcn
+     components keep their existing ring-based treatment: their utility
+     classes live in Tailwind's `utilities` layer, which is ordered after
+     `base` and wins the cascade wherever both apply. */
+  :focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 2px;
   }
 }
 
