@@ -33,10 +33,13 @@ Each run drops and recreates the test database from scratch, then applies, in or
 3. A static grep check that neither migration writes to `public.recipes` directly (proof
    `recipes.status` stays untouched by this pipeline).
 4. `01_assertions.sql` — the actual test suite: happy path, invalid stage/status values, partial
-   lock states, QA imaging-approval-with-blocking-issues, QA approval without a human safety
-   sign-off, cross-job draft/QA-result and draft/asset mismatches (relational-integrity fix),
-   duplicate asset rejection, RPC hardening (fractional stepNo/servings/timerSeconds, invalid
-   `isKeyIngredient`, regex-metacharacter ingredient names, empty-unit normalization), the
+   lock states, QA imaging-approval-with-blocking-issues, an automated QA decision='approved'
+   with safety review still pending (Step 03B: accepted — decision is independent of the later
+   human safety sign-off, which stays required at the awaiting_approval/publish stage) alongside
+   the still-rejected case of safety_approved=true with no recorded reviewer identity, cross-job
+   draft/QA-result and draft/asset mismatches (relational-integrity fix), duplicate asset
+   rejection, RPC hardening (fractional stepNo/servings/timerSeconds, invalid `isKeyIngredient`,
+   regex-metacharacter ingredient names, empty-unit normalization), the
    `get_seasonal_crop_candidates` "crop_config stays the full universe" fix, `SECURITY INVOKER`
    on every function, and anon/authenticated-denied/service_role-allowed grants on both the
    automation tables and the RPCs.

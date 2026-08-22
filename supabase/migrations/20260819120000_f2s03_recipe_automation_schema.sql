@@ -16,6 +16,18 @@
 -- timestamp, same migration identity — rather than superseded by a forward corrective migration.
 -- Nothing below rewrites the history of an already-applied migration.
 --
+-- Step 03B correction (narrow, post-PR-#43): re-verified via the same `list_migrations`/
+-- `list_branches` check (still unapplied everywhere, still no branches) immediately before this
+-- revision, so this file is again corrected IN PLACE. Step 03A's `recipe_qa_results` accidentally
+-- introduced `check (decision <> 'approved' or safety_approved is true)` — forcing a human safety
+-- sign-off before an automated QA result could be marked 'approved', which contradicts §2.1/§9's
+-- qa->image->finalize->awaiting_approval->publish order (human safety review is an
+-- awaiting_approval/publish-stage gate, not a qa-stage one) and was never present in
+-- schemas.ts's own `recipeQAResultSchema`. That one CHECK is removed below; nothing else in this
+-- migration (state vocabulary, RecipePlanBatch/brief identity, composite relational integrity,
+-- lock/lifecycle fields, asset audit metadata) is touched. See `recipe_qa_results` below for the
+-- full rationale, kept in place of the removed CHECK.
+--
 -- Hard boundaries this migration deliberately respects:
 --   * `recipes.status` is NEVER written by this pipeline. It only ever accepts
 --     'draft' | 'published' (see recipes_status_check, confirmed live). The pipeline's own
@@ -310,18 +322,26 @@ create table public.recipe_qa_results (
   -- path to `safety_approved = true`; a human must set reviewed_by/reviewed_at first.
   safety_approved boolean,
   check (safety_approved is not true or (safety_reviewed_by is not null and safety_reviewed_at is not null)),
-  -- A QA result can never be marked 'approved' overall without the mandatory human safety
-  -- sign-off — temperature/timing/allergen review always requires a human, enforced here, not
-  -- just in application code.
-  -- NB: `safety_approved is true` (not `= true`) is deliberate — with `= true`, a NULL
-  -- safety_approved makes the whole OR evaluate to NULL, which Postgres treats as a passing
-  -- CHECK, silently allowing decision='approved' with no safety sign-off at all.
-  check (decision <> 'approved' or safety_approved is true),
-
-  -- Step 03A: approved_for_imaging can never be true unless decision='approved' AND there are no
-  -- blocking issues left — mirrors recipeQAResultSchema's refine at the DB layer too, so a direct
-  -- SQL write (bypassing the Zod layer, e.g. a hand-run admin fix) cannot silently create an
-  -- imaging-approved result with unresolved blocking issues.
+  -- Step 03B: the Step 03A version of this migration additionally required
+  -- `decision <> 'approved' or safety_approved is true` here — forcing a human safety sign-off
+  -- before an AUTOMATED QA result could even be marked 'approved'. That contradicted both
+  -- RecipeAutomation.md §2.1's canonical plan->write->qa->revise?->image->finalize->
+  -- awaiting_approval->publish order (the human safety checklist is an awaiting_approval/publish
+  -- precondition per §9, evaluated AFTER qa/image/finalize — not a qa-stage precondition) and
+  -- schemas.ts's own recipeQAResultSchema, which never ties `decision` to `safetyReview.approved`
+  -- in the first place. Removed outright, not reinterpreted: `decision='approved'` is now an
+  -- ordinary automated QA-stage content/structure verdict, writable the moment QA finishes,
+  -- independent of whether a human has reviewed temperature/timing/allergens yet. The human
+  -- safety gate itself is unweakened — `safety_approved=true` still always requires
+  -- `safety_reviewed_by`/`safety_reviewed_at` (the CHECK directly above, unchanged), and that
+  -- gate remains mandatory before the LATER awaiting_approval/publish step (§9) — this migration
+  -- just stops an automated QA decision from impersonating that later human action.
+  --
+  -- approved_for_imaging can never be true unless decision='approved' AND there are no blocking
+  -- issues left — mirrors recipeQAResultSchema's refine at the DB layer too, so a direct SQL write
+  -- (bypassing the Zod layer, e.g. a hand-run admin fix) cannot silently create an imaging-approved
+  -- result with unresolved blocking issues. This gate is about QA content readiness for imaging,
+  -- not human safety sign-off — the two remain independent, per the note above.
   approved_for_imaging boolean not null default false,
   check (not approved_for_imaging or (decision = 'approved' and jsonb_array_length(blocking_issues) = 0)),
 
@@ -333,8 +353,10 @@ create table public.recipe_qa_results (
 );
 
 comment on table public.recipe_qa_results is
-  'F2 Step 03. One row per QA pass against an EXACT recipe_drafts (id, version) — enforced by the '
-  'composite FK, not just trusted. Safety review always requires a human sign-off; '
+  'F2 Step 03/03B. One row per QA pass against an EXACT recipe_drafts (id, version) — enforced by '
+  'the composite FK, not just trusted. decision is an automated verdict independent of human '
+  'safety sign-off (safety_approved=true always requires a recorded reviewer, but is not required '
+  'for decision=''approved''; the human safety gate applies later, at awaiting_approval/publish). '
   'approved_for_imaging can never be true with unresolved blocking issues.';
 
 create trigger recipe_qa_results_set_updated_at

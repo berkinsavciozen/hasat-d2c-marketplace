@@ -127,6 +127,36 @@ export const validQAResult: RecipeQAResult = {
   model: "google/gemini-2.5-flash",
 };
 
+/**
+ * Step 03B: an automated QA 'approved' decision BEFORE the human safety sign-off has happened.
+ * Proves `decision`/`approvedForImaging` are independent of `safetyReview.approved` — the
+ * RecipeAutomation.md §2.1/§9 canonical order is qa -> image -> finalize -> human approval ->
+ * publish, so an automated 'approved' QA verdict must be usable immediately, not gated behind a
+ * human reviewer who acts later at the awaiting_approval/publish step. Numeric values mirror
+ * supabase/tests/f2_recipe_automation/01_assertions.sql test 5a's DB-layer literal values, so the
+ * same payload is exercised as a Zod/DB parity pair.
+ */
+export const validQAResultApprovedPendingSafetyReview: RecipeQAResult = {
+  ...validQAResult,
+  overallScore: 95,
+  scores: {
+    clarity: 95,
+    feasibility: 95,
+    ingredientConsistency: 95,
+    originality: 95,
+    hasatRelevance: 95,
+  },
+  safetyReview: {
+    temperature: { flagged: false, notes: null },
+    timing: { flagged: false, notes: null },
+    allergens: { flagged: false, notes: null, detectedLabels: [] },
+    requiresHumanReview: true,
+    reviewedBy: null,
+    reviewedAt: null,
+    approved: null,
+  },
+};
+
 export const validQAResultRevisionRequired: RecipeQAResult = {
   ...validQAResult,
   decision: "revision_required",
