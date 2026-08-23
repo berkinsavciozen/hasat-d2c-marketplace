@@ -42,4 +42,7 @@ fi
 echo "==> Running assertions"
 "${PSQL[@]}" -d "$DB_NAME" -f "$SCRIPT_DIR/01_assertions.sql"
 
+echo "==> Running Step 06 write-stage vertical slice (kabak)"
+"${PSQL[@]}" -d "$DB_NAME" -f "$SCRIPT_DIR/02_write_stage_vertical_slice.sql"
+
 echo "==> F2 recipe automation SQL test suite: PASSED"

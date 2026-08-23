@@ -171,6 +171,25 @@ Deno.test("failJob: non-retryable error terminates immediately regardless of att
   if (result.failed) assert.equal(result.nextStatus, "failed");
 });
 
+Deno.test("failJob: same request invoked twice — the retried call is a safe no-op, not a double-fail", async () => {
+  const client = new FakeSupabaseClient();
+  const { jobId, lockToken } = await seedAndClaim(client, { attempt: 1, max_attempts: 3 });
+  const params = { jobId, lockToken, stage: "write" as const, error: safetyPendingError };
+
+  const first = await failJob(asClient(client), params);
+  const retry = await failJob(asClient(client), params);
+
+  assert.equal(first.failed, true);
+  if (first.failed) assert.equal(first.nextStatus, "retryable");
+  // The retry no longer holds a valid lock (the first call already released it and bumped
+  // attempt), so its own CAS pre-read/write must refuse it instead of scheduling a second retry.
+  assert.equal(retry.failed, false);
+  // The row still reflects exactly the first call's effect — attempt incremented once, not twice.
+  const row = client.getRow("recipe_generation_jobs", jobId)!;
+  assert.equal(row.attempt, 2);
+  assert.equal(row.status, "retryable");
+});
+
 Deno.test("failJob: a retried job can be re-claimed at the same stage after the retry delay", async () => {
   const client = new FakeSupabaseClient();
   const { jobId, lockToken } = await seedAndClaim(client, { attempt: 1, max_attempts: 3 });

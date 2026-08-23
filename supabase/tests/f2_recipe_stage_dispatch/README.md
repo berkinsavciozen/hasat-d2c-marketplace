@@ -27,6 +27,12 @@ unmodified, then `01_assertions.sql`:
 1. Happy path — `dispatch_recipe_stage` fires exactly one `net.http_post` call, targeting
    `.../functions/v1/<function_name>`, with the dispatch key forwarded as `x-admin-key` and the
    job id plus any extra payload fields merged into the body.
+1b. P2 regression — a `_payload` carrying its own `jobId` key can never override the real job id
+    (`jsonb_build_object('jobId', _job_id)` must win the `||` merge, not lose to it).
+1c. P3 — an allow-listed `_function_name` (e.g. `recipe-stage-write`, `recipe-stage-qa`) dispatches
+    normally; a non-allow-listed name is refused with no HTTP call at all.
+1d. P4 — `app.dispatch_base_url`, when set, overrides the hard-coded default URL; when unset, the
+    hard-coded default still applies (today's behavior, unchanged).
 2. Negative — a null `job_id`/`function_name`/`dispatch_key` short-circuits with no HTTP call.
 3. Exception isolation — a `net.http_post` that raises does not propagate out of
    `dispatch_recipe_stage` (the function's own `exception when others` catches it), proving the

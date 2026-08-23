@@ -14,10 +14,15 @@ these contracts field-for-field; see `supabase/tests/f2_recipe_automation/` for 
 suite.
 
 **Step 05 (Edge Function infrastructure):** `infra/` (this directory) holds the shared,
-content-agent-agnostic Edge Function plumbing every stage-runner will import — admin/dispatch
+content-agent-agnostic Edge Function plumbing every stage-runner imports — admin/dispatch
 auth, the service-role client, atomic job claim, compare-and-set stage transitions, next-stage
 dispatch, the agent-runner seam, error/redaction helpers, and stage-run telemetry. See
-`infra/README.md`. Still no Planner/Writer/QA logic — that starts at Step 06+.
+`infra/README.md`.
+
+**Step 06 (Writer vertical slice):** `writer/` holds the first content agent — `recipe-stage-write`
+(entrypoint at `../recipe-stage-write/index.ts`), for one manually created kabak `RecipeBrief`. See
+`writer/README.md`. `infra/agent-runner.ts`'s SDK path is now implemented for real (the Step 01
+live-call gate passed — see that file's header). Still no Planner/QA/Image/Finalize logic.
 
 **Step 03A (foundation reconciliation, PRs #40–#42):** the stage/status enums, `RecipeQAResult`,
 and `RecipePlanBatch` below were realigned to RecipeAutomation.md §3/§5.3's canonical

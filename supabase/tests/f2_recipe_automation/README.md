@@ -45,6 +45,16 @@ Each run drops and recreates the test database from scratch, then applies, in or
    `get_seasonal_crop_candidates` "crop_config stays the full universe" fix, `SECURITY INVOKER`
    on every function, and anon/authenticated-denied/service_role-allowed grants on both the
    automation tables and the RPCs.
+5. `02_write_stage_vertical_slice.sql` (F2 Step 06) — the one manually created kabak
+   `RecipeBrief`, promoted to a `write`-stage job, run through the SAME Postgres validation RPCs
+   `writer/write-stage.ts` calls (`validate_recipe_structure`/`validate_recipe_crop_values`/
+   `validate_recipe_ingredient_coverage`/`validate_recipe_slug`/`normalize_recipe_units`), then
+   stored as a version-1 `recipe_drafts` row, then a second version-1 insert for the same job
+   proven to violate the `recipe_drafts_job_id_version_key` unique constraint (the DB-layer half
+   of the write stage's idempotency guarantee). The draft JSON is not synthetic — it is the actual
+   captured output of a live OpenAI Structured Outputs call through the real, shipped Writer code,
+   run via a throwaway probe against the live project; see the Step 06 completion report for the
+   full evidence (trace id, usage, latency).
 
 The script exits non-zero (via `ON_ERROR_STOP`) on the first failing assertion or migration error,
 so it is CI-safe as a fail-fast check. Set `F2_TEST_DB` to use a different database name.
