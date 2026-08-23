@@ -17,8 +17,17 @@
 // construction, not because this module retries anything. Re-dispatching (see redispatchStage
 // below) is always safe to call again: the next stage-runner's own claimJob() atomic claim means
 // a duplicate dispatch can cause at most one extra no-op claim attempt, never double-processing.
+//
+// F2 Step 06 (P5 preflight): that ordering guarantee used to be enforced only by a comment (this
+// one) telling each stage-runner to call advanceStage() then dispatchNextStage() by hand — nothing
+// in code actually stopped a stage-runner from getting that backwards. `advanceStageAndDispatch()`
+// below is now the one place that sequencing is structural: it awaits advanceStage() and only
+// calls dispatchNextStage() when that resolves with `advanced: true`. Every stage-runner (starting
+// with recipe-stage-write, see ../write/write-stage.ts) calls this helper instead of calling
+// advanceStage/dispatchNextStage separately.
 import type { SupabaseClient } from "./supabase-admin.ts";
 import { toSafeErrorPayload } from "./errors.ts";
+import { advanceStage, type AdvanceStageParams, type AdvanceStageResult } from "./job-state.ts";
 
 const DEFAULT_DISPATCH_KEY_ENV_VAR = "RECIPE_STAGE_DISPATCH_SECRET";
 
@@ -90,3 +99,36 @@ export async function dispatchNextStage(
  * (e.g. a reconciliation sweep) rather than dispatching right after an advance. Same function —
  * dispatch is idempotent-safe to repeat, see module header. */
 export const redispatchStage = dispatchNextStage;
+
+export interface AdvanceAndDispatchResult {
+  advance: AdvanceStageResult;
+  /** Never attempted (stays null) when `advance.advanced` is false — see below. */
+  dispatch: DispatchResult | null;
+}
+
+/**
+ * F2 Step 06 (P5 preflight): the ONE place that enforces "advanceStage commits before
+ * dispatchNextStage fires" IN CODE rather than as a comment-only convention every stage-runner had
+ * to remember to follow by hand. `dispatchNextStage` is only ever called after `advanceStage`'s
+ * own await has resolved, and only when it actually reports `advanced: true` — a failed/CAS-refused
+ * advance short-circuits with `dispatch: null`, so a stage-runner can never accidentally nudge the
+ * next stage to start on top of a job whose stage/status advance didn't actually happen.
+ */
+export async function advanceStageAndDispatch(
+  client: SupabaseClient,
+  advanceParams: AdvanceStageParams,
+  dispatchParams: Omit<DispatchStageParams, "jobId">,
+  dispatchOptions: DispatchOptions = {},
+): Promise<AdvanceAndDispatchResult> {
+  const advance = await advanceStage(client, advanceParams);
+  if (!advance.advanced) {
+    return { advance, dispatch: null };
+  }
+
+  const dispatch = await dispatchNextStage(
+    client,
+    { jobId: advanceParams.jobId, ...dispatchParams },
+    dispatchOptions,
+  );
+  return { advance, dispatch };
+}

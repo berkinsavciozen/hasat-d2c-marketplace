@@ -28,7 +28,9 @@ export type AdminAuthResult =
   | { ok: true }
   | { ok: false; status: 401 | 403; response: Response };
 
-/** Same constant-time comparison as admin-kpi/index.ts, byte-length included in the timing. */
+/** Same constant-time comparison as admin-kpi/index.ts. A length mismatch short-circuits before
+ * the constant-time loop (byte-length is NOT folded into the timing-safe comparison itself) — the
+ * same early-return-on-length-mismatch shape admin-kpi's own comparison uses. */
 export function timingSafeEqual(a: string, b: string): boolean {
   const enc = new TextEncoder();
   const ab = enc.encode(a);

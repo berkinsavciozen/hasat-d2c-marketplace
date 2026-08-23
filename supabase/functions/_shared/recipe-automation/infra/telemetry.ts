@@ -6,10 +6,13 @@
 // recipe), stage/status/attempt, started_at/finished_at (duration is these two, not a separate
 // stored column), trace_id/provider/model/usage, and output/error — both `jsonb` with a
 // "shape not content" CHECK (must be a JSON object), same convention as recipe_generation_jobs.
-// last_error. This module is the one place that convention is enforced in code: `output` and
-// `error.details` are passed through errors.ts's redactUnsafeDetails() before insert, so a stage
-// that accidentally includes a provider payload or a header dict in its result doesn't leak a
-// credential into a table every service-role-scoped caller can read.
+// last_error. Only `error` carries the "shape not content" jsonb CHECK at the DB layer (must be a
+// JSON object) — see 20260819120000_f2s03_recipe_automation_schema.sql's recipe_generation_jobs
+// .last_error and this table's own `error` column; `output` has no such CHECK. This module is the
+// one place BOTH are defensively redacted in code regardless: `output` and `error.details` are
+// passed through errors.ts's redactUnsafeDetails() before insert, so a stage that accidentally
+// includes a provider payload or a header dict in its result doesn't leak a credential into a
+// table every service-role-scoped caller can read.
 //
 // Telemetry recording is best-effort: a failed insert is logged and swallowed, never thrown — the
 // same resilience convention admin-kpi's `safe()` helper uses for its dashboard queries. A stage
