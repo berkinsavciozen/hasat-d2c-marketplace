@@ -7,7 +7,7 @@ export function ProgressDots({ current, total }: { current: number; total: numbe
           className="h-2 rounded-full transition-all"
           style={{
             width: i + 1 === current ? 24 : 8,
-            background: i + 1 <= current ? "var(--saffron)" : "color-mix(in oklab, var(--hmuted) 50%, transparent)",
+            background: i + 1 <= current ? "var(--primary)" : "color-mix(in oklab, var(--hmuted) 50%, transparent)",
           }}
         />
       ))}

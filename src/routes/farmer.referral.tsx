@@ -63,7 +63,7 @@ function ReferralPage() {
                 target="_blank"
                 rel="noopener noreferrer"
                 className="mt-2 flex items-center justify-center gap-1.5 rounded-xl py-2.5 text-sm font-medium text-white"
-                style={{ background: "#25D366" }}
+                style={{ background: "var(--whatsapp)" }}
               >
                 <MessageCircle className="h-4 w-4" /> WhatsApp ile Paylaş
               </a>

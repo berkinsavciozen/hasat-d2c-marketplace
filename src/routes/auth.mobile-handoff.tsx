@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+import { BrandLogo } from "@/components/hasat/BrandLogo";
 
 // Same rule as /login's validateSearch: only same-origin relative paths,
 // never external URLs (`//host/...` is protocol-relative and would leave the site).
@@ -64,10 +65,7 @@ function MobileHandoffPage() {
       style={{ background: "var(--dark)", color: "var(--hwhite)" }}
     >
       <div className="text-center">
-        <div className="text-5xl mb-2">🌸</div>
-        <h1 className="font-serif text-4xl" style={{ color: "var(--saffron)" }}>
-          Hasat
-        </h1>
+        <BrandLogo variant="wordmark" tone="white" height={32} className="mx-auto mb-2 animate-pulse motion-reduce:animate-none" />
         <div className="mt-4 text-sm text-hwhite/60">
           {failed ? "Yönlendiriliyor…" : "Hesabına giriş yapılıyor…"}
         </div>
