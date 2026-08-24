@@ -31,7 +31,21 @@ validate-draft.ts` as-is — those checks are draft-shape checks, not Writer-spe
 agent with the brief/draft/validation/duplicate-candidates/prior-QA-history, stores the resulting
 `RecipeQAResult`, and routes the job (approved -> image, revision_required -> revise,
 manual_review_required -> stays at `qa` with status=awaiting_approval, a human review queue). See
-`qa/README.md`. Still no Planner/Image/Finalize logic.
+`qa/README.md`.
+
+**Step 08 (revise-loop vertical slice):** `revise/` holds the third content agent —
+`recipe-stage-revise` (entrypoint at `../recipe-stage-revise/index.ts`) — "the Writer in
+constrained revision mode": claims a `revise`-stage job, resolves the LATEST QA result for it and
+the exact draft version that result reviewed (not "the current highest version" — see
+`revise/context.ts`'s header for why that distinction matters once this stage itself starts
+creating new draft versions), enforces the two-automatic-revision cap
+(`recipe_generation_jobs.revision_count`, capped at 2 by both a DB CHECK and this stage's own
+routing logic — after the cap, routes to the same manual-review resting state QA's own
+`manual_review_required` uses instead of looping), runs the Reviser agent with the previous draft +
+QA blocking issues only (never the full QA result), stores the result as the NEXT draft version
+(never a patch, never overwriting a prior version), and routes back to `qa` with `revision_count`
+incremented atomically in the same CAS update via `advanceStageAndDispatch`'s `patch` parameter.
+See `revise/README.md`. Still no Planner/Image/Finalize logic.
 
 **Step 03A (foundation reconciliation, PRs #40–#42):** the stage/status enums, `RecipeQAResult`,
 and `RecipePlanBatch` below were realigned to RecipeAutomation.md §3/§5.3's canonical

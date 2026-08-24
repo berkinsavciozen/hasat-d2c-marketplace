@@ -66,6 +66,18 @@ Each run drops and recreates the test database from scratch, then applies, in or
    `02_write_stage_vertical_slice.sql`, the QA verdict here is synthetic, not a live-captured agent
    call — no live-call gate was open for Step 07 the way Step 06's P1 preflight was for the
    Writer's SDK path; see the Step 07 completion report.
+7. `04_revise_stage_vertical_slice.sql` (F2 Step 08) — stores its OWN synthetic
+   `revision_required` QA result against the same version-1 kabak draft (`recipe_qa_results` has
+   no uniqueness restriction on `(job_id, draft_id, draft_version)`, so it coexists with 03's
+   'approved' result), builds a targeted-fix revision (one flagged ingredient removed, everything
+   else restated unchanged — the same shape `revise/revise-stage.ts`'s Reviser agent is instructed
+   to produce), re-runs the deterministic validation RPCs against it, and stores it as version 2 —
+   never overwriting version 1, both preserved. Proves three DB-level guarantees: the
+   `recipe_drafts_job_id_version_key` unique constraint makes a duplicate version=2 insert
+   impossible (the idempotency half of "retry/double invocation must not create two versions with
+   the same number"), `recipe_generation_jobs.revision_count`'s own CHECK constraint rejects a
+   value of 3 (the two-automatic-revision cap holds independently of `revise-stage.ts`'s own
+   application-level check), and `revision_count=2` (the cap itself) is a valid, accepted value.
 
 The script exits non-zero (via `ON_ERROR_STOP`) on the first failing assertion or migration error,
 so it is CI-safe as a fail-fast check. Set `F2_TEST_DB` to use a different database name.

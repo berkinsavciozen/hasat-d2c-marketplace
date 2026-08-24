@@ -48,4 +48,7 @@ echo "==> Running Step 06 write-stage vertical slice (kabak)"
 echo "==> Running Step 07 QA-stage vertical slice (kabak)"
 "${PSQL[@]}" -d "$DB_NAME" -f "$SCRIPT_DIR/03_qa_stage_vertical_slice.sql"
 
+echo "==> Running Step 08 revise-stage vertical slice (kabak)"
+"${PSQL[@]}" -d "$DB_NAME" -f "$SCRIPT_DIR/04_revise_stage_vertical_slice.sql"
+
 echo "==> F2 recipe automation SQL test suite: PASSED"
