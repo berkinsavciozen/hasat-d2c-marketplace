@@ -22,7 +22,16 @@ dispatch, the agent-runner seam, error/redaction helpers, and stage-run telemetr
 **Step 06 (Writer vertical slice):** `writer/` holds the first content agent — `recipe-stage-write`
 (entrypoint at `../recipe-stage-write/index.ts`), for one manually created kabak `RecipeBrief`. See
 `writer/README.md`. `infra/agent-runner.ts`'s SDK path is now implemented for real (the Step 01
-live-call gate passed — see that file's header). Still no Planner/QA/Image/Finalize logic.
+live-call gate passed — see that file's header).
+
+**Step 07 (QA vertical slice):** `qa/` holds the second content agent — `recipe-stage-qa`
+(entrypoint at `../recipe-stage-qa/index.ts`) — claims a `qa`-stage job, resolves the exact current
+draft version, re-runs the Step 04 deterministic Postgres validations (reusing `writer/
+validate-draft.ts` as-is — those checks are draft-shape checks, not Writer-specific), calls the QA
+agent with the brief/draft/validation/duplicate-candidates/prior-QA-history, stores the resulting
+`RecipeQAResult`, and routes the job (approved -> image, revision_required -> revise,
+manual_review_required -> stays at `qa` with status=awaiting_approval, a human review queue). See
+`qa/README.md`. Still no Planner/Image/Finalize logic.
 
 **Step 03A (foundation reconciliation, PRs #40–#42):** the stage/status enums, `RecipeQAResult`,
 and `RecipePlanBatch` below were realigned to RecipeAutomation.md §3/§5.3's canonical

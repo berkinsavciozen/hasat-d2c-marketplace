@@ -55,6 +55,17 @@ Each run drops and recreates the test database from scratch, then applies, in or
    captured output of a live OpenAI Structured Outputs call through the real, shipped Writer code,
    run via a throwaway probe against the live project; see the Step 06 completion report for the
    full evidence (trace id, usage, latency).
+6. `03_qa_stage_vertical_slice.sql` (F2 Step 07) — re-runs the SAME deterministic validation RPCs
+   against the version-1 draft `02_write_stage_vertical_slice.sql` just stored (proving the current
+   draft still clears them at the qa stage), calls `find_recipe_duplicates` for real, stores a
+   `recipe_qa_results` row tied to the exact `(job_id, draft_id, draft_version)` triple the way
+   `qa/qa-stage.ts` does, and proves three DB-level guarantees independently of the Zod layer: the
+   composite FK rejects a QA result naming a `draft_version` that doesn't exist for that job,
+   `approved_for_imaging=true` is rejected while `blocking_issues` is non-empty, and
+   `safety_approved=true` is rejected with no recorded human reviewer identity/timestamp. Unlike
+   `02_write_stage_vertical_slice.sql`, the QA verdict here is synthetic, not a live-captured agent
+   call — no live-call gate was open for Step 07 the way Step 06's P1 preflight was for the
+   Writer's SDK path; see the Step 07 completion report.
 
 The script exits non-zero (via `ON_ERROR_STOP`) on the first failing assertion or migration error,
 so it is CI-safe as a fail-fast check. Set `F2_TEST_DB` to use a different database name.

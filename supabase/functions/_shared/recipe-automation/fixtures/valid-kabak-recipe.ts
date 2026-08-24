@@ -179,6 +179,30 @@ export const validQAResultRevisionRequired: RecipeQAResult = {
   approvedForImaging: false,
 };
 
+/** Step 07: a QA pass that judges the problem not fixable by a simple revision (e.g. a strong
+ * duplicate match) — routed to a human review queue instead of the revise loop. */
+export const validQAResultManualReviewRequired: RecipeQAResult = {
+  ...validQAResult,
+  decision: "manual_review_required",
+  overallScore: 55,
+  blockingIssues: [
+    {
+      code: "STRONG_DUPLICATE_MATCH",
+      field: "title",
+      severity: "blocking",
+      message: "Bu baslik, katalogda halihazirda var olan bir tarifle neredeyse ayni.",
+      requiredChange: "Bir editorun bu tarifin yayinlanip yayinlanmayacagina karar vermesi gerekiyor.",
+    },
+  ],
+  safetyReview: {
+    ...validQAResult.safetyReview,
+    reviewedBy: null,
+    reviewedAt: null,
+    approved: null,
+  },
+  approvedForImaging: false,
+};
+
 export const validImageSpec1024: RecipeImageSpec = {
   targetKind: "recipe_cover",
   recipeId: RECIPE_ID,
