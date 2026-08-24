@@ -62,7 +62,8 @@ function BuyerShell() {
           const active = pathname.startsWith(to);
           return (
             <Link key={to} to={to}
-              className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm ${active ? "bg-saffron text-white" : "text-hwhite/70 hover:bg-white/5"}`}>
+              className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm ${active ? "text-hwhite" : "text-hwhite/70 hover:bg-white/5"}`}
+              style={active ? { background: "color-mix(in oklab, var(--primary) 28%, transparent)", borderLeft: "2px solid var(--primary)" } : undefined}>
               <Icon className="h-4 w-4" /> {label}
             </Link>
           );
@@ -74,7 +75,7 @@ function BuyerShell() {
           const active = pathname.startsWith(to);
           return (
             <Link key={to} to={to} className="flex flex-col items-center gap-0.5 py-2 text-[10px]"
-              style={{ color: active ? "var(--saffron)" : "var(--hwhite)" }}>
+              style={{ color: active ? "var(--primary)" : "var(--hwhite)" }}>
               <Icon className="h-5 w-5" /><span>{label}</span>
             </Link>
           );
@@ -83,7 +84,7 @@ function BuyerShell() {
           type="button"
           onClick={() => setMoreOpen(true)}
           className="flex flex-col items-center gap-0.5 py-2 text-[10px]"
-          style={{ color: moreActive ? "var(--saffron)" : "var(--hwhite)" }}
+          style={{ color: moreActive ? "var(--primary)" : "var(--hwhite)" }}
           aria-label="Daha fazla"
         >
           <MoreHorizontal className="h-5 w-5" />
@@ -108,7 +109,8 @@ function BuyerShell() {
                   key={to}
                   to={to}
                   onClick={() => setMoreOpen(false)}
-                  className={`flex items-center gap-3 rounded-lg px-3 py-3 text-sm ${active ? "bg-saffron text-white" : "text-hwhite/80 hover:bg-white/5"}`}
+                  className={`flex items-center gap-3 rounded-lg px-3 py-3 text-sm ${active ? "text-hwhite" : "text-hwhite/80 hover:bg-white/5"}`}
+                  style={active ? { background: "color-mix(in oklab, var(--primary) 28%, transparent)", borderLeft: "2px solid var(--primary)" } : undefined}
                 >
                   <Icon className="h-4 w-4" />
                   <span className="flex-1">{label}</span>

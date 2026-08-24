@@ -218,7 +218,7 @@ export function CropRequestModal({
             onClick={submit}
             disabled={create.isPending}
             className="w-full rounded-full py-3 text-sm font-medium min-h-[48px]"
-            style={{ background: "var(--saffron)", color: "#fff" }}
+            style={{ background: "var(--primary)", color: "var(--primary-foreground)" }}
           >
             {create.isPending ? "Gönderiliyor…" : "Talep Oluştur"}
           </button>

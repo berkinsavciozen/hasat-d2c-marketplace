@@ -1,5 +1,5 @@
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
-import { Search, X, MessageSquare, CalendarClock, Bell } from "lucide-react";
+import { Search, X, MessageSquare, CalendarClock, Bell, FileText, ChefHat } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { BuyerHeader } from "@/components/hasat/BuyerHeader";
@@ -86,7 +86,7 @@ function Discover() {
     forYouCards.push({
       key: "sub",
       icon: CalendarClock,
-      accent: "var(--gold)",
+      accent: "var(--primary)",
       label: "Bir sonraki teslimat",
       value: nextSubFarmerName ? `${nextSubDate} · ${nextSubFarmerName}` : nextSubDate,
       to: "/buyer/subscriptions",
@@ -126,7 +126,7 @@ function Discover() {
         {filters.length > 0 && (
           <div className="mt-3 flex gap-1.5 overflow-x-auto">
             {filters.map((f) => (
-              <button key={f} onClick={() => dropFilter(f)} className="shrink-0 inline-flex items-center gap-1 rounded-full bg-white/10 px-3 py-1 text-xs min-h-[48px]">
+              <button key={f} onClick={() => dropFilter(f)} className="shrink-0 inline-flex items-center gap-1 rounded-full bg-white/10 border border-white/15 px-3 py-1 text-xs min-h-[48px]">
                 {f} <X className="h-3 w-3" />
               </button>
             ))}
@@ -136,7 +136,11 @@ function Discover() {
           {SORTS.map((s) => (
             <button key={s} onClick={() => setSort(s)}
               className="shrink-0 rounded-full px-4 py-1 text-xs transition min-h-[48px]"
-              style={{ background: sort === s ? "var(--gold)" : "rgba(255,255,255,0.1)", color: sort === s ? "var(--dark)" : "var(--hwhite)" }}>
+              style={{
+                background: sort === s ? "color-mix(in oklab, var(--primary) 26%, var(--dark))" : "rgba(255,255,255,0.06)",
+                border: sort === s ? "1px solid var(--primary)" : "1px solid rgba(255,255,255,0.12)",
+                color: "var(--hwhite)",
+              }}>
               {s}
             </button>
           ))}
@@ -175,7 +179,7 @@ function Discover() {
             className="flex items-center gap-3 rounded-2xl border-2 p-4 transition"
             style={{ borderColor: "var(--saffron)", background: "color-mix(in oklab, var(--saffron) 8%, transparent)" }}
           >
-            <span className="text-2xl">📝</span>
+            <FileText className="h-6 w-6 shrink-0" style={{ color: "var(--saffron)" }} />
             <div className="min-w-0 flex-1">
               <div className="font-medium">Yarım kalan talebiniz var</div>
               <div className="text-xs text-hmuted">
@@ -190,7 +194,7 @@ function Discover() {
           to="/tarifler"
           className="flex items-center gap-3 rounded-2xl border bg-card p-4 hover:border-saffron transition"
         >
-          <span className="text-2xl">🍽️</span>
+          <ChefHat className="h-6 w-6 shrink-0" style={{ color: "var(--saffron)" }} />
           <div className="min-w-0">
             <div className="font-medium">Tarif fikri mi arıyorsun?</div>
             <div className="text-xs text-hmuted">Hasat'ın tariflerine göz at — her malzemenin Hasat'ta bulunup bulunmadığını gösterir.</div>
@@ -221,10 +225,10 @@ function Discover() {
                 };
               });
               return rows.map((c) => (
-                <button key={c.key} onClick={() => setQuery(c.sampleCrop)} className="rounded-2xl bg-card border p-4 text-left hover:border-saffron transition">
-                  <div className="text-3xl mb-1">{c.emoji}</div>
-                  <div className="font-medium">{c.label}</div>
-                  <div className="text-xs text-hmuted">{c.count} ilan</div>
+                <button key={c.key} onClick={() => setQuery(c.sampleCrop)} className="rounded-2xl bg-card border p-4 text-left hover:border-primary active:bg-accent transition min-h-[44px]">
+                  <div className="text-2xl mb-1.5">{c.emoji}</div>
+                  <div className="font-semibold text-sm">{c.label}</div>
+                  <div className="text-[11px] text-hmuted mt-0.5">{c.count} ilan</div>
                 </button>
               ));
             })()}
@@ -239,26 +243,26 @@ function Discover() {
           ) : filtered.length === 0 ? (
             query ? (
               <div className="rounded-2xl border border-dashed p-10 text-center">
-                <div className="text-6xl mb-3">🌾</div>
+                <div className="text-4xl mb-3">🌾</div>
                 <div className="font-serif text-lg">Sonuç bulunamadı</div>
                 <div className="text-sm text-hmuted mt-1">Farklı bir ürün veya üretici adı deneyin.</div>
                 <button
                   onClick={() => setRequestOpen(true)}
                   className="mt-4 inline-flex items-center rounded-full px-4 py-2 text-xs font-medium min-h-[44px]"
-                  style={{ background: "var(--saffron)", color: "#fff" }}
+                  style={{ background: "var(--primary)", color: "var(--primary-foreground)" }}
                 >
                   Bu ürünü talep et
                 </button>
               </div>
             ) : (
               <div className="rounded-2xl border border-dashed p-10 text-center">
-                <div className="text-6xl mb-3">🌾</div>
+                <div className="text-4xl mb-3">🌾</div>
                 <div className="font-serif text-lg">Henüz aktif ilan yok</div>
                 <div className="text-sm text-hmuted mt-1">Aradığın ürünü bize söyle, üreticilere iletelim.</div>
                 <button
                   onClick={() => setRequestOpen(true)}
                   className="mt-4 inline-flex items-center rounded-full px-4 py-2 text-xs font-medium min-h-[44px]"
-                  style={{ background: "var(--saffron)", color: "#fff" }}
+                  style={{ background: "var(--primary)", color: "var(--primary-foreground)" }}
                 >
                   Ürün talep et
                 </button>
@@ -337,19 +341,22 @@ function ListingGroupCard({ items, canonicalUnit, cropConfig, onOpen }: { items:
       tabIndex={0}
       onClick={() => { if (!soldOut) onOpen(); }}
       onKeyDown={(e) => { if (e.key === "Enter" && !soldOut) onOpen(); }}
-      className={`text-left rounded-2xl bg-card border overflow-hidden hover:border-saffron transition ${soldOut ? "opacity-60 cursor-not-allowed" : "cursor-pointer"}`}
+      className={`text-left rounded-2xl bg-card border overflow-hidden hover:border-primary transition ${soldOut ? "opacity-60 cursor-not-allowed" : "cursor-pointer"}`}
     >
       <RepresentativePhoto
         src={photoUrl}
         isRepresentative={isRepresentative}
         alt={formatCrop(first.crop)}
         placeholderEmoji={cropEmoji(first.crop, cropConfig)}
-        className="h-28"
+        className="aspect-[4/3]"
       >
         <div className="absolute inset-0" style={{ background: "linear-gradient(180deg, transparent 40%, rgba(0,0,0,0.55))" }} />
         <div className="absolute top-2 left-2 flex flex-col items-start gap-1">
           {items.length > 1 && (
-            <div className="inline-flex items-center gap-1 rounded-full bg-saffron text-white text-[10px] font-bold px-2 py-0.5">
+            <div
+              className="inline-flex items-center gap-1 rounded-full text-white text-[10px] font-bold px-2 py-0.5"
+              style={{ background: "color-mix(in oklab, var(--dark) 70%, transparent)" }}
+            >
               {items.length} parti
             </div>
           )}
@@ -364,7 +371,7 @@ function ListingGroupCard({ items, canonicalUnit, cropConfig, onOpen }: { items:
           <div className="font-serif text-base leading-tight line-clamp-2">{cropEmoji(first.crop)} {formatCrop(first.crop)}</div>
           <div className="text-[11px] opacity-80 truncate">
             {farmerSlug ? (
-              <Link to="/s/$slug" params={{ slug: farmerSlug }} onClick={(e) => e.stopPropagation()} className="underline hover:text-saffron">
+              <Link to="/s/$slug" params={{ slug: farmerSlug }} onClick={(e) => e.stopPropagation()} className="underline hover:text-primary">
                 {first.farmerName}
               </Link>
             ) : first.farmerName}
@@ -372,20 +379,20 @@ function ListingGroupCard({ items, canonicalUnit, cropConfig, onOpen }: { items:
           </div>
         </div>
       </RepresentativePhoto>
-      <div className="p-4">
+      <div className="p-4 space-y-2">
         <div className="flex items-center justify-between gap-2">
-          <div className="text-xs text-hmuted">
-            Toplam mevcut {formatQuantity(totalAvail, canonicalUnit)} {canonicalUnit}
-          </div>
-          <CoverageBadge listingId={first.id} crop={first.crop} compact />
-        </div>
-        <div className="mt-3 flex items-center justify-between gap-2">
-          <div style={{ fontFamily: "Courier New, monospace", color: "var(--saffron)" }} className="text-base truncate min-w-0">
+          <div className="font-mono text-base font-semibold truncate min-w-0">
             {priceLabel}
           </div>
+          <div className="text-xs text-hmuted shrink-0">
+            {formatQuantity(totalAvail, canonicalUnit)} {canonicalUnit} mevcut
+          </div>
+        </div>
+        <div className="flex items-center justify-between gap-2">
+          <CoverageBadge listingId={first.id} crop={first.crop} compact />
           <span
             className="shrink-0 inline-flex items-center rounded-full px-4 py-1.5 text-xs text-white min-h-[48px]"
-            style={{ background: soldOut ? "var(--hmuted)" : "var(--saffron)" }}
+            style={{ background: soldOut ? "var(--hmuted)" : "var(--primary)" }}
           >
             {soldOut ? "Tükendi" : (items.length > 1 ? "Partileri Gör →" : "Teklif Ver →")}
           </span>
