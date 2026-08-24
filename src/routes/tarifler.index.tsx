@@ -100,12 +100,18 @@ function RecipeListPage() {
   return (
     <div className="min-h-screen pb-16">
       <header
-        className="border-b px-4 py-5 md:px-8"
-        style={{ background: "var(--dark)", color: "var(--hwhite)" }}
+        className="border-b px-4 py-6 md:px-8 md:py-10"
+        style={{ background: "var(--primary)", color: "var(--hwhite)" }}
       >
         <Link to="/" className="text-xs opacity-70 hover:opacity-100">
           ← Hasat
         </Link>
+        <div
+          className="mt-3 inline-flex items-center rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide"
+          style={{ background: "color-mix(in oklab, var(--saffron) 30%, transparent)", color: "var(--saffron)" }}
+        >
+          Editoryal
+        </div>
         <h1 className="mt-2 font-serif text-2xl md:text-3xl">Tarifler</h1>
         <p className="mt-1 text-sm opacity-80">
           Mevsiminde, çiftçiden doğrudan malzemeyle pişirin.
@@ -120,7 +126,7 @@ function RecipeListPage() {
           <select
             value={difficulty ?? ""}
             onChange={(e) => setDifficulty(e.target.value || null)}
-            className="rounded-full border px-3 py-1.5 bg-card"
+            className="rounded-full border px-3 py-1.5 bg-card min-h-[44px]"
           >
             <option value="">Zorluk (hepsi)</option>
             {Object.entries(DIFFICULTY_LABELS).map(([k, v]) => (
@@ -132,7 +138,7 @@ function RecipeListPage() {
           <select
             value={duration ?? ""}
             onChange={(e) => setDuration((e.target.value || null) as any)}
-            className="rounded-full border px-3 py-1.5 bg-card"
+            className="rounded-full border px-3 py-1.5 bg-card min-h-[44px]"
           >
             <option value="">Süre (hepsi)</option>
             {DURATION_BUCKETS.map((b) => (
@@ -145,7 +151,7 @@ function RecipeListPage() {
             <select
               value={diet ?? ""}
               onChange={(e) => setDiet(e.target.value || null)}
-              className="rounded-full border px-3 py-1.5 bg-card"
+              className="rounded-full border px-3 py-1.5 bg-card min-h-[44px]"
             >
               <option value="">Diyet etiketi (hepsi)</option>
               {dietTags.map((d) => (
@@ -159,7 +165,7 @@ function RecipeListPage() {
             <select
               value={cuisine ?? ""}
               onChange={(e) => setCuisine(e.target.value || null)}
-              className="rounded-full border px-3 py-1.5 bg-card"
+              className="rounded-full border px-3 py-1.5 bg-card min-h-[44px]"
             >
               <option value="">Mutfak (hepsi)</option>
               {cuisines.map((c) => (
@@ -185,10 +191,10 @@ function RecipeListPage() {
                 type="button"
                 aria-pressed={active}
                 onClick={() => toggleEquipment(slug)}
-                className="rounded-full border px-3 py-1.5 transition"
+                className="rounded-full border px-3 py-1.5 transition min-h-[44px]"
                 style={
                   active
-                    ? { background: "color-mix(in oklab, var(--sage) 25%, transparent)" }
+                    ? { background: "color-mix(in oklab, var(--primary) 20%, transparent)", borderColor: "var(--primary)", color: "var(--primary)" }
                     : undefined
                 }
               >
@@ -202,7 +208,7 @@ function RecipeListPage() {
             malzemesi Hasat'ta" anlamına geliyor (gerçek isim, gerçek davranış).
             Gerçek "tam alınabilir" filtresi bugünkü arzda 0 tarif döner — bkz.
             Build/P23-Mobile.md → "Arz gerçeği ve 'Talep Et'". Fed by v_recipe_coverage. */}
-        <label className="flex w-fit items-center gap-2 text-xs text-hmuted">
+        <label className="flex w-fit min-h-[44px] items-center gap-2 text-xs text-hmuted">
           <input
             type="checkbox"
             checked={onlyWithAvailableIngredient}
@@ -234,7 +240,7 @@ function RecipeListPage() {
                   src={r.displayPhotoUrl}
                   isRepresentative={r.isRepresentativePhoto}
                   alt={r.title}
-                  className="h-36 w-full"
+                  className="aspect-[4/3] w-full"
                 />
                 <div className="p-3 space-y-1">
                   <div className="font-serif text-base leading-tight">{r.title}</div>
@@ -271,7 +277,8 @@ function RecipeListPage() {
                           key={d}
                           className="rounded-full px-2 py-0.5 text-[10px] font-medium"
                           style={{
-                            background: "color-mix(in oklab, var(--sage) 25%, transparent)",
+                            background: "var(--muted)",
+                            color: "var(--muted-foreground)",
                           }}
                         >
                           {d}
