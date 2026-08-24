@@ -6,7 +6,7 @@ import { ProgressDots } from "@/components/hasat/ProgressDots";
 import { Input } from "@/components/ui/input";
 import { Slider } from "@/components/ui/slider";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { FileText } from "lucide-react";
+import { FileText, NotebookPen, LineChart, Store, Leaf, BadgeCheck, Globe2, MapPin, Clock, Check } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { applyStoredReferral } from "@/lib/hasat/queries";
 import type { CertificationType } from "@/lib/hasat/types";
@@ -21,10 +21,10 @@ export const Route = createFileRoute("/onboarding/farmer")({
 });
 
 const CERTS = [
-  { id: "organik", icon: "🌿", label: "Organik Sertifikası", desc: "Tarım Bakanlığı onaylı" },
-  { id: "iso", icon: "📐", label: "ISO 3632", desc: "Safran kalite standardı" },
-  { id: "globalgap", icon: "🌍", label: "GlobalGAP", desc: "İhracat için gerekli" },
-  { id: "cografi", icon: "📍", label: "Coğrafi İşaret", desc: "Bölgesel ürün koruması" },
+  { id: "organik", icon: Leaf, label: "Organik Sertifikası", desc: "Tarım Bakanlığı onaylı" },
+  { id: "iso", icon: BadgeCheck, label: "ISO 3632", desc: "Safran kalite standardı" },
+  { id: "globalgap", icon: Globe2, label: "GlobalGAP", desc: "İhracat için gerekli" },
+  { id: "cografi", icon: MapPin, label: "Coğrafi İşaret", desc: "Bölgesel ürün koruması" },
 ];
 
 function Onboarding() {
@@ -177,17 +177,19 @@ function Onboarding() {
           <>
             <div className="text-center mb-8 mt-8">
               <BrandLogo variant="monogram" tone="white" height={44} className="mx-auto mb-2" />
-              <h1 style={{ fontFamily: "Georgia, serif", fontSize: 38, color: "var(--saffron)" }}>Hasat'a Hoş Geldin</h1>
+              <h1 className="font-serif text-4xl text-hwhite">Hasat'a Hoş Geldin</h1>
               <p className="text-sm text-hwhite/60 mt-2">Tarlandan doğrudan sofraya</p>
             </div>
             <div className="space-y-3">
               {[
-                { icon: "📓", title: "Dijital Defter", desc: "Hasatlarını kaydet, kâr/zararını gör" },
-                { icon: "📈", title: "Fiyat Zekası", desc: "Hal, D2C ve ihracat fiyatlarını karşılaştır" },
-                { icon: "🏪", title: "Vitrin", desc: "Ürünlerini doğrudan premium alıcılara sat" },
+                { icon: NotebookPen, title: "Dijital Tarla Günlüğü", desc: "Hasatlarını kaydet, kâr/zararını gör" },
+                { icon: LineChart, title: "Fiyat Zekâsı", desc: "Hal, D2C ve ihracat fiyatlarını karşılaştır" },
+                { icon: Store, title: "Vitrin ve Doğrudan Satış", desc: "Ürünlerini doğrudan premium alıcılara sat" },
               ].map((c) => (
                 <div key={c.title} className="rounded-xl border border-white/10 bg-white/5 p-4 flex items-start gap-3">
-                  <div className="text-2xl">{c.icon}</div>
+                  <div className="grid place-items-center w-9 h-9 shrink-0 rounded-lg" style={{ background: "color-mix(in oklab, var(--primary) 20%, transparent)", color: "var(--primary)" }}>
+                    <c.icon className="w-4 h-4" />
+                  </div>
                   <div>
                     <div className="font-medium">{c.title}</div>
                     <div className="text-xs text-hwhite/60 mt-0.5">{c.desc}</div>
@@ -198,12 +200,12 @@ function Onboarding() {
             <button
               onClick={() => setStep(2)}
               className="mt-8 w-full rounded-xl py-3 text-sm font-medium"
-              style={{ background: "var(--saffron)", color: "var(--hwhite)" }}
+              style={{ background: "var(--primary)", color: "var(--hwhite)" }}
             >
               Başla →
             </button>
             <div className="mt-4 text-center text-sm text-hwhite/60">
-              Zaten hesabın var mı? <Link to="/login" className="text-saffron underline">Giriş Yap</Link>
+              Zaten hesabın var mı? <Link to="/login" className="underline text-hwhite/80">Giriş Yap</Link>
             </div>
           </>
         )}
@@ -228,51 +230,59 @@ function Onboarding() {
               <CropChips value={crops} onChange={setCrops} variant="dark" context="farmer" />
             </div>
 
-            <label className="text-xs text-hwhite/60">Arazi Büyüklüğü: <span style={{ color: "var(--saffron)" }}>{land} dönüm</span></label>
+            <label className="text-xs text-hwhite/60">Arazi Büyüklüğü: <span style={{ color: "var(--primary)" }} className="font-mono">{land} dönüm</span></label>
             <Slider value={[land]} min={0.5} max={100} step={0.5} onValueChange={([v]) => setLand(v)} className="mt-3 mb-6" />
 
             <button onClick={() => setStep(3)} disabled={!name || !city}
               className="w-full rounded-xl py-3 text-sm font-medium disabled:opacity-40"
-              style={{ background: "var(--saffron)", color: "var(--hwhite)" }}>Devam →</button>
+              style={{ background: "var(--primary)", color: "var(--hwhite)" }}>Devam →</button>
+            <button onClick={() => setStep(1)} className="mt-3 w-full text-xs text-hwhite/50">← Geri</button>
           </div>
         )}
 
         {step === 3 && (
           <div className="mt-4">
             <h2 className="font-serif text-2xl mb-1">Sertifikalar</h2>
-            <p className="text-sm text-saffron mb-6">Belgelenmiş üreticiler 3x daha fazla teklif alıyor</p>
+            <p className="text-sm text-hwhite/60 mb-6">Belgelenmiş üreticiler alıcılara ek güven verir.</p>
 
             <div className="space-y-2 mb-4">
               {CERTS.map((c) => {
                 const on = certs.includes(c.id);
+                const Icon = c.icon;
                 return (
                   <button key={c.id} onClick={() => toggle(certs, setCerts, c.id)}
                     className="w-full text-left rounded-xl p-4 flex items-start gap-3 border transition"
                     style={{
-                      background: on ? "color-mix(in oklab, var(--saffron) 18%, var(--dark))" : "rgba(255,255,255,0.05)",
-                      borderColor: on ? "var(--saffron)" : "rgba(255,255,255,0.1)",
+                      background: on ? "color-mix(in oklab, var(--primary) 18%, var(--dark))" : "rgba(255,255,255,0.05)",
+                      borderColor: on ? "var(--primary)" : "rgba(255,255,255,0.1)",
                     }}>
-                    <div className="text-2xl">{c.icon}</div>
+                    <Icon className="w-5 h-5 shrink-0 mt-0.5" style={{ color: on ? "var(--primary)" : "var(--hwhite)" }} />
                     <div className="flex-1">
                       <div className="font-medium text-sm">{c.label}</div>
                       <div className="text-xs text-hwhite/60 mt-0.5">{c.desc}</div>
                     </div>
-                    <div className="text-lg">{on ? "✓" : ""}</div>
+                    {on && <Check className="w-4 h-4 shrink-0 mt-0.5" style={{ color: "var(--primary)" }} />}
                   </button>
                 );
               })}
             </div>
 
-            <div className="rounded-xl border-2 border-dashed border-white/15 p-6 text-center mb-6">
-              <FileText className="mx-auto h-8 w-8 opacity-60" />
-              <div className="text-sm mt-2">Belge yükle</div>
-              <div className="text-xs text-hwhite/50">JPG, PDF — maks 10MB</div>
+            {/* Belge yükle alanı henüz gerçek bir dosya/upload akışına bağlı değil
+                (madde 17 zorunlu UX denetimi) — bu yüzden kullanılabilir bir dropzone
+                gibi değil, açıkça devre dışı/"yakında" olarak sunulur. */}
+            <div className="rounded-xl border-2 border-dashed border-white/10 p-6 text-center mb-2 opacity-60 cursor-not-allowed" aria-disabled="true">
+              <FileText className="mx-auto h-8 w-8 opacity-50" />
+              <div className="text-sm mt-2 flex items-center justify-center gap-1.5">
+                <Clock className="w-3.5 h-3.5" /> Belge yükleme yakında
+              </div>
+              <div className="text-xs text-hwhite/50">Şimdilik yalnızca sertifika türünü seçebilirsin</div>
             </div>
 
             <button onClick={() => finish(false)} disabled={saving}
-              className="w-full rounded-xl py-3 text-sm font-medium disabled:opacity-40"
-              style={{ background: "var(--saffron)", color: "var(--hwhite)" }}>{saving ? "Kaydediliyor..." : "Profilimi oluştur ✓"}</button>
+              className="w-full rounded-xl py-3 text-sm font-medium disabled:opacity-40 mt-4"
+              style={{ background: "var(--primary)", color: "var(--hwhite)" }}>{saving ? "Kaydediliyor..." : "Profilimi oluştur"}</button>
             <button onClick={() => finish(true)} disabled={saving} className="mt-3 w-full text-sm text-hwhite/50 disabled:opacity-40">Şimdilik atla</button>
+            <button onClick={() => setStep(2)} disabled={saving} className="mt-3 w-full text-xs text-hwhite/50 disabled:opacity-40">← Geri</button>
           </div>
         )}
       </div>

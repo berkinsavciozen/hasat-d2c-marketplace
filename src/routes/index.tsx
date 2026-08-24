@@ -112,19 +112,31 @@ export const Route = createFileRoute("/")({
   component: LandingPage,
 });
 
-/* Local palette — scoped only to this route via inline vars on the root element. */
+/*
+ * Landing no longer carries its own independent green-branded palette (see
+ * 04.10 Group 8 item 1: "Do not maintain a second independent design-token
+ * system for Landing"). These --lp-* custom properties stay in place because
+ * every section below already threads through them via `var()` — but each
+ * one is now a straight alias onto the shared Hasat token layer defined in
+ * src/styles.css (deep blue/blue-teal primary, warm-neutral surfaces),
+ * not a value of its own. --lp-earth is the one intentional exception: a
+ * muted brown used only to illustrate the "traditional supply chain" (not a
+ * brand or semantic color), kept literal since nothing in the shared system
+ * maps to it.
+ */
 const lpVars: React.CSSProperties = {
-  ["--lp-primary" as string]: "#1B3A2B",
-  ["--lp-primary-2" as string]: "#274d3a",
-  ["--lp-accent" as string]: "#4A9B5E",
+  ["--lp-primary" as string]: "var(--primary)",
+  ["--lp-primary-2" as string]: "var(--teal)",
+  ["--lp-accent" as string]: "var(--teal)",
+  ["--lp-highlight" as string]: "#C9E8EF",
   ["--lp-earth" as string]: "#6B4A32",
-  ["--lp-cream" as string]: "#F5F1E6",
-  ["--lp-cream-2" as string]: "#EDE7D6",
-  ["--lp-white" as string]: "#FFFFFF",
-  ["--lp-gray" as string]: "#8A8F87",
-  ["--lp-muted" as string]: "#5A6560",
-  ["--lp-ink" as string]: "#14231C",
-  ["--lp-line" as string]: "rgba(20,35,28,0.10)",
+  ["--lp-cream" as string]: "var(--cream)",
+  ["--lp-cream-2" as string]: "var(--background)",
+  ["--lp-white" as string]: "var(--hwhite)",
+  ["--lp-gray" as string]: "var(--hmuted)",
+  ["--lp-muted" as string]: "var(--muted-foreground)",
+  ["--lp-ink" as string]: "var(--foreground)",
+  ["--lp-line" as string]: "var(--border)",
 };
 
 /* Photo URLs — atmospheric stock, no faces, no watermarks. */
@@ -378,14 +390,10 @@ function Hero({ onRole }: { onRole: (r: "farmer" | "buyer") => void }) {
 
       <div className="relative z-10 mx-auto max-w-6xl px-4 pt-16 pb-24 md:pt-24 md:pb-28 grid gap-12 md:grid-cols-2 items-center">
         <div className="lp-reveal" style={{ color: "var(--lp-white)", textShadow: "0 2px 18px rgba(0,0,0,0.32)" }}>
-          <div className="inline-flex items-center gap-2 rounded-full px-3 py-1 text-[11px] uppercase tracking-widest"
-            style={{ background: "rgba(255,255,255,0.18)", color: "#FFFFFF" }}>
-            <ShieldCheck className="w-3.5 h-3.5" /> Türkiye'nin izlenebilir tarım pazarı
-          </div>
-          <h1 className="mt-5 font-serif leading-[1.05] text-4xl sm:text-5xl md:text-6xl">
+          <h1 className="font-serif leading-[1.05] text-4xl sm:text-5xl md:text-6xl">
             <span className="sr-only">Hasat — Specialty Üretici-Alıcı Platformu. </span>
             Ürününü değil,{" "}
-            <span style={{ color: "#CFE8D3" }}>güveni</span>{" "}
+            <span style={{ color: "var(--lp-highlight)" }}>güveni</span>{" "}
             satıyoruz.
           </h1>
           <p className="mt-5 text-base md:text-lg max-w-lg" style={{ color: "rgba(255,255,255,0.94)" }}>
@@ -394,19 +402,23 @@ function Hero({ onRole }: { onRole: (r: "farmer" | "buyer") => void }) {
           </p>
           <div className="mt-8 flex flex-wrap gap-3">
             <button
-              onClick={() => onRole("farmer")}
+              onClick={() => onRole("buyer")}
               className="rounded-full px-5 py-3 text-sm font-medium transition hover:opacity-90 inline-flex items-center gap-2"
-              style={{ background: "var(--lp-accent)", color: "#fff" }}
+              style={{ background: "var(--lp-primary)", color: "#fff" }}
             >
-              Çiftçiyim <ArrowRight className="w-4 h-4" />
+              Alıcı olarak devam et <ArrowRight className="w-4 h-4" />
             </button>
             <button
-              onClick={() => onRole("buyer")}
+              onClick={() => onRole("farmer")}
               className="rounded-full px-5 py-3 text-sm font-medium transition hover:bg-white/10 inline-flex items-center gap-2"
               style={{ border: "1px solid rgba(255,255,255,0.4)", color: "#fff" }}
             >
-              Alıcıyım <ArrowRight className="w-4 h-4" />
+              Üretici olarak devam et <ArrowRight className="w-4 h-4" />
             </button>
+          </div>
+          <div className="mt-6 inline-flex items-center gap-2 rounded-full px-3 py-1 text-[11px] uppercase tracking-widest"
+            style={{ background: "rgba(255,255,255,0.18)", color: "#FFFFFF" }}>
+            <ShieldCheck className="w-3.5 h-3.5" /> Türkiye'nin izlenebilir tarım pazarı
           </div>
         </div>
 
@@ -597,8 +609,8 @@ function SupplyChain() {
               className="rounded-3xl p-6 md:p-8 text-center lp-reveal lp-reveal-d1 mb-4"
               style={{ background: "var(--lp-primary)", color: "#fff" }}
             >
-              <div className="text-[11px] uppercase tracking-widest mb-2" style={{ color: "#CFE8D3" }}>Hasat ile</div>
-              <div className="font-serif tabular-nums text-6xl md:text-7xl leading-none" style={{ color: "#CFE8D3" }}>
+              <div className="text-[11px] uppercase tracking-widest mb-2" style={{ color: "var(--lp-highlight)" }}>Hasat ile</div>
+              <div className="font-serif tabular-nums text-6xl md:text-7xl leading-none" style={{ color: "var(--lp-highlight)" }}>
                 %<CountUp to={95} />
               </div>
               <div className="mt-3 text-sm" style={{ color: "rgba(255,255,255,0.85)" }}>üreticiye kalan pay</div>
@@ -910,15 +922,21 @@ function TurkeyMap() {
             className="relative w-full mx-auto"
             style={{ aspectRatio: "16 / 8", maxWidth: 720 }}
           >
-            <img
-              src={turkeyOutlineUrl}
-              alt="Türkiye haritası ana hattı"
+            <div
+              role="img"
+              aria-label="Türkiye haritası ana hattı"
               className="absolute inset-0 w-full h-full"
               style={{
-                objectFit: "cover",
-                objectPosition: "center",
-                /* Recolor the black silhouette to a soft primary tint */
-                filter: "brightness(0) saturate(100%) invert(19%) sepia(19%) saturate(1113%) hue-rotate(97deg) brightness(96%) contrast(88%) opacity(0.55)",
+                backgroundColor: "var(--lp-primary)",
+                opacity: 0.55,
+                WebkitMaskImage: `url(${turkeyOutlineUrl})`,
+                maskImage: `url(${turkeyOutlineUrl})`,
+                WebkitMaskSize: "cover",
+                maskSize: "cover",
+                WebkitMaskPosition: "center",
+                maskPosition: "center",
+                WebkitMaskRepeat: "no-repeat",
+                maskRepeat: "no-repeat",
               }}
             />
             {/* Pin overlay */}
@@ -1013,7 +1031,7 @@ function FarmerStory() {
             görüyor — güven kendiliğinden geliyor."
           </blockquote>
           <div className="mt-4 text-sm" style={{ color: "var(--lp-muted)" }}>
-            <span className="italic">Gösterim amaçlı — </span> Üretici E. D., Isparta · 8 dönüm lavanta
+            <span className="italic">Temsili senaryo — </span> gerçek bir kullanıcıya ait değildir, platformun tipik bir kullanım deneyimini gösterir.
           </div>
         </div>
       </div>
@@ -1337,7 +1355,7 @@ function IndoorSection() {
       <div className="mx-auto max-w-6xl grid gap-10 md:grid-cols-2 items-start">
         <div>
           <h2 className="font-serif text-3xl md:text-4xl mb-4">
-            Kırsalda kalın, <span style={{ color: "#CFE8D3" }}>toprakta büyüyün</span>.
+            Kırsalda kalın, <span style={{ color: "var(--lp-highlight)" }}>toprakta büyüyün</span>.
           </h2>
           <p className="text-sm md:text-base text-white/85 mb-4">
             Indoor tarım, gençlerin köyünden ayrılmadan yüksek katma değerli ürün
@@ -1345,18 +1363,18 @@ function IndoorSection() {
             kalite, kısa tedarik zinciri.
           </p>
           <ul className="space-y-2 text-sm text-white/90 mb-6">
-            <li className="flex gap-2"><Check className="w-4 h-4 mt-0.5" style={{ color: "#CFE8D3" }} /> Kırsalda genç kalıcılığı için somut bir model.</li>
-            <li className="flex gap-2"><Check className="w-4 h-4 mt-0.5" style={{ color: "#CFE8D3" }} /> TKDK genç çiftçi hibesiyle başlangıç maliyeti düşer.</li>
-            <li className="flex gap-2"><Check className="w-4 h-4 mt-0.5" style={{ color: "#CFE8D3" }} /> Hasat üzerinden doğrudan alıcıya satış.</li>
+            <li className="flex gap-2"><Check className="w-4 h-4 mt-0.5" style={{ color: "var(--lp-highlight)" }} /> Kırsalda genç kalıcılığı için somut bir model.</li>
+            <li className="flex gap-2"><Check className="w-4 h-4 mt-0.5" style={{ color: "var(--lp-highlight)" }} /> TKDK genç çiftçi hibesiyle başlangıç maliyeti düşer.</li>
+            <li className="flex gap-2"><Check className="w-4 h-4 mt-0.5" style={{ color: "var(--lp-highlight)" }} /> Hasat üzerinden doğrudan alıcıya satış.</li>
           </ul>
           <a
             href={waHref}
             target="_blank"
             rel="noopener noreferrer"
             className="inline-flex items-center gap-2 rounded-full px-4 py-2.5 text-sm font-medium"
-            style={{ background: "var(--lp-accent)", color: "#fff" }}
+            style={{ background: "var(--whatsapp)", color: "#fff" }}
           >
-            🟢 WhatsApp'tan yaz
+            <MessageCircle className="w-4 h-4" /> WhatsApp'tan yaz
           </a>
         </div>
 

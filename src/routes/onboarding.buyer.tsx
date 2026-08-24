@@ -1,6 +1,7 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
+import { Utensils, Hotel, ShoppingBasket, Ship, Building2, Star } from "lucide-react";
 import { useHasat } from "@/lib/hasat/store";
 import { ProgressDots } from "@/components/hasat/ProgressDots";
 import { Input } from "@/components/ui/input";
@@ -16,11 +17,11 @@ export const Route = createFileRoute("/onboarding/buyer")({
 });
 
 const TYPES = [
-  { id: "restoran", icon: "🍽️", label: "Restoran" },
-  { id: "otel", icon: "🏨", label: "Otel" },
-  { id: "market", icon: "🛒", label: "Organik Market" },
-  { id: "ihracatci", icon: "🚢", label: "İhracatçı" },
-  { id: "diger", icon: "🏢", label: "Diğer" },
+  { id: "restoran", icon: Utensils, label: "Restoran" },
+  { id: "otel", icon: Hotel, label: "Otel" },
+  { id: "market", icon: ShoppingBasket, label: "Organik Market" },
+  { id: "ihracatci", icon: Ship, label: "İhracatçı" },
+  { id: "diger", icon: Building2, label: "Diğer" },
 ] as const;
 
 const VOLUMES = ["< 100g", "100g–1kg", "1–10kg", "10kg+"];
@@ -168,7 +169,7 @@ function BuyerOnboarding() {
                 return (
                   <button key={m} onClick={() => { setMode(m); if (m === "individual") setType(""); }}
                     className="rounded-lg py-2 text-sm font-medium transition"
-                    style={{ background: on ? "var(--gold)" : "transparent", color: on ? "var(--dark)" : "var(--hwhite)" }}>
+                    style={{ background: on ? "var(--primary)" : "transparent", color: "var(--hwhite)" }}>
                     {m === "company" ? "Şirket" : "Bireysel"}
                   </button>
                 );
@@ -186,11 +187,12 @@ function BuyerOnboarding() {
                 <div className="grid grid-cols-2 gap-2">
                   {TYPES.map((t) => {
                     const on = type === t.id;
+                    const Icon = t.icon;
                     return (
                       <button key={t.id} onClick={() => setType(t.id)}
                         className="rounded-xl p-4 text-left border transition"
-                        style={{ background: on ? "color-mix(in oklab, var(--gold) 18%, var(--dark))" : "rgba(255,255,255,0.05)", borderColor: on ? "var(--gold)" : "rgba(255,255,255,0.1)" }}>
-                        <div className="text-2xl mb-1">{t.icon}</div>
+                        style={{ background: on ? "color-mix(in oklab, var(--primary) 18%, var(--dark))" : "rgba(255,255,255,0.05)", borderColor: on ? "var(--primary)" : "rgba(255,255,255,0.1)" }}>
+                        <Icon className="w-5 h-5 mb-1.5" style={{ color: on ? "var(--primary)" : "var(--hwhite)" }} />
                         <div className="text-sm font-medium">{t.label}</div>
                       </button>
                     );
@@ -200,9 +202,9 @@ function BuyerOnboarding() {
             )}
             <button onClick={() => setStep(2)} disabled={!company || (mode === "company" && !type)}
               className="mt-8 w-full rounded-xl py-3 text-sm font-medium disabled:opacity-40"
-              style={{ background: "var(--gold)", color: "var(--dark)" }}>Devam →</button>
+              style={{ background: "var(--primary)", color: "var(--hwhite)" }}>Devam →</button>
             <div className="mt-4 text-center text-sm text-hwhite/60">
-              Zaten hesabın var mı? <Link to="/login" search={{ role: "buyer" }} className="underline" style={{ color: "var(--gold)" }}>Giriş Yap</Link>
+              Zaten hesabın var mı? <Link to="/login" search={{ role: "buyer" }} className="underline text-hwhite/80">Giriş Yap</Link>
             </div>
           </div>
         )}
@@ -222,13 +224,14 @@ function BuyerOnboarding() {
                 return (
                   <button key={v} onClick={() => setVolume(v)}
                     className="rounded-xl px-3 py-3 text-sm border transition"
-                    style={{ background: on ? "color-mix(in oklab, var(--gold) 18%, var(--dark))" : "rgba(255,255,255,0.05)", borderColor: on ? "var(--gold)" : "rgba(255,255,255,0.1)" }}>{v}</button>
+                    style={{ background: on ? "color-mix(in oklab, var(--primary) 18%, var(--dark))" : "rgba(255,255,255,0.05)", borderColor: on ? "var(--primary)" : "rgba(255,255,255,0.1)" }}>{v}</button>
                 );
               })}
             </div>
             <button onClick={() => setStep(3)} disabled={!interests.length || !volume}
               className="w-full rounded-xl py-3 text-sm font-medium disabled:opacity-40"
-              style={{ background: "var(--gold)", color: "var(--dark)" }}>Devam →</button>
+              style={{ background: "var(--primary)", color: "var(--hwhite)" }}>Devam →</button>
+            <button onClick={() => setStep(1)} className="mt-3 w-full text-xs text-hwhite/50">← Geri</button>
           </div>
         )}
 
@@ -241,7 +244,7 @@ function BuyerOnboarding() {
               className="mt-1 mb-6 bg-white/5 border-white/10 text-hwhite" />
             <div className="rounded-xl p-4 flex items-start gap-3 border"
               style={{ background: "color-mix(in oklab, var(--gold) 14%, var(--dark))", borderColor: "var(--gold)" }}>
-              <div className="text-2xl">⭐</div>
+              <Star className="w-5 h-5 shrink-0" style={{ color: "var(--gold)" }} />
               <div className="flex-1">
                 <div className="font-medium text-sm">30 gün ücretsiz Premium</div>
                 <div className="text-xs text-hwhite/70 mt-0.5">Öncelikli eşleşme, gelişmiş analitik ve hasat aboneliği.</div>
@@ -250,7 +253,8 @@ function BuyerOnboarding() {
             </div>
             <button onClick={finish} disabled={saving}
               className="mt-8 w-full rounded-xl py-3 text-sm font-medium disabled:opacity-40"
-              style={{ background: "var(--gold)", color: "var(--dark)" }}>{saving ? "Kaydediliyor..." : "Keşfetmeye Başla →"}</button>
+              style={{ background: "var(--primary)", color: "var(--hwhite)" }}>{saving ? "Kaydediliyor..." : "Keşfetmeye Başla →"}</button>
+            <button onClick={() => setStep(2)} disabled={saving} className="mt-3 w-full text-xs text-hwhite/50 disabled:opacity-40">← Geri</button>
           </div>
         )}
       </div>

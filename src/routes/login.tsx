@@ -2,6 +2,7 @@ import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
+import { MessageCircle, MessageSquareText } from "lucide-react";
 import { useHasat } from "@/lib/hasat/store";
 import { supabase } from "@/integrations/supabase/client";
 import { BrandLogo } from "@/components/hasat/BrandLogo";
@@ -44,6 +45,7 @@ function LoginPage() {
   const [phone, setPhone] = useState("");
   const [channel, setChannel] = useState<"wa" | "sms">("wa");
   const [otp, setOtp] = useState<string[]>(["", "", "", "", "", ""]);
+  const [otpError, setOtpError] = useState<string | null>(null);
   const [countdown, setCountdown] = useState(30);
   const [sending, setSending] = useState(false);
   const [verifying, setVerifying] = useState(false);
@@ -93,6 +95,7 @@ function LoginPage() {
   const handleOtpChange = (i: number, val: string) => {
     const digit = val.replace(/\D/g, "").slice(-1);
     const next = [...otp]; next[i] = digit; setOtp(next);
+    setOtpError(null);
     if (digit && i < 5) inputsRef.current[i + 1]?.focus();
   };
   const handleOtpKey = (i: number, e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -119,6 +122,7 @@ function LoginPage() {
         },
       });
       if (error) throw error;
+      setOtpError(null);
       setStep("otp");
       setOtp(["", "", "", "", "", ""]);
     } catch (e) {
@@ -137,6 +141,7 @@ function LoginPage() {
   const verify = async () => {
     if (otp.some((d) => !d) || verifying) return;
     setVerifying(true);
+    setOtpError(null);
     try {
       const { data, error } = await supabase.auth.verifyOtp({
         phone: "+90" + phoneDigits,
@@ -182,45 +187,67 @@ function LoginPage() {
         }
       }
     } catch (e) {
-      toast.error(translateAuthError(e as Error));
+      const msg = translateAuthError(e as Error);
+      toast.error(msg);
+      setOtpError(msg);
     } finally {
       setVerifying(false);
     }
   };
 
-  
-  const titleColor = role === "buyer" ? "var(--gold)" : "var(--saffron)";
+  const otherRole: "farmer" | "buyer" = role === "buyer" ? "farmer" : "buyer";
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center p-6" style={{ background: "var(--dark)", color: "var(--hwhite)" }}>
       <div className="mb-10 text-center">
         <BrandLogo variant="wordmark" tone="white" height={36} className="mx-auto mb-2" />
-        <div style={{ fontFamily: "Courier New, monospace", fontSize: 11, color: "var(--hmuted)" }}>هارست</div>
-        <div className="mt-2 text-xs text-hwhite/60">{role === "buyer" ? "Alıcı Girişi" : "Çiftçi Girişi"}</div>
+        <div className="mt-2 text-xs text-hwhite/60">{role === "buyer" ? "Alıcı Girişi" : "Üretici Girişi"}</div>
+        <Link
+          to="/login"
+          search={{ role: otherRole, ...(next ? { next } : {}) }}
+          className="mt-1 inline-block text-[11px] underline text-hwhite/50 hover:text-hwhite/80"
+        >
+          Rol değiştir
+        </Link>
       </div>
 
       <div className="w-full max-w-sm">
         {step === "phone" ? (
           <>
             <label className="text-xs text-hwhite/60 mb-2 block">Telefon Numaranız</label>
-            <div className="flex items-center gap-2 rounded-xl border border-white/15 bg-white/5 px-3 py-2.5">
-              <span className="flex items-center gap-1 rounded-md bg-white/10 px-2 py-1 text-sm">🇹🇷 +90</span>
+            <div className="flex items-center gap-2 rounded-xl border border-white/15 bg-white/5 px-3 py-2.5 focus-within:border-primary">
+              <span className="rounded-md bg-white/10 px-2 py-1 text-sm text-hwhite/80">+90</span>
               <input value={formattedPhone} onChange={(e) => setPhone(e.target.value)} inputMode="numeric" placeholder="5XX XXX XX XX"
                 className="flex-1 bg-transparent outline-none text-base placeholder:text-hwhite/30" />
             </div>
             <div className="mt-5">
               <div className="text-xs text-hwhite/60 mb-2">Kod nereye gelsin?</div>
               <div className="grid grid-cols-2 gap-2">
-                <button onClick={() => setChannel("wa")} className="rounded-xl px-3 py-3 text-sm min-h-[48px]"
-                  style={{ background: channel === "wa" ? "color-mix(in oklab, var(--sage) 30%, var(--dark))" : "rgba(255,255,255,0.05)", border: channel === "wa" ? "1px solid var(--sage)" : "1px solid rgba(255,255,255,0.1)" }}>🟢 WhatsApp</button>
-                <button onClick={() => setChannel("sms")} className="rounded-xl px-3 py-3 text-sm min-h-[48px]"
-                  style={{ background: channel === "sms" ? "color-mix(in oklab, var(--saffron) 30%, var(--dark))" : "rgba(255,255,255,0.05)", border: channel === "sms" ? "1px solid var(--saffron)" : "1px solid rgba(255,255,255,0.1)" }}>💬 SMS</button>
+                <button
+                  onClick={() => setChannel("wa")}
+                  className="rounded-xl px-3 py-3 text-sm min-h-[48px] inline-flex items-center justify-center gap-1.5 transition"
+                  style={{
+                    background: channel === "wa" ? "color-mix(in oklab, var(--primary) 22%, var(--dark))" : "rgba(255,255,255,0.05)",
+                    border: channel === "wa" ? "1px solid var(--primary)" : "1px solid rgba(255,255,255,0.1)",
+                  }}
+                >
+                  <MessageCircle className="w-4 h-4" style={{ color: "var(--whatsapp)" }} /> WhatsApp
+                </button>
+                <button
+                  onClick={() => setChannel("sms")}
+                  className="rounded-xl px-3 py-3 text-sm min-h-[48px] inline-flex items-center justify-center gap-1.5 transition"
+                  style={{
+                    background: channel === "sms" ? "color-mix(in oklab, var(--primary) 22%, var(--dark))" : "rgba(255,255,255,0.05)",
+                    border: channel === "sms" ? "1px solid var(--primary)" : "1px solid rgba(255,255,255,0.1)",
+                  }}
+                >
+                  <MessageSquareText className="w-4 h-4 text-hwhite/70" /> SMS
+                </button>
               </div>
-              <p className="text-[11px] text-hwhite/50 mt-2">Çiftçilerin %95'i WhatsApp kullanıyor</p>
             </div>
             <button disabled={phoneDigits.length !== 10 || sending} onClick={sendOtp}
               className="mt-6 w-full rounded-xl py-3 text-sm font-medium disabled:opacity-40"
-              style={{ background: titleColor, color: "var(--hwhite)" }}>{sending ? "Gönderiliyor..." : "Kod Gönder →"}</button>
+              style={{ background: "var(--primary)", color: "var(--hwhite)" }}>{sending ? "Gönderiliyor..." : "Kod Gönder →"}</button>
           </>
         ) : (
           <>
@@ -233,17 +260,21 @@ function LoginPage() {
                 <input key={i} ref={(el) => { inputsRef.current[i] = el; }} value={d}
                   onChange={(e) => handleOtpChange(i, e.target.value)} onKeyDown={(e) => handleOtpKey(i, e)}
                   inputMode="numeric" maxLength={1}
-                  className="w-10 h-12 sm:w-12 sm:h-14 min-w-0 flex-1 text-center rounded-lg border border-white/15 bg-white/5 outline-none focus:border-saffron"
-                  style={{ fontFamily: "Courier New, monospace", fontSize: 20 }} />
+                  aria-invalid={otpError ? true : undefined}
+                  className="w-10 h-12 sm:w-12 sm:h-14 min-w-0 flex-1 text-center rounded-lg border bg-white/5 outline-none font-mono text-xl transition-colors"
+                  style={{ borderColor: otpError ? "var(--hred)" : "rgba(255,255,255,0.15)" }} />
               ))}
             </div>
+            {otpError && (
+              <p className="mt-2 text-center text-[11px]" style={{ color: "var(--hred)" }}>{otpError}</p>
+            )}
             <div className="mt-3 text-center text-[11px] text-hwhite/50">
-              {countdown > 0 ? `Tekrar gönder (${countdown}s)` : (<button onClick={resend} className="underline">Tekrar gönder</button>)}
+              {countdown > 0 ? `Tekrar gönder (${countdown}s)` : (<button onClick={resend} className="underline" style={{ color: "var(--teal)" }}>Tekrar gönder</button>)}
             </div>
             <button disabled={otp.some((d) => !d) || verifying} onClick={verify}
               className="mt-6 w-full rounded-xl py-3 text-sm font-medium disabled:opacity-40"
-              style={{ background: titleColor, color: "var(--hwhite)" }}>{verifying ? "Doğrulanıyor..." : "Giriş Yap ✓"}</button>
-            <button onClick={() => setStep("phone")} className="mt-3 w-full text-xs text-hwhite/50">← Numarayı değiştir</button>
+              style={{ background: "var(--primary)", color: "var(--hwhite)" }}>{verifying ? "Doğrulanıyor..." : "Giriş Yap"}</button>
+            <button onClick={() => { setStep("phone"); setOtpError(null); }} className="mt-3 w-full text-xs text-hwhite/50">← Numarayı değiştir</button>
           </>
         )}
         <div className="mt-8 text-center text-xs text-hwhite/50">

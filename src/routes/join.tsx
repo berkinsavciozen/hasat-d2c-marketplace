@@ -1,6 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { z } from "zod";
+import { NotebookPen, LineChart, Store } from "lucide-react";
 import { lookupReferralOwner } from "@/lib/hasat/queries";
 import { BrandLogo } from "@/components/hasat/BrandLogo";
 
@@ -41,7 +42,7 @@ function JoinPage() {
       <div className="mx-auto max-w-md pt-10">
         <div className="text-center">
           <BrandLogo variant="monogram" tone="white" height={52} className="mx-auto mb-3" />
-          <h1 style={{ fontFamily: "Georgia, serif", fontSize: 34, color: "var(--saffron)" }}>Hasat'a Hoş Geldin</h1>
+          <h1 className="font-serif text-4xl text-hwhite">Hasat'a Hoş Geldin</h1>
           {checking ? (
             <p className="mt-3 text-sm text-hwhite/60">Davet doğrulanıyor…</p>
           ) : inviter ? (
@@ -57,12 +58,14 @@ function JoinPage() {
 
         <div className="mt-8 space-y-3">
           {[
-            { icon: "📓", title: "Dijital Defter", desc: "Hasatlarını kaydet, kâr/zararını gör" },
-            { icon: "📈", title: "Fiyat Zekası", desc: "Hal, D2C ve ihracat fiyatlarını karşılaştır" },
-            { icon: "🏪", title: "Vitrin", desc: "Ürünlerini doğrudan premium alıcılara sat" },
+            { icon: NotebookPen, title: "Dijital Tarla Günlüğü", desc: "Hasatlarını kaydet, kâr/zararını gör" },
+            { icon: LineChart, title: "Fiyat Zekâsı", desc: "Hal, D2C ve ihracat fiyatlarını karşılaştır" },
+            { icon: Store, title: "Vitrin ve Doğrudan Satış", desc: "Ürünlerini doğrudan premium alıcılara sat" },
           ].map((c) => (
             <div key={c.title} className="rounded-xl border border-white/10 bg-white/5 p-4 flex items-start gap-3">
-              <div className="text-2xl">{c.icon}</div>
+              <div className="grid place-items-center w-9 h-9 shrink-0 rounded-lg" style={{ background: "color-mix(in oklab, var(--primary) 20%, transparent)", color: "var(--primary)" }}>
+                <c.icon className="w-4 h-4" />
+              </div>
               <div>
                 <div className="font-medium">{c.title}</div>
                 <div className="text-xs text-hwhite/60 mt-0.5">{c.desc}</div>
@@ -75,7 +78,7 @@ function JoinPage() {
           to="/login"
           search={{ role: "farmer" }}
           className="mt-8 block w-full rounded-xl py-3 text-center text-sm font-medium"
-          style={{ background: "var(--saffron)", color: "var(--hwhite)" }}
+          style={{ background: "var(--primary)", color: "var(--hwhite)" }}
         >
           Kayıt Ol / Giriş Yap →
         </Link>

@@ -81,8 +81,8 @@ export function CropChips({ value, onChange, variant = "light", context }: Props
                 onClick={() => toggle(o.value)}
                 className="rounded-full px-3 py-1.5 text-xs border transition"
                 style={{
-                  background: active ? "var(--saffron)" : "rgba(255,255,255,0.05)",
-                  borderColor: active ? "var(--saffron)" : "rgba(255,255,255,0.15)",
+                  background: active ? "var(--primary)" : "rgba(255,255,255,0.05)",
+                  borderColor: active ? "var(--primary)" : "rgba(255,255,255,0.15)",
                   color: "var(--hwhite)",
                 }}
               >
@@ -98,9 +98,9 @@ export function CropChips({ value, onChange, variant = "light", context }: Props
               onClick={() => toggle(o.value)}
               className="rounded-full border px-3 py-1.5 text-xs transition"
               style={{
-                background: active ? "var(--saffron)" : "transparent",
+                background: active ? "var(--primary)" : "transparent",
                 color: active ? "var(--hwhite)" : undefined,
-                borderColor: active ? "var(--saffron)" : undefined,
+                borderColor: active ? "var(--primary)" : undefined,
               }}
             >
               {o.emoji} {o.label}
@@ -187,7 +187,7 @@ function CropRequestDialog({ open, onClose }: { open: boolean; onClose: () => vo
           <button
             onClick={submit}
             disabled={create.isPending}
-            className="rounded-xl bg-saffron px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
+            className="rounded-xl bg-primary px-4 py-2 text-sm font-medium text-primary-foreground disabled:opacity-50"
           >
             {create.isPending ? "Gönderiliyor…" : "Gönder"}
           </button>
@@ -291,7 +291,7 @@ function CropTypeRequestDialog({ open, onClose }: { open: boolean; onClose: () =
           <button
             onClick={submit}
             disabled={create.isPending}
-            className="rounded-xl bg-saffron px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
+            className="rounded-xl bg-primary px-4 py-2 text-sm font-medium text-primary-foreground disabled:opacity-50"
           >
             {create.isPending ? "Gönderiliyor…" : "Gönder"}
           </button>

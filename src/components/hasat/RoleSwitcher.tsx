@@ -21,7 +21,7 @@ export function RoleSwitcher() {
         className="fixed bottom-24 left-3 md:bottom-4 md:right-4 md:left-auto z-[60] h-9 rounded-full bg-popover/85 px-3 text-[11px] font-medium shadow-lg border backdrop-blur flex items-center gap-1.5 text-foreground/80 hover:bg-popover"
         aria-label="Dev role switcher"
       >
-        <span className="text-saffron">⚙</span> DEV
+        <span className="text-primary">⚙</span> DEV
         <ChevronDown className="h-3 w-3 opacity-60" />
       </button>
     );
@@ -32,11 +32,11 @@ export function RoleSwitcher() {
       <span className="px-1 text-hmuted">DEV</span>
       <button
         onClick={() => { setRole("farmer"); navigate({ to: "/farmer/home" }); }}
-        className={`rounded-full px-2 py-0.5 ${user?.role === "farmer" ? "bg-saffron text-white" : ""}`}
+        className={`rounded-full px-2 py-0.5 ${user?.role === "farmer" ? "bg-primary text-primary-foreground" : ""}`}
       >Çiftçi</button>
       <button
         onClick={() => { setRole("buyer"); navigate({ to: "/buyer/discover" }); }}
-        className={`rounded-full px-2 py-0.5 ${user?.role === "buyer" ? "bg-saffron text-white" : ""}`}
+        className={`rounded-full px-2 py-0.5 ${user?.role === "buyer" ? "bg-primary text-primary-foreground" : ""}`}
       >Alıcı</button>
       <button
         onClick={() => { setRole(null); navigate({ to: "/" }); }}
