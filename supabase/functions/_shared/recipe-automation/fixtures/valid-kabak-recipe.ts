@@ -203,6 +203,20 @@ export const validQAResultManualReviewRequired: RecipeQAResult = {
   approvedForImaging: false,
 };
 
+/**
+ * Step 08: the Reviser's expected output when given `validKabakRecipeDraft` +
+ * `validQAResultRevisionRequired`'s one blocking issue (`UNUSED_INGREDIENT` on `ingredients[1]`,
+ * "kasar peyniri" — requiredChange: "Son adima ekleyin veya malzeme listesinden cikarin."). This
+ * fixture takes the "remove from ingredient list" branch of that instruction — everything else
+ * (title, description, servings, steps, the "kabak" crop ingredient) is restated byte-for-byte
+ * identical to `validKabakRecipeDraft`, per revise-rules.ts item 2 ("do not change anything the
+ * blocking issues did not flag").
+ */
+export const validRevisedKabakRecipeDraft: RecipeDraftPayload = {
+  ...validKabakRecipeDraft,
+  ingredients: [validKabakRecipeDraft.ingredients[0]],
+};
+
 export const validImageSpec1024: RecipeImageSpec = {
   targetKind: "recipe_cover",
   recipeId: RECIPE_ID,

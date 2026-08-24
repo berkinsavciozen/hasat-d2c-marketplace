@@ -70,10 +70,12 @@ const NO_PHOTO_PLACEHOLDER_VALUES = new Set(["", "null"]);
  * Normalizes the known "no photo" placeholder spellings (see `NO_PHOTO_PLACEHOLDER_VALUES` above)
  * to `null` BEFORE validation, so `recipeDraftPayloadSchema`'s `.url()` check (which correctly
  * rejects both — neither is a valid URL nor JSON `null`) doesn't reject semantically-valid "no
- * photo" output. This is not a validation weakening: every other string still goes through
+ * photo" output. Exported so `../revise/revise-stage.ts` (F2 Step 08) can reuse it as-is: the
+ * Reviser agent produces the same `RecipeDraftPayload` shape and is subject to the identical
+ * OpenAI Structured Outputs quirk — not Writer-specific. This is not a validation weakening: every other string still goes through
  * `.url()` unchanged and is rejected exactly as before if it isn't a real URL.
  */
-function normalizeEmptyUrlFields(output: Record<string, unknown>): Record<string, unknown> {
+export function normalizeEmptyUrlFields(output: Record<string, unknown>): Record<string, unknown> {
   const normalizeUrl = (value: unknown) =>
     typeof value === "string" && NO_PHOTO_PLACEHOLDER_VALUES.has(value) ? null : value;
   const steps = Array.isArray(output.steps)
