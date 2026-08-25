@@ -22,7 +22,12 @@ export const Route = createFileRoute("/buyer/account")({
 });
 
 const TYPE_LABEL: Record<string, string> = {
-  restoran: "Restoran", otel: "Otel", market: "Organik Market", ihracatci: "İhracatçı", bireysel: "Bireysel", diger: "Diğer",
+  restoran: "Restoran",
+  otel: "Otel",
+  market: "Organik Market",
+  ihracatci: "İhracatçı",
+  bireysel: "Bireysel",
+  diger: "Diğer",
 };
 
 function Account() {
@@ -39,7 +44,8 @@ function Account() {
   const [city, setCity] = useState("");
   const [deleteOpen, setDeleteOpen] = useState(false);
 
-  const displayName = profile?.name?.trim() || localUser?.company?.name || localUser?.name || "Alıcı";
+  const displayName =
+    profile?.name?.trim() || localUser?.company?.name || localUser?.name || "Alıcı";
   const premium = isEffectivelyPremium(profile);
   const buyerType = localUser?.company?.type ?? "diger";
   const needsName = !profile?.name?.trim();
@@ -49,8 +55,11 @@ function Account() {
   // bkz. sessionGuard.ts dosya başlığı ("çıkış fatal hata" kök nedeni).
   const logout = async () => {
     markExpectedSignOut();
-    try { await supabase.auth.signOut(); }
-    catch (e) { toast.error((e as Error).message); }
+    try {
+      await supabase.auth.signOut();
+    } catch (e) {
+      toast.error((e as Error).message);
+    }
   };
 
   const afterAccountDeleted = async () => {
@@ -59,8 +68,11 @@ function Account() {
     // global signOut isteği atmak gereksiz bir ağ bağımlılığı yaratır ve
     // banlı hesapta reddedilme riski taşır (mobil sessionGuard.ts'teki aynı
     // gerekçe).
-    try { await supabase.auth.signOut({ scope: "local" }); }
-    catch { /* oturum zaten hesap silme RPC'siyle geçersizleşti */ }
+    try {
+      await supabase.auth.signOut({ scope: "local" });
+    } catch {
+      /* oturum zaten hesap silme RPC'siyle geçersizleşti */
+    }
     toast.success("Hesabın silindi");
   };
 
@@ -70,10 +82,20 @@ function Account() {
       return;
     }
     try {
-      await create.mutateAsync({ label: label.trim(), address: address.trim(), city: city.trim(), isDefault: addresses.length === 0 });
+      await create.mutateAsync({
+        label: label.trim(),
+        address: address.trim(),
+        city: city.trim(),
+        isDefault: addresses.length === 0,
+      });
       toast.success("Adres eklendi");
-      setLabel(""); setAddress(""); setCity(""); setShowForm(false);
-    } catch (e) { toast.error((e as Error).message); }
+      setLabel("");
+      setAddress("");
+      setCity("");
+      setShowForm(false);
+    } catch (e) {
+      toast.error((e as Error).message);
+    }
   };
 
   return (
@@ -87,7 +109,10 @@ function Account() {
         )}
         <div className="rounded-2xl bg-card border p-5">
           <div className="flex items-center gap-3">
-            <div className="grid h-14 w-14 place-items-center rounded-full text-xl font-bold text-white" style={{ background: "var(--gold)" }}>
+            <div
+              className="grid h-14 w-14 place-items-center rounded-full text-xl font-bold text-white"
+              style={{ background: "var(--gold)" }}
+            >
               {displayName[0] ?? "A"}
             </div>
             <div className="flex-1 min-w-0">
@@ -96,8 +121,13 @@ function Account() {
                 {buyerType === "bireysel" ? "👤 Bireysel" : TYPE_LABEL[buyerType]}
               </div>
             </div>
-            <span className="rounded-full px-2.5 py-1 text-[11px] font-medium"
-              style={{ background: premium ? "var(--gold)" : "var(--muted)", color: premium ? "var(--dark)" : "var(--hmuted)" }}>
+            <span
+              className="rounded-full px-2.5 py-1 text-[11px] font-medium"
+              style={{
+                background: premium ? "var(--gold)" : "var(--muted)",
+                color: premium ? "var(--dark)" : "var(--hmuted)",
+              }}
+            >
               {premium ? "★ Premium" : "Ücretsiz"}
             </span>
           </div>
@@ -107,7 +137,7 @@ function Account() {
 
         <Link
           to="/buyer/settings/notifs"
-          className="flex items-center justify-between rounded-2xl bg-card border p-4 min-h-[56px]"
+          className="flex items-center justify-between rounded-2xl border bg-card p-4 min-h-[56px]"
         >
           <div className="flex items-center gap-3">
             <Bell className="h-4 w-4 text-hmuted" />
@@ -118,7 +148,7 @@ function Account() {
 
         <Link
           to="/buyer/requests"
-          className="flex items-center justify-between rounded-2xl bg-card border p-4 min-h-[56px]"
+          className="flex items-center justify-between rounded-xl border bg-muted/30 p-3 min-h-[52px] text-hmuted"
         >
           <div className="flex items-center gap-3">
             <ClipboardList className="h-4 w-4 text-hmuted" />
@@ -129,7 +159,7 @@ function Account() {
 
         <Link
           to="/buyer/subscriptions"
-          className="flex items-center justify-between rounded-2xl bg-card border p-4 min-h-[56px]"
+          className="flex items-center justify-between rounded-xl border bg-muted/30 p-3 min-h-[52px] text-hmuted"
         >
           <div className="flex items-center gap-3">
             <CalendarClock className="h-4 w-4 text-hmuted" />
@@ -151,10 +181,28 @@ function Account() {
           </div>
 
           {showForm && (
-            <div className="space-y-2 mb-3 rounded-xl border p-3" style={{ borderColor: "var(--border)" }}>
-              <input value={label} onChange={(e) => setLabel(e.target.value)} placeholder="Etiket (Merkez Şube, Ev)" className="w-full rounded-lg border px-3 py-2 text-sm min-h-[44px]" />
-              <input value={address} onChange={(e) => setAddress(e.target.value)} placeholder="Adres" className="w-full rounded-lg border px-3 py-2 text-sm min-h-[44px]" />
-              <input value={city} onChange={(e) => setCity(e.target.value)} placeholder="Şehir" className="w-full rounded-lg border px-3 py-2 text-sm min-h-[44px]" />
+            <div
+              className="space-y-2 mb-3 rounded-xl border p-3"
+              style={{ borderColor: "var(--border)" }}
+            >
+              <input
+                value={label}
+                onChange={(e) => setLabel(e.target.value)}
+                placeholder="Etiket (Merkez Şube, Ev)"
+                className="w-full rounded-lg border px-3 py-2 text-sm min-h-[44px]"
+              />
+              <input
+                value={address}
+                onChange={(e) => setAddress(e.target.value)}
+                placeholder="Adres"
+                className="w-full rounded-lg border px-3 py-2 text-sm min-h-[44px]"
+              />
+              <input
+                value={city}
+                onChange={(e) => setCity(e.target.value)}
+                placeholder="Şehir"
+                className="w-full rounded-lg border px-3 py-2 text-sm min-h-[44px]"
+              />
               <button
                 onClick={onAdd}
                 disabled={create.isPending}
@@ -171,12 +219,19 @@ function Account() {
           ) : (
             <div className="space-y-2">
               {addresses.map((a) => (
-                <div key={a.id} className="flex items-start justify-between gap-3 rounded-xl border p-3" style={{ borderColor: "var(--border)" }}>
+                <div
+                  key={a.id}
+                  className="flex items-start justify-between gap-3 rounded-xl border p-3"
+                  style={{ borderColor: "var(--border)" }}
+                >
                   <div className="min-w-0">
                     <div className="flex items-center gap-2">
                       <span className="text-sm font-medium truncate">{a.label}</span>
                       {a.isDefault && (
-                        <span className="rounded-full px-2 py-0.5 text-[10px]" style={{ background: "var(--gold)", color: "var(--dark)" }}>
+                        <span
+                          className="rounded-full px-2 py-0.5 text-[10px]"
+                          style={{ background: "var(--gold)", color: "var(--dark)" }}
+                        >
                           Varsayılan
                         </span>
                       )}
@@ -187,10 +242,12 @@ function Account() {
                   <div className="flex items-center gap-1">
                     {!a.isDefault && (
                       <button
-                        onClick={() => setDefault.mutate(a.id, {
-                          onSuccess: () => toast.success("Varsayılan güncellendi"),
-                          onError: (e) => toast.error((e as Error).message),
-                        })}
+                        onClick={() =>
+                          setDefault.mutate(a.id, {
+                            onSuccess: () => toast.success("Varsayılan güncellendi"),
+                            onError: (e) => toast.error((e as Error).message),
+                          })
+                        }
                         aria-label="Varsayılan yap"
                         className="grid h-9 w-9 place-items-center rounded-lg hover:bg-muted"
                       >
@@ -198,10 +255,12 @@ function Account() {
                       </button>
                     )}
                     <button
-                      onClick={() => remove.mutate(a.id, {
-                        onSuccess: () => toast.success("Adres silindi"),
-                        onError: (e) => toast.error((e as Error).message),
-                      })}
+                      onClick={() =>
+                        remove.mutate(a.id, {
+                          onSuccess: () => toast.success("Adres silindi"),
+                          onError: (e) => toast.error((e as Error).message),
+                        })
+                      }
                       aria-label="Sil"
                       className="grid h-9 w-9 place-items-center rounded-lg hover:bg-muted"
                     >
@@ -218,19 +277,27 @@ function Account() {
           <div className="rounded-2xl bg-card border p-5">
             <div className="text-xs text-hmuted mb-2">İlgi Alanları</div>
             <div className="flex flex-wrap gap-2">
-              {localUser.crops.map((c) => <span key={c} className="rounded-full bg-muted px-2.5 py-1 text-xs">{c}</span>)}
+              {localUser.crops.map((c) => (
+                <span key={c} className="rounded-full bg-muted px-2.5 py-1 text-xs">
+                  {c}
+                </span>
+              ))}
             </div>
           </div>
         ) : null}
 
-        <button onClick={logout} className="w-full rounded-xl py-3 text-sm font-medium min-h-[48px]"
-          style={{ background: "var(--hred)", color: "var(--hwhite)" }}>
+        <button
+          onClick={logout}
+          className="w-full rounded-xl border py-3 text-sm font-medium min-h-[48px]"
+        >
           Çıkış Yap
         </button>
 
-        <button onClick={() => setDeleteOpen(true)}
+        <button
+          onClick={() => setDeleteOpen(true)}
           className="w-full rounded-xl py-3 text-sm font-medium min-h-[48px] border"
-          style={{ borderColor: "var(--hred)", color: "var(--hred)" }}>
+          style={{ borderColor: "var(--hred)", color: "var(--hred)" }}
+        >
           Hesabımı Sil
         </button>
       </div>
