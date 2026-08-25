@@ -1,5 +1,12 @@
 import { createFileRoute, Link, useNavigate, notFound } from "@tanstack/react-router";
-import { ArrowLeft, ChevronDown, ChevronUp } from "lucide-react";
+import {
+  ArrowLeft,
+  ChevronDown,
+  ChevronUp,
+  Image as ImageIcon,
+  MapPin,
+  PackageCheck,
+} from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -9,7 +16,12 @@ import { DeliveryFields, DELIVERY_OPTIONS } from "@/components/hasat/DeliveryFie
 import { CropRequestModal } from "@/components/hasat/CropRequestModal";
 import { formatTRY, formatCrop, formatQuantity } from "@/lib/hasat/format";
 import { convertQuantity } from "@/lib/core";
-import { cropEmoji, findCropConfig, resolveListingPhoto, useCropConfigMap } from "@/lib/hasat/crop-config";
+import {
+  cropEmoji,
+  findCropConfig,
+  resolveListingPhoto,
+  useCropConfigMap,
+} from "@/lib/hasat/crop-config";
 import { RepresentativePhoto, RepresentativeBadge } from "@/components/hasat/RepresentativePhoto";
 import { useHasat } from "@/lib/hasat/store";
 import {
@@ -23,9 +35,15 @@ export const Route = createFileRoute("/buyer/product/$farmerId/$crop")({
   head: ({ params }) => ({
     meta: [
       { title: `${formatCrop(params.crop)} — Hasat` },
-      { name: "description", content: `${formatCrop(params.crop)} partileri: stok, fiyat ve hasat geçmişini karşılaştır, çoklu partiden tek teklif gönder.` },
+      {
+        name: "description",
+        content: `${formatCrop(params.crop)} partileri: stok, fiyat ve hasat geçmişini karşılaştır, çoklu partiden tek teklif gönder.`,
+      },
       { property: "og:title", content: `${formatCrop(params.crop)} — Hasat` },
-      { property: "og:description", content: `${formatCrop(params.crop)} partilerinden çoklu-teklif oluşturun.` },
+      {
+        property: "og:description",
+        content: `${formatCrop(params.crop)} partilerinden çoklu-teklif oluşturun.`,
+      },
       { property: "og:type", content: "product" },
       { name: "twitter:card", content: "summary" },
     ],
@@ -34,7 +52,12 @@ export const Route = createFileRoute("/buyer/product/$farmerId/$crop")({
   errorComponent: ({ error, reset }) => (
     <div className="p-8 text-center">
       <div className="text-hred text-sm mb-4">Bir hata oluştu: {error.message}</div>
-      <button onClick={reset} className="rounded-full bg-saffron text-white px-4 py-2 text-sm">Yeniden dene</button>
+      <button
+        onClick={reset}
+        className="rounded-md bg-primary px-4 py-2 text-sm text-primary-foreground"
+      >
+        Yeniden dene
+      </button>
     </div>
   ),
   notFoundComponent: ProductNotFound,
@@ -53,18 +76,21 @@ function ProductNotFound() {
   const [requestOpen, setRequestOpen] = useState(false);
   return (
     <div className="p-8 text-center">
-      <Link to="/buyer/discover" className="inline-flex items-center gap-1.5 text-xs text-hmuted hover:underline">
+      <Link
+        to="/buyer/discover"
+        className="inline-flex items-center gap-1.5 text-xs text-hmuted hover:underline"
+      >
         <ArrowLeft className="h-3.5 w-3.5" /> Keşfet'e dön
       </Link>
       <div className="mt-6 text-6xl">🌾</div>
       <div className="mt-3 font-serif text-lg">Bu üreticinin bu üründe aktif partisi yok</div>
       <div className="mt-1 text-sm text-hmuted">
-        {formatCrop(crop)} için şu an satılık parti bulunmuyor — üretici tükenmiş veya ilanı kapatmış olabilir.
+        {formatCrop(crop)} için şu an satılık parti bulunmuyor — üretici tükenmiş veya ilanı
+        kapatmış olabilir.
       </div>
       <button
         onClick={() => setRequestOpen(true)}
-        className="mt-4 inline-flex items-center rounded-full px-4 py-2 text-xs font-medium min-h-[44px]"
-        style={{ background: "var(--saffron)", color: "#fff" }}
+        className="mt-4 inline-flex min-h-[44px] items-center rounded-md bg-primary px-4 py-2 text-xs font-medium text-primary-foreground"
       >
         Bu ürünü talep et
       </button>
@@ -89,7 +115,11 @@ function useFarmerCropListings(farmerId: string, crop: string) {
         .order("created_at", { ascending: true });
       if (error) throw error;
       const [profileRes] = await Promise.all([
-        (supabase as any).from("public_farmer_profiles").select("id, name, city").eq("id", farmerId).maybeSingle(),
+        (supabase as any)
+          .from("public_farmer_profiles")
+          .select("id, name, city")
+          .eq("id", farmerId)
+          .maybeSingle(),
       ]);
       const profile = profileRes?.data ?? null;
       return (data ?? []).map((r) => dbToActiveListing({ ...r, profiles: profile }));
@@ -109,7 +139,12 @@ function BuyerProduct() {
   const [delivery, setDelivery] = useState(DELIVERY_OPTIONS[0].id);
   const [deliveryDate, setDeliveryDate] = useState("");
 
-  if (isLoading) return <div className="p-8"><LoadingDots /></div>;
+  if (isLoading)
+    return (
+      <div className="p-8">
+        <LoadingDots />
+      </div>
+    );
   if (listings.length === 0) throw notFound();
 
   const first = listings[0];
@@ -123,7 +158,10 @@ function BuyerProduct() {
       const l = listings.find((x) => x.id === listingId)!;
       return { listingId, quantity, pricePerUnit: l.pricePerUnit, unit: l.unit };
     });
-  const totalQty = items.reduce((s, i) => s + convertQuantity(i.quantity, i.unit, canonicalUnit), 0);
+  const totalQty = items.reduce(
+    (s, i) => s + convertQuantity(i.quantity, i.unit, canonicalUnit),
+    0,
+  );
   const totalPrice = items.reduce((s, i) => s + i.quantity * i.pricePerUnit, 0);
 
   const submit = () => {
@@ -152,14 +190,35 @@ function BuyerProduct() {
   };
 
   return (
-    <div className="pb-40">
-      <div className="px-4 pt-5 pb-4 md:px-8 flex items-center gap-3" style={{ background: "var(--dark)", color: "var(--hwhite)" }}>
-        <Link to="/buyer/discover" aria-label="Geri" className="grid h-9 w-9 place-items-center rounded-full bg-white/10">
+    <div className="pb-44">
+      <div className="flex items-center gap-3 bg-primary px-4 pb-4 pt-5 text-primary-foreground md:px-8">
+        <Link
+          to="/buyer/discover"
+          aria-label="Geri"
+          className="grid h-11 w-11 place-items-center rounded-full bg-white/10 transition hover:bg-white/15"
+        >
           <ArrowLeft className="h-4 w-4" />
         </Link>
         <div className="min-w-0">
-          <h1 className="font-serif text-xl truncate">{formatCrop(first.crop)}</h1>
-          <div className="text-xs opacity-80 truncate">{first.farmerName}{first.farmerCity ? ` · ${first.farmerCity}` : ""}</div>
+          <h1 className="truncate font-serif text-xl md:text-2xl">{formatCrop(first.crop)}</h1>
+          <div className="mt-0.5 flex min-w-0 items-center gap-1.5 text-xs opacity-85">
+            <Link
+              to="/buyer/producer/$id"
+              params={{ id: farmerId }}
+              className="truncate font-medium underline-offset-4 hover:underline"
+            >
+              {first.farmerName}
+            </Link>
+            {first.farmerCity && (
+              <>
+                <span aria-hidden="true">·</span>
+                <span className="inline-flex min-w-0 items-center gap-1 truncate">
+                  <MapPin className="h-3 w-3 shrink-0" aria-hidden="true" />
+                  {first.farmerCity}
+                </span>
+              </>
+            )}
+          </div>
         </div>
       </div>
 
@@ -168,15 +227,39 @@ function BuyerProduct() {
         isRepresentative={isRepresentative}
         alt={formatCrop(first.crop)}
         placeholderEmoji={cropEmoji(first.crop, cfg)}
-        className="h-40 md:h-52 w-full"
+        className="aspect-[4/3] max-h-[30rem] w-full bg-muted"
       >
         {isRepresentative && <RepresentativeBadge className="absolute top-3 right-3" />}
       </RepresentativePhoto>
 
-      <div className="p-4 md:p-8 max-w-3xl space-y-4">
-        <div className="text-sm text-hmuted">
-          {listings.length} parti mevcut — istediğin partilerden miktar seç, tek teklif gönder.
+      <div className="mx-auto max-w-3xl space-y-5 p-4 md:p-8">
+        <div className="grid gap-3 sm:grid-cols-3">
+          <div className="rounded-2xl border bg-card p-4">
+            <div className="flex items-center gap-2 text-xs text-hmuted">
+              <PackageCheck className="h-4 w-4 text-teal" aria-hidden="true" />
+              Parti özeti
+            </div>
+            <div className="mt-1 font-semibold">{listings.length} aktif parti</div>
+          </div>
+          <div className="rounded-2xl border bg-card p-4">
+            <div className="flex items-center gap-2 text-xs text-hmuted">
+              <ImageIcon className="h-4 w-4 text-teal" aria-hidden="true" />
+              Görsel kaynağı
+            </div>
+            <div className="mt-1 font-semibold">
+              {isRepresentative ? "Temsili ürün görseli" : "Üretici görseli"}
+            </div>
+          </div>
+          <div className="rounded-2xl border bg-card p-4">
+            <div className="text-xs text-hmuted">Teklif yöntemi</div>
+            <div className="mt-1 font-semibold">Çoklu parti, tek teklif</div>
+          </div>
         </div>
+
+        <p className="text-sm text-hmuted">
+          İstediğin partilerden miktar seç. Varsa ilgili hasat kayıtlarını inceleyip tek teklif
+          gönder.
+        </p>
 
         <div className="space-y-3">
           {listings.map((l, idx) => (
@@ -199,27 +282,38 @@ function BuyerProduct() {
           onDateChange={setDeliveryDate}
         />
 
-        <div>
-          <label className="text-xs text-hmuted block mb-1">Not (opsiyonel)</label>
-          <textarea value={note} onChange={(e) => setNote(e.target.value)} rows={2}
-            className="w-full rounded-lg border px-3 py-2 text-sm resize-none" placeholder="Üreticiye iletmek istediğiniz mesaj..." />
+        <div className="rounded-2xl border bg-card p-4">
+          <label className="mb-1 block text-xs font-medium text-hmuted">
+            Üreticiye not (opsiyonel)
+          </label>
+          <textarea
+            value={note}
+            onChange={(e) => setNote(e.target.value)}
+            rows={2}
+            className="w-full resize-none rounded-md border bg-input px-3 py-2 text-sm"
+            placeholder="Üreticiye iletmek istediğiniz mesaj..."
+          />
         </div>
       </div>
 
-      <div className="fixed inset-x-0 bottom-0 border-t bg-card p-4 md:px-8" style={{ boxShadow: "0 -6px 20px rgba(0,0,0,0.08)" }}>
-        <div className="max-w-3xl mx-auto flex items-center gap-4">
+      <div
+        className="fixed inset-x-0 bottom-0 z-40 border-t bg-card/95 px-4 pt-4 pb-safe backdrop-blur md:px-8"
+        style={{ boxShadow: "0 -6px 20px rgba(0,0,0,0.08)" }}
+      >
+        <div className="mx-auto flex max-w-3xl flex-col gap-3 sm:flex-row sm:items-center sm:gap-4">
           <div className="flex-1 min-w-0">
             <div className="text-xs text-hmuted">Toplam</div>
-            <div className="font-mono text-lg" style={{ color: "var(--saffron)" }}>
+            <div className="font-mono text-lg font-semibold text-foreground">
               {formatTRY(totalPrice)}
-              <span className="text-xs text-hmuted ml-2">{formatQuantity(totalQty, canonicalUnit)} {canonicalUnit} · {items.length} parti</span>
+              <span className="ml-2 text-xs font-normal text-hmuted">
+                {formatQuantity(totalQty, canonicalUnit)} {canonicalUnit} · {items.length} parti
+              </span>
             </div>
           </div>
           <button
             onClick={submit}
             disabled={items.length === 0 || !deliveryDate}
-            className="rounded-full px-6 py-3 text-sm font-medium text-white disabled:opacity-40 min-h-[48px]"
-            style={{ background: "var(--saffron)" }}
+            className="min-h-[48px] w-full rounded-md bg-primary px-6 py-3 text-sm font-semibold text-primary-foreground disabled:opacity-40 sm:w-auto"
           >
             Teklif Gönder &amp; Öde →
           </button>
@@ -230,10 +324,19 @@ function BuyerProduct() {
 }
 
 function BatchRow({
-  listing: l, index, qty, onQtyChange, expanded, onToggle,
+  listing: l,
+  index,
+  qty,
+  onQtyChange,
+  expanded,
+  onToggle,
 }: {
-  listing: ActiveListing; index: number; qty: number;
-  onQtyChange: (n: number) => void; expanded: boolean; onToggle: () => void;
+  listing: ActiveListing;
+  index: number;
+  qty: number;
+  onQtyChange: (n: number) => void;
+  expanded: boolean;
+  onToggle: () => void;
 }) {
   const { data: stock } = useListingStock(l.id);
   const { data: entries = [] } = useListingBatchEntries(expanded ? l.id : null);
@@ -248,19 +351,30 @@ function BatchRow({
   };
 
   return (
-    <div className={`rounded-2xl border bg-card ${soldOut ? "opacity-60" : ""}`}>
+    <div
+      className={`rounded-2xl border bg-card transition-colors ${qty > 0 ? "border-teal bg-accent/35" : ""} ${soldOut ? "opacity-60" : ""}`}
+    >
       <div className="p-4">
         <div className="flex items-center justify-between gap-3">
           <div className="min-w-0">
             <div className="flex items-center gap-2">
               <span className="font-medium truncate">{label}</span>
-              <span className="text-[10px] rounded-full bg-saffron/20 text-saffron px-2 py-0.5">Kalite {l.quality}</span>
+              <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] text-muted-foreground">
+                Kalite {l.quality}
+              </span>
             </div>
             <div className="text-xs text-hmuted mt-1">
-              Mevcut {formatQuantity(available, l.unit)} {l.unit} · <span className="font-mono" style={{ color: "var(--saffron)" }}>{formatTRY(l.pricePerUnit)}/{l.unit}</span>
+              Mevcut {formatQuantity(available, l.unit)} {l.unit} ·{" "}
+              <span className="font-mono font-medium text-foreground">
+                {formatTRY(l.pricePerUnit)}/{l.unit}
+              </span>
             </div>
           </div>
-          <button onClick={onToggle} aria-label="Detay" className="shrink-0 grid h-9 w-9 place-items-center rounded-lg hover:bg-muted">
+          <button
+            onClick={onToggle}
+            className="inline-flex min-h-[44px] shrink-0 items-center gap-1.5 rounded-md px-3 text-xs font-medium text-primary hover:bg-accent"
+          >
+            {expanded ? "Kayıtları gizle" : "Hasat kayıtlarını gör"}
             {expanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
           </button>
         </div>
@@ -277,26 +391,37 @@ function BatchRow({
             onChange={(e) => clampAndSet(Number(e.target.value))}
             disabled={soldOut}
             placeholder="0"
-            className="w-24 rounded-lg border px-3 py-2 text-sm min-h-[44px]"
+            className="min-h-[44px] w-24 rounded-md border bg-input px-3 py-2 text-sm"
           />
           <span className="text-xs text-hmuted">{l.unit}</span>
           <div className="flex-1 text-right text-xs text-hmuted">
-            {qty > 0 && <span className="font-mono">{formatTRY(qty * l.pricePerUnit)}</span>}
+            {qty > 0 && (
+              <span className="font-mono font-medium">{formatTRY(qty * l.pricePerUnit)}</span>
+            )}
           </div>
         </div>
       </div>
 
       {expanded && (
         <div className="border-t px-4 py-3">
-          <div className="text-[11px] text-hmuted mb-2">Bu partiye bağlı hasat kayıtları</div>
+          <div className="mb-2 text-[11px] font-medium uppercase tracking-wide text-teal">
+            Bu partiye bağlı hasat kanıtları
+          </div>
           {entries.length === 0 ? (
-            <div className="text-xs text-hmuted italic">Henüz kayıt yok.</div>
+            <div className="rounded-md bg-muted/60 px-3 py-2 text-xs text-hmuted">
+              Bu parti için henüz bağlı hasat kaydı bulunmuyor.
+            </div>
           ) : (
             <ul className="space-y-1.5">
               {entries.map((e) => (
                 <li key={e.id} className="flex items-baseline justify-between gap-3 text-xs">
-                  <span className="text-hmuted shrink-0">{new Date(e.date).toLocaleDateString("tr-TR")}</span>
-                  <span className="flex-1 truncate">{formatQuantity(e.quantity, e.unit)} {e.unit} · {e.quality}{e.notes ? ` — ${e.notes}` : ""}</span>
+                  <span className="text-hmuted shrink-0">
+                    {new Date(e.date).toLocaleDateString("tr-TR")}
+                  </span>
+                  <span className="flex-1 truncate">
+                    {formatQuantity(e.quantity, e.unit)} {e.unit} · {e.quality}
+                    {e.notes ? ` — ${e.notes}` : ""}
+                  </span>
                 </li>
               ))}
             </ul>
