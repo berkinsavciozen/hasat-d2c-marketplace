@@ -4,23 +4,30 @@ import { LoadingDots } from "@/components/hasat/LoadingDots";
 import { useMyCropRequests } from "@/lib/hasat/queries";
 import { formatTRY, formatQuantity } from "@/lib/hasat/format";
 import { ChevronLeft } from "lucide-react";
+import { LifecycleBadge, type LifecycleTone } from "@/components/hasat/LifecycleBadge";
 
 export const Route = createFileRoute("/buyer/requests")({
   head: () => ({ meta: [{ title: "Taleplerim — Hasat" }] }),
   component: MyRequests,
 });
 
-const STATUS_LABEL: Record<string, { label: string; bg: string; color: string }> = {
-  open: { label: "Açık", bg: "var(--saffron)", color: "#fff" },
-  matched: { label: "Eşleşti", bg: "var(--gold)", color: "var(--dark)" },
-  closed: { label: "Kapandı", bg: "var(--muted)", color: "var(--hmuted)" },
+const STATUS_LABEL: Record<string, { label: string; tone: LifecycleTone }> = {
+  open: { label: "Açık", tone: "info" },
+  matched: { label: "Eşleşti", tone: "success" },
+  closed: { label: "Kapandı", tone: "neutral" },
 };
 
 function fmtDate(d: string | null): string | null {
   if (!d) return null;
   try {
-    return new Date(d).toLocaleDateString("tr-TR", { day: "numeric", month: "short", year: "numeric" });
-  } catch { return d; }
+    return new Date(d).toLocaleDateString("tr-TR", {
+      day: "numeric",
+      month: "short",
+      year: "numeric",
+    });
+  } catch {
+    return d;
+  }
 }
 
 function MyRequests() {
@@ -29,7 +36,11 @@ function MyRequests() {
   return (
     <>
       <BuyerHeader title="Taleplerim">
-        <Link to="/buyer/account" aria-label="Geri" className="inline-flex items-center gap-1 text-xs text-hwhite/70 hover:text-hwhite mt-2">
+        <Link
+          to="/buyer/account"
+          aria-label="Geri"
+          className="inline-flex items-center gap-1 text-xs text-hwhite/70 hover:text-hwhite mt-2"
+        >
           <ChevronLeft className="h-3.5 w-3.5" /> Hesap
         </Link>
       </BuyerHeader>
@@ -57,24 +68,24 @@ function MyRequests() {
             const st = STATUS_LABEL[r.status] ?? STATUS_LABEL.open;
             const start = fmtDate(r.targetDateStart);
             const end = fmtDate(r.targetDateEnd);
-            const dateRange = start && end ? `${start} – ${end}` : start ?? end ?? null;
+            const dateRange = start && end ? `${start} – ${end}` : (start ?? end ?? null);
             return (
               <div key={r.id} className="rounded-2xl bg-card border p-4">
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
-                    <div className="font-serif text-base truncate">🌾 {r.cropName}</div>
+                    <div className="font-medium text-base truncate">{r.cropName}</div>
                     <div className="text-[11px] text-hmuted mt-0.5">{fmtDate(r.createdAt)}</div>
                   </div>
-                  <span className="shrink-0 rounded-full px-2.5 py-1 text-[10px] font-bold" style={{ background: st.bg, color: st.color }}>
-                    {st.label}
-                  </span>
+                  <LifecycleBadge tone={st.tone}>{st.label}</LifecycleBadge>
                 </div>
 
                 <div className="mt-3 grid grid-cols-2 gap-2 text-xs">
                   {r.quantity != null && (
                     <div>
                       <div className="text-hmuted">Miktar</div>
-                      <div className="font-medium">{formatQuantity(r.quantity, r.unit)} {r.unit ?? ""}</div>
+                      <div className="font-medium">
+                        {formatQuantity(r.quantity, r.unit)} {r.unit ?? ""}
+                      </div>
                     </div>
                   )}
                   {r.region && (
@@ -92,8 +103,9 @@ function MyRequests() {
                   {r.targetPrice != null && (
                     <div>
                       <div className="text-hmuted">Hedef fiyat</div>
-                      <div className="font-medium" style={{ color: "var(--saffron)", fontFamily: "Courier New, monospace" }}>
-                        {formatTRY(r.targetPrice)}{r.unit ? `/${r.unit}` : ""}
+                      <div className="font-medium tabular-nums text-amber-700">
+                        {formatTRY(r.targetPrice)}
+                        {r.unit ? `/${r.unit}` : ""}
                       </div>
                     </div>
                   )}

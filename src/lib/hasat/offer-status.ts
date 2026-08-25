@@ -6,11 +6,11 @@ export interface StatusVisual {
 }
 
 const TONE: Record<StatusVisual["tone"], { bg: string; fg: string }> = {
-  info: { bg: "color-mix(in oklab, var(--saffron) 18%, transparent)", fg: "var(--saffron)" },
+  info: { bg: "color-mix(in oklab, var(--teal) 12%, transparent)", fg: "var(--teal)" },
   warn: { bg: "color-mix(in oklab, var(--gold) 22%, transparent)", fg: "var(--gold)" },
-  ok:   { bg: "color-mix(in oklab, var(--sage) 22%, transparent)", fg: "var(--sage)" },
-  muted:{ bg: "color-mix(in oklab, var(--hmuted) 18%, transparent)", fg: "var(--hmuted)" },
-  bad:  { bg: "color-mix(in oklab, var(--hred) 18%, transparent)", fg: "var(--hred)" },
+  ok: { bg: "color-mix(in oklab, var(--sage) 22%, transparent)", fg: "var(--sage)" },
+  muted: { bg: "color-mix(in oklab, var(--hmuted) 18%, transparent)", fg: "var(--hmuted)" },
+  bad: { bg: "color-mix(in oklab, var(--hred) 18%, transparent)", fg: "var(--hred)" },
 };
 
 /** Computes the Turkish label + tone for an offer, given the viewer's role. */
@@ -18,7 +18,7 @@ export function statusVisual(offer: Offer, viewer: BallSide): StatusVisual {
   const ball = offer.ballSide ?? "farmer";
   const pay = offer.paymentStatus ?? "unpaid";
   if (offer.status === "rejected") return { label: "Reddedildi", tone: "bad" };
-  if (offer.status === "completed") return { label: "Tamamlandı", tone: "muted" };
+  if (offer.status === "completed") return { label: "Tamamlandı", tone: "ok" };
   if (offer.status === "active" || (offer.status === "accepted" && pay === "paid")) {
     return { label: "Aktif", tone: "ok" };
   }
