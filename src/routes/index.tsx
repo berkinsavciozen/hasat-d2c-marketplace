@@ -6,7 +6,6 @@ import { toast } from "sonner";
 import {
   ShieldCheck,
   MessageCircle,
-  Star,
   MapPin,
   Droplets,
   Camera,
@@ -55,8 +54,8 @@ const FAQ_ITEMS: { q: string; a: string }[] = [
     a: "Şeffaf ve sabit %5 komisyon uygulanır, gizli ücret yoktur.",
   },
   {
-    q: "İzlenebilirlik rozeti nasıl hesaplanır?",
-    a: "Çiftçinin tarla günlüğüne girdiği sulama, gübreleme ve hasat kayıtlarının tamlığına göre otomatik hesaplanır — Belgeleniyor, Temel, İyi Belgelenmiş ve Tam İzlenebilir olmak üzere dört seviyesi vardır.",
+    q: "İzlenebilirlik ifadeleri ne anlatır?",
+    a: "Temel kayıt, İyi belgelenmiş ve Tam izlenebilir ifadeleri tarla günlüğünde hangi üretim kayıtlarının bulunduğunu nitel olarak açıklar; sayısal güven puanı veya kalite garantisi değildir.",
   },
   {
     q: "Bireysel alıcı olarak alışveriş yapabilir miyim?",
@@ -128,7 +127,7 @@ const lpVars: React.CSSProperties = {
   ["--lp-primary" as string]: "var(--primary)",
   ["--lp-primary-2" as string]: "var(--teal)",
   ["--lp-accent" as string]: "var(--teal)",
-  ["--lp-highlight" as string]: "#C9E8EF",
+  ["--lp-highlight" as string]: "color-mix(in oklab, var(--teal) 35%, var(--cream))",
   ["--lp-earth" as string]: "#6B4A32",
   ["--lp-cream" as string]: "var(--cream)",
   ["--lp-cream-2" as string]: "var(--background)",
@@ -164,7 +163,10 @@ function LandingPage() {
     let cancelled = false;
     (async () => {
       try {
-        const { data: { session }, error } = await supabase.auth.getSession();
+        const {
+          data: { session },
+          error,
+        } = await supabase.auth.getSession();
         if (cancelled) return;
         if (!session?.user) {
           // P23-M8-b-2 — mobil `app/index.tsx`'teki (P23-M8-b) aynı
@@ -208,7 +210,9 @@ function LandingPage() {
         if (!cancelled) setChecking(false);
       }
     })();
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, [router, setRole, updateUser]);
 
   const goRole = (role: "farmer" | "buyer") => navigate({ to: "/login", search: { role } });
@@ -220,28 +224,32 @@ function LandingPage() {
         style={{ ...lpVars, background: "var(--lp-cream)", color: "var(--lp-ink)" }}
       >
         <div className="text-center opacity-70">
-          <BrandLogo variant="wordmark" height={28} className="mx-auto mb-2 animate-pulse" />
+          <BrandLogo variant="wordmark" height={28} className="mx-auto mb-2" />
         </div>
       </div>
     );
   }
 
   return (
-    <div style={{ ...lpVars, background: "var(--lp-cream)", color: "var(--lp-ink)" }} className="min-h-screen">
+    <div
+      style={{ ...lpVars, background: "var(--lp-cream)", color: "var(--lp-ink)" }}
+      className="lp-root min-h-screen"
+    >
       <LandingStyles />
       <Nav onRole={goRole} />
       <Hero onRole={goRole} />
       <ValuePillars />
       <SupplyChain />
-      <TraceabilityMock />
-      <MarketplacePreview />
-      <TurkeyMap />
-      <FarmerStory />
       <BuyerPersonas />
       <RoleValues />
+      <FarmerStory />
       <AISection />
-      <TrustScoreLadder />
+      <DocumentationStages />
       <IndoorSection />
+      <MarketplacePreview />
+      <TurkeyMap />
+      <TraceabilityMock />
+      <RecipeDiscovery />
       <MobileAppSection />
       <FAQ />
       <Footer />
@@ -299,6 +307,22 @@ function LandingStyles() {
       .lp-marker--trad { animation: lp-erode 6s linear infinite; }
       .lp-marker--hasat { animation: lp-flow 3s ease-in-out infinite; }
       @media (prefers-reduced-motion: reduce) {
+        .lp-root *, .lp-root *::before, .lp-root *::after {
+          animation-duration: 0.01ms !important;
+          animation-iteration-count: 1 !important;
+          scroll-behavior: auto !important;
+          transition-duration: 0.01ms !important;
+          transition-delay: 0ms !important;
+        }
+        .lp-root .lp-reveal,
+        .lp-root .lp-revealed .lp-reveal {
+          opacity: 1 !important;
+          transform: none !important;
+        }
+        .lp-root .lp-card-hover:hover,
+        .lp-root .group-open\\:rotate-45 {
+          transform: none !important;
+        }
         .lp-marker { animation: none !important; opacity: 0; }
       }
     `}</style>
@@ -338,7 +362,10 @@ function Nav({ onRole }: { onRole: (r: "farmer" | "buyer") => void }) {
       <div className="mx-auto max-w-6xl px-4 py-3 flex items-center justify-between">
         <div className="flex items-center gap-2 min-w-0">
           <BrandLogo variant="wordmark" height={22} />
-          <span className="hidden sm:inline text-[10px] uppercase tracking-widest ml-2" style={{ color: "var(--lp-muted)" }}>
+          <span
+            className="hidden sm:inline text-[10px] uppercase tracking-widest ml-2"
+            style={{ color: "var(--lp-muted)" }}
+          >
             GÜVEN PLATFORMU
           </span>
         </div>
@@ -389,16 +416,20 @@ function Hero({ onRole }: { onRole: (r: "farmer" | "buyer") => void }) {
       />
 
       <div className="relative z-10 mx-auto max-w-6xl px-4 pt-16 pb-24 md:pt-24 md:pb-28 grid gap-12 md:grid-cols-2 items-center">
-        <div className="lp-reveal" style={{ color: "var(--lp-white)", textShadow: "0 2px 18px rgba(0,0,0,0.32)" }}>
+        <div
+          className="lp-reveal"
+          style={{ color: "var(--lp-white)", textShadow: "0 2px 18px rgba(0,0,0,0.32)" }}
+        >
           <h1 className="font-serif leading-[1.05] text-4xl sm:text-5xl md:text-6xl">
             <span className="sr-only">Hasat — Specialty Üretici-Alıcı Platformu. </span>
-            Ürününü değil,{" "}
-            <span style={{ color: "var(--lp-highlight)" }}>güveni</span>{" "}
-            satıyoruz.
+            Ürününü değil, <span style={{ color: "var(--lp-highlight)" }}>güveni</span> satıyoruz.
           </h1>
-          <p className="mt-5 text-base md:text-lg max-w-lg" style={{ color: "rgba(255,255,255,0.94)" }}>
-            Çiftçiler ürününü doğrudan alıcıya listeler, her hasat kaydı
-            fotoğrafla belgelenir, fiyat pazarlıkla şeffaf şekilde belirlenir.
+          <p
+            className="mt-5 text-base md:text-lg max-w-lg"
+            style={{ color: "rgba(255,255,255,0.94)" }}
+          >
+            Çiftçiler ürününü doğrudan alıcıya listeler, her hasat kaydı fotoğrafla belgelenir,
+            fiyat pazarlıkla şeffaf şekilde belirlenir.
           </p>
           <div className="mt-8 flex flex-wrap gap-3">
             <button
@@ -416,28 +447,66 @@ function Hero({ onRole }: { onRole: (r: "farmer" | "buyer") => void }) {
               Üretici olarak devam et <ArrowRight className="w-4 h-4" />
             </button>
           </div>
-          <div className="mt-6 inline-flex items-center gap-2 rounded-full px-3 py-1 text-[11px] uppercase tracking-widest"
-            style={{ background: "rgba(255,255,255,0.18)", color: "#FFFFFF" }}>
+          <div
+            className="mt-6 inline-flex items-center gap-2 rounded-full px-3 py-1 text-[11px] uppercase tracking-widest"
+            style={{ background: "rgba(255,255,255,0.18)", color: "#FFFFFF" }}
+          >
             <ShieldCheck className="w-3.5 h-3.5" /> Türkiye'nin izlenebilir tarım pazarı
           </div>
         </div>
 
         {/* Floating glass product card + timeline */}
         <HeroProductCard />
-
       </div>
     </section>
   );
 }
 
-
 const HERO_ITEMS: {
-  img: string; crop: string; qty: string; price: string; loc: string; farmer: string; when: string;
+  img: string;
+  crop: string;
+  qty: string;
+  price: string;
+  loc: string;
+  farmer: string;
+  when: string;
 }[] = [
-  { img: IMG_SAFFRON, crop: "Safran", qty: "50 gr", price: "₺2.900", loc: "Safranbolu", farmer: "A. Y.", when: "Hasat: 22 Ekim 2025" },
-  { img: IMG_OLIVE, crop: "Zeytinyağı · Erken hasat", qty: "1 L", price: "₺620", loc: "Ayvalık", farmer: "M. K.", when: "Hasat: 3 Kasım 2025" },
-  { img: IMG_LAVENDER, crop: "Lavanta kurusu", qty: "250 gr", price: "₺380", loc: "Isparta", farmer: "A. D.", when: "Hasat: 18 Temmuz 2025" },
-  { img: IMG_HAZELNUT, crop: "Fındık · Levant", qty: "1 kg", price: "₺310", loc: "Giresun", farmer: "S. T.", when: "Hasat: 25 Ağustos 2025" },
+  {
+    img: IMG_SAFFRON,
+    crop: "Safran",
+    qty: "50 gr",
+    price: "₺2.900",
+    loc: "Safranbolu",
+    farmer: "A. Y.",
+    when: "Hasat: 22 Ekim 2025",
+  },
+  {
+    img: IMG_OLIVE,
+    crop: "Zeytinyağı · Erken hasat",
+    qty: "1 L",
+    price: "₺620",
+    loc: "Ayvalık",
+    farmer: "M. K.",
+    when: "Hasat: 3 Kasım 2025",
+  },
+  {
+    img: IMG_LAVENDER,
+    crop: "Lavanta kurusu",
+    qty: "250 gr",
+    price: "₺380",
+    loc: "Isparta",
+    farmer: "A. D.",
+    when: "Hasat: 18 Temmuz 2025",
+  },
+  {
+    img: IMG_HAZELNUT,
+    crop: "Fındık · Levant",
+    qty: "1 kg",
+    price: "₺310",
+    loc: "Giresun",
+    farmer: "S. T.",
+    when: "Hasat: 25 Ağustos 2025",
+  },
 ];
 
 function HeroProductCard() {
@@ -446,7 +515,11 @@ function HeroProductCard() {
     <div className="relative lp-reveal lp-reveal-d2">
       <div className="lp-glass rounded-3xl p-4 shadow-2xl max-w-sm mx-auto md:ml-auto">
         <div className="relative rounded-2xl overflow-hidden aspect-[4/3]">
-          <img src={item.img} alt={`${item.crop} — örnek ürün`} className="w-full h-full object-cover" />
+          <img
+            src={item.img}
+            alt={`${item.crop} — örnek ürün`}
+            className="w-full h-full object-cover"
+          />
           <span
             className="absolute top-3 left-3 inline-flex items-center gap-1 rounded-full px-2 py-1 text-[10px] font-medium"
             style={{ background: "var(--lp-primary)", color: "#fff" }}
@@ -455,18 +528,32 @@ function HeroProductCard() {
           </span>
         </div>
         <div className="p-3">
+          <p
+            className="mb-3 rounded-lg px-2 py-1.5 text-[11px] font-medium leading-snug"
+            style={{ background: "var(--lp-cream)", color: "var(--lp-ink)" }}
+          >
+            Temsili örnek — doğrulanmış üretim kaydı değildir.
+          </p>
           <div className="flex items-baseline justify-between gap-2">
-            <div className="font-serif text-lg" style={{ color: "var(--lp-ink)" }}>{item.crop} · {item.qty}</div>
-            <div className="text-sm font-medium" style={{ color: "var(--lp-primary)" }}>{item.price}</div>
-          </div>
-          <div className="mt-1 flex items-center gap-2 text-xs" style={{ color: "var(--lp-muted)" }}>
-            <MapPin className="w-3 h-3" /> {item.loc} · {item.farmer} <span className="opacity-70">· örnek üretici</span>
-          </div>
-          <div className="mt-2 flex items-center gap-2 text-xs" style={{ color: "var(--lp-muted)" }}>
-            <div className="inline-flex items-center gap-0.5" style={{ color: "var(--lp-accent)" }}>
-              {Array.from({ length: 5 }).map((_, i) => <Star key={i} className="w-3 h-3 fill-current" />)}
+            <div className="font-serif text-lg" style={{ color: "var(--lp-ink)" }}>
+              {item.crop} · {item.qty}
             </div>
-            <span>·</span><span>{item.when}</span>
+            <div className="text-sm font-medium" style={{ color: "var(--lp-primary)" }}>
+              {item.price}
+            </div>
+          </div>
+          <div
+            className="mt-1 flex items-center gap-2 text-xs"
+            style={{ color: "var(--lp-muted)" }}
+          >
+            <MapPin className="w-3 h-3" /> {item.loc} · {item.farmer}{" "}
+            <span className="opacity-70">· örnek üretici</span>
+          </div>
+          <div
+            className="mt-2 flex items-center gap-2 text-xs"
+            style={{ color: "var(--lp-muted)" }}
+          >
+            <span>{item.when}</span>
           </div>
         </div>
       </div>
@@ -476,7 +563,10 @@ function HeroProductCard() {
         className="lp-glass rounded-2xl p-6 mt-4 max-w-sm mx-auto md:ml-auto md:-mt-6 md:mr-6 md:translate-x-4"
         style={{ boxShadow: "0 20px 40px -18px rgba(0,0,0,0.3)" }}
       >
-        <div className="text-[11px] uppercase tracking-widest mb-4" style={{ color: "var(--lp-muted)" }}>
+        <div
+          className="text-[11px] uppercase tracking-widest mb-4"
+          style={{ color: "var(--lp-muted)" }}
+        >
           Tarla günlüğü
         </div>
         <TimelineDraw
@@ -492,12 +582,19 @@ function HeroProductCard() {
   );
 }
 
-function TimelineDraw({ items }: { items: { icon: React.ReactNode; label: string; date: string }[] }) {
+function TimelineDraw({
+  items,
+}: {
+  items: { icon: React.ReactNode; label: string; date: string }[];
+}) {
   return (
     <ol className="relative pl-9 space-y-5">
       <span
         className="absolute left-[11px] top-2 bottom-2 w-px"
-        style={{ background: "var(--lp-accent)", animation: "lp-timeline-grow 1.6s ease-out forwards" }}
+        style={{
+          background: "var(--lp-accent)",
+          animation: "lp-timeline-grow 1.6s ease-out forwards",
+        }}
       />
       {items.map((it, i) => (
         <li
@@ -511,8 +608,12 @@ function TimelineDraw({ items }: { items: { icon: React.ReactNode; label: string
           >
             {it.icon}
           </span>
-          <div className="text-sm" style={{ color: "var(--lp-ink)" }}>{it.label}</div>
-          <div className="text-xs tabular-nums" style={{ color: "var(--lp-muted)" }}>{it.date}</div>
+          <div className="text-sm" style={{ color: "var(--lp-ink)" }}>
+            {it.label}
+          </div>
+          <div className="text-xs tabular-nums" style={{ color: "var(--lp-muted)" }}>
+            {it.date}
+          </div>
         </li>
       ))}
     </ol>
@@ -523,32 +624,58 @@ function TimelineDraw({ items }: { items: { icon: React.ReactNode; label: string
 function ValuePillars() {
   const ref = useReveal<HTMLDivElement>();
   const items = [
-    { icon: <Sprout className="w-5 h-5" />, title: "Doğrudan Üreticiden", body: "Aracı zinciri yok. Ödeme çiftçinin IBAN'ına gider, komisyon şeffaf." },
-    { icon: <ShieldCheck className="w-5 h-5" />, title: "Tam İzlenebilir", body: "Her ürünün sulama, gübreleme, hasat kaydı fotoğraflı olarak kayıtlı." },
-    { icon: <Percent className="w-5 h-5" />, title: "Adil Fiyat", body: "Güncel piyasa fiyatını görürsün; fiyatın çok farklıysa hem sana hem alıcıya haber verilir." },
+    {
+      icon: <Sprout className="w-5 h-5" />,
+      title: "Doğrudan Üreticiden",
+      body: "Aracı zinciri yok. Ödeme çiftçinin IBAN'ına gider, komisyon şeffaf.",
+    },
+    {
+      icon: <ShieldCheck className="w-5 h-5" />,
+      title: "Tam İzlenebilir",
+      body: "Her ürünün sulama, gübreleme, hasat kaydı fotoğraflı olarak kayıtlı.",
+    },
+    {
+      icon: <Percent className="w-5 h-5" />,
+      title: "Adil Fiyat",
+      body: "Güncel piyasa fiyatını görürsün; fiyatın çok farklıysa hem sana hem alıcıya haber verilir.",
+    },
   ];
   return (
-    <section className="px-4 py-16 md:py-20" style={{ background: "var(--lp-cream)", position: "relative", isolation: "isolate" }} ref={ref}>
+    <section
+      className="px-4 py-16 md:py-20"
+      style={{ background: "var(--lp-cream)", position: "relative", isolation: "isolate" }}
+      ref={ref}
+    >
       <div className="mx-auto max-w-6xl">
-        <h2 className="font-serif text-xl md:text-2xl mb-6 text-center" style={{ color: "var(--lp-ink)" }}>
+        <h2
+          className="font-serif text-xl md:text-2xl mb-6 text-center"
+          style={{ color: "var(--lp-ink)" }}
+        >
           Neden Hasat?
         </h2>
         <div className="grid gap-4 md:grid-cols-3">
-        {items.map((it, i) => (
-          <div
-            key={it.title}
-            className={`lp-card lp-card-hover rounded-2xl p-6 lp-reveal lp-reveal-d${i + 1}`}
-          >
+          {items.map((it, i) => (
             <div
-              className="grid place-items-center w-11 h-11 rounded-xl mb-4"
-              style={{ background: "color-mix(in oklab, var(--lp-accent) 15%, transparent)", color: "var(--lp-accent)" }}
+              key={it.title}
+              className={`lp-card lp-card-hover rounded-2xl p-6 lp-reveal lp-reveal-d${i + 1}`}
             >
-              {it.icon}
+              <div
+                className="grid place-items-center w-11 h-11 rounded-xl mb-4"
+                style={{
+                  background: "color-mix(in oklab, var(--lp-accent) 15%, transparent)",
+                  color: "var(--lp-accent)",
+                }}
+              >
+                {it.icon}
+              </div>
+              <div className="font-serif text-lg mb-1" style={{ color: "var(--lp-ink)" }}>
+                {it.title}
+              </div>
+              <div className="text-sm" style={{ color: "var(--lp-muted)" }}>
+                {it.body}
+              </div>
             </div>
-            <div className="font-serif text-lg mb-1" style={{ color: "var(--lp-ink)" }}>{it.title}</div>
-            <div className="text-sm" style={{ color: "var(--lp-muted)" }}>{it.body}</div>
-          </div>
-        ))}
+          ))}
         </div>
       </div>
     </section>
@@ -559,63 +686,74 @@ function ValuePillars() {
 function SupplyChain() {
   const ref = useReveal<HTMLDivElement>();
   const traditional = [
-    { label: "Çiftçi", pct: 100 },
-    { label: "Aracı", pct: 62 },
-    { label: "Toptancı", pct: 46 },
-    { label: "Distribütör", pct: 32 },
-    { label: "Perakendeci", pct: 22 },
-    { label: "Tüketici", pct: 14 },
+    { label: "Çiftçi" },
+    { label: "Aracı" },
+    { label: "Toptancı" },
+    { label: "Distribütör" },
+    { label: "Perakendeci" },
+    { label: "Tüketici" },
   ];
-  const direct = [
-    { label: "Çiftçi", pct: 100 },
-    { label: "Alıcı", pct: 95 },
-  ];
+  const direct = [{ label: "Çiftçi" }, { label: "Alıcı" }];
   const calloutRef = useReveal<HTMLDivElement>();
   return (
     <section
       className="px-4 py-16 md:py-24 border-t"
-      style={{ borderColor: "var(--lp-line)", background: "var(--lp-cream-2)", position: "relative", isolation: "isolate" }}
+      style={{
+        borderColor: "var(--lp-line)",
+        background: "var(--lp-cream-2)",
+        position: "relative",
+        isolation: "isolate",
+      }}
       ref={ref}
     >
       <div className="mx-auto max-w-6xl">
         <div className="text-center mb-8 lp-reveal">
           <h2 className="font-serif text-3xl md:text-4xl" style={{ color: "var(--lp-ink)" }}>
-            Üreticinin eline ne kadar geçiyor?
+            Daha kısa, daha şeffaf bir tedarik yolu.
           </h2>
           <p className="mt-3 text-sm max-w-xl mx-auto" style={{ color: "var(--lp-muted)" }}>
-            Alıcının ödediği her ₺100'ün, üreticiye kalan payı.
+            Geleneksel zincirdeki çok sayıda adım yerine üretici ve alıcı Hasat üzerinden doğrudan
+            buluşur.
           </p>
         </div>
 
         <div ref={calloutRef} className="grid gap-8">
-          {/* Traditional group: callout + chain */}
+          {/* Traditional group: qualitative chain only; no unsupported benchmark. */}
           <div className="lp-chain-group">
-            <div
-              className="rounded-3xl p-6 md:p-8 text-center lp-reveal mb-4"
-              style={{ background: "var(--lp-white)", border: "1px solid var(--lp-line)" }}
-            >
-              <div className="text-[11px] uppercase tracking-widest mb-2" style={{ color: "var(--lp-earth)" }}>Geleneksel</div>
-              <div className="font-serif tabular-nums text-6xl md:text-7xl leading-none" style={{ color: "var(--lp-earth)" }}>
-                %<CountUp to={14} />
-              </div>
-              <div className="mt-3 text-sm" style={{ color: "var(--lp-muted)" }}>üreticiye kalan pay</div>
-            </div>
-            <ChainCard variant="trad" nodes={traditional} caption="Ortalama olarak son tüketicinin ödediği her ₺100'ün yalnızca ~₺14'ü üreticide kalıyor." />
+            <ChainCard
+              variant="trad"
+              nodes={traditional}
+              caption="Çok adımlı geleneksel tedarik zinciri."
+            />
           </div>
 
-          {/* Hasat group: callout + chain */}
+          {/* Hasat group: state only the platform commission supported by legal copy. */}
           <div className="lp-chain-group">
             <div
               className="rounded-3xl p-6 md:p-8 text-center lp-reveal lp-reveal-d1 mb-4"
               style={{ background: "var(--lp-primary)", color: "#fff" }}
             >
-              <div className="text-[11px] uppercase tracking-widest mb-2" style={{ color: "var(--lp-highlight)" }}>Hasat ile</div>
-              <div className="font-serif tabular-nums text-6xl md:text-7xl leading-none" style={{ color: "var(--lp-highlight)" }}>
-                %<CountUp to={95} />
+              <div
+                className="text-[11px] uppercase tracking-widest mb-2"
+                style={{ color: "var(--lp-highlight)" }}
+              >
+                Hasat ile
               </div>
-              <div className="mt-3 text-sm" style={{ color: "rgba(255,255,255,0.85)" }}>üreticiye kalan pay</div>
+              <div
+                className="font-serif text-3xl md:text-4xl leading-tight"
+                style={{ color: "var(--lp-highlight)" }}
+              >
+                Üreticiden alıcıya doğrudan
+              </div>
+              <div className="mt-3 text-sm" style={{ color: "rgba(255,255,255,0.85)" }}>
+                Platform komisyonu sabit %5'tir; ödeme üreticinin IBAN'ına yapılır.
+              </div>
             </div>
-            <ChainCard variant="hasat" nodes={direct} caption="Şeffaf komisyon: %5. Ödeme doğrudan çiftçinin IBAN'ına." />
+            <ChainCard
+              variant="hasat"
+              nodes={direct}
+              caption="Şeffaf komisyon: %5. Ödeme doğrudan çiftçinin IBAN'ına."
+            />
           </div>
         </div>
       </div>
@@ -630,18 +768,15 @@ function ChainCard({
   caption,
 }: {
   variant: "trad" | "hasat";
-  nodes: { label: string; pct: number }[];
+  nodes: { label: string }[];
   caption: string;
 }) {
   const isHasat = variant === "hasat";
   const accent = isHasat ? "var(--lp-primary)" : "var(--lp-earth)";
 
-  // Normalize segment widths from pcts so the bar spans 100% of the track.
-  const total = nodes.reduce((s, n) => s + n.pct, 0);
-  const widths = nodes.map((n) => (n.pct / total) * 100);
-  const gridCols = widths.map((w) => `${w.toFixed(3)}fr`).join(" ");
+  const gridCols = `repeat(${nodes.length}, minmax(0, 1fr))`;
   // Descending alpha for traditional segments (visible erosion); flat primary for Hasat.
-  const alphaFor = (i: number) => (isHasat ? 1 : [1, 0.82, 0.66, 0.5, 0.36, 0.22][i] ?? 0.22);
+  const alphaFor = (i: number) => (isHasat ? 1 : ([1, 0.82, 0.66, 0.5, 0.36, 0.22][i] ?? 0.22));
 
   return (
     <div
@@ -651,7 +786,9 @@ function ChainCard({
         <div className="text-xs uppercase tracking-widest" style={{ color: accent }}>
           {isHasat ? "Hasat ile" : "Geleneksel"}
         </div>
-        <div className="text-xs" style={{ color: "var(--lp-muted)" }}>Üreticinin eline geçen değer</div>
+        <div className="text-xs" style={{ color: "var(--lp-muted)" }}>
+          Üreticinin eline geçen değer
+        </div>
       </div>
 
       {/* Bar track + marker */}
@@ -665,31 +802,18 @@ function ChainCard({
         {/* Segmented fill */}
         <div
           className="absolute inset-0 grid rounded-full overflow-hidden"
-          style={{ gridTemplateColumns: isHasat ? `95fr 5fr` : gridCols }}
+          style={{ gridTemplateColumns: gridCols }}
         >
-          {isHasat ? (
-            <>
-              <div style={{ background: accent }} />
-              <div />
-            </>
-          ) : (
-            nodes.map((n, i) => (
-              <div
-                key={n.label}
-                className="relative flex items-center justify-center"
-                style={{
-                  background: `color-mix(in oklab, ${accent} ${Math.round(alphaFor(i) * 100)}%, transparent)`,
-                  boxShadow: i < nodes.length - 1 ? "inset -1px 0 0 var(--lp-cream-2)" : undefined,
-                }}
-              >
-                {n.pct >= 20 && (
-                  <span className="text-[10px] md:text-[11px] font-semibold tabular-nums" style={{ color: "#fff" }}>
-                    {n.pct}%
-                  </span>
-                )}
-              </div>
-            ))
-          )}
+          {nodes.map((n, i) => (
+            <div
+              key={n.label}
+              className="relative flex items-center justify-center"
+              style={{
+                background: `color-mix(in oklab, ${accent} ${Math.round(alphaFor(i) * 100)}%, transparent)`,
+                boxShadow: i < nodes.length - 1 ? "inset -1px 0 0 var(--lp-cream-2)" : undefined,
+              }}
+            ></div>
+          ))}
         </div>
 
         {/* Animated marker */}
@@ -703,42 +827,28 @@ function ChainCard({
       </div>
 
       {/* Labels aligned to segments */}
-      <div
-        className="mt-3 grid gap-1"
-        style={{ gridTemplateColumns: isHasat ? `1fr 1fr` : gridCols }}
-      >
-        {isHasat ? (
-          <>
-            <div className="text-[10px] md:text-[11px] text-left" style={{ color: "var(--lp-muted)" }}>
-              Çiftçi <span className="tabular-nums font-semibold" style={{ color: accent }}>%100</span>
+      <div className="mt-3 grid gap-1" style={{ gridTemplateColumns: gridCols }}>
+        {nodes.map((n) => (
+          <div key={n.label} className="text-center leading-tight">
+            <div
+              className="text-[10px] md:text-[11px] truncate"
+              style={{ color: "var(--lp-muted)" }}
+            >
+              {n.label}
             </div>
-            <div className="text-[10px] md:text-[11px] text-right" style={{ color: "var(--lp-muted)" }}>
-              Alıcı <span className="tabular-nums font-semibold" style={{ color: accent }}>%95</span>
-            </div>
-          </>
-        ) : (
-          nodes.map((n) => (
-            <div key={n.label} className="text-center leading-tight">
-              <div className="text-[10px] md:text-[11px] truncate" style={{ color: "var(--lp-muted)" }}>
-                {n.label}
-              </div>
-              <div className="text-[10px] md:text-[11px] tabular-nums font-semibold" style={{ color: "var(--lp-ink)" }}>
-                %{n.pct}
-              </div>
-            </div>
-          ))
-        )}
+          </div>
+        ))}
       </div>
 
-      <div className="mt-6 pt-5 border-t text-xs md:text-sm text-center" style={{ borderColor: "var(--lp-line)", color: "var(--lp-muted)" }}>
+      <div
+        className="mt-6 pt-5 border-t text-xs md:text-sm text-center"
+        style={{ borderColor: "var(--lp-line)", color: "var(--lp-muted)" }}
+      >
         {caption}
       </div>
     </div>
   );
 }
-
-
-
 
 /* ---------- Traceability phone mock ---------- */
 function TraceabilityMock() {
@@ -753,7 +863,12 @@ function TraceabilityMock() {
   return (
     <section
       className="px-4 py-16 md:py-24 border-t"
-      style={{ borderColor: "var(--lp-line)", background: "var(--lp-cream)", position: "relative", isolation: "isolate" }}
+      style={{
+        borderColor: "var(--lp-line)",
+        background: "var(--lp-cream)",
+        position: "relative",
+        isolation: "isolate",
+      }}
       ref={ref}
     >
       <div className="mx-auto max-w-6xl grid gap-12 md:grid-cols-2 items-center">
@@ -762,14 +877,23 @@ function TraceabilityMock() {
             Her ürünün kanıtlı bir geçmişi var.
           </h2>
           <p className="text-base mb-6" style={{ color: "var(--lp-muted)" }}>
-            Tarla günlüğü fotoğraflı olarak tutulur. Alıcı, satın almadan önce
-            sulama, gübreleme, hasat tarihini tek tek görür. "Tam İzlenebilir"
-            rozeti, uydurma değil — her adımın kaydından hesaplanır.
+            Tarla günlüğü fotoğraflı olarak tutulur. Alıcı, satın almadan önce sulama, gübreleme,
+            hasat tarihini tek tek görür. "Tam İzlenebilir" kayıtların hangi türlerde tutulduğunu
+            görür. Bu örnek, bir kalite garantisi veya bağımsız doğrulama sonucu değildir.
           </p>
           <ul className="space-y-2 text-sm" style={{ color: "var(--lp-ink)" }}>
-            <li className="flex gap-2"><Check className="w-4 h-4 mt-0.5" style={{ color: "var(--lp-accent)" }} /> Fotoğraflı adım kayıtları</li>
-            <li className="flex gap-2"><Check className="w-4 h-4 mt-0.5" style={{ color: "var(--lp-accent)" }} /> Parsel & harita konumu</li>
-            <li className="flex gap-2"><Check className="w-4 h-4 mt-0.5" style={{ color: "var(--lp-accent)" }} /> Otomatik güven skoru</li>
+            <li className="flex gap-2">
+              <Check className="w-4 h-4 mt-0.5" style={{ color: "var(--lp-accent)" }} /> Fotoğraflı
+              adım kayıtları
+            </li>
+            <li className="flex gap-2">
+              <Check className="w-4 h-4 mt-0.5" style={{ color: "var(--lp-accent)" }} /> Parsel &
+              harita konumu
+            </li>
+            <li className="flex gap-2">
+              <Check className="w-4 h-4 mt-0.5" style={{ color: "var(--lp-accent)" }} /> Üretici
+              kaydı mevcut
+            </li>
           </ul>
         </div>
 
@@ -777,11 +901,21 @@ function TraceabilityMock() {
         <div className="lp-reveal lp-reveal-d2 mx-auto">
           <div
             className="w-[300px] md:w-[340px] rounded-[36px] p-3"
-            style={{ background: "var(--lp-ink)", boxShadow: "0 30px 60px -20px rgba(20,35,28,0.35)" }}
+            style={{
+              background: "var(--lp-ink)",
+              boxShadow: "0 30px 60px -20px rgba(20,35,28,0.35)",
+            }}
           >
-            <div className="rounded-[28px] overflow-hidden" style={{ background: "var(--lp-white)" }}>
+            <div
+              className="rounded-[28px] overflow-hidden"
+              style={{ background: "var(--lp-white)" }}
+            >
               <div className="relative aspect-[16/10]">
-                <img src={IMG_OLIVE} alt="Ayvalık'ta zeytin dalında olgunlaşmış zeytinler" className="w-full h-full object-cover" />
+                <img
+                  src={IMG_OLIVE}
+                  alt="Ayvalık'ta zeytin dalında olgunlaşmış zeytinler"
+                  className="w-full h-full object-cover"
+                />
                 <span
                   className="absolute bottom-2 left-2 inline-flex items-center gap-1 rounded-full px-2 py-1 text-[10px]"
                   style={{ background: "rgba(255,255,255,0.92)", color: "var(--lp-primary)" }}
@@ -790,7 +924,15 @@ function TraceabilityMock() {
                 </span>
               </div>
               <div className="p-5">
-                <div className="font-serif text-base mb-4" style={{ color: "var(--lp-ink)" }}>Zeytin · Parsel 1</div>
+                <p
+                  className="mb-4 rounded-lg px-2 py-1.5 text-[11px] font-medium leading-snug"
+                  style={{ background: "var(--lp-cream)", color: "var(--lp-ink)" }}
+                >
+                  Temsili örnek — doğrulanmış üretim kaydı değildir.
+                </p>
+                <div className="font-serif text-base mb-4" style={{ color: "var(--lp-ink)" }}>
+                  Zeytin · Parsel 1
+                </div>
                 <ol className="space-y-4">
                   {rows.map((r, i) => (
                     <li
@@ -800,12 +942,19 @@ function TraceabilityMock() {
                     >
                       <span
                         className="grid place-items-center w-7 h-7 rounded-full shrink-0"
-                        style={{ background: "color-mix(in oklab, var(--lp-accent) 18%, transparent)", color: "var(--lp-accent)" }}
+                        style={{
+                          background: "color-mix(in oklab, var(--lp-accent) 18%, transparent)",
+                          color: "var(--lp-accent)",
+                        }}
                       >
                         {r.icon}
                       </span>
-                      <span className="text-sm min-w-0 truncate" style={{ color: "var(--lp-ink)" }}>{r.label}</span>
-                      <span className="text-xs tabular-nums" style={{ color: "var(--lp-muted)" }}>{r.date}</span>
+                      <span className="text-sm min-w-0 truncate" style={{ color: "var(--lp-ink)" }}>
+                        {r.label}
+                      </span>
+                      <span className="text-xs tabular-nums" style={{ color: "var(--lp-muted)" }}>
+                        {r.date}
+                      </span>
                     </li>
                   ))}
                 </ol>
@@ -813,7 +962,7 @@ function TraceabilityMock() {
                   className="mt-5 inline-flex items-center gap-1 rounded-full px-2 py-1 text-[10px] font-medium"
                   style={{ background: "var(--lp-primary)", color: "#fff" }}
                 >
-                  <ShieldCheck className="w-3 h-3" /> Tam İzlenebilir · %92
+                  <ShieldCheck className="w-3 h-3" /> İyi belgelenmiş örnek
                 </div>
               </div>
             </div>
@@ -828,22 +977,72 @@ function TraceabilityMock() {
 function MarketplacePreview() {
   const ref = useReveal<HTMLDivElement>();
   const items = [
-    { img: IMG_SAFFRON, crop: "Safran", loc: "Safranbolu", farmer: "A. Y.", tier: "Tam İzlenebilir", qty: "50 gr", price: "₺2.900", when: "Hasat: 22 Eki 2025", delivery: "Kargo" },
-    { img: IMG_OLIVE, crop: "Zeytinyağı · Erken hasat", loc: "Ayvalık", farmer: "M. K.", tier: "İyi Belgelenmiş", qty: "1 L", price: "₺620", when: "Hasat: 3 Kas 2025", delivery: "Kargo" },
-    { img: IMG_LAVENDER, crop: "Lavanta kurusu", loc: "Isparta", farmer: "A. D.", tier: "Tam İzlenebilir", qty: "250 gr", price: "₺380", when: "Hasat: 18 Tem 2025", delivery: "Kargo" },
-    { img: IMG_HAZELNUT, crop: "Fındık · Levant", loc: "Giresun", farmer: "S. T.", tier: "İyi Belgelenmiş", qty: "1 kg", price: "₺310", when: "Hasat: 25 Ağu 2025", delivery: "Kargo · Elden" },
+    {
+      img: IMG_SAFFRON,
+      crop: "Safran",
+      loc: "Safranbolu",
+      farmer: "A. Y.",
+      tier: "Tam İzlenebilir",
+      qty: "50 gr",
+      price: "₺2.900",
+      when: "Hasat: 22 Eki 2025",
+      delivery: "Kargo",
+    },
+    {
+      img: IMG_OLIVE,
+      crop: "Zeytinyağı · Erken hasat",
+      loc: "Ayvalık",
+      farmer: "M. K.",
+      tier: "İyi Belgelenmiş",
+      qty: "1 L",
+      price: "₺620",
+      when: "Hasat: 3 Kas 2025",
+      delivery: "Kargo",
+    },
+    {
+      img: IMG_LAVENDER,
+      crop: "Lavanta kurusu",
+      loc: "Isparta",
+      farmer: "A. D.",
+      tier: "Tam İzlenebilir",
+      qty: "250 gr",
+      price: "₺380",
+      when: "Hasat: 18 Tem 2025",
+      delivery: "Kargo",
+    },
+    {
+      img: IMG_HAZELNUT,
+      crop: "Fındık · Levant",
+      loc: "Giresun",
+      farmer: "S. T.",
+      tier: "İyi Belgelenmiş",
+      qty: "1 kg",
+      price: "₺310",
+      when: "Hasat: 25 Ağu 2025",
+      delivery: "Kargo · Elden",
+    },
   ];
   return (
     <section
       className="px-4 py-16 md:py-24 border-t"
-      style={{ borderColor: "var(--lp-line)", background: "var(--lp-cream-2)", position: "relative", isolation: "isolate" }}
+      style={{
+        borderColor: "var(--lp-line)",
+        background: "var(--lp-cream-2)",
+        position: "relative",
+        isolation: "isolate",
+      }}
       ref={ref}
     >
       <div className="mx-auto max-w-6xl">
         <div className="flex items-end justify-between mb-8 lp-reveal">
           <div>
-            <h2 className="font-serif text-3xl md:text-4xl" style={{ color: "var(--lp-ink)" }}>Öne çıkan üreticiler.</h2>
-            <div className="text-xs mt-1" style={{ color: "var(--lp-muted)" }}>Vitrin ilanları böyle görünür — en yeni tarihe göre sıralanır, ücretli öne çıkarma yoktur.</div>
+            <h2 className="font-serif text-3xl md:text-4xl" style={{ color: "var(--lp-ink)" }}>
+              Öne çıkan üreticiler.
+            </h2>
+            <div className="text-xs mt-1" style={{ color: "var(--lp-muted)" }}>
+              Vitrin ilanları böyle görünür — en yeni tarihe göre sıralanır, ücretli öne çıkarma
+              yoktur.
+            </div>
           </div>
         </div>
         <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
@@ -853,7 +1052,12 @@ function MarketplacePreview() {
               className={`lp-card lp-card-hover rounded-2xl overflow-hidden lp-reveal lp-reveal-d${(i % 4) + 1}`}
             >
               <div className="relative aspect-[4/3]">
-                <img src={it.img} alt={it.crop} loading="lazy" className="w-full h-full object-cover" />
+                <img
+                  src={it.img}
+                  alt={it.crop}
+                  loading="lazy"
+                  className="w-full h-full object-cover"
+                />
                 <span
                   className="absolute top-3 left-3 inline-flex items-center gap-1 rounded-full px-2 py-1 text-[10px] font-medium"
                   style={{ background: "var(--lp-primary)", color: "#fff" }}
@@ -862,21 +1066,43 @@ function MarketplacePreview() {
                 </span>
                 <span
                   className="absolute top-3 right-3 rounded-full px-2 py-0.5 text-[10px] font-medium"
-                  style={{ background: "rgba(255,255,255,0.92)", color: "var(--lp-muted)", border: "1px solid var(--lp-line)" }}
+                  style={{
+                    background: "rgba(255,255,255,0.92)",
+                    color: "var(--lp-muted)",
+                    border: "1px solid var(--lp-line)",
+                  }}
                 >
                   Gösterim
                 </span>
               </div>
               <div className="p-4">
-                <div className="font-serif text-base mb-1" style={{ color: "var(--lp-ink)" }}>{it.crop}</div>
-                <div className="text-xs mb-3 flex items-center gap-1" style={{ color: "var(--lp-muted)" }}>
+                <p
+                  className="mb-3 rounded-lg px-2 py-1.5 text-[11px] font-medium leading-snug"
+                  style={{ background: "var(--lp-cream)", color: "var(--lp-ink)" }}
+                >
+                  Temsili örnek — doğrulanmış üretim kaydı değildir.
+                </p>
+                <div className="font-serif text-base mb-1" style={{ color: "var(--lp-ink)" }}>
+                  {it.crop}
+                </div>
+                <div
+                  className="text-xs mb-3 flex items-center gap-1"
+                  style={{ color: "var(--lp-muted)" }}
+                >
                   <MapPin className="w-3 h-3" /> {it.loc} · Üretici {it.farmer}
                 </div>
                 <div className="flex items-baseline justify-between mb-2">
-                  <span className="text-sm" style={{ color: "var(--lp-muted)" }}>{it.qty}</span>
-                  <span className="text-base font-medium" style={{ color: "var(--lp-primary)" }}>{it.price}</span>
+                  <span className="text-sm" style={{ color: "var(--lp-muted)" }}>
+                    {it.qty}
+                  </span>
+                  <span className="text-base font-medium" style={{ color: "var(--lp-primary)" }}>
+                    {it.price}
+                  </span>
                 </div>
-                <div className="flex items-center justify-between text-[11px]" style={{ color: "var(--lp-muted)" }}>
+                <div
+                  className="flex items-center justify-between text-[11px]"
+                  style={{ color: "var(--lp-muted)" }}
+                >
                   <span>{it.when}</span>
                   <span>{it.delivery}</span>
                 </div>
@@ -890,38 +1116,108 @@ function MarketplacePreview() {
 }
 
 /* ---------- Turkey map ---------- */
-type Pin = { id: string; xPct: number; yPct: number; region: string; crop: string; qty: string; tier: string };
+type Pin = {
+  id: string;
+  xPct: number;
+  yPct: number;
+  region: string;
+  crop: string;
+  qty: string;
+  tier: string;
+};
 const PINS: Pin[] = [
   // Coordinates are % positions inside the visible Turkey outline area (cropped band).
-  { id: "safranbolu", xPct: 47, yPct: 30, region: "Safranbolu", crop: "Safran", qty: "1.2 kg", tier: "Tam İzlenebilir" },
-  { id: "isparta",    xPct: 34, yPct: 62, region: "Isparta",    crop: "Lavanta",    qty: "40 kg", tier: "Tam İzlenebilir" },
-  { id: "ayvalik",    xPct: 14, yPct: 48, region: "Ayvalık",    crop: "Zeytinyağı", qty: "800 L", tier: "İyi Belgelenmiş" },
-  { id: "giresun",    xPct: 70, yPct: 24, region: "Giresun",    crop: "Fındık",     qty: "2 t",   tier: "İyi Belgelenmiş" },
-  { id: "malatya",    xPct: 71, yPct: 55, region: "Malatya",    crop: "Kayısı",     qty: "1.5 t", tier: "İyi Belgelenmiş" },
-  { id: "izmir",      xPct: 13, yPct: 60, region: "İzmir",      crop: "İncir",      qty: "600 kg", tier: "Tam İzlenebilir" },
-  { id: "antalya",    xPct: 37, yPct: 78, region: "Antalya",    crop: "Nar",        qty: "900 kg", tier: "Temel" },
+  {
+    id: "safranbolu",
+    xPct: 47,
+    yPct: 30,
+    region: "Safranbolu",
+    crop: "Safran",
+    qty: "1.2 kg",
+    tier: "Tam İzlenebilir",
+  },
+  {
+    id: "isparta",
+    xPct: 34,
+    yPct: 62,
+    region: "Isparta",
+    crop: "Lavanta",
+    qty: "40 kg",
+    tier: "Tam İzlenebilir",
+  },
+  {
+    id: "ayvalik",
+    xPct: 14,
+    yPct: 48,
+    region: "Ayvalık",
+    crop: "Zeytinyağı",
+    qty: "800 L",
+    tier: "İyi Belgelenmiş",
+  },
+  {
+    id: "giresun",
+    xPct: 70,
+    yPct: 24,
+    region: "Giresun",
+    crop: "Fındık",
+    qty: "2 t",
+    tier: "İyi Belgelenmiş",
+  },
+  {
+    id: "malatya",
+    xPct: 71,
+    yPct: 55,
+    region: "Malatya",
+    crop: "Kayısı",
+    qty: "1.5 t",
+    tier: "İyi Belgelenmiş",
+  },
+  {
+    id: "izmir",
+    xPct: 13,
+    yPct: 60,
+    region: "İzmir",
+    crop: "İncir",
+    qty: "600 kg",
+    tier: "Tam İzlenebilir",
+  },
+  {
+    id: "antalya",
+    xPct: 37,
+    yPct: 78,
+    region: "Antalya",
+    crop: "Nar",
+    qty: "900 kg",
+    tier: "Temel",
+  },
 ];
 
 function TurkeyMap() {
   const ref = useReveal<HTMLDivElement>();
-  const [active, setActive] = useState<string>(() => PINS[Math.floor(Math.random() * PINS.length)].id);
+  const [active, setActive] = useState<string>(
+    () => PINS[Math.floor(Math.random() * PINS.length)].id,
+  );
   const pin = useMemo(() => PINS.find((p) => p.id === active) ?? PINS[0], [active]);
   return (
     <section
       className="px-4 py-16 md:py-24 border-t"
-      style={{ borderColor: "var(--lp-line)", background: "var(--lp-cream)", position: "relative", isolation: "isolate" }}
+      style={{
+        borderColor: "var(--lp-line)",
+        background: "var(--lp-cream)",
+        position: "relative",
+        isolation: "isolate",
+      }}
       ref={ref}
     >
       <div className="mx-auto max-w-6xl">
         <div className="text-center mb-10 lp-reveal">
-          <h2 className="font-serif text-3xl md:text-4xl" style={{ color: "var(--lp-ink)" }}>Türkiye'nin dört bir yanından.</h2>
+          <h2 className="font-serif text-3xl md:text-4xl" style={{ color: "var(--lp-ink)" }}>
+            Türkiye'nin dört bir yanından.
+          </h2>
         </div>
 
         <div className="lp-card rounded-3xl p-4 md:p-8 lp-reveal lp-reveal-d1 grid gap-6 md:grid-cols-[1fr_260px] items-center">
-          <div
-            className="relative w-full mx-auto"
-            style={{ aspectRatio: "16 / 8", maxWidth: 720 }}
-          >
+          <div className="relative w-full mx-auto" style={{ aspectRatio: "16 / 8", maxWidth: 720 }}>
             <div
               role="img"
               aria-label="Türkiye haritası ana hattı"
@@ -980,9 +1276,16 @@ function TurkeyMap() {
             })}
           </div>
 
-          <div className="rounded-2xl p-4" style={{ background: "var(--lp-cream-2)", border: "1px solid var(--lp-line)" }}>
-            <div className="font-serif text-xl mb-1" style={{ color: "var(--lp-ink)" }}>{pin.region}</div>
-            <div className="text-sm mb-3" style={{ color: "var(--lp-muted)" }}>{pin.crop} · {pin.qty}</div>
+          <div
+            className="rounded-2xl p-4"
+            style={{ background: "var(--lp-cream-2)", border: "1px solid var(--lp-line)" }}
+          >
+            <div className="font-serif text-xl mb-1" style={{ color: "var(--lp-ink)" }}>
+              {pin.region}
+            </div>
+            <div className="text-sm mb-3" style={{ color: "var(--lp-muted)" }}>
+              {pin.crop} · {pin.qty}
+            </div>
             <span
               className="inline-flex items-center gap-1 rounded-full px-2 py-1 text-[10px] font-medium"
               style={{ background: "var(--lp-primary)", color: "#fff" }}
@@ -1016,22 +1319,37 @@ function TurkeyMap() {
 function FarmerStory() {
   const ref = useReveal<HTMLDivElement>();
   return (
-    <section className="px-4 py-16 md:py-24 border-t" style={{ borderColor: "var(--lp-line)", background: "var(--lp-cream-2)" }} ref={ref}>
+    <section
+      className="px-4 py-16 md:py-24 border-t"
+      style={{ borderColor: "var(--lp-line)", background: "var(--lp-cream-2)" }}
+      ref={ref}
+    >
       <div className="mx-auto max-w-6xl grid gap-10 md:grid-cols-[1.2fr_1fr] items-center">
         <div className="relative rounded-3xl overflow-hidden aspect-[4/3] lp-reveal">
-          <img src={IMG_LAVENDER} alt="Isparta'da mor lavanta tarlası" className="w-full h-full object-cover" style={{ filter: "saturate(0.9)" }} />
+          <img
+            src={IMG_LAVENDER}
+            alt="Isparta'da mor lavanta tarlası"
+            className="w-full h-full object-cover"
+            style={{ filter: "saturate(0.9)" }}
+          />
           <div
             className="absolute inset-0"
-            style={{ background: "linear-gradient(180deg, transparent 40%, rgba(20,35,28,0.35) 100%)" }}
+            style={{
+              background: "linear-gradient(180deg, transparent 40%, rgba(20,35,28,0.35) 100%)",
+            }}
           />
         </div>
         <div className="lp-reveal lp-reveal-d2">
-          <blockquote className="font-serif text-2xl md:text-3xl leading-snug" style={{ color: "var(--lp-ink)" }}>
-            "Ürünümü ilk defa doğru fiyata sattım. Alıcı, tarlamın her adımını
-            görüyor — güven kendiliğinden geliyor."
+          <blockquote
+            className="font-serif text-2xl md:text-3xl leading-snug"
+            style={{ color: "var(--lp-ink)" }}
+          >
+            "Ürünümü ilk defa doğru fiyata sattım. Alıcı, tarlamın her adımını görüyor — güven
+            kendiliğinden geliyor."
           </blockquote>
           <div className="mt-4 text-sm" style={{ color: "var(--lp-muted)" }}>
-            <span className="italic">Temsili senaryo — </span> gerçek bir kullanıcıya ait değildir, platformun tipik bir kullanım deneyimini gösterir.
+            <span className="italic">Temsili senaryo — </span> gerçek bir kullanıcıya ait değildir,
+            platformun tipik bir kullanım deneyimini gösterir.
           </div>
         </div>
       </div>
@@ -1075,10 +1393,15 @@ function ValueList({
               <Icon className="w-4 h-4" />
             </span>
             <div className="min-w-0">
-              <div className="font-serif text-base leading-tight mb-1" style={{ color: "var(--lp-ink)" }}>
+              <div
+                className="font-serif text-base leading-tight mb-1"
+                style={{ color: "var(--lp-ink)" }}
+              >
                 {v.title}
               </div>
-              <p className="text-sm" style={{ color: "var(--lp-muted)" }}>{v.body}</p>
+              <p className="text-sm" style={{ color: "var(--lp-muted)" }}>
+                {v.body}
+              </p>
               {v.href ? (
                 <Link
                   to={v.href}
@@ -1109,14 +1432,20 @@ function RoleValues() {
           <h2 className="font-serif text-3xl md:text-4xl" style={{ color: "var(--lp-ink)" }}>
             Hasat'ta ne yapabilirsin?
           </h2>
-          <p className="mt-3 text-sm md:text-base max-w-2xl mx-auto" style={{ color: "var(--lp-muted)" }}>
-            Aynı platformun iki yüzü: alıcı mutfağından tarlaya ulaşır, üretici tarlasından
-            doğrudan alıcıya.
+          <p
+            className="mt-3 text-sm md:text-base max-w-2xl mx-auto"
+            style={{ color: "var(--lp-muted)" }}
+          >
+            Aynı platformun iki yüzü: alıcı mutfağından tarlaya ulaşır, üretici tarlasından doğrudan
+            alıcıya.
           </p>
         </div>
         <div className="grid gap-6 md:grid-cols-2">
           <div className="lp-reveal lp-reveal-d1">
-            <div className="text-[11px] uppercase tracking-widest mb-3" style={{ color: "var(--lp-muted)" }}>
+            <div
+              className="text-[11px] uppercase tracking-widest mb-3"
+              style={{ color: "var(--lp-muted)" }}
+            >
               Alıcı için
             </div>
             <ValueList
@@ -1126,7 +1455,10 @@ function RoleValues() {
             />
           </div>
           <div className="lp-reveal lp-reveal-d2">
-            <div className="text-[11px] uppercase tracking-widest mb-3" style={{ color: "var(--lp-muted)" }}>
+            <div
+              className="text-[11px] uppercase tracking-widest mb-3"
+              style={{ color: "var(--lp-muted)" }}
+            >
               Üretici için
             </div>
             <ValueList
@@ -1145,17 +1477,48 @@ function RoleValues() {
 function BuyerPersonas() {
   const ref = useReveal<HTMLDivElement>();
   const personas = [
-    { icon: <Utensils className="w-5 h-5" />, title: "Restoran / Kafe", body: "Mevsimlik, hikayesi olan ürünlerle menünü farklılaştır." },
-    { icon: <Hotel className="w-5 h-5" />, title: "Otel", body: "Kahvaltıdan spa'ya — bölgesel özgün ürünlerle konuğuna hikaye anlat." },
-    { icon: <ShoppingBasket className="w-5 h-5" />, title: "Market / Manav", body: "Doğrudan üreticiden, kanıtlı geçmişli ürünlerle raflarını farklılaştır." },
-    { icon: <Globe2 className="w-5 h-5" />, title: "İhracatçı", body: "İzlenebilirlik belgesiyle beraber ihracata hazır tedarik." },
-    { icon: <Users2 className="w-5 h-5" />, title: "Bireysel Tüketici", body: "Ailen için güvenli, taze ve gerçekten üreticiden gelen ürünler." },
+    {
+      icon: <Utensils className="w-5 h-5" />,
+      title: "Restoran / Kafe",
+      body: "Mevsimlik, hikayesi olan ürünlerle menünü farklılaştır.",
+    },
+    {
+      icon: <Hotel className="w-5 h-5" />,
+      title: "Otel",
+      body: "Kahvaltıdan spa'ya — bölgesel özgün ürünlerle konuğuna hikaye anlat.",
+    },
+    {
+      icon: <ShoppingBasket className="w-5 h-5" />,
+      title: "Market / Manav",
+      body: "Doğrudan üreticiden, kanıtlı geçmişli ürünlerle raflarını farklılaştır.",
+    },
+    {
+      icon: <Globe2 className="w-5 h-5" />,
+      title: "İhracatçı",
+      body: "İzlenebilirlik belgesiyle beraber ihracata hazır tedarik.",
+    },
+    {
+      icon: <Users2 className="w-5 h-5" />,
+      title: "Bireysel Tüketici",
+      body: "Ailen için güvenli, taze ve gerçekten üreticiden gelen ürünler.",
+    },
   ];
   return (
-    <section className="px-4 py-16 md:py-24 border-t" style={{ borderColor: "var(--lp-line)", background: "var(--lp-cream)", position: "relative", isolation: "isolate" }} ref={ref}>
+    <section
+      className="px-4 py-16 md:py-24 border-t"
+      style={{
+        borderColor: "var(--lp-line)",
+        background: "var(--lp-cream)",
+        position: "relative",
+        isolation: "isolate",
+      }}
+      ref={ref}
+    >
       <div className="mx-auto max-w-6xl">
         <div className="text-center mb-10 lp-reveal">
-          <h2 className="font-serif text-3xl md:text-4xl" style={{ color: "var(--lp-ink)" }}>Herkese göre çözümler.</h2>
+          <h2 className="font-serif text-3xl md:text-4xl" style={{ color: "var(--lp-ink)" }}>
+            Herkese göre çözümler.
+          </h2>
         </div>
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
           {personas.map((p, i) => (
@@ -1165,12 +1528,19 @@ function BuyerPersonas() {
             >
               <div
                 className="grid place-items-center w-10 h-10 rounded-xl mb-3"
-                style={{ background: "color-mix(in oklab, var(--lp-primary) 12%, transparent)", color: "var(--lp-primary)" }}
+                style={{
+                  background: "color-mix(in oklab, var(--lp-primary) 12%, transparent)",
+                  color: "var(--lp-primary)",
+                }}
               >
                 {p.icon}
               </div>
-              <div className="font-serif text-base mb-1" style={{ color: "var(--lp-ink)" }}>{p.title}</div>
-              <div className="text-sm" style={{ color: "var(--lp-muted)" }}>{p.body}</div>
+              <div className="font-serif text-base mb-1" style={{ color: "var(--lp-ink)" }}>
+                {p.title}
+              </div>
+              <div className="text-sm" style={{ color: "var(--lp-muted)" }}>
+                {p.body}
+              </div>
             </div>
           ))}
         </div>
@@ -1183,14 +1553,19 @@ function BuyerPersonas() {
 function AISection() {
   const ref = useReveal<HTMLDivElement>();
   return (
-    <section className="px-4 py-16 md:py-24 border-t" style={{ borderColor: "var(--lp-line)", background: "var(--lp-cream-2)" }} ref={ref}>
+    <section
+      className="px-4 py-16 md:py-24 border-t"
+      style={{ borderColor: "var(--lp-line)", background: "var(--lp-cream-2)" }}
+      ref={ref}
+    >
       <div className="mx-auto max-w-5xl">
         <div className="text-center mb-10 lp-reveal">
           <h2 className="font-serif text-3xl md:text-4xl" style={{ color: "var(--lp-ink)" }}>
             Tarlanda bir <span style={{ color: "var(--lp-accent)" }}>uzman</span>.
           </h2>
           <p className="mt-3 text-sm max-w-xl mx-auto" style={{ color: "var(--lp-muted)" }}>
-            Türkçe WhatsApp asistanı. Tarladan yaz — cevap gelsin, ilanın kendiliğinden güncellensin.
+            Türkçe WhatsApp asistanı. Tarladan yaz — cevap gelsin, ilanın kendiliğinden
+            güncellensin.
           </p>
         </div>
 
@@ -1199,14 +1574,20 @@ function AISection() {
             title="Soru-cevap"
             messages={[
               { who: "farmer", text: "Bu hafta neye öncelik vermeliyim?" },
-              { who: "hasat", text: "Son kaydına göre sulama 4 gün önce yapılmış; hava tahminine göre yarın kısa bir sulama iyi olur. Ayrıca bu hafta yaprak kontrolü için 10 dk ayır." },
+              {
+                who: "hasat",
+                text: "Son kaydına göre sulama 4 gün önce yapılmış; hava tahminine göre yarın kısa bir sulama iyi olur. Ayrıca bu hafta yaprak kontrolü için 10 dk ayır.",
+              },
             ]}
           />
           <ChatCard
             title="Otomatik ilan güncellemesi"
             messages={[
               { who: "farmer", text: "Bugün 5 kg hasat kaydettim." },
-              { who: "hasat", text: "Harika 🌱 İlanına 5 kg eklendi, güven skoru %78'den %92'ye çıktı. Fiyatı son kaydına göre güncelledim, onaylıyor musun?" },
+              {
+                who: "hasat",
+                text: "Harika 🌱 İlanına 5 kg eklendi. Hasat kaydın ürün geçmişinde görünecek. Fiyatı son kaydına göre güncelledim, onaylıyor musun?",
+              },
             ]}
           />
         </div>
@@ -1215,12 +1596,20 @@ function AISection() {
   );
 }
 
-function ChatCard({ title, messages }: { title: string; messages: { who: "farmer" | "hasat"; text: string }[] }) {
+function ChatCard({
+  title,
+  messages,
+}: {
+  title: string;
+  messages: { who: "farmer" | "hasat"; text: string }[];
+}) {
   return (
     <div className="lp-card rounded-2xl p-5">
       <div className="flex items-center gap-2 mb-4" style={{ color: "var(--lp-primary)" }}>
         <MessageCircle className="w-4 h-4" />
-        <div className="font-serif text-base" style={{ color: "var(--lp-ink)" }}>{title}</div>
+        <div className="font-serif text-base" style={{ color: "var(--lp-ink)" }}>
+          {title}
+        </div>
       </div>
       <div className="space-y-2.5">
         {messages.map((m, i) => (
@@ -1228,13 +1617,19 @@ function ChatCard({ title, messages }: { title: string; messages: { who: "farmer
             key={i}
             className={`max-w-[86%] rounded-2xl px-3 py-2 text-sm ${m.who === "farmer" ? "ml-auto rounded-tr-sm" : "rounded-tl-sm"}`}
             style={{
-              background: m.who === "farmer" ? "color-mix(in oklab, var(--lp-accent) 22%, var(--lp-white))" : "var(--lp-white)",
+              background:
+                m.who === "farmer"
+                  ? "color-mix(in oklab, var(--lp-accent) 22%, var(--lp-white))"
+                  : "var(--lp-white)",
               color: "var(--lp-ink)",
               border: "1px solid var(--lp-line)",
             }}
           >
             {m.who === "hasat" && (
-              <div className="flex items-center gap-1 text-[10px] mb-0.5" style={{ color: "var(--lp-muted)" }}>
+              <div
+                className="flex items-center gap-1 text-[10px] mb-0.5"
+                style={{ color: "var(--lp-muted)" }}
+              >
                 <BrandLogo variant="monogram" height={12} />
                 <span>Hasat</span>
               </div>
@@ -1247,64 +1642,74 @@ function ChatCard({ title, messages }: { title: string; messages: { who: "farmer
   );
 }
 
-/* ---------- Trust score ladder ---------- */
-function TrustScoreLadder() {
+/* ---------- Qualitative documentation stages ---------- */
+function DocumentationStages() {
   const ref = useReveal<HTMLDivElement>();
   const tiers = [
-    { key: "belgeleniyor", label: "Belgeleniyor", desc: "Ürün geçmişi henüz yok.", pct: 15 },
-    { key: "temel", label: "Temel", desc: "İlk kayıtlar girildi.", pct: 40 },
-    { key: "iyi", label: "İyi Belgelenmiş", desc: "Sezonun büyük kısmı belgeli.", pct: 70 },
-    { key: "tam", label: "Tam İzlenebilir", desc: "Sezon adımları tam kayıtlı.", pct: 100 },
+    { key: "kayit", label: "Üretici kaydı mevcut", desc: "Üretici profili ve ürün kaydı bulunur." },
+    { key: "temel", label: "Temel kayıt", desc: "İlk üretim adımları günlüğe eklenmiştir." },
+    { key: "iyi", label: "İyi belgelenmiş", desc: "Birden fazla üretim adımı kayıtlıdır." },
+    { key: "tam", label: "Tam izlenebilir", desc: "İlgili sezon adımları kayıtlarla açıklanır." },
   ];
   return (
-    <section className="px-4 py-16 md:py-24 border-t" style={{ borderColor: "var(--lp-line)", background: "var(--lp-cream)", position: "relative", isolation: "isolate" }} ref={ref}>
+    <section
+      className="px-4 py-16 md:py-24 border-t"
+      style={{
+        borderColor: "var(--lp-line)",
+        background: "var(--lp-cream)",
+        position: "relative",
+        isolation: "isolate",
+      }}
+      ref={ref}
+    >
       <div className="mx-auto max-w-6xl">
         <div className="text-center mb-10 lp-reveal">
           <h2 className="font-serif text-3xl md:text-4xl" style={{ color: "var(--lp-ink)" }}>
-            Kanıtladıkça güçlenen bir rozet.
+            Kayıtların kapsamını açıkça anlatan aşamalar.
           </h2>
+          <p className="mt-3 text-sm max-w-2xl mx-auto" style={{ color: "var(--lp-muted)" }}>
+            Bu ifadeler sayısal güven puanı, kalite garantisi veya bağımsız doğrulama sonucu
+            değildir.
+          </p>
         </div>
 
         <div className="lp-card rounded-3xl p-6 md:p-10 lp-reveal lp-reveal-d1">
-          <div className="relative h-2 rounded-full overflow-hidden" style={{ background: "var(--lp-cream-2)" }}>
-            <div
-              className="absolute inset-y-0 left-0 rounded-full"
-              style={{
-                width: "100%",
-                background: "linear-gradient(90deg, var(--lp-gray), var(--lp-earth), var(--lp-accent), var(--lp-primary))",
-                animation: "lp-fade-in 1.4s ease-out",
-              }}
-            />
-          </div>
-          <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             {tiers.map((t, i) => (
               <div
                 key={t.key}
                 className={`rounded-2xl p-4 lp-reveal lp-reveal-d${i + 1}`}
                 style={{ background: "var(--lp-cream)", border: "1px solid var(--lp-line)" }}
               >
-                <div className="flex items-center gap-2 text-[11px] uppercase tracking-widest mb-2" style={{ color: "var(--lp-muted)" }}>
+                <div
+                  className="flex items-center gap-2 text-[11px] uppercase tracking-widest mb-2"
+                  style={{ color: "var(--lp-muted)" }}
+                >
                   <span>Aşama {i + 1}</span>
                 </div>
-                <div className="font-serif text-lg mb-1" style={{ color: "var(--lp-ink)" }}>{t.label}</div>
-                <div className="text-sm mb-3" style={{ color: "var(--lp-muted)" }}>{t.desc}</div>
-                <div className="h-1.5 rounded-full overflow-hidden" style={{ background: "var(--lp-cream-2)" }}>
-                  <div
-                    className="h-full rounded-full"
-                    style={{
-                      width: `${t.pct}%`,
-                      background: i === 3 ? "var(--lp-primary)" : i === 2 ? "var(--lp-accent)" : i === 1 ? "var(--lp-earth)" : "var(--lp-gray)",
-                    }}
-                  />
+                <div className="font-serif text-lg mb-1" style={{ color: "var(--lp-ink)" }}>
+                  {t.label}
+                </div>
+                <div className="text-sm" style={{ color: "var(--lp-muted)" }}>
+                  {t.desc}
                 </div>
               </div>
             ))}
           </div>
 
-          <div className="mt-6 flex flex-wrap items-center gap-4 text-xs" style={{ color: "var(--lp-muted)" }}>
-            <span className="inline-flex items-center gap-1"><Lock className="w-3 h-3" /> Verileriniz şifreli</span>
-            <span className="inline-flex items-center gap-1"><ShieldCheck className="w-3 h-3" /> Telefonla doğrulanmış üreticiler</span>
-            <span className="inline-flex items-center gap-1"><Percent className="w-3 h-3" /> Şeffaf komisyon: %5</span>
+          <div
+            className="mt-6 flex flex-wrap items-center gap-4 text-xs"
+            style={{ color: "var(--lp-muted)" }}
+          >
+            <span className="inline-flex items-center gap-1">
+              <Lock className="w-3 h-3" /> Verileriniz şifreli
+            </span>
+            <span className="inline-flex items-center gap-1">
+              <ShieldCheck className="w-3 h-3" /> Telefonla doğrulanmış üreticiler
+            </span>
+            <span className="inline-flex items-center gap-1">
+              <Percent className="w-3 h-3" /> Şeffaf komisyon: %5
+            </span>
           </div>
         </div>
       </div>
@@ -1322,25 +1727,31 @@ function IndoorSection() {
   const [note, setNote] = useState("");
 
   const mutation = useMutation({
-    mutationFn: async () => submit({
-      data: {
-        name: name.trim(),
-        phone: phone.trim(),
-        city: city.trim() || null,
-        interest_type: interest,
-        note: note.trim() || null,
-      },
-    }),
+    mutationFn: async () =>
+      submit({
+        data: {
+          name: name.trim(),
+          phone: phone.trim(),
+          city: city.trim() || null,
+          interest_type: interest,
+          note: note.trim() || null,
+        },
+      }),
     onSuccess: () => {
       toast.success("Başvurunuz alındı. En kısa sürede döneceğiz.");
-      setName(""); setPhone(""); setCity(""); setNote(""); setInterest("danışmanlık");
+      setName("");
+      setPhone("");
+      setCity("");
+      setNote("");
+      setInterest("danışmanlık");
     },
     onError: (e: Error) => {
       toast.error(e.message || "Bir hata oluştu.");
     },
   });
 
-  const canSubmit = name.trim().length > 0 && phone.replace(/\D/g, "").length >= 10 && !mutation.isPending;
+  const canSubmit =
+    name.trim().length > 0 && phone.replace(/\D/g, "").length >= 10 && !mutation.isPending;
 
   const waHref = `https://wa.me/${HASAT_WHATSAPP_NUMBER}?text=${encodeURIComponent(
     "Hasat indoor farming hakkında bilgi almak istiyorum",
@@ -1358,14 +1769,22 @@ function IndoorSection() {
             Kırsalda kalın, <span style={{ color: "var(--lp-highlight)" }}>toprakta büyüyün</span>.
           </h2>
           <p className="text-sm md:text-base text-white/85 mb-4">
-            Indoor tarım, gençlerin köyünden ayrılmadan yüksek katma değerli ürün
-            yetiştirmesini sağlıyor. Küçük alanda yıl boyu üretim, kontrollü
-            kalite, kısa tedarik zinciri.
+            Indoor tarım, gençlerin köyünden ayrılmadan yüksek katma değerli ürün yetiştirmesini
+            sağlıyor. Küçük alanda yıl boyu üretim, kontrollü kalite, kısa tedarik zinciri.
           </p>
           <ul className="space-y-2 text-sm text-white/90 mb-6">
-            <li className="flex gap-2"><Check className="w-4 h-4 mt-0.5" style={{ color: "var(--lp-highlight)" }} /> Kırsalda genç kalıcılığı için somut bir model.</li>
-            <li className="flex gap-2"><Check className="w-4 h-4 mt-0.5" style={{ color: "var(--lp-highlight)" }} /> TKDK genç çiftçi hibesiyle başlangıç maliyeti düşer.</li>
-            <li className="flex gap-2"><Check className="w-4 h-4 mt-0.5" style={{ color: "var(--lp-highlight)" }} /> Hasat üzerinden doğrudan alıcıya satış.</li>
+            <li className="flex gap-2">
+              <Check className="w-4 h-4 mt-0.5" style={{ color: "var(--lp-highlight)" }} /> Kırsalda
+              genç kalıcılığı için somut bir model.
+            </li>
+            <li className="flex gap-2">
+              <Check className="w-4 h-4 mt-0.5" style={{ color: "var(--lp-highlight)" }} /> TKDK
+              genç çiftçi hibesiyle başlangıç maliyeti düşer.
+            </li>
+            <li className="flex gap-2">
+              <Check className="w-4 h-4 mt-0.5" style={{ color: "var(--lp-highlight)" }} /> Hasat
+              üzerinden doğrudan alıcıya satış.
+            </li>
           </ul>
           <a
             href={waHref}
@@ -1379,50 +1798,101 @@ function IndoorSection() {
         </div>
 
         <form
-          onSubmit={(e) => { e.preventDefault(); if (canSubmit) mutation.mutate(); }}
+          onSubmit={(e) => {
+            e.preventDefault();
+            if (canSubmit) mutation.mutate();
+          }}
           className="rounded-3xl p-6 space-y-4"
-          style={{ background: "var(--lp-cream)", color: "var(--lp-ink)", border: "1px solid rgba(255,255,255,0.15)" }}
+          style={{
+            background: "var(--lp-cream)",
+            color: "var(--lp-ink)",
+            border: "1px solid rgba(255,255,255,0.15)",
+          }}
         >
           <div className="font-serif text-xl mb-1">Başvuru formu</div>
           <Field label="Ad Soyad *">
-            <input value={name} onChange={(e) => setName(e.target.value)} maxLength={100}
+            <input
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              maxLength={100}
               className="w-full rounded-lg px-3 py-2 text-sm outline-none"
-              style={{ background: "#fff", border: "1px solid var(--lp-line)", color: "var(--lp-ink)" }} />
+              style={{
+                background: "#fff",
+                border: "1px solid var(--lp-line)",
+                color: "var(--lp-ink)",
+              }}
+            />
           </Field>
           <Field label="Telefon *">
-            <input value={phone} onChange={(e) => setPhone(e.target.value)} inputMode="tel" maxLength={20}
+            <input
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
+              inputMode="tel"
+              maxLength={20}
               placeholder="+90 5XX XXX XX XX"
               className="w-full rounded-lg px-3 py-2 text-sm outline-none"
-              style={{ background: "#fff", border: "1px solid var(--lp-line)", color: "var(--lp-ink)" }} />
+              style={{
+                background: "#fff",
+                border: "1px solid var(--lp-line)",
+                color: "var(--lp-ink)",
+              }}
+            />
           </Field>
           <Field label="Şehir">
-            <input value={city} onChange={(e) => setCity(e.target.value)} maxLength={80}
+            <input
+              value={city}
+              onChange={(e) => setCity(e.target.value)}
+              maxLength={80}
               className="w-full rounded-lg px-3 py-2 text-sm outline-none"
-              style={{ background: "#fff", border: "1px solid var(--lp-line)", color: "var(--lp-ink)" }} />
+              style={{
+                background: "#fff",
+                border: "1px solid var(--lp-line)",
+                color: "var(--lp-ink)",
+              }}
+            />
           </Field>
           <div>
-            <div className="text-xs mb-2" style={{ color: "var(--lp-muted)" }}>İlgi tipi</div>
+            <div className="text-xs mb-2" style={{ color: "var(--lp-muted)" }}>
+              İlgi tipi
+            </div>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
               {(["danışmanlık", "ortaklık", "diğer"] as const).map((t) => (
-                <button key={t} type="button" onClick={() => setInterest(t)}
+                <button
+                  key={t}
+                  type="button"
+                  onClick={() => setInterest(t)}
                   className="rounded-lg px-2 py-2 text-xs capitalize transition"
                   style={{
                     background: interest === t ? "var(--lp-primary)" : "#fff",
                     color: interest === t ? "#fff" : "var(--lp-ink)",
                     border: "1px solid var(--lp-line)",
                   }}
-                >{t}</button>
+                >
+                  {t}
+                </button>
               ))}
             </div>
           </div>
           <Field label="Not (opsiyonel)">
-            <textarea value={note} onChange={(e) => setNote(e.target.value)} maxLength={500} rows={3}
+            <textarea
+              value={note}
+              onChange={(e) => setNote(e.target.value)}
+              maxLength={500}
+              rows={3}
               className="w-full rounded-lg px-3 py-2 text-sm outline-none"
-              style={{ background: "#fff", border: "1px solid var(--lp-line)", color: "var(--lp-ink)" }} />
+              style={{
+                background: "#fff",
+                border: "1px solid var(--lp-line)",
+                color: "var(--lp-ink)",
+              }}
+            />
           </Field>
-          <button type="submit" disabled={!canSubmit}
+          <button
+            type="submit"
+            disabled={!canSubmit}
             className="w-full rounded-xl py-3 text-sm font-medium disabled:opacity-40 transition hover:opacity-90"
-            style={{ background: "var(--lp-primary)", color: "#fff" }}>
+            style={{ background: "var(--lp-primary)", color: "#fff" }}
+          >
             {mutation.isPending ? "Gönderiliyor..." : "Başvuruyu Gönder"}
           </button>
         </form>
@@ -1434,40 +1904,54 @@ function IndoorSection() {
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <label className="block">
-      <div className="text-xs mb-1" style={{ color: "var(--lp-muted)" }}>{label}</div>
+      <div className="text-xs mb-1" style={{ color: "var(--lp-muted)" }}>
+        {label}
+      </div>
       {children}
     </label>
   );
 }
 
-/* ---------- CountUp ---------- */
-function CountUp({ to, duration = 1200 }: { to: number; duration?: number }) {
-  const [val, setVal] = useState(0);
-  const ref = useRef<HTMLSpanElement | null>(null);
-  const started = useRef(false);
-  useEffect(() => {
-    const el = ref.current;
-    if (!el) return;
-    const io = new IntersectionObserver((entries) => {
-      for (const e of entries) {
-        if (e.isIntersecting && !started.current) {
-          started.current = true;
-          const start = performance.now();
-          const tick = (now: number) => {
-            const t = Math.min(1, (now - start) / duration);
-            const eased = 1 - Math.pow(1 - t, 3);
-            setVal(Math.round(eased * to));
-            if (t < 1) requestAnimationFrame(tick);
-          };
-          requestAnimationFrame(tick);
-          io.disconnect();
-        }
-      }
-    }, { threshold: 0.4 });
-    io.observe(el);
-    return () => io.disconnect();
-  }, [to, duration]);
-  return <span ref={ref}>{val}</span>;
+/* ---------- Recipe and seasonal discovery ---------- */
+function RecipeDiscovery() {
+  const ref = useReveal<HTMLDivElement>();
+  return (
+    <section
+      className="px-4 py-16 md:py-24 border-t"
+      style={{ borderColor: "var(--lp-line)", background: "var(--lp-cream-2)" }}
+      ref={ref}
+    >
+      <div className="mx-auto max-w-5xl lp-reveal">
+        <div
+          className="rounded-3xl p-8 md:p-12 grid gap-8 md:grid-cols-[1fr_auto] md:items-center"
+          style={{ background: "var(--lp-white)", border: "1px solid var(--lp-line)" }}
+        >
+          <div>
+            <div
+              className="inline-flex items-center gap-2 text-xs uppercase tracking-widest mb-3"
+              style={{ color: "var(--saffron)" }}
+            >
+              <ChefHat className="w-4 h-4" /> Mevsimsel keşif
+            </div>
+            <h2 className="font-serif text-3xl md:text-4xl" style={{ color: "var(--lp-ink)" }}>
+              Mevsimin ürününü tariften keşfet.
+            </h2>
+            <p className="mt-3 text-sm md:text-base max-w-2xl" style={{ color: "var(--lp-muted)" }}>
+              Editoryal tariflerde mevsimsel malzemeleri incele; Hasat'ta bulunan ürünler için
+              mevcut talep akışına geç.
+            </p>
+          </div>
+          <Link
+            to="/tarifler"
+            className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl px-5 py-3 text-sm font-medium transition hover:opacity-90"
+            style={{ background: "var(--lp-primary)", color: "#fff" }}
+          >
+            Tarifleri keşfet <ArrowRight className="w-4 h-4" />
+          </Link>
+        </div>
+      </div>
+    </section>
+  );
 }
 
 /* ---------- Mobile app awareness ---------- */
@@ -1523,7 +2007,12 @@ function FAQ() {
     >
       <div className="mx-auto max-w-3xl">
         <div className="text-center mb-10 lp-reveal">
-          <div className="text-xs uppercase tracking-widest mb-2" style={{ color: "var(--lp-muted)" }}>SSS</div>
+          <div
+            className="text-xs uppercase tracking-widest mb-2"
+            style={{ color: "var(--lp-muted)" }}
+          >
+            SSS
+          </div>
           <h2 className="font-serif text-3xl md:text-4xl" style={{ color: "var(--lp-ink)" }}>
             Sıkça Sorulan Sorular
           </h2>
@@ -1558,23 +2047,35 @@ function FAQ() {
   );
 }
 
-
 /* ---------- Footer ---------- */
 function Footer() {
   const waHref = `https://wa.me/${HASAT_WHATSAPP_NUMBER}`;
   return (
     <footer
       className="px-4 py-12 border-t text-center text-xs"
-      style={{ borderColor: "var(--lp-line)", background: "var(--lp-cream)", color: "var(--lp-muted)" }}
+      style={{
+        borderColor: "var(--lp-line)",
+        background: "var(--lp-cream)",
+        color: "var(--lp-muted)",
+      }}
     >
       <BrandLogo variant="wordmark" height={20} className="mx-auto mb-1" />
       <div className="mt-1">Tarımda güven altyapısı.</div>
       <div className="mt-4 flex items-center justify-center gap-4 flex-wrap">
-        <a href={waHref} target="_blank" rel="noopener noreferrer" className="underline hover:opacity-80">
+        <a
+          href={waHref}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="underline hover:opacity-80"
+        >
           İletişim: WhatsApp
         </a>
-        <Link to="/terms" className="underline hover:opacity-80">Kullanım Koşulları</Link>
-        <Link to="/privacy" className="underline hover:opacity-80">Gizlilik</Link>
+        <Link to="/terms" className="underline hover:opacity-80">
+          Kullanım Koşulları
+        </Link>
+        <Link to="/privacy" className="underline hover:opacity-80">
+          Gizlilik
+        </Link>
       </div>
       <div className="mt-4 opacity-70">© {new Date().getFullYear()} Hasat</div>
     </footer>
