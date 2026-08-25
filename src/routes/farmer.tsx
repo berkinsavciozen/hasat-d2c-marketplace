@@ -1,8 +1,36 @@
-import { createFileRoute, Link, Outlet, redirect, useRouterState, useNavigate } from "@tanstack/react-router";
+import {
+  createFileRoute,
+  Link,
+  Outlet,
+  redirect,
+  useRouterState,
+  useNavigate,
+} from "@tanstack/react-router";
 import { useState } from "react";
-import { BarChart3, BookOpen, Home, LineChart, Store, Users, Settings, Crown, Handshake, MoreHorizontal, Gift, HelpCircle, CalendarClock } from "lucide-react";
+import {
+  BarChart3,
+  BookOpen,
+  Home,
+  LineChart,
+  Store,
+  Users,
+  Settings,
+  Crown,
+  Handshake,
+  MoreHorizontal,
+  Gift,
+  HelpCircle,
+  CalendarClock,
+} from "lucide-react";
 import { FARMER_TOUR_STORAGE_KEY } from "@/lib/hasat/onboarding-tour";
-import { useProfile, useParcels, useRealtimeSync, useAuthUserId, useFarmerOffers, useIncomingSubscriptions } from "@/lib/hasat/queries";
+import {
+  useProfile,
+  useParcels,
+  useRealtimeSync,
+  useAuthUserId,
+  useFarmerOffers,
+  useIncomingSubscriptions,
+} from "@/lib/hasat/queries";
 import { SeasonBanner } from "@/components/hasat/SeasonBanner";
 import { FarmPill } from "@/components/hasat/FarmPill";
 import { NotificationBell } from "@/components/hasat/NotificationBell";
@@ -56,8 +84,6 @@ const sidebarExtras = [
   { to: "/farmer/referral", label: "Arkadaşını Davet Et", icon: Gift },
 ] as const;
 
-
-
 function FarmerShell() {
   const { data: profile } = useProfile();
   const { data: parcels = [] } = useParcels();
@@ -88,24 +114,35 @@ function FarmerShell() {
   };
   const totalArea = parcels.reduce((s, p) => s + (p.area ?? 0), 0);
   const allCrops = parcels.flatMap((p) => p.crops ?? []);
-  const cropCounts = allCrops.reduce<Record<string, number>>((m, c) => { m[c] = (m[c] ?? 0) + 1; return m; }, {});
-  const primaryCrop = allCrops.length === 0 ? "—" : Object.entries(cropCounts).sort((a, b) => b[1] - a[1])[0][0];
+  const cropCounts = allCrops.reduce<Record<string, number>>((m, c) => {
+    m[c] = (m[c] ?? 0) + 1;
+    return m;
+  }, {});
+  const primaryCrop =
+    allCrops.length === 0 ? "—" : Object.entries(cropCounts).sort((a, b) => b[1] - a[1])[0][0];
   const areaForChip = parcels.length === 0 ? null : totalArea;
 
   const city = profile?.city ?? "—";
   const displayName = profile?.name ?? "";
 
-  const moreActive = moreItems.some((i) => pathname.startsWith(i.to)) ||
-    pathname.startsWith("/farmer/premium") || pathname.startsWith("/farmer/settings");
+  const moreActive =
+    moreItems.some((i) => pathname.startsWith(i.to)) ||
+    pathname.startsWith("/farmer/premium") ||
+    pathname.startsWith("/farmer/settings");
 
   return (
     <div className="min-h-screen md:grid md:grid-cols-[230px_1fr]">
       {/* Sidebar (desktop) */}
-      <aside className="hidden md:flex flex-col gap-4 p-4 sticky top-0 h-screen" style={{ background: "var(--dark)", color: "var(--hwhite)" }}>
+      <aside
+        className="hidden md:flex flex-col gap-4 p-4 sticky top-0 h-screen"
+        style={{ background: "var(--primary)", color: "var(--hwhite)" }}
+      >
         <div>
           <div>
             <BrandLogo variant="wordmark" tone="white" height={20} />
-            <div className="font-mono text-[10px] opacity-50 tracking-widest mt-1">ÇİFTÇİ PANELİ</div>
+            <div className="text-[10px] font-medium opacity-60 tracking-[0.16em] mt-1">
+              ÇİFTÇİ PANELİ
+            </div>
           </div>
           <div className="mt-3">
             <FarmPill city={city} area={areaForChip} crop={primaryCrop} />
@@ -118,18 +155,32 @@ function FarmerShell() {
         <nav className="flex flex-col gap-1 mt-2">
           {[...tabs, ...sidebarExtras].map(({ to, label, icon: Icon }) => {
             const active = pathname.startsWith(to);
-            const badge = to === "/farmer/orders" ? pendingCount : to === "/farmer/subscriptions" ? pendingSubs : 0;
+            const badge =
+              to === "/farmer/orders"
+                ? pendingCount
+                : to === "/farmer/subscriptions"
+                  ? pendingSubs
+                  : 0;
             return (
-
               <Link
                 key={to}
                 to={to}
-                data-tour={to === "/farmer/storefront" ? "tab-storefront" : to === "/farmer/prices" ? "tab-prices" : undefined}
-                className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition ${active ? "bg-saffron text-white" : "text-hwhite/70 hover:bg-white/5"}`}
+                data-tour={
+                  to === "/farmer/storefront"
+                    ? "tab-storefront"
+                    : to === "/farmer/prices"
+                      ? "tab-prices"
+                      : undefined
+                }
+                className={`flex items-center gap-3 rounded-xl px-3 py-2 text-sm transition ${active ? "bg-teal/35 text-white" : "text-hwhite/75 hover:bg-white/10"}`}
               >
                 <Icon className="h-4 w-4" />
                 <span className="flex-1">{label}</span>
-                {badge ? <span className="rounded-full bg-saffron px-1.5 text-[10px] text-white">{badge}</span> : null}
+                {badge ? (
+                  <span className="rounded-full bg-saffron px-1.5 text-[10px] font-semibold text-white">
+                    {badge}
+                  </span>
+                ) : null}
               </Link>
             );
           })}
@@ -139,7 +190,10 @@ function FarmerShell() {
           <Link
             to="/farmer/premium"
             className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm"
-            style={{ background: "color-mix(in oklab, var(--gold) 18%, transparent)", color: "var(--gold)" }}
+            style={{
+              background: "color-mix(in oklab, var(--gold) 18%, transparent)",
+              color: "var(--gold)",
+            }}
           >
             <Crown className="h-4 w-4" /> Premium'a Geç
           </Link>
@@ -150,14 +204,16 @@ function FarmerShell() {
           >
             <HelpCircle className="h-4 w-4" /> Nasıl Çalışır?
           </button>
-          <Link to="/farmer/settings" className="mt-3 flex items-center gap-2 rounded-lg bg-white/5 p-2 hover:bg-white/10">
-            <div className="grid h-8 w-8 place-items-center rounded-full bg-saffron text-xs font-bold">
+          <Link
+            to="/farmer/settings"
+            className="mt-3 flex items-center gap-2 rounded-lg bg-white/5 p-2 hover:bg-white/10"
+          >
+            <div className="grid h-8 w-8 place-items-center rounded-full bg-teal text-xs font-bold">
               {displayName?.[0] ?? "M"}
             </div>
             <div className="flex-1 text-xs">
               <div className="font-medium">{displayName}</div>
               <div className="opacity-50">{city}</div>
-
             </div>
             <Settings className="h-4 w-4 opacity-50" />
           </Link>
@@ -170,16 +226,25 @@ function FarmerShell() {
       </main>
 
       {/* Bottom tabs (mobile) */}
-      <nav className="md:hidden fixed bottom-0 inset-x-0 z-40 grid grid-cols-5 border-t pb-safe" style={{ background: "var(--dark)" }}>
+      <nav
+        className="md:hidden fixed bottom-0 inset-x-0 z-40 grid grid-cols-5 border-t border-white/10 pb-safe"
+        style={{ background: "var(--primary)" }}
+      >
         {mobileTabs.map(({ to, label, icon: Icon }) => {
           const active = pathname.startsWith(to);
           return (
             <Link
               key={to}
               to={to}
-              data-tour={to === "/farmer/storefront" ? "tab-storefront" : to === "/farmer/prices" ? "tab-prices" : undefined}
+              data-tour={
+                to === "/farmer/storefront"
+                  ? "tab-storefront"
+                  : to === "/farmer/prices"
+                    ? "tab-prices"
+                    : undefined
+              }
               className="flex flex-col items-center gap-0.5 py-2 text-[10px]"
-              style={{ color: active ? "var(--saffron)" : "var(--hwhite)" }}
+              style={{ color: active ? "var(--teal)" : "var(--hwhite)" }}
             >
               <Icon className="h-5 w-5" />
               <span>{label}</span>
@@ -190,7 +255,7 @@ function FarmerShell() {
           type="button"
           onClick={() => setMoreOpen(true)}
           className="flex flex-col items-center gap-0.5 py-2 text-[10px]"
-          style={{ color: moreActive ? "var(--saffron)" : "var(--hwhite)" }}
+          style={{ color: moreActive ? "var(--teal)" : "var(--hwhite)" }}
           aria-label="Daha fazla"
         >
           <MoreHorizontal className="h-5 w-5" />
@@ -203,10 +268,10 @@ function FarmerShell() {
         <SheetContent
           side="bottom"
           className="md:hidden rounded-t-2xl border-t-0 p-0"
-          style={{ background: "var(--dark)", color: "var(--hwhite)" }}
+          style={{ background: "var(--primary)", color: "var(--hwhite)" }}
         >
           <SheetHeader className="px-4 pt-4 pb-2 text-left">
-            <SheetTitle className="text-hwhite font-serif">Menü</SheetTitle>
+            <SheetTitle className="font-sans text-hwhite">Menü</SheetTitle>
           </SheetHeader>
 
           <div className="px-3 pb-6 space-y-1">
@@ -215,7 +280,7 @@ function FarmerShell() {
               onClick={() => setMoreOpen(false)}
               className="flex items-center gap-3 rounded-lg bg-white/5 p-3 hover:bg-white/10"
             >
-              <div className="grid h-10 w-10 place-items-center rounded-full bg-saffron text-sm font-bold">
+              <div className="grid h-10 w-10 place-items-center rounded-full bg-teal text-sm font-bold">
                 {displayName?.[0] ?? "M"}
               </div>
               <div className="flex-1 text-sm">
@@ -226,19 +291,27 @@ function FarmerShell() {
             </Link>
 
             {moreItems.map(({ to, label, icon: Icon }) => {
-              const badge = to === "/farmer/orders" ? pendingCount : to === "/farmer/subscriptions" ? pendingSubs : 0;
+              const badge =
+                to === "/farmer/orders"
+                  ? pendingCount
+                  : to === "/farmer/subscriptions"
+                    ? pendingSubs
+                    : 0;
               const active = pathname.startsWith(to);
               return (
-
                 <Link
                   key={to}
                   to={to}
                   onClick={() => setMoreOpen(false)}
-                  className={`flex items-center gap-3 rounded-lg px-3 py-3 text-sm ${active ? "bg-saffron text-white" : "text-hwhite/80 hover:bg-white/5"}`}
+                  className={`flex items-center gap-3 rounded-xl px-3 py-3 text-sm ${active ? "bg-teal/35 text-white" : "text-hwhite/80 hover:bg-white/5"}`}
                 >
                   <Icon className="h-4 w-4" />
                   <span className="flex-1">{label}</span>
-                  {badge ? <span className="rounded-full bg-saffron px-1.5 text-[10px] text-white">{badge}</span> : null}
+                  {badge ? (
+                    <span className="rounded-full bg-saffron px-1.5 text-[10px] text-white">
+                      {badge}
+                    </span>
+                  ) : null}
                 </Link>
               );
             })}
@@ -247,7 +320,10 @@ function FarmerShell() {
               to="/farmer/premium"
               onClick={() => setMoreOpen(false)}
               className="flex items-center gap-3 rounded-lg px-3 py-3 text-sm"
-              style={{ background: "color-mix(in oklab, var(--gold) 18%, transparent)", color: "var(--gold)" }}
+              style={{
+                background: "color-mix(in oklab, var(--gold) 18%, transparent)",
+                color: "var(--gold)",
+              }}
             >
               <Crown className="h-4 w-4" />
               <span className="flex-1">Premium'a Geç</span>
@@ -279,25 +355,39 @@ function FarmerShell() {
   );
 }
 
-export function FarmerHeader({ title, subtitle, children }: { title: string; subtitle?: string; children?: React.ReactNode }) {
+export function FarmerHeader({
+  title,
+  subtitle,
+  children,
+}: {
+  title: string;
+  subtitle?: string;
+  children?: React.ReactNode;
+}) {
   const { data: profile } = useProfile();
   const { data: parcels = [] } = useParcels();
   const totalArea = parcels.reduce((s, p) => s + (p.area ?? 0), 0);
   const allCrops = parcels.flatMap((p) => p.crops ?? []);
-  const cropCounts = allCrops.reduce<Record<string, number>>((m, c) => { m[c] = (m[c] ?? 0) + 1; return m; }, {});
-  const primaryCrop = allCrops.length === 0 ? "—" : Object.entries(cropCounts).sort((a, b) => b[1] - a[1])[0][0];
+  const cropCounts = allCrops.reduce<Record<string, number>>((m, c) => {
+    m[c] = (m[c] ?? 0) + 1;
+    return m;
+  }, {});
+  const primaryCrop =
+    allCrops.length === 0 ? "—" : Object.entries(cropCounts).sort((a, b) => b[1] - a[1])[0][0];
   const areaForChip = parcels.length === 0 ? null : totalArea;
   const city = profile?.city ?? "—";
 
   return (
-    <div className="px-4 pt-5 pb-4 md:px-8 md:pt-8" style={{ background: "var(--dark)", color: "var(--hwhite)" }}>
+    <div
+      className="px-4 pt-5 pb-4 md:px-8 md:pt-8"
+      style={{ background: "var(--primary)", color: "var(--hwhite)" }}
+    >
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0 flex-1">
-          <h1 className="font-serif text-2xl md:text-3xl truncate">{title}</h1>
+          <h1 className="font-sans text-2xl font-semibold md:text-3xl truncate">{title}</h1>
           {subtitle ? <p className="text-sm text-hwhite/60 mt-0.5 truncate">{subtitle}</p> : null}
         </div>
         <NotificationBell />
-
       </div>
       <div className="md:hidden mt-3 flex flex-wrap items-center gap-2">
         <FarmPill city={city} area={areaForChip} crop={primaryCrop} />

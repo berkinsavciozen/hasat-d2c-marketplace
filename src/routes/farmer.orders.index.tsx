@@ -2,13 +2,32 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
 
 import { FarmerHeader } from "./farmer";
-import { useFarmerOffers, useUpdateOfferStatus, useFarmerOrders, useCounterOffer, useConfirmTransferReceived, useMarkShipped, useCancelOrder, useOrderReviews, useCreateReview, useAuthUserId, useBuyerRatingSummary, useOrderOfferId } from "@/lib/hasat/queries";
+import {
+  useFarmerOffers,
+  useUpdateOfferStatus,
+  useFarmerOrders,
+  useCounterOffer,
+  useConfirmTransferReceived,
+  useMarkShipped,
+  useCancelOrder,
+  useOrderReviews,
+  useCreateReview,
+  useAuthUserId,
+  useBuyerRatingSummary,
+  useOrderOfferId,
+} from "@/lib/hasat/queries";
 import { OfferBatchBreakdown } from "@/components/hasat/OfferBatchBreakdown";
 import { WaitingBanner } from "@/components/hasat/WaitingBanner";
 import { LoadingDots } from "@/components/hasat/LoadingDots";
 import { formatTRY, formatCrop, formatQuantity } from "@/lib/hasat/format";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
@@ -25,8 +44,13 @@ export const Route = createFileRoute("/farmer/orders/")({
   component: Orders,
 });
 
-const BUYER_TYPE_LABEL: Record<BuyerType, string> = { restoran: "Restoran", otel: "Otel", market: "Market", ihracatci: "İhracatçı", bireysel: "Bireysel" };
-const BUYER_TYPE_EMOJI: Record<BuyerType, string> = { restoran: "🍽️", otel: "🏨", market: "🛒", ihracatci: "✈️", bireysel: "👤" };
+const BUYER_TYPE_LABEL: Record<BuyerType, string> = {
+  restoran: "Restoran",
+  otel: "Otel",
+  market: "Market",
+  ihracatci: "İhracatçı",
+  bireysel: "Bireysel",
+};
 
 function timeAgo(iso: string) {
   const diff = Date.now() - new Date(iso).getTime();
@@ -42,7 +66,12 @@ function Orders() {
   const { data: orders = [], isLoading: rLoading } = useFarmerOrders();
 
   // Gelen = pending or counter (negotiation) + accepted/pending_payment (waiting for buyer)
-  const incoming = offers.filter((o) => o.status === "pending" || o.status === "counter" || (o.status === "accepted" && o.paymentStatus !== "paid"));
+  const incoming = offers.filter(
+    (o) =>
+      o.status === "pending" ||
+      o.status === "counter" ||
+      (o.status === "accepted" && o.paymentStatus !== "paid"),
+  );
   // Aktif: order rows that aren't yet delivered
   const activeOrders = orders.filter((o) => o.status !== "delivered");
   const completedOrders = orders.filter((o) => o.status === "delivered");
@@ -60,20 +89,36 @@ function Orders() {
           </TabsList>
 
           <TabsContent value="incoming" className="mt-4 space-y-3">
-            {oLoading ? <LoadingDots /> : incoming.length === 0 ? <Empty msg="Bekleyen teklif yok." /> : incoming.map((o) => (
-              <OfferCard key={o.id} offer={o} />
-            ))}
+            {oLoading ? (
+              <LoadingDots />
+            ) : incoming.length === 0 ? (
+              <Empty msg="Bekleyen teklif yok." />
+            ) : (
+              incoming.map((o) => <OfferCard key={o.id} offer={o} />)
+            )}
           </TabsContent>
           <TabsContent value="active" className="mt-4 space-y-3">
-            {rLoading ? <LoadingDots /> : activeOrders.length === 0 ? <Empty msg="Aktif sipariş yok." /> : activeOrders.map((o) => <OrderCard key={o.id} order={o} />)}
+            {rLoading ? (
+              <LoadingDots />
+            ) : activeOrders.length === 0 ? (
+              <Empty msg="Aktif sipariş yok." />
+            ) : (
+              activeOrders.map((o) => <OrderCard key={o.id} order={o} />)
+            )}
           </TabsContent>
           <TabsContent value="done" className="mt-4 space-y-3">
-            {(oLoading || rLoading) ? <LoadingDots /> : (completedOffers.length === 0 && completedOrders.length === 0) ? (
+            {oLoading || rLoading ? (
+              <LoadingDots />
+            ) : completedOffers.length === 0 && completedOrders.length === 0 ? (
               <Empty msg="Tamamlanmış sipariş yok." />
             ) : (
               <>
-                {completedOrders.map((o) => <OrderCard key={o.id} order={o} muted />)}
-                {completedOffers.map((o) => <OfferCard key={o.id} offer={o} />)}
+                {completedOrders.map((o) => (
+                  <OrderCard key={o.id} order={o} muted />
+                ))}
+                {completedOffers.map((o) => (
+                  <OfferCard key={o.id} offer={o} />
+                ))}
               </>
             )}
           </TabsContent>
@@ -91,7 +136,7 @@ function OfferCard({ offer }: { offer: Offer }) {
   const updateStatus = useUpdateOfferStatus();
   const counterMut = useCounterOffer();
   const confirmTransfer = useConfirmTransferReceived();
-  
+
   const [acceptOpen, setAcceptOpen] = useState(false);
   const [rejectOpen, setRejectOpen] = useState(false);
   const [counterOpen, setCounterOpen] = useState(false);
@@ -101,7 +146,8 @@ function OfferCard({ offer }: { offer: Offer }) {
   const s = statusStyle(visual);
   const myTurn = canAccept(offer, "farmer");
   const isPendingPayment = offer.status === "accepted" && offer.paymentStatus !== "paid";
-  const isTransferPending = offer.status === "accepted" && offer.paymentStatus === "pending_transfer";
+  const isTransferPending =
+    offer.status === "accepted" && offer.paymentStatus === "pending_transfer";
   const isTerminal = offer.status === "rejected" || offer.status === "completed";
 
   const onAccept = async () => {
@@ -109,20 +155,26 @@ function OfferCard({ offer }: { offer: Offer }) {
       await updateStatus.mutateAsync({ id: offer.id, status: "accepted" });
       toast.success("Teklif kabul edildi. Alıcı ödeme bekleniyor.");
       setAcceptOpen(false);
-    } catch (e: any) { toast.error(e.message ?? "İşlem başarısız"); }
+    } catch (e: any) {
+      toast.error(e.message ?? "İşlem başarısız");
+    }
   };
   const onReject = async (reason?: string) => {
     try {
       await updateStatus.mutateAsync({ id: offer.id, status: "rejected", reason });
       toast("Teklif reddedildi");
       setRejectOpen(false);
-    } catch (e: any) { toast.error(e.message ?? "İşlem başarısız"); }
+    } catch (e: any) {
+      toast.error(e.message ?? "İşlem başarısız");
+    }
   };
   const onConfirmTransfer = async () => {
     try {
       await confirmTransfer.mutateAsync(offer.id);
       toast.success("Ödeme onaylandı. Sipariş aktif.");
-    } catch (e: any) { toast.error(e.message ?? "İşlem başarısız"); }
+    } catch (e: any) {
+      toast.error(e.message ?? "İşlem başarısız");
+    }
   };
 
   return (
@@ -132,19 +184,28 @@ function OfferCard({ offer }: { offer: Offer }) {
           <div className="flex flex-wrap items-center gap-2">
             <span className="font-medium truncate">{offer.buyerName}</span>
             <span className="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-hmuted">
-              {BUYER_TYPE_EMOJI[offer.buyerType]} {BUYER_TYPE_LABEL[offer.buyerType]}
+              {BUYER_TYPE_LABEL[offer.buyerType]}
             </span>
             <BuyerRatingBadge buyerId={offer.buyerId} />
             {offer.subscriptionId && <SubscriptionOrderBadge />}
           </div>
-          <div className="mt-1 text-sm text-hmuted">{formatCrop(offer.crop)} · {formatQuantity(offer.quantity, offer.unit)} {offer.unit}</div>
+          <div className="mt-1 text-sm text-hmuted">
+            {formatCrop(offer.crop)} · {formatQuantity(offer.quantity, offer.unit)} {offer.unit}
+          </div>
           <div className="mt-1.5 flex items-baseline gap-2 flex-wrap">
-            <span className="font-mono text-lg font-semibold">{formatTRY(total)}</span>
-            <span className="text-xs text-hmuted">({formatTRY(offer.pricePerUnit)}/{offer.unit})</span>
+            <span className="text-lg font-semibold tabular-nums">{formatTRY(total)}</span>
+            <span className="text-xs text-hmuted">
+              ({formatTRY(offer.pricePerUnit)}/{offer.unit})
+            </span>
           </div>
         </div>
         <div className="flex flex-col items-end gap-1.5 shrink-0">
-          <span className="rounded-full px-2.5 py-0.5 text-[11px] font-medium" style={{ background: s.bg, color: s.fg }}>{visual.label}</span>
+          <span
+            className="rounded-full px-2.5 py-0.5 text-[11px] font-medium"
+            style={{ background: s.bg, color: s.fg }}
+          >
+            {visual.label}
+          </span>
           <span className="text-[10px] text-hmuted">{timeAgo(offer.createdAt)}</span>
         </div>
       </div>
@@ -154,7 +215,11 @@ function OfferCard({ offer }: { offer: Offer }) {
           offerId={offer.id}
           viewer="farmer"
           unit={offer.unit}
-          initial={{ price: offer.original?.pricePerUnit ?? offer.pricePerUnit, quantity: offer.original?.quantity ?? offer.quantity, createdAt: offer.createdAt }}
+          initial={{
+            price: offer.original?.pricePerUnit ?? offer.pricePerUnit,
+            quantity: offer.original?.quantity ?? offer.quantity,
+            createdAt: offer.createdAt,
+          }}
         />
       </div>
 
@@ -163,18 +228,27 @@ function OfferCard({ offer }: { offer: Offer }) {
       </div>
 
       {isTransferPending ? (
-        <div className="mt-3 rounded-lg p-3"
-          style={{ background: "color-mix(in oklab, var(--gold) 15%, transparent)", border: "1px solid color-mix(in oklab, var(--gold) 40%, transparent)" }}>
-          <div className="text-sm font-medium" style={{ color: "var(--gold)" }}>💰 Alıcı havaleyi tamamladığını bildirdi</div>
+        <div
+          className="mt-3 rounded-lg p-3"
+          style={{
+            background: "color-mix(in oklab, var(--gold) 15%, transparent)",
+            border: "1px solid color-mix(in oklab, var(--gold) 40%, transparent)",
+          }}
+        >
+          <div className="text-sm font-medium" style={{ color: "var(--gold)" }}>
+            Alıcı havaleyi tamamladığını bildirdi
+          </div>
           <div className="mt-1 text-xs text-hmuted">
-            Hesabınıza <b className="font-mono">{formatTRY(total)}</b> ulaştığında onaylayın. Onaydan sonra sipariş aktif olur.
+            Hesabınıza <b className="tabular-nums">{formatTRY(total)}</b> ulaştığında onaylayın.
+            Onaydan sonra sipariş aktif olur.
           </div>
           <button
             onClick={onConfirmTransfer}
             disabled={confirmTransfer.isPending}
             className="mt-2.5 w-full rounded-lg py-2.5 text-sm font-medium text-white disabled:opacity-50"
-            style={{ background: "var(--sage)" }}>
-            {confirmTransfer.isPending ? "Onaylanıyor…" : "✅ Ödemeyi Onayladım"}
+            style={{ background: "var(--sage)" }}
+          >
+            {confirmTransfer.isPending ? "Onaylanıyor…" : "Ödemeyi Onayladım"}
           </button>
         </div>
       ) : isPendingPayment ? (
@@ -183,14 +257,24 @@ function OfferCard({ offer }: { offer: Offer }) {
         </div>
       ) : isTerminal ? null : myTurn ? (
         <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-3">
-          <button onClick={() => setAcceptOpen(true)} className="rounded-lg py-2.5 text-sm font-medium text-white" style={{ background: "var(--sage)" }}>
-            ✅ Kabul Et
+          <button
+            onClick={() => setAcceptOpen(true)}
+            className="rounded-xl py-2.5 text-sm font-medium text-white"
+            style={{ background: "var(--sage)" }}
+          >
+            Kabul Et
           </button>
-          <button onClick={() => setCounterOpen(true)} className="rounded-lg border border-saffron py-2.5 text-sm font-medium text-saffron hover:bg-saffron/5">
-            💬 Karşı Teklif
+          <button
+            onClick={() => setCounterOpen(true)}
+            className="rounded-xl border border-primary py-2.5 text-sm font-medium text-primary hover:bg-primary/5"
+          >
+            Karşı Teklif
           </button>
-          <button onClick={() => setRejectOpen(true)} className="rounded-lg border border-hred/40 py-2.5 text-sm font-medium text-hred hover:bg-hred/5">
-            ❌ Reddet
+          <button
+            onClick={() => setRejectOpen(true)}
+            className="rounded-xl border border-hred/40 py-2.5 text-sm font-medium text-hred hover:bg-hred/5"
+          >
+            Reddet
           </button>
         </div>
       ) : (
@@ -200,14 +284,25 @@ function OfferCard({ offer }: { offer: Offer }) {
       {/* Accept modal */}
       <Dialog open={acceptOpen} onOpenChange={setAcceptOpen}>
         <DialogContent>
-          <DialogHeader><DialogTitle>Teklifi Kabul Et</DialogTitle></DialogHeader>
+          <DialogHeader>
+            <DialogTitle>Teklifi Kabul Et</DialogTitle>
+          </DialogHeader>
           <p className="text-sm text-hmuted">
-            <b>{offer.buyerName}</b> teklifini kabul ediyorsunuz: {formatQuantity(offer.quantity, offer.unit)} {offer.unit} {formatCrop(offer.crop)} @ {formatTRY(offer.pricePerUnit)}/{offer.unit}.
-            <br />Toplam: <b className="font-mono">{formatTRY(total)}</b>. Onaylar mısınız?
+            <b>{offer.buyerName}</b> teklifini kabul ediyorsunuz:{" "}
+            {formatQuantity(offer.quantity, offer.unit)} {offer.unit} {formatCrop(offer.crop)} @{" "}
+            {formatTRY(offer.pricePerUnit)}/{offer.unit}.
+            <br />
+            Toplam: <b className="tabular-nums">{formatTRY(total)}</b>. Onaylar mısınız?
           </p>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setAcceptOpen(false)}>Vazgeç</Button>
-            <Button onClick={onAccept} disabled={updateStatus.isPending} style={{ background: "var(--sage)", color: "var(--hwhite)" }}>
+            <Button variant="outline" onClick={() => setAcceptOpen(false)}>
+              Vazgeç
+            </Button>
+            <Button
+              onClick={onAccept}
+              disabled={updateStatus.isPending}
+              style={{ background: "var(--sage)", color: "var(--hwhite)" }}
+            >
               {updateStatus.isPending ? "..." : "Onayla"}
             </Button>
           </DialogFooter>
@@ -215,7 +310,12 @@ function OfferCard({ offer }: { offer: Offer }) {
       </Dialog>
 
       {/* Reject modal */}
-      <RejectModal open={rejectOpen} onOpenChange={setRejectOpen} onConfirm={onReject} pending={updateStatus.isPending} />
+      <RejectModal
+        open={rejectOpen}
+        onOpenChange={setRejectOpen}
+        onConfirm={onReject}
+        pending={updateStatus.isPending}
+      />
 
       {/* Counter modal */}
       <CounterModal
@@ -229,28 +329,59 @@ function OfferCard({ offer }: { offer: Offer }) {
               id: offer.id,
               patch,
               by: "farmer",
-              original: { quantity: offer.quantity, pricePerUnit: offer.pricePerUnit, delivery: offer.delivery, deliveryDate: offer.deliveryDate, note: offer.note },
+              original: {
+                quantity: offer.quantity,
+                pricePerUnit: offer.pricePerUnit,
+                delivery: offer.delivery,
+                deliveryDate: offer.deliveryDate,
+                note: offer.note,
+              },
             });
             toast.success("Karşı teklif gönderildi");
             setCounterOpen(false);
-          } catch (e: any) { toast.error(e.message ?? "Gönderilemedi"); }
+          } catch (e: any) {
+            toast.error(e.message ?? "Gönderilemedi");
+          }
         }}
       />
     </div>
   );
 }
 
-function RejectModal({ open, onOpenChange, onConfirm, pending }: { open: boolean; onOpenChange: (b: boolean) => void; onConfirm: (reason?: string) => void; pending: boolean }) {
+function RejectModal({
+  open,
+  onOpenChange,
+  onConfirm,
+  pending,
+}: {
+  open: boolean;
+  onOpenChange: (b: boolean) => void;
+  onConfirm: (reason?: string) => void;
+  pending: boolean;
+}) {
   const [reason, setReason] = useState("");
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
-        <DialogHeader><DialogTitle>Teklifi Reddet</DialogTitle></DialogHeader>
+        <DialogHeader>
+          <DialogTitle>Teklifi Reddet</DialogTitle>
+        </DialogHeader>
         <p className="text-sm text-hmuted">Bu teklifi reddetmek istiyor musunuz?</p>
-        <Textarea value={reason} onChange={(e) => setReason(e.target.value)} placeholder="Reddedilme nedeni (opsiyonel)" rows={3} />
+        <Textarea
+          value={reason}
+          onChange={(e) => setReason(e.target.value)}
+          placeholder="Reddedilme nedeni (opsiyonel)"
+          rows={3}
+        />
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>Vazgeç</Button>
-          <Button onClick={() => onConfirm(reason || undefined)} disabled={pending} variant="destructive">
+          <Button variant="outline" onClick={() => onOpenChange(false)}>
+            Vazgeç
+          </Button>
+          <Button
+            onClick={() => onConfirm(reason || undefined)}
+            disabled={pending}
+            variant="destructive"
+          >
             {pending ? "..." : "Reddet"}
           </Button>
         </DialogFooter>
@@ -259,8 +390,17 @@ function RejectModal({ open, onOpenChange, onConfirm, pending }: { open: boolean
   );
 }
 
-function CounterModal({ open, onOpenChange, offer, onSubmit, pending }: {
-  open: boolean; onOpenChange: (b: boolean) => void; offer: Offer; pending: boolean;
+function CounterModal({
+  open,
+  onOpenChange,
+  offer,
+  onSubmit,
+  pending,
+}: {
+  open: boolean;
+  onOpenChange: (b: boolean) => void;
+  offer: Offer;
+  pending: boolean;
   onSubmit: (patch: { quantity: number; pricePerUnit: number; note?: string }) => void;
 }) {
   const [qty, setQty] = useState(offer.quantity);
@@ -269,19 +409,36 @@ function CounterModal({ open, onOpenChange, offer, onSubmit, pending }: {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
-        <DialogHeader><DialogTitle>Karşı Teklif</DialogTitle></DialogHeader>
+        <DialogHeader>
+          <DialogTitle>Karşı Teklif</DialogTitle>
+        </DialogHeader>
         <div className="space-y-3">
           <div>
             <label className="text-xs text-hmuted">Miktar ({offer.unit})</label>
-            <Input type="number" value={qty} onChange={(e) => setQty(Number(e.target.value) || 0)} className="font-mono" />
+            <Input
+              type="number"
+              value={qty}
+              onChange={(e) => setQty(Number(e.target.value) || 0)}
+              className="font-mono"
+            />
           </div>
           <div>
             <label className="text-xs text-hmuted">Birim fiyat (₺/{offer.unit})</label>
-            <Input type="number" value={price} onChange={(e) => setPrice(Number(e.target.value) || 0)} className="font-mono" />
+            <Input
+              type="number"
+              value={price}
+              onChange={(e) => setPrice(Number(e.target.value) || 0)}
+              className="font-mono"
+            />
           </div>
           <div>
             <label className="text-xs text-hmuted">Not (opsiyonel)</label>
-            <Textarea value={note} onChange={(e) => setNote(e.target.value)} rows={3} placeholder="Alıcıya iletmek istediğiniz not..." />
+            <Textarea
+              value={note}
+              onChange={(e) => setNote(e.target.value)}
+              rows={3}
+              placeholder="Alıcıya iletmek istediğiniz not..."
+            />
           </div>
           <div className="rounded-lg bg-saffron/10 border border-saffron/30 p-3">
             <div className="text-xs text-hmuted">Yeni toplam</div>
@@ -289,9 +446,16 @@ function CounterModal({ open, onOpenChange, offer, onSubmit, pending }: {
           </div>
         </div>
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>Vazgeç</Button>
-          <Button onClick={() => onSubmit({ quantity: qty, pricePerUnit: price, note: note || undefined })} disabled={pending}
-            style={{ background: "var(--saffron)", color: "var(--hwhite)" }}>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>
+            Vazgeç
+          </Button>
+          <Button
+            onClick={() =>
+              onSubmit({ quantity: qty, pricePerUnit: price, note: note || undefined })
+            }
+            disabled={pending}
+            style={{ background: "var(--saffron)", color: "var(--hwhite)" }}
+          >
             {pending ? "Gönderiliyor…" : "Gönder"}
           </Button>
         </DialogFooter>
@@ -301,15 +465,25 @@ function CounterModal({ open, onOpenChange, offer, onSubmit, pending }: {
 }
 
 function OrderCard({ order, muted }: { order: Order; muted?: boolean }) {
-  const STATUS_TR: Record<string, string> = { preparing: "Hazırlanıyor", shipped: "Kargoda", delivered: "Teslim Edildi", disputed: "İhtilaflı", cancelled: "İptal Edildi" };
+  const STATUS_TR: Record<string, string> = {
+    preparing: "Hazırlanıyor",
+    shipped: "Kargoda",
+    delivered: "Teslim Edildi",
+    disputed: "İhtilaflı",
+    cancelled: "İptal Edildi",
+  };
   const userId = useAuthUserId();
-  const wa = whatsappUrl(order.producerPhone, `Merhaba, ${order.code} numaralı sipariş hakkında yazıyorum.`);
+  const wa = whatsappUrl(
+    order.producerPhone,
+    `Merhaba, ${order.code} numaralı sipariş hakkında yazıyorum.`,
+  );
   const shipMut = useMarkShipped();
   const cancelMut = useCancelOrder();
   const createReview = useCreateReview();
   const { data: reviews = [] } = useOrderReviews(order.id);
   const myReview = reviews.find((r) => r.reviewerId === userId && r.reviewerRole === "farmer");
-  const canReview = (order.status === "delivered" || order.status === "completed") && !!order.buyerId;
+  const canReview =
+    (order.status === "delivered" || order.status === "completed") && !!order.buyerId;
   const [shipOpen, setShipOpen] = useState(false);
   const [cancelOpen, setCancelOpen] = useState(false);
   const [reviewOpen, setReviewOpen] = useState(false);
@@ -319,17 +493,25 @@ function OrderCard({ order, muted }: { order: Order; muted?: boolean }) {
 
   const onShip = async () => {
     try {
-      await shipMut.mutateAsync({ orderId: order.id, trackingNumber: tracking.trim(), carrier: carrier.trim() });
+      await shipMut.mutateAsync({
+        orderId: order.id,
+        trackingNumber: tracking.trim(),
+        carrier: carrier.trim(),
+      });
       toast.success("Sipariş kargoya verildi olarak işaretlendi.");
       setShipOpen(false);
-    } catch (e: any) { toast.error(e.message ?? "İşlem başarısız"); }
+    } catch (e: any) {
+      toast.error(e.message ?? "İşlem başarısız");
+    }
   };
   const onCancel = async () => {
     try {
       await cancelMut.mutateAsync({ orderId: order.id, reason: cancelReason || undefined });
       toast("Sipariş iptal edildi");
       setCancelOpen(false);
-    } catch (e: any) { toast.error(e.message ?? "İşlem başarısız"); }
+    } catch (e: any) {
+      toast.error(e.message ?? "İşlem başarısız");
+    }
   };
 
   return (
@@ -342,11 +524,15 @@ function OrderCard({ order, muted }: { order: Order; muted?: boolean }) {
             <BuyerRatingBadge buyerId={order.buyerId} />
             {order.subscriptionId && <SubscriptionOrderBadge />}
           </div>
-          <div className="text-xs text-hmuted">{formatCrop(order.crop)} · {formatQuantity(order.quantity, order.unit)} {order.unit} · {order.delivery}</div>
+          <div className="text-xs text-hmuted">
+            {formatCrop(order.crop)} · {formatQuantity(order.quantity, order.unit)} {order.unit} ·{" "}
+            {order.delivery}
+          </div>
           <div className="mt-1.5 font-mono text-lg font-semibold">{formatTRY(order.total)}</div>
           {order.status === "shipped" && order.trackingNumber && (
             <div className="mt-1 text-xs text-hmuted">
-              📦 {order.carrier ?? "Kargo"} · <span className="font-mono">{order.trackingNumber}</span>
+              📦 {order.carrier ?? "Kargo"} ·{" "}
+              <span className="font-mono">{order.trackingNumber}</span>
             </div>
           )}
           {order.status === "cancelled" && order.cancelReason && (
@@ -354,7 +540,13 @@ function OrderCard({ order, muted }: { order: Order; muted?: boolean }) {
           )}
         </div>
         <div className="flex flex-col items-end gap-1.5 shrink-0">
-          <span className="rounded-full px-2.5 py-0.5 text-[11px] font-medium" style={{ background: "color-mix(in oklab, var(--sage) 22%, transparent)", color: "var(--sage)" }}>
+          <span
+            className="rounded-full px-2.5 py-0.5 text-[11px] font-medium"
+            style={{
+              background: "color-mix(in oklab, var(--sage) 22%, transparent)",
+              color: "var(--sage)",
+            }}
+          >
             ✅ Ödeme Alındı
           </span>
           <span className="text-[10px] text-hmuted">{STATUS_TR[order.status] ?? order.status}</span>
@@ -363,25 +555,32 @@ function OrderCard({ order, muted }: { order: Order; muted?: boolean }) {
 
       <OrderBatchBreakdown orderId={order.id} />
 
-
       {order.status === "preparing" && (
         <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-2">
-          <button onClick={() => setShipOpen(true)}
+          <button
+            onClick={() => setShipOpen(true)}
             className="rounded-lg min-h-[48px] px-4 py-2.5 text-sm font-medium text-white"
-            style={{ background: "var(--saffron)" }}>
+            style={{ background: "var(--saffron)" }}
+          >
             📦 Kargoya Ver
           </button>
-          <button onClick={() => setCancelOpen(true)}
-            className="rounded-lg min-h-[48px] px-4 py-2.5 text-sm font-medium border border-hred/40 text-hred hover:bg-hred/5">
+          <button
+            onClick={() => setCancelOpen(true)}
+            className="rounded-lg min-h-[48px] px-4 py-2.5 text-sm font-medium border border-hred/40 text-hred hover:bg-hred/5"
+          >
             İptal Et
           </button>
         </div>
       )}
 
       {wa && (
-        <a href={wa} target="_blank" rel="noopener noreferrer"
+        <a
+          href={wa}
+          target="_blank"
+          rel="noopener noreferrer"
           className="mt-3 inline-flex items-center justify-center gap-1.5 rounded-lg min-h-[48px] px-4 py-2 text-xs font-medium text-white w-full sm:w-auto"
-          style={{ background: "#25D366" }}>
+          style={{ background: "#25D366" }}
+        >
           <MessageCircle className="h-3.5 w-3.5" /> Alıcıya WhatsApp'tan yaz
         </a>
       )}
@@ -397,7 +596,10 @@ function OrderCard({ order, muted }: { order: Order; muted?: boolean }) {
             <button
               onClick={() => setReviewOpen(true)}
               className="inline-flex items-center gap-1.5 rounded-lg min-h-[40px] px-3 py-2 text-xs font-medium"
-              style={{ background: "color-mix(in oklab, var(--gold) 15%, transparent)", color: "var(--dark)" }}
+              style={{
+                background: "color-mix(in oklab, var(--gold) 15%, transparent)",
+                color: "var(--dark)",
+              }}
             >
               <Star className="h-3.5 w-3.5" style={{ color: "var(--gold)" }} /> Alıcıyı Değerlendir
             </button>
@@ -405,24 +607,38 @@ function OrderCard({ order, muted }: { order: Order; muted?: boolean }) {
         </div>
       )}
 
-
       <Dialog open={shipOpen} onOpenChange={setShipOpen}>
         <DialogContent>
-          <DialogHeader><DialogTitle>Kargoya Ver</DialogTitle></DialogHeader>
+          <DialogHeader>
+            <DialogTitle>Kargoya Ver</DialogTitle>
+          </DialogHeader>
           <div className="space-y-3">
             <div>
               <label className="text-xs text-hmuted">Kargo firması</label>
-              <Input value={carrier} onChange={(e) => setCarrier(e.target.value)} placeholder="Yurtiçi Kargo, Aras, MNG..." />
+              <Input
+                value={carrier}
+                onChange={(e) => setCarrier(e.target.value)}
+                placeholder="Yurtiçi Kargo, Aras, MNG..."
+              />
             </div>
             <div>
               <label className="text-xs text-hmuted">Takip numarası</label>
-              <Input value={tracking} onChange={(e) => setTracking(e.target.value)} className="font-mono" />
+              <Input
+                value={tracking}
+                onChange={(e) => setTracking(e.target.value)}
+                className="font-mono"
+              />
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setShipOpen(false)}>Vazgeç</Button>
-            <Button onClick={onShip} disabled={shipMut.isPending || !tracking.trim() || !carrier.trim()}
-              style={{ background: "var(--saffron)", color: "var(--hwhite)" }}>
+            <Button variant="outline" onClick={() => setShipOpen(false)}>
+              Vazgeç
+            </Button>
+            <Button
+              onClick={onShip}
+              disabled={shipMut.isPending || !tracking.trim() || !carrier.trim()}
+              style={{ background: "var(--saffron)", color: "var(--hwhite)" }}
+            >
               {shipMut.isPending ? "..." : "Onayla"}
             </Button>
           </DialogFooter>
@@ -431,11 +647,22 @@ function OrderCard({ order, muted }: { order: Order; muted?: boolean }) {
 
       <Dialog open={cancelOpen} onOpenChange={setCancelOpen}>
         <DialogContent>
-          <DialogHeader><DialogTitle>Siparişi İptal Et</DialogTitle></DialogHeader>
-          <p className="text-sm text-hmuted">Bu siparişi iptal etmek istediğinize emin misiniz? Bu işlem geri alınamaz.</p>
-          <Textarea value={cancelReason} onChange={(e) => setCancelReason(e.target.value)} rows={3} placeholder="İptal nedeni (opsiyonel)" />
+          <DialogHeader>
+            <DialogTitle>Siparişi İptal Et</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-hmuted">
+            Bu siparişi iptal etmek istediğinize emin misiniz? Bu işlem geri alınamaz.
+          </p>
+          <Textarea
+            value={cancelReason}
+            onChange={(e) => setCancelReason(e.target.value)}
+            rows={3}
+            placeholder="İptal nedeni (opsiyonel)"
+          />
           <DialogFooter>
-            <Button variant="outline" onClick={() => setCancelOpen(false)}>Vazgeç</Button>
+            <Button variant="outline" onClick={() => setCancelOpen(false)}>
+              Vazgeç
+            </Button>
             <Button onClick={onCancel} disabled={cancelMut.isPending} variant="destructive">
               {cancelMut.isPending ? "..." : "İptal Et"}
             </Button>
@@ -461,7 +688,9 @@ function OrderCard({ order, muted }: { order: Order; muted?: boolean }) {
             });
             toast.success("Değerlendirmeniz kaydedildi.");
             setReviewOpen(false);
-          } catch (e: any) { toast.error(e.message ?? "Gönderilemedi"); }
+          } catch (e: any) {
+            toast.error(e.message ?? "Gönderilemedi");
+          }
         }}
       />
     </div>
@@ -471,7 +700,11 @@ function OrderCard({ order, muted }: { order: Order; muted?: boolean }) {
 function BuyerRatingBadge({ buyerId }: { buyerId?: string }) {
   const { data } = useBuyerRatingSummary(buyerId);
   if (!buyerId || !data || !data.reviewCount || data.avgRating == null) return null;
-  return <span className="text-[11px] text-hmuted">⭐ {data.avgRating.toFixed(1)} ({data.reviewCount})</span>;
+  return (
+    <span className="text-[11px] text-hmuted">
+      ⭐ {data.avgRating.toFixed(1)} ({data.reviewCount})
+    </span>
+  );
 }
 
 function OrderBatchBreakdown({ orderId }: { orderId: string }) {
@@ -484,12 +717,14 @@ function OrderBatchBreakdown({ orderId }: { orderId: string }) {
   );
 }
 
-
 function SubscriptionOrderBadge() {
   return (
     <span
       className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium"
-      style={{ background: "color-mix(in oklab, var(--gold) 20%, transparent)", color: "var(--gold)" }}
+      style={{
+        background: "color-mix(in oklab, var(--gold) 20%, transparent)",
+        color: "var(--gold)",
+      }}
       title="Bu sipariş bir Sürekli Tedarik aboneliğinden geldi"
     >
       🔁 Abonelik Siparişi

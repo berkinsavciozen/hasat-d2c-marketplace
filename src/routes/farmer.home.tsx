@@ -1,11 +1,25 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { useHasat } from "@/lib/hasat/store";
-import { useFarmerListings, useEntries, useFarmerOffers, useFarmerOrders, useParcels } from "@/lib/hasat/queries";
+import {
+  useFarmerListings,
+  useEntries,
+  useFarmerOffers,
+  useFarmerOrders,
+  useParcels,
+} from "@/lib/hasat/queries";
 import { AIBox } from "@/components/hasat/AIBox";
 import { FarmerHeader } from "./farmer";
 import { formatTRY, formatCrop, formatQuantity } from "@/lib/hasat/format";
-import { BookOpen, LineChart, Store, Users2, MessageCircle, Inbox, PackageCheck } from "lucide-react";
+import {
+  BookOpen,
+  LineChart,
+  Store,
+  Users2,
+  MessageCircle,
+  Inbox,
+  PackageCheck,
+} from "lucide-react";
 import { MarketDeviationAlert } from "@/components/hasat/MarketDeviationAlert";
 import { HASAT_WHATSAPP_NUMBER } from "@/lib/hasat/constants";
 import { OnboardingTour } from "@/components/hasat/OnboardingTour";
@@ -19,7 +33,7 @@ export const Route = createFileRoute("/farmer/home")({
 function openChat(prefill?: string) {
   if (typeof window === "undefined") return;
   window.dispatchEvent(
-    new CustomEvent("hasat:ai-chat:open", { detail: prefill ? { prefill } : {} })
+    new CustomEvent("hasat:ai-chat:open", { detail: prefill ? { prefill } : {} }),
   );
 }
 
@@ -34,7 +48,7 @@ function ChatInputBar() {
         className="flex min-h-[48px] flex-1 items-center gap-2 px-3 text-left text-sm text-hmuted"
         aria-label="Hasat AI'ye mesaj yaz"
       >
-        <MessageCircle className="h-5 w-5 shrink-0" style={{ color: "var(--gold)" }} />
+        <MessageCircle className="h-5 w-5 shrink-0" style={{ color: "var(--primary)" }} />
         <span className="truncate">Hasadını yaz veya WhatsApp'tan gönder…</span>
       </button>
       <a
@@ -107,7 +121,6 @@ function Home() {
 
   const isEmpty = entries.length === 0 && listings.length === 0;
 
-
   const quickActions = [
     {
       icon: BookOpen,
@@ -119,14 +132,11 @@ function Home() {
     { icon: Users2, label: "Alıcı Bul", to: "/farmer/community" as const },
   ];
 
-
   return (
     <>
       <FarmerHeader title={`Merhaba, ${user?.name?.split(" ")[0] ?? "Çiftçi"} 👋`} />
 
       <div className="p-4 md:p-8 space-y-4">
-        <ChatInputBar />
-
         {showPending && (
           <div
             className="rounded-2xl border bg-card overflow-hidden"
@@ -141,7 +151,10 @@ function Home() {
                   <Inbox className="h-5 w-5 shrink-0" style={{ color: "var(--saffron)" }} />
                   <div className="min-w-0 flex-1">
                     <div className="text-xs text-hmuted">Yanıt bekleyen teklif</div>
-                    <div className="font-mono text-lg" style={{ color: "var(--saffron)" }}>
+                    <div
+                      className="text-lg font-semibold tabular-nums"
+                      style={{ color: "var(--saffron)" }}
+                    >
                       {pendingOffers}
                     </div>
                   </div>
@@ -156,7 +169,10 @@ function Home() {
                   <PackageCheck className="h-5 w-5 shrink-0" style={{ color: "var(--gold)" }} />
                   <div className="min-w-0 flex-1">
                     <div className="text-xs text-hmuted">Hazırlanan sipariş</div>
-                    <div className="font-mono text-lg" style={{ color: "var(--gold)" }}>
+                    <div
+                      className="text-lg font-semibold tabular-nums"
+                      style={{ color: "var(--saffron)" }}
+                    >
                       {preparingOrders}
                     </div>
                   </div>
@@ -167,10 +183,11 @@ function Home() {
           </div>
         )}
 
+        <ChatInputBar />
+
         <div data-tour="ai-box">
           <AIBox page="dashboard" />
         </div>
-
 
         {/* Quick actions */}
         <div className="-mx-4 px-4 md:mx-0 md:px-0 flex gap-2 overflow-x-auto pb-1">
@@ -179,9 +196,9 @@ function Home() {
               <Link
                 key={a.label}
                 to={a.to}
-                className="flex shrink-0 items-center gap-2 rounded-full bg-card border px-4 py-2 text-sm shadow-sm hover:border-saffron"
+                className="flex min-h-11 shrink-0 items-center gap-2 rounded-xl bg-card border px-4 py-2 text-sm hover:border-primary"
               >
-                <a.icon className="h-4 w-4 text-saffron" />
+                <a.icon className="h-4 w-4 text-primary" />
                 {a.label}
               </Link>
             ) : (
@@ -189,20 +206,20 @@ function Home() {
                 key={a.label}
                 type="button"
                 onClick={a.onClick}
-                className="flex shrink-0 items-center gap-2 rounded-full bg-card border px-4 py-2 text-sm shadow-sm hover:border-saffron"
+                className="flex min-h-11 shrink-0 items-center gap-2 rounded-xl bg-card border px-4 py-2 text-sm hover:border-primary"
               >
-                <a.icon className="h-4 w-4 text-saffron" />
+                <a.icon className="h-4 w-4 text-primary" />
                 {a.label}
               </button>
-            )
+            ),
           )}
         </div>
 
         {isEmpty ? (
           <div className="rounded-2xl border border-dashed p-6">
             <div className="text-center">
-              <div className="text-4xl mb-2">🌾</div>
-              <div className="font-serif text-lg">Hasat'a hoş geldiniz</div>
+              <BookOpen className="mx-auto mb-2 h-9 w-9 text-primary" />
+              <div className="text-lg font-semibold">Hasat'a hoş geldiniz</div>
               <div className="text-sm text-hmuted mt-1">Nasıl başlarım? Üç adım:</div>
             </div>
             <ol className="mt-5 space-y-3">
@@ -231,40 +248,13 @@ function Home() {
           </div>
         ) : (
           <>
-            {/* Revenue card */}
-            <div className="rounded-2xl p-5" style={{ background: "var(--dark)", color: "var(--hwhite)" }}>
-              <div className="flex items-start justify-between">
-                <div>
-                  <div className="text-xs text-hwhite/60 uppercase tracking-wide">Bu Sezon</div>
-                  <div className="mt-1 font-mono text-3xl md:text-4xl" style={{ color: "var(--gold)" }}>
-                    {formatTRY(ytdRevenue)}
-                  </div>
-                  {yoyPct !== null && (
-                    <div
-                      className="mt-1 text-xs"
-                      style={{
-                        color:
-                          yoyPct > 0
-                            ? "var(--sage)"
-                            : yoyPct < 0
-                            ? "var(--hred)"
-                            : "var(--hmuted)",
-                      }}
-                    >
-                      {yoyPct > 0 ? "+" : ""}
-                      {yoyPct.toFixed(1)}% geçen yıla göre
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
-
-
             {/* Active listings */}
             <div className="rounded-2xl bg-card border p-4">
               <div className="flex items-center justify-between">
-                <h2 className="font-serif text-lg">Aktif Ürünler: {listings.length}</h2>
-                <Link to="/farmer/storefront" className="text-sm text-saffron">Vitrin →</Link>
+                <h2 className="text-lg font-semibold">Aktif Ürünler: {listings.length}</h2>
+                <Link to="/farmer/storefront" className="text-sm font-medium text-primary">
+                  Vitrin →
+                </Link>
               </div>
               {listings.length === 0 ? (
                 <div className="mt-3 text-sm text-hmuted">Henüz aktif ürün yok.</div>
@@ -273,13 +263,40 @@ function Home() {
                   {listings.map((l) => (
                     <li key={l.id} className="rounded-lg bg-background/60 px-3 py-2 text-sm">
                       <div className="flex items-center justify-between">
-                        <span>🌾 {formatCrop(l.crop)} · {formatQuantity(l.quantity, l.unit)} {l.unit}</span>
-                        <span className="font-mono">{formatTRY(l.pricePerUnit)}/{l.unit}</span>
+                        <span>
+                          {formatCrop(l.crop)} · {formatQuantity(l.quantity, l.unit)} {l.unit}
+                        </span>
+                        <span className="tabular-nums">
+                          {formatTRY(l.pricePerUnit)}/{l.unit}
+                        </span>
                       </div>
-                      <MarketDeviationAlert crop={l.crop} pricePerUnit={l.pricePerUnit} unit={l.unit} />
+                      <MarketDeviationAlert
+                        crop={l.crop}
+                        pricePerUnit={l.pricePerUnit}
+                        unit={l.unit}
+                      />
                     </li>
                   ))}
                 </ul>
+              )}
+            </div>
+
+            {/* Revenue summary follows the action surfaces. */}
+            <div
+              className="rounded-2xl p-5"
+              style={{ background: "var(--primary)", color: "var(--hwhite)" }}
+            >
+              <div className="text-xs text-hwhite/60 uppercase tracking-wide">Bu Sezon</div>
+              <div className="mt-1 text-3xl font-semibold tabular-nums md:text-4xl">
+                {formatTRY(ytdRevenue)}
+              </div>
+              {yoyPct !== null && (
+                <div
+                  className={`mt-1 text-xs ${yoyPct > 0 ? "text-sage" : yoyPct < 0 ? "text-hred" : "text-hwhite/60"}`}
+                >
+                  {yoyPct > 0 ? "+" : ""}
+                  {yoyPct.toFixed(1)}% geçen yıla göre
+                </div>
               )}
             </div>
           </>
@@ -320,7 +337,7 @@ function StartStep({
       <span
         className="grid h-6 w-6 shrink-0 place-items-center rounded-full text-xs font-bold"
         style={{
-          background: done ? "var(--sage)" : "var(--saffron)",
+          background: done ? "var(--sage)" : "var(--primary)",
           color: "white",
         }}
       >
@@ -330,11 +347,11 @@ function StartStep({
         <div className="text-sm font-medium">{label}</div>
         <div className="text-xs text-hmuted">{desc}</div>
       </div>
-      {!done && (
-        to ? (
+      {!done &&
+        (to ? (
           <Link
             to={to}
-            className="shrink-0 rounded-full border border-saffron px-3 py-1.5 text-xs font-medium text-saffron whitespace-nowrap"
+            className="shrink-0 rounded-xl border border-primary px-3 py-1.5 text-xs font-medium text-primary whitespace-nowrap"
           >
             {cta}
           </Link>
@@ -342,12 +359,11 @@ function StartStep({
           <button
             type="button"
             onClick={onClick}
-            className="shrink-0 rounded-full border border-saffron px-3 py-1.5 text-xs font-medium text-saffron whitespace-nowrap"
+            className="shrink-0 rounded-xl border border-primary px-3 py-1.5 text-xs font-medium text-primary whitespace-nowrap"
           >
             {cta}
           </button>
-        )
-      )}
+        ))}
     </li>
   );
 }

@@ -1,6 +1,6 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
-import { ArrowLeft, Camera, X } from "lucide-react";
+import { ArrowLeft, Camera, X, ClipboardList, Package, Sprout } from "lucide-react";
 import { useParcels, useCreateEntry, useExistingBatches } from "@/lib/hasat/queries";
 import {
   WORK_TYPES,
@@ -61,7 +61,10 @@ function NewEntry() {
   useEffect(() => {
     // Varsayılan: birden fazla batch varsa en son eklenen (dizi sonu) otomatik seçili,
     // tek batch varsa onu seç, hiç yoksa boş kalsın (trigger tek batch'i zaten link'ler).
-    if (batches.length === 0) { setListingId(""); return; }
+    if (batches.length === 0) {
+      setListingId("");
+      return;
+    }
     const preferred = batches[batches.length - 1].id;
     setListingId((prev) => (prev && batches.some((b) => b.id === prev) ? prev : preferred));
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -98,17 +101,25 @@ function NewEntry() {
 
   return (
     <>
-      <div className="px-4 pt-5 pb-4 md:px-8 flex items-center gap-3" style={{ background: "var(--dark)", color: "var(--hwhite)" }}>
-        <button onClick={() => navigate({ to: "/farmer/journal" })} className="grid h-9 w-9 place-items-center rounded-full bg-white/10">
+      <div
+        className="px-4 pt-5 pb-4 md:px-8 flex items-center gap-3"
+        style={{ background: "var(--primary)", color: "var(--hwhite)" }}
+      >
+        <button
+          onClick={() => navigate({ to: "/farmer/journal" })}
+          className="grid h-9 w-9 place-items-center rounded-full bg-white/10"
+        >
           <ArrowLeft className="h-4 w-4" />
         </button>
-        <h1 className="font-serif text-xl">Yeni Kayıt</h1>
+        <h1 className="text-xl font-semibold">Yeni Kayıt</h1>
       </div>
 
       <div className="p-4 md:p-8 space-y-6 max-w-2xl mx-auto pb-24">
         {/* Section 1 — Temel Bilgiler */}
         <section className="space-y-4">
-          <h2 className="font-serif text-sm uppercase tracking-widest text-hmuted">Temel Bilgiler</h2>
+          <h2 className="text-sm font-semibold uppercase tracking-widest text-hmuted">
+            Temel Bilgiler
+          </h2>
 
           <div>
             <label className="text-xs text-hmuted">Parsel</label>
@@ -126,13 +137,17 @@ function NewEntry() {
                         key={p.id}
                         type="button"
                         onClick={() => setParcelId(p.id)}
-                        className={`rounded-2xl border px-4 py-2.5 text-sm whitespace-nowrap transition ${
-                          active ? "bg-saffron text-white border-saffron" : "border-border text-dark"
+                        className={`rounded-xl border px-4 py-2.5 text-sm whitespace-nowrap transition ${
+                          active
+                            ? "bg-primary text-white border-primary"
+                            : "border-border text-dark"
                         }`}
                         style={!active ? { background: "var(--cream)" } : undefined}
                       >
                         <div className="font-medium">{p.name}</div>
-                        <div className={`text-[10px] mt-0.5 ${active ? "text-white/80" : "text-hmuted"}`}>
+                        <div
+                          className={`text-[10px] mt-0.5 ${active ? "text-white/80" : "text-hmuted"}`}
+                        >
                           {p.crops[0] ?? "—"} · {p.area} dön.
                         </div>
                       </button>
@@ -156,11 +171,13 @@ function NewEntry() {
                         type="button"
                         onClick={() => setCrop(c)}
                         className={`rounded-full border px-4 py-2 text-sm whitespace-nowrap transition ${
-                          active ? "bg-saffron text-white border-saffron" : "border-border text-dark"
+                          active
+                            ? "bg-primary text-white border-primary"
+                            : "border-border text-dark"
                         }`}
                         style={!active ? { background: "var(--cream)" } : undefined}
                       >
-                        🌾 {c}
+                        <Sprout className="mr-1 inline h-4 w-4" /> {c}
                       </button>
                     );
                   })}
@@ -183,20 +200,24 @@ function NewEntry() {
                         type="button"
                         onClick={() => setListingId(b.id)}
                         className={`rounded-full border px-4 py-2 text-sm whitespace-nowrap transition ${
-                          active ? "bg-sage text-white border-sage" : "border-border text-dark"
+                          active
+                            ? "bg-primary text-white border-primary"
+                            : "border-border text-dark"
                         }`}
                         style={!active ? { background: "var(--cream)" } : undefined}
                       >
-                        📦 {label} <span className="opacity-70 text-[10px] ml-1">{b.status}</span>
+                        <Package className="mr-1 inline h-4 w-4" /> {label}{" "}
+                        <span className="opacity-70 text-[10px] ml-1">{b.status}</span>
                       </button>
                     );
                   })}
                 </div>
               </div>
-              <div className="mt-1 text-[10px] text-hmuted">Bu kayıt seçili batch'e bağlanacak.</div>
+              <div className="mt-1 text-[10px] text-hmuted">
+                Bu kayıt seçili batch'e bağlanacak.
+              </div>
             </div>
           )}
-
 
           <div>
             <label className="text-xs text-hmuted">Tarih</label>
@@ -204,7 +225,7 @@ function NewEntry() {
               type="date"
               value={date}
               onChange={(e) => setDate(e.target.value)}
-              className="mt-1 w-full rounded-xl border bg-input px-3 py-2.5 outline-none focus:border-saffron"
+              className="mt-1 w-full rounded-xl border bg-input px-3 py-2.5 outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
             />
           </div>
 
@@ -220,11 +241,11 @@ function NewEntry() {
                       type="button"
                       onClick={() => setWork(w.key)}
                       className={`rounded-full border px-4 py-2 text-sm whitespace-nowrap transition ${
-                        active ? "bg-sage text-white border-sage" : "border-border text-dark"
+                        active ? "bg-primary text-white border-primary" : "border-border text-dark"
                       }`}
                       style={!active ? { background: "var(--cream)" } : undefined}
                     >
-                      <span className="mr-1.5">{w.emoji}</span>
+                      <ClipboardList className="mr-1.5 inline h-4 w-4" />
                       {w.label}
                     </button>
                   );
@@ -236,15 +257,20 @@ function NewEntry() {
 
         {/* Section 2 — Mahsul Durumu */}
         <section className="space-y-4">
-          <h2 className="font-serif text-sm uppercase tracking-widest text-hmuted">Mahsul Durumu</h2>
+          <h2 className="text-sm font-semibold uppercase tracking-widest text-hmuted">
+            Mahsul Durumu
+          </h2>
 
-          <div className="rounded-2xl border p-4" style={{ background: "var(--cream)", borderColor: "var(--border)" }}>
+          <div
+            className="rounded-2xl border p-4"
+            style={{ background: "var(--cream)", borderColor: "var(--border)" }}
+          >
             <div className="flex items-center justify-between text-sm">
               <span className="text-hmuted">Mahsul Sağlığı</span>
               <span className="font-medium text-dark">{HEALTH_LABELS[health - 1]}</span>
             </div>
             <div className="mt-3 flex items-center gap-2">
-              <span className="text-xl">🥀</span>
+              <span className="text-xs text-hmuted">Düşük</span>
               <div className="flex-1 grid grid-cols-5 gap-1.5">
                 {[1, 2, 3, 4, 5].map((i) => {
                   const filled = i <= health;
@@ -255,7 +281,9 @@ function NewEntry() {
                       onClick={() => setHealth(i)}
                       className="h-9 rounded-lg transition"
                       style={{
-                        background: filled ? "var(--saffron)" : "color-mix(in oklab, var(--sage) 15%, transparent)",
+                        background: filled
+                          ? "var(--teal)"
+                          : "color-mix(in oklab, var(--teal) 12%, transparent)",
                         border: filled ? "none" : "1px solid var(--border)",
                       }}
                       aria-label={`Sağlık ${i}`}
@@ -263,7 +291,7 @@ function NewEntry() {
                   );
                 })}
               </div>
-              <span className="text-xl">🌸</span>
+              <span className="text-xs text-hmuted">Yüksek</span>
             </div>
           </div>
 
@@ -276,9 +304,12 @@ function NewEntry() {
                 value={qty}
                 onChange={(e) => setQty(e.target.value)}
                 placeholder="0"
-                className="flex-1 rounded-xl border bg-input px-3 py-2.5 outline-none focus:border-saffron font-mono"
+                className="flex-1 rounded-xl border bg-input px-3 py-2.5 outline-none focus:border-primary tabular-nums"
               />
-              <div className="flex rounded-xl border overflow-hidden" style={{ borderColor: "var(--border)" }}>
+              <div
+                className="flex rounded-xl border overflow-hidden"
+                style={{ borderColor: "var(--border)" }}
+              >
                 {(["g", "kg", "adet"] as const).map((u) => {
                   const active = u === unit;
                   return (
@@ -287,7 +318,7 @@ function NewEntry() {
                       type="button"
                       onClick={() => setUnit(u)}
                       className={`px-3 py-2.5 text-sm transition ${
-                        active ? "bg-saffron text-white" : "text-dark"
+                        active ? "bg-primary text-white" : "text-dark"
                       }`}
                       style={!active ? { background: "var(--cream)" } : undefined}
                     >
@@ -302,14 +333,16 @@ function NewEntry() {
 
         {/* Section 3 — Notlar */}
         <section className="space-y-4">
-          <h2 className="font-serif text-sm uppercase tracking-widest text-hmuted">Notlar</h2>
+          <h2 className="text-sm font-semibold uppercase tracking-widest text-hmuted">
+            Notlar <span className="normal-case font-normal">(opsiyonel)</span>
+          </h2>
 
           <textarea
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
             placeholder="Bugün ne gözlemledin?"
             rows={4}
-            className="w-full rounded-2xl border px-4 py-3 outline-none focus:border-saffron resize-none"
+            className="w-full rounded-xl border px-4 py-3 outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 resize-none"
             style={{ background: "var(--cream)", borderColor: "var(--border)" }}
           />
 
@@ -322,10 +355,20 @@ function NewEntry() {
               onChange={(e) => setPhotoFile(e.target.files?.[0] ?? null)}
             />
             {photoFile ? (
-              <div className="flex items-center gap-2 rounded-xl border px-3 py-2.5 text-sm" style={{ background: "var(--cream)", borderColor: "var(--border)" }}>
+              <div
+                className="flex items-center gap-2 rounded-xl border px-3 py-2.5 text-sm"
+                style={{ background: "var(--cream)", borderColor: "var(--border)" }}
+              >
                 <Camera className="h-4 w-4 text-sage" />
                 <span className="flex-1 truncate text-dark">{photoFile.name}</span>
-                <button type="button" onClick={() => { setPhotoFile(null); if (fileRef.current) fileRef.current.value = ""; }} className="text-hmuted hover:text-hred">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setPhotoFile(null);
+                    if (fileRef.current) fileRef.current.value = "";
+                  }}
+                  className="text-hmuted hover:text-hred"
+                >
                   <X className="h-4 w-4" />
                 </button>
               </div>
@@ -333,7 +376,7 @@ function NewEntry() {
               <button
                 type="button"
                 onClick={() => fileRef.current?.click()}
-                className="w-full rounded-xl border border-dashed py-3 text-sm text-hmuted hover:border-saffron flex items-center justify-center gap-2"
+                className="w-full rounded-xl border border-dashed py-3 text-sm text-hmuted hover:border-primary flex items-center justify-center gap-2"
               >
                 <Camera className="h-4 w-4" /> Fotoğraf ekle
               </button>
@@ -344,7 +387,7 @@ function NewEntry() {
         <button
           onClick={save}
           disabled={!parcelId || createEntry.isPending}
-          className="w-full rounded-2xl bg-saffron py-4 text-white font-medium disabled:opacity-40"
+          className="w-full rounded-xl bg-primary py-4 text-white font-medium disabled:opacity-40"
         >
           {createEntry.isPending ? "Kaydediliyor…" : "Kaydet"}
         </button>
