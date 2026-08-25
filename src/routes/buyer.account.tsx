@@ -135,39 +135,6 @@ function Account() {
           {profile?.phone && <div className="mt-1 text-xs text-hmuted">📞 {profile.phone}</div>}
         </div>
 
-        <Link
-          to="/buyer/settings/notifs"
-          className="flex items-center justify-between rounded-2xl border bg-card p-4 min-h-[56px]"
-        >
-          <div className="flex items-center gap-3">
-            <Bell className="h-4 w-4 text-hmuted" />
-            <span className="text-sm font-medium">Bildirim Tercihleri</span>
-          </div>
-          <ChevronRight className="h-4 w-4 text-hmuted" />
-        </Link>
-
-        <Link
-          to="/buyer/requests"
-          className="flex items-center justify-between rounded-xl border bg-muted/30 p-3 min-h-[52px] text-hmuted"
-        >
-          <div className="flex items-center gap-3">
-            <ClipboardList className="h-4 w-4 text-hmuted" />
-            <span className="text-sm font-medium">Taleplerim</span>
-          </div>
-          <ChevronRight className="h-4 w-4 text-hmuted" />
-        </Link>
-
-        <Link
-          to="/buyer/subscriptions"
-          className="flex items-center justify-between rounded-xl border bg-muted/30 p-3 min-h-[52px] text-hmuted"
-        >
-          <div className="flex items-center gap-3">
-            <CalendarClock className="h-4 w-4 text-hmuted" />
-            <span className="text-sm font-medium">Abonelikler</span>
-          </div>
-          <ChevronRight className="h-4 w-4 text-hmuted" />
-        </Link>
-
         <div className="rounded-2xl bg-card border p-5">
           <div className="flex items-center justify-between mb-3">
             <div className="font-serif text-base">Adreslerim</div>
@@ -285,6 +252,73 @@ function Account() {
             </div>
           </div>
         ) : null}
+
+        <section className="space-y-2" aria-labelledby="buyer-tools-heading">
+          <h2
+            id="buyer-tools-heading"
+            className="text-xs font-semibold uppercase tracking-wider text-hmuted"
+          >
+            Diğer alıcı araçları
+          </h2>
+          <div className="grid gap-2 sm:grid-cols-2">
+            <Link
+              to="/buyer/requests"
+              className="flex items-center justify-between rounded-xl border bg-muted/30 p-3 min-h-[52px] text-hmuted"
+            >
+              <div className="flex items-center gap-3">
+                <ClipboardList className="h-4 w-4" />
+                <span className="text-sm font-medium">Taleplerim</span>
+              </div>
+              <ChevronRight className="h-4 w-4" />
+            </Link>
+            <Link
+              to="/buyer/subscriptions"
+              className="flex items-center justify-between rounded-xl border bg-muted/30 p-3 min-h-[52px] text-hmuted"
+            >
+              <div className="flex items-center gap-3">
+                <CalendarClock className="h-4 w-4" />
+                <span className="text-sm font-medium">Abonelikler</span>
+              </div>
+              <ChevronRight className="h-4 w-4" />
+            </Link>
+          </div>
+        </section>
+
+        <section className="space-y-2" aria-labelledby="settings-heading">
+          <h2
+            id="settings-heading"
+            className="text-xs font-semibold uppercase tracking-wider text-hmuted"
+          >
+            Bildirimler ve ayarlar
+          </h2>
+          <Link
+            to="/buyer/settings/notifs"
+            className="flex items-center justify-between rounded-2xl border bg-card p-4 min-h-[56px]"
+          >
+            <div className="flex items-center gap-3">
+              <Bell className="h-4 w-4 text-hmuted" />
+              <span className="text-sm font-medium">Bildirim Tercihleri</span>
+            </div>
+            <ChevronRight className="h-4 w-4 text-hmuted" />
+          </Link>
+        </section>
+
+        <section className="space-y-2" aria-labelledby="legal-heading">
+          <h2
+            id="legal-heading"
+            className="text-xs font-semibold uppercase tracking-wider text-hmuted"
+          >
+            Destek ve yasal
+          </h2>
+          <div className="grid gap-2 sm:grid-cols-2">
+            <Link to="/terms" className="rounded-xl border px-4 py-3 text-sm hover:bg-muted">
+              Kullanım Koşulları
+            </Link>
+            <Link to="/privacy" className="rounded-xl border px-4 py-3 text-sm hover:bg-muted">
+              Gizlilik Politikası
+            </Link>
+          </div>
+        </section>
 
         <button
           onClick={logout}

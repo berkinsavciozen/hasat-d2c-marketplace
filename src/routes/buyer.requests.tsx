@@ -70,16 +70,10 @@ function MyRequests() {
             const end = fmtDate(r.targetDateEnd);
             const dateRange = start && end ? `${start} – ${end}` : (start ?? end ?? null);
             return (
-              <div key={r.id} className="rounded-2xl bg-card border p-4">
-                <div className="flex items-start justify-between gap-3">
-                  <div className="min-w-0">
-                    <div className="font-medium text-base truncate">{r.cropName}</div>
-                    <div className="text-[11px] text-hmuted mt-0.5">{fmtDate(r.createdAt)}</div>
-                  </div>
-                  <LifecycleBadge tone={st.tone}>{st.label}</LifecycleBadge>
-                </div>
+              <article key={r.id} className="rounded-2xl bg-card border p-4">
+                <div className="min-w-0 font-medium text-base break-words">{r.cropName}</div>
 
-                <div className="mt-3 grid grid-cols-2 gap-2 text-xs">
+                <div className="mt-3 grid gap-2 text-xs sm:grid-cols-2">
                   {r.quantity != null && (
                     <div>
                       <div className="text-hmuted">Miktar</div>
@@ -94,6 +88,10 @@ function MyRequests() {
                       <div className="font-medium">{r.region}</div>
                     </div>
                   )}
+                  <div>
+                    <div className="text-hmuted">Oluşturulma</div>
+                    <div className="font-medium tabular-nums">{fmtDate(r.createdAt)}</div>
+                  </div>
                   {dateRange && (
                     <div>
                       <div className="text-hmuted">Hedef tarih</div>
@@ -111,12 +109,16 @@ function MyRequests() {
                   )}
                 </div>
 
+                <div className="mt-3 flex flex-wrap items-center justify-between gap-2 border-t pt-3">
+                  <LifecycleBadge tone={st.tone}>{st.label}</LifecycleBadge>
+                </div>
+
                 {r.note && (
                   <div className="mt-3 rounded-lg bg-muted/50 p-2.5 text-xs text-hmuted">
                     {r.note}
                   </div>
                 )}
-              </div>
+              </article>
             );
           })
         )}
