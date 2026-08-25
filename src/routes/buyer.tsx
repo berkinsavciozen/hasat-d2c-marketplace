@@ -1,6 +1,15 @@
 import { createFileRoute, Link, Outlet, redirect, useRouterState } from "@tanstack/react-router";
 import { useState } from "react";
-import { Search, Package, BarChart3, MessageCircle, User, Repeat, MoreHorizontal, Users } from "lucide-react";
+import {
+  Search,
+  Package,
+  BarChart3,
+  MessageCircle,
+  User,
+  Repeat,
+  MoreHorizontal,
+  Users,
+} from "lucide-react";
 import { useRealtimeSync, useAuthUserId } from "@/lib/hasat/queries";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { BrandLogo } from "@/components/hasat/BrandLogo";
@@ -21,7 +30,6 @@ export const Route = createFileRoute("/buyer")({
   },
   component: BuyerShell,
 });
-
 
 const tabs = [
   { to: "/buyer/discover", label: "Keşfet", icon: Search },
@@ -53,7 +61,10 @@ function BuyerShell() {
   const moreActive = moreItems.some((i) => pathname.startsWith(i.to));
   return (
     <div className="min-h-screen md:grid md:grid-cols-[230px_1fr]">
-      <aside className="hidden md:flex flex-col gap-1 p-4 sticky top-0 h-screen" style={{ background: "var(--dark)", color: "var(--hwhite)" }}>
+      <aside
+        className="hidden md:flex flex-col gap-1 p-4 sticky top-0 h-screen"
+        style={{ background: "var(--dark)", color: "var(--hwhite)" }}
+      >
         <div className="mb-6">
           <BrandLogo variant="wordmark" tone="white" height={20} />
           <div className="font-mono text-[10px] opacity-50 tracking-widest mt-1">ALICI PANELİ</div>
@@ -61,22 +72,42 @@ function BuyerShell() {
         {tabs.map(({ to, label, icon: Icon }) => {
           const active = pathname.startsWith(to);
           return (
-            <Link key={to} to={to}
+            <Link
+              key={to}
+              to={to}
               className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm ${active ? "text-hwhite" : "text-hwhite/70 hover:bg-white/5"}`}
-              style={active ? { background: "color-mix(in oklab, var(--primary) 28%, transparent)", borderLeft: "2px solid var(--primary)" } : undefined}>
+              style={
+                active
+                  ? {
+                      background: "color-mix(in oklab, var(--primary) 28%, transparent)",
+                      borderLeft: "2px solid var(--primary)",
+                    }
+                  : undefined
+              }
+            >
               <Icon className="h-4 w-4" /> {label}
             </Link>
           );
         })}
       </aside>
-      <main className="pb-24 md:pb-0 min-h-screen"><Outlet /></main>
-      <nav className="md:hidden fixed bottom-0 inset-x-0 z-40 grid grid-cols-5 border-t pb-safe" style={{ background: "var(--dark)" }}>
+      <main className="min-w-0 overflow-x-hidden pb-24 md:pb-0 min-h-screen">
+        <Outlet />
+      </main>
+      <nav
+        className="md:hidden fixed bottom-0 inset-x-0 z-40 grid grid-cols-5 border-t pb-safe"
+        style={{ background: "var(--dark)" }}
+      >
         {mobileTabs.map(({ to, label, icon: Icon }) => {
           const active = pathname.startsWith(to);
           return (
-            <Link key={to} to={to} className="flex flex-col items-center gap-0.5 py-2 text-[10px]"
-              style={{ color: active ? "var(--primary)" : "var(--hwhite)" }}>
-              <Icon className="h-5 w-5" /><span>{label}</span>
+            <Link
+              key={to}
+              to={to}
+              className="flex flex-col items-center gap-0.5 py-2 text-[10px]"
+              style={{ color: active ? "var(--primary)" : "var(--hwhite)" }}
+            >
+              <Icon className="h-5 w-5" />
+              <span>{label}</span>
             </Link>
           );
         })}
@@ -110,7 +141,14 @@ function BuyerShell() {
                   to={to}
                   onClick={() => setMoreOpen(false)}
                   className={`flex items-center gap-3 rounded-lg px-3 py-3 text-sm ${active ? "text-hwhite" : "text-hwhite/80 hover:bg-white/5"}`}
-                  style={active ? { background: "color-mix(in oklab, var(--primary) 28%, transparent)", borderLeft: "2px solid var(--primary)" } : undefined}
+                  style={
+                    active
+                      ? {
+                          background: "color-mix(in oklab, var(--primary) 28%, transparent)",
+                          borderLeft: "2px solid var(--primary)",
+                        }
+                      : undefined
+                  }
                 >
                   <Icon className="h-4 w-4" />
                   <span className="flex-1">{label}</span>
