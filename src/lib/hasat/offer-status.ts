@@ -27,12 +27,12 @@ export function statusVisual(offer: Offer, viewer: BallSide): StatusVisual {
   }
   if (offer.status === "counter") {
     return ball === viewer
-      ? { label: "Yanıtınızı Bekliyoruz", tone: "info" }
+      ? { label: "Yanıtınızı Bekliyoruz", tone: "warn" }
       : { label: "Karşı Taraf Yanıtı Bekleniyor", tone: "muted" };
   }
   // pending
   return ball === viewer
-    ? { label: "Yanıtınızı Bekliyoruz", tone: "info" }
+    ? { label: "Yanıtınızı Bekliyoruz", tone: "warn" }
     : { label: "Yanıt Bekleniyor", tone: "muted" };
 }
 
