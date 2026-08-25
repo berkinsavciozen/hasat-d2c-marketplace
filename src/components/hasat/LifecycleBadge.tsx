@@ -3,11 +3,14 @@ import type { ReactNode } from "react";
 export type LifecycleTone = "action" | "info" | "success" | "neutral" | "danger";
 
 const TONE_CLASS: Record<LifecycleTone, string> = {
-  action: "border-amber-300/70 bg-amber-50 text-amber-800",
-  info: "border-blue-200 bg-blue-50 text-blue-800",
-  success: "border-emerald-200 bg-emerald-50 text-emerald-800",
+  action:
+    "border-[color-mix(in_oklab,var(--saffron)_42%,var(--border))] bg-[color-mix(in_oklab,var(--saffron)_13%,transparent)] text-saffron",
+  info: "border-[color-mix(in_oklab,var(--teal)_32%,var(--border))] bg-[color-mix(in_oklab,var(--teal)_10%,transparent)] text-teal",
+  success:
+    "border-[color-mix(in_oklab,var(--sage)_32%,var(--border))] bg-[color-mix(in_oklab,var(--sage)_12%,transparent)] text-sage",
   neutral: "border-border bg-muted text-hmuted",
-  danger: "border-red-200 bg-red-50 text-red-700",
+  danger:
+    "border-[color-mix(in_oklab,var(--hred)_32%,var(--border))] bg-[color-mix(in_oklab,var(--hred)_10%,transparent)] text-hred",
 };
 
 export function LifecycleBadge({
