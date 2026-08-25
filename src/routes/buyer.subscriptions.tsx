@@ -2,7 +2,12 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState } from "react";
 import { BuyerHeader } from "@/components/hasat/BuyerHeader";
 import { LoadingDots } from "@/components/hasat/LoadingDots";
-import { useMySubscriptions, useCancelSubscription, useFarmerActiveListings, useSubscriptionFulfillment } from "@/lib/hasat/queries";
+import {
+  useMySubscriptions,
+  useCancelSubscription,
+  useFarmerActiveListings,
+  useSubscriptionFulfillment,
+} from "@/lib/hasat/queries";
 import { formatTRY, formatCrop, formatQuantity } from "@/lib/hasat/format";
 import {
   AlertDialog,
@@ -17,18 +22,19 @@ import {
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { CalendarDays, Sprout, Lock, ShieldCheck, ShoppingBag } from "lucide-react";
+import { LifecycleBadge, type LifecycleTone } from "@/components/hasat/LifecycleBadge";
 
 export const Route = createFileRoute("/buyer/subscriptions")({
   head: () => ({ meta: [{ title: "Sürekli Tedarik | Hasat" }] }),
   component: Subscriptions,
 });
 
-const STATUS_META: Record<string, { label: string; bg: string; fg: string }> = {
-  pending: { label: "Onay bekliyor", bg: "color-mix(in oklab, var(--lav) 22%, transparent)", fg: "var(--lav)" },
-  active: { label: "Aktif", bg: "var(--saffron)", fg: "#fff" },
-  paused: { label: "Duraklatıldı", bg: "color-mix(in oklab, var(--gold) 22%, transparent)", fg: "var(--gold)" },
-  fulfilled: { label: "Tamamlandı", bg: "color-mix(in oklab, var(--sage) 22%, transparent)", fg: "var(--sage)" },
-  cancelled: { label: "İptal", bg: "color-mix(in oklab, var(--hmuted) 18%, transparent)", fg: "var(--hmuted)" },
+const STATUS_META: Record<string, { label: string; tone: LifecycleTone }> = {
+  pending: { label: "Onay bekliyor", tone: "action" },
+  active: { label: "Aktif", tone: "info" },
+  paused: { label: "Duraklatıldı", tone: "neutral" },
+  fulfilled: { label: "Tamamlandı", tone: "success" },
+  cancelled: { label: "İptal", tone: "neutral" },
 };
 
 function FulfillmentBar({ id, target }: { id: string; target: number | null }) {
@@ -39,10 +45,12 @@ function FulfillmentBar({ id, target }: { id: string; target: number | null }) {
     <div className="mt-3">
       <div className="flex items-center justify-between text-[10px] text-hmuted uppercase tracking-wider mb-1">
         <span>Teslim edildi</span>
-        <span>{formatQuantity(data.deliveredQty, "kg")} / {formatQuantity(target, "kg")} · {pct}%</span>
+        <span>
+          {formatQuantity(data.deliveredQty, "kg")} / {formatQuantity(target, "kg")} · {pct}%
+        </span>
       </div>
       <div className="h-1.5 w-full rounded-full bg-muted overflow-hidden">
-        <div className="h-full" style={{ width: `${pct}%`, background: "var(--saffron)" }} />
+        <div className="h-full bg-teal" style={{ width: `${pct}%` }} />
       </div>
     </div>
   );
@@ -50,8 +58,10 @@ function FulfillmentBar({ id, target }: { id: string; target: number | null }) {
 
 function daysUntil(iso: string | null): string | null {
   if (!iso) return null;
-  const now = new Date(); now.setHours(0, 0, 0, 0);
-  const target = new Date(iso); target.setHours(0, 0, 0, 0);
+  const now = new Date();
+  now.setHours(0, 0, 0, 0);
+  const target = new Date(iso);
+  target.setHours(0, 0, 0, 0);
   const d = Math.round((target.getTime() - now.getTime()) / 86400000);
   if (d < 0) return `${Math.abs(d)} gün geçti`;
   if (d === 0) return "Bugün bekleniyor";
@@ -64,8 +74,17 @@ function Subscriptions() {
   const { data: subs = [], isLoading } = useMySubscriptions();
   const cancel = useCancelSubscription();
   const [pendingId, setPendingId] = useState<string | null>(null);
-  const [orderSub, setOrderSub] = useState<null | { subscriptionId: string; farmerId: string; farmerName: string | null; priceLock: boolean; lockedPrice: number | null; crop: string | null }>(null);
-  const { data: farmerListings = [], isLoading: listingsLoading } = useFarmerActiveListings(orderSub?.farmerId ?? null);
+  const [orderSub, setOrderSub] = useState<null | {
+    subscriptionId: string;
+    farmerId: string;
+    farmerName: string | null;
+    priceLock: boolean;
+    lockedPrice: number | null;
+    crop: string | null;
+  }>(null);
+  const { data: farmerListings = [], isLoading: listingsLoading } = useFarmerActiveListings(
+    orderSub?.farmerId ?? null,
+  );
 
   const onConfirmCancel = async () => {
     if (!pendingId) return;
@@ -80,19 +99,26 @@ function Subscriptions() {
   };
 
   return (
-    <>
-      <BuyerHeader title="Sürekli Tedarik" subtitle="Rezerve edilmiş hasat — üretici bu miktarı size ayırır." />
-      <div className="p-4 md:p-8 max-w-3xl space-y-3">
+    <div className="min-w-0 overflow-x-hidden">
+      <BuyerHeader
+        title="Sürekli Tedarik"
+        subtitle="Düzenli alımları planlayın; siparişleri Siparişlerim'de izleyin."
+      />
+      <div className="w-full min-w-0 max-w-3xl space-y-3 p-4 md:w-[calc(100vw-230px)] md:p-8">
         {isLoading ? (
           <LoadingDots />
         ) : subs.length === 0 ? (
-          <div className="rounded-2xl border border-dashed p-10 text-center text-hmuted">
+          <div className="min-w-0 break-words rounded-2xl border border-dashed p-6 text-center text-hmuted sm:p-10">
             <Sprout className="mx-auto h-8 w-8 mb-3 opacity-40" />
             <div className="mb-1 font-medium text-dark">Henüz düzenli tedariğiniz yok</div>
             <div className="mb-4 text-sm">
-              Restoranınız, oteliniz, marketiniz veya eviniz için üreticiden düzenli teslimat rezervasyonu oluşturun.
+              Restoranınız, oteliniz, marketiniz veya eviniz için üreticiden düzenli teslimat
+              rezervasyonu oluşturun.
             </div>
-            <Link to="/buyer/discover" className="inline-block rounded-full bg-saffron px-4 py-2 text-sm font-medium text-white">
+            <Link
+              to="/buyer/discover"
+              className="inline-block rounded-full bg-saffron px-4 py-2 text-sm font-medium text-white"
+            >
               Üretici Bul
             </Link>
           </div>
@@ -109,20 +135,20 @@ function Subscriptions() {
               >
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
-                    <div className="font-medium text-dark truncate">{s.farmerName ?? "Üretici"}</div>
+                    <div className="font-medium text-dark truncate">
+                      {s.farmerName ?? "Üretici"}
+                    </div>
                     <div className="text-xs text-hmuted">
                       {s.farmerCity ?? ""}
                       {s.farmerCity ? " · " : ""}
                       {s.crop ? `${formatCrop(s.crop)} · ` : ""}
-                      {sinceDays < 30 ? `${sinceDays} gündür` : `${Math.floor(sinceDays / 30)} aydır`} tedarikçiniz
+                      {sinceDays < 30
+                        ? `${sinceDays} gündür`
+                        : `${Math.floor(sinceDays / 30)} aydır`}{" "}
+                      tedarikçiniz
                     </div>
                   </div>
-                  <span
-                    className="rounded-full px-2.5 py-0.5 text-[11px] whitespace-nowrap"
-                    style={{ background: meta.bg, color: meta.fg }}
-                  >
-                    {meta.label}
-                  </span>
+                  <LifecycleBadge tone={meta.tone}>{meta.label}</LifecycleBadge>
                 </div>
 
                 {s.note && (
@@ -132,12 +158,19 @@ function Subscriptions() {
                 )}
 
                 {nextLabel && s.status === "active" && (
-                  <div className="mt-3 flex items-center gap-2 rounded-lg border p-2.5 text-xs"
-                    style={{ borderColor: "color-mix(in oklab, var(--saffron) 30%, transparent)", background: "color-mix(in oklab, var(--saffron) 6%, transparent)" }}>
+                  <div
+                    className="mt-3 flex items-center gap-2 rounded-lg border p-2.5 text-xs"
+                    style={{
+                      borderColor: "color-mix(in oklab, var(--saffron) 30%, transparent)",
+                      background: "color-mix(in oklab, var(--saffron) 6%, transparent)",
+                    }}
+                  >
                     <CalendarDays className="h-3.5 w-3.5" style={{ color: "var(--saffron)" }} />
                     <span className="text-dark">
                       Sonraki hasat: <span className="font-medium">{nextLabel}</span>
-                      {s.estimatedQty != null ? ` · ~${formatQuantity(s.estimatedQty, "kg")} kg` : ""}
+                      {s.estimatedQty != null
+                        ? ` · ~${formatQuantity(s.estimatedQty, "kg")} kg`
+                        : ""}
                     </span>
                   </div>
                 )}
@@ -148,7 +181,9 @@ function Subscriptions() {
                       <div className="flex items-center gap-1 text-hmuted text-[10px] uppercase tracking-wider">
                         <ShieldCheck className="h-3 w-3" /> Taahhüt
                       </div>
-                      <div className="font-mono text-dark mt-0.5">{formatQuantity(s.volumeCommitment, "kg")} kg/ay</div>
+                      <div className="text-dark mt-0.5 tabular-nums">
+                        {formatQuantity(s.volumeCommitment, "kg")} kg/ay
+                      </div>
                     </div>
                   )}
                   {s.priceLock && s.lockedPrice != null && (
@@ -156,7 +191,7 @@ function Subscriptions() {
                       <div className="flex items-center gap-1 text-hmuted text-[10px] uppercase tracking-wider">
                         <Lock className="h-3 w-3" /> Sabit Fiyat
                       </div>
-                      <div className="font-mono mt-0.5" style={{ color: "var(--gold)" }}>
+                      <div className="mt-0.5 tabular-nums text-amber-700">
                         {formatTRY(s.lockedPrice)}
                       </div>
                       {s.lockedAt && (
@@ -182,13 +217,24 @@ function Subscriptions() {
                   <div className="mt-3 flex items-center justify-between gap-2">
                     {s.status === "active" ? (
                       <button
-                        onClick={() => setOrderSub({ subscriptionId: s.id, farmerId: s.farmerId, farmerName: s.farmerName, priceLock: s.priceLock, lockedPrice: s.lockedPrice, crop: s.crop })}
+                        onClick={() =>
+                          setOrderSub({
+                            subscriptionId: s.id,
+                            farmerId: s.farmerId,
+                            farmerName: s.farmerName,
+                            priceLock: s.priceLock,
+                            lockedPrice: s.lockedPrice,
+                            crop: s.crop,
+                          })
+                        }
                         className="inline-flex items-center gap-1.5 rounded-lg min-h-[40px] px-3 py-2 text-xs font-medium"
                         style={{ background: "var(--saffron)", color: "#fff" }}
                       >
                         <ShoppingBag className="h-3.5 w-3.5" /> Şimdi Sipariş Ver
                       </button>
-                    ) : <span />}
+                    ) : (
+                      <span />
+                    )}
                     <button
                       onClick={() => setPendingId(s.id)}
                       className="text-xs font-medium text-hred hover:underline min-h-[40px] px-2"
@@ -200,7 +246,6 @@ function Subscriptions() {
               </div>
             );
           })
-
         )}
       </div>
 
@@ -219,7 +264,11 @@ function Subscriptions() {
             <div className="space-y-2 max-h-[60vh] overflow-y-auto">
               {farmerListings.map((l) => {
                 const useLock = !!(orderSub?.priceLock && orderSub?.lockedPrice);
-                const searchArgs: { qty?: number; suggestedPrice?: number; subscriptionId?: string } = { qty: l.minOrder, subscriptionId: orderSub!.subscriptionId };
+                const searchArgs: {
+                  qty?: number;
+                  suggestedPrice?: number;
+                  subscriptionId?: string;
+                } = { qty: l.minOrder, subscriptionId: orderSub!.subscriptionId };
                 if (useLock) searchArgs.suggestedPrice = orderSub!.lockedPrice!;
                 return (
                   <Link
@@ -235,7 +284,8 @@ function Subscriptions() {
                       <div className="min-w-0">
                         <div className="font-medium text-dark truncate">{formatCrop(l.crop)}</div>
                         <div className="text-[11px] text-hmuted">
-                          Min. {formatQuantity(l.minOrder, l.unit)} {l.unit} · Stok {formatQuantity(l.quantity, l.unit)} {l.unit}
+                          Min. {formatQuantity(l.minOrder, l.unit)} {l.unit} · Stok{" "}
+                          {formatQuantity(l.quantity, l.unit)} {l.unit}
                         </div>
                       </div>
                       <div className="text-right">
@@ -262,7 +312,8 @@ function Subscriptions() {
           <AlertDialogHeader>
             <AlertDialogTitle>Aboneliği iptal et</AlertDialogTitle>
             <AlertDialogDescription>
-              Aboneliği iptal etmek istediğinizden emin misiniz? Üreticiye ayrılmış rezerv miktarı serbest kalır.
+              Aboneliği iptal etmek istediğinizden emin misiniz? Üreticiye ayrılmış rezerv miktarı
+              serbest kalır.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -273,6 +324,6 @@ function Subscriptions() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </>
+    </div>
   );
 }
