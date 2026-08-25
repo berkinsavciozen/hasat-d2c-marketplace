@@ -39,6 +39,7 @@ function Payment() {
   const fee = pending ? Math.round(pending.total * 0.025) : 0;
   const grand = pending ? pending.total + fee : 0;
   const isPending = createOffer.isPending || createMultiOffer.isPending;
+  const batchItems = pending?.items?.length ? pending.items : null;
 
   const complete = async () => {
     if (!pending) return;
@@ -116,8 +117,9 @@ function Payment() {
         <div className="flex gap-3 rounded-xl border border-primary/20 bg-primary/5 p-3 text-sm text-primary">
           <Info className="mt-0.5 h-4 w-4 shrink-0" />
           <div>
-            <strong>Bu aşamada ödeme alınmaz.</strong> Seçiminiz teklifinizle birlikte iletilir.
-            Üretici kabul ettikten sonra gerçek ödeme adımına geçersiniz.
+            <strong>Bu aşamada ödeme alınmaz.</strong> Aşağıda seçtiğiniz yöntem ve girdiğiniz kart
+            bilgileri teklifinizle gönderilmez ve kaydedilmez. Gerçek ödeme adımı yalnızca üretici
+            teklifinizi kabul ettikten sonra açılır.
           </div>
         </div>
         <div className="rounded-2xl border bg-card p-4">
@@ -125,9 +127,33 @@ function Payment() {
           <div className="mt-2 font-medium">
             {formatCrop(pending!.crop)} — {pending!.producerName}
           </div>
-          <div className="mt-1 text-xs tabular-nums text-hmuted">
-            {pending!.quantity} {pending!.unit} × {formatTRY(pending!.pricePerUnit)}
-          </div>
+          {batchItems ? (
+            <div className="mt-1 text-xs text-hmuted">{batchItems.length} parti</div>
+          ) : (
+            <div className="mt-1 text-xs tabular-nums text-hmuted">
+              {pending!.quantity} {pending!.unit} × {formatTRY(pending!.pricePerUnit)}
+            </div>
+          )}
+          {batchItems && (
+            <div className="mt-3 space-y-2 border-t pt-3">
+              <div className="text-xs font-medium text-foreground">Parti dökümü</div>
+              {batchItems.map((item, index) => (
+                <div
+                  key={`${item.listingId}-${index}`}
+                  className="grid grid-cols-[minmax(0,1fr)_auto] gap-x-3 gap-y-1 rounded-xl bg-muted/40 p-3 text-xs"
+                >
+                  <span className="min-w-0 font-medium">Parti {index + 1}</span>
+                  <span className="text-right font-semibold tabular-nums">
+                    {formatTRY(item.quantity * item.pricePerUnit)}
+                  </span>
+                  <span className="min-w-0 break-words tabular-nums text-hmuted">
+                    {item.quantity} {item.unit} × {formatTRY(item.pricePerUnit)}/{item.unit}
+                  </span>
+                  <span className="self-end text-right text-[11px] text-hmuted">Ara toplam</span>
+                </div>
+              ))}
+            </div>
+          )}
           <div className="mt-3 space-y-1 border-t pt-3 text-sm">
             <div className="flex justify-between gap-3">
               <span>Ara Toplam</span>
@@ -146,13 +172,19 @@ function Payment() {
           </div>
         </div>
         <div>
-          <div className="mb-2 text-xs font-medium">Kabul sonrası ödeme tercihi</div>
+          <div className="mb-1 text-xs font-medium">Ödeme yöntemi önizlemesi</div>
+          <p className="mb-2 text-xs text-hmuted">
+            Bu seçim ve girdiğiniz bilgiler yalnızca bu ekranda kalır; gönderilmez veya kaydedilmez.
+          </p>
           <Tabs defaultValue="card">
             <TabsList className="grid grid-cols-2">
               <TabsTrigger value="card">Kredi Kartı</TabsTrigger>
               <TabsTrigger value="bank">Banka Havalesi</TabsTrigger>
             </TabsList>
             <TabsContent value="card" className="mt-4 space-y-3">
+              <div className="rounded-xl bg-muted/40 p-3 text-xs text-hmuted">
+                Kart bilgileri bu aşamada işlenmez, kaydedilmez ve üreticiyle paylaşılmaz.
+              </div>
               <div>
                 <label className="text-xs text-hmuted">Kart Numarası</label>
                 <Input
@@ -213,8 +245,8 @@ function Payment() {
               <div className="text-xs text-hmuted">Ödeme yöntemi</div>
               <div>Banka havalesi</div>
               <div className="mt-3 text-xs text-hmuted">
-                IBAN ve transfer bilgileri, teklif üretici tarafından kabul edildikten sonra gerçek
-                ödeme ekranında gösterilir.
+                Bu tercih teklifinizle gönderilmez veya kaydedilmez. IBAN ve transfer bilgileri,
+                teklif üretici tarafından kabul edildikten sonra gerçek ödeme ekranında gösterilir.
               </div>
             </TabsContent>
           </Tabs>
