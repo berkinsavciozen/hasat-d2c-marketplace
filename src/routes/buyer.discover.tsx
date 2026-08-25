@@ -248,7 +248,7 @@ function Discover() {
                 <div className="text-sm text-hmuted mt-1">Farklı bir ürün veya üretici adı deneyin.</div>
                 <button
                   onClick={() => setRequestOpen(true)}
-                  className="mt-4 inline-flex items-center rounded-full px-4 py-2 text-xs font-medium min-h-[44px]"
+                  className="mt-4 inline-flex items-center rounded-xl px-4 py-2 text-xs font-medium min-h-[44px]"
                   style={{ background: "var(--primary)", color: "var(--primary-foreground)" }}
                 >
                   Bu ürünü talep et
@@ -261,7 +261,7 @@ function Discover() {
                 <div className="text-sm text-hmuted mt-1">Aradığın ürünü bize söyle, üreticilere iletelim.</div>
                 <button
                   onClick={() => setRequestOpen(true)}
-                  className="mt-4 inline-flex items-center rounded-full px-4 py-2 text-xs font-medium min-h-[44px]"
+                  className="mt-4 inline-flex items-center rounded-xl px-4 py-2 text-xs font-medium min-h-[44px]"
                   style={{ background: "var(--primary)", color: "var(--primary-foreground)" }}
                 >
                   Ürün talep et
@@ -391,7 +391,7 @@ function ListingGroupCard({ items, canonicalUnit, cropConfig, onOpen }: { items:
         <div className="flex items-center justify-between gap-2">
           <CoverageBadge listingId={first.id} crop={first.crop} compact />
           <span
-            className="shrink-0 inline-flex items-center rounded-full px-4 py-1.5 text-xs text-white min-h-[48px]"
+            className="shrink-0 inline-flex items-center rounded-xl px-4 py-1.5 text-xs text-white min-h-[48px]"
             style={{ background: soldOut ? "var(--hmuted)" : "var(--primary)" }}
           >
             {soldOut ? "Tükendi" : (items.length > 1 ? "Partileri Gör →" : "Teklif Ver →")}
@@ -401,5 +401,4 @@ function ListingGroupCard({ items, canonicalUnit, cropConfig, onOpen }: { items:
     </div>
   );
 }
-
 
