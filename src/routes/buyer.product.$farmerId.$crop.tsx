@@ -190,7 +190,7 @@ function BuyerProduct() {
   };
 
   return (
-    <div className="pb-44">
+    <div className="pb-64 sm:pb-44 md:pb-32">
       <div className="flex items-center gap-3 bg-primary px-4 pb-4 pt-5 text-primary-foreground md:px-8">
         <Link
           to="/buyer/discover"
@@ -297,7 +297,7 @@ function BuyerProduct() {
       </div>
 
       <div
-        className="fixed inset-x-0 bottom-0 z-40 border-t bg-card/95 px-4 pt-4 pb-safe backdrop-blur md:px-8"
+        className="fixed inset-x-0 bottom-[calc(56px+max(env(safe-area-inset-bottom),0.5rem))] z-40 border-t bg-card/95 px-4 py-4 backdrop-blur md:bottom-0 md:px-8 md:pb-safe"
         style={{ boxShadow: "0 -6px 20px rgba(0,0,0,0.08)" }}
       >
         <div className="mx-auto flex max-w-3xl flex-col gap-3 sm:flex-row sm:items-center sm:gap-4">
