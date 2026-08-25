@@ -21,6 +21,7 @@ export function Stepper({ value, onChange, step = 1, min = 0, unit, units, onUni
     <div className="flex items-center gap-2 rounded-xl bg-input border p-1.5">
       <button
         type="button"
+        aria-label="Azalt"
         onClick={() => onChange(roundStep(Math.max(min, value - step)))}
         className="grid h-10 w-10 place-items-center rounded-lg bg-cream hover:bg-muted"
       >
@@ -28,13 +29,15 @@ export function Stepper({ value, onChange, step = 1, min = 0, unit, units, onUni
       </button>
       <input
         type="number"
+        aria-label={unit ? `Miktar (${unit})` : "Miktar"}
         value={value}
         min={min}
         onChange={(e) => onChange(Math.max(min, Number(e.target.value) || 0))}
-        className="flex-1 bg-transparent text-center font-mono text-xl outline-none"
+        className="min-w-0 flex-1 bg-transparent text-center text-xl font-semibold tabular-nums outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
       />
       <button
         type="button"
+        aria-label="Artır"
         onClick={() => onChange(roundStep(value + step))}
         className="grid h-10 w-10 place-items-center rounded-lg bg-cream hover:bg-muted"
       >
