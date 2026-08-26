@@ -38,6 +38,7 @@ import { statusVisual, statusStyle, canAccept } from "@/lib/hasat/offer-status";
 import { whatsappUrl } from "@/lib/hasat/whatsapp";
 import { ReviewModal, RatingStars } from "@/components/hasat/ReviewModal";
 import { MessageCircle, Star } from "lucide-react";
+import { LifecycleBadge, type LifecycleTone } from "@/components/hasat/LifecycleBadge";
 
 export const Route = createFileRoute("/farmer/orders/")({
   head: () => ({ meta: [{ title: "Siparişler — Hasat" }] }),
@@ -72,9 +73,15 @@ function Orders() {
       o.status === "counter" ||
       (o.status === "accepted" && o.paymentStatus !== "paid"),
   );
-  // Aktif: order rows that aren't yet delivered
-  const activeOrders = orders.filter((o) => o.status !== "delivered");
-  const completedOrders = orders.filter((o) => o.status === "delivered");
+  // Aktif: devam eden ve çözüm bekleyen siparişler
+  const activeOrders = orders.filter((o) =>
+    (["sent", "accepted", "preparing", "shipped", "disputed"] as Order["status"][]).includes(
+      o.status,
+    ),
+  );
+  const completedOrders = orders.filter((o) =>
+    (["delivered", "completed", "cancelled"] as Order["status"][]).includes(o.status),
+  );
   const completedOffers = offers.filter((o) => o.status === "rejected" || o.status === "completed");
 
   return (
@@ -465,13 +472,17 @@ function CounterModal({
 }
 
 function OrderCard({ order, muted }: { order: Order; muted?: boolean }) {
-  const STATUS_TR: Record<string, string> = {
-    preparing: "Hazırlanıyor",
-    shipped: "Kargoda",
-    delivered: "Teslim Edildi",
-    disputed: "İhtilaflı",
-    cancelled: "İptal Edildi",
+  const statusVisual: Record<Order["status"], { label: string; tone: LifecycleTone }> = {
+    sent: { label: "Sipariş Alındı", tone: "info" },
+    accepted: { label: "Kabul Edildi", tone: "info" },
+    preparing: { label: "Hazırlanıyor", tone: "info" },
+    shipped: { label: "Kargoda", tone: "info" },
+    delivered: { label: "Teslim Edildi", tone: "success" },
+    completed: { label: "Tamamlandı", tone: "success" },
+    disputed: { label: "İhtilaflı — işlem gerekli", tone: "danger" },
+    cancelled: { label: "İptal Edildi", tone: "neutral" },
   };
+  const visual = statusVisual[order.status];
   const userId = useAuthUserId();
   const wa = whatsappUrl(
     order.producerPhone,
@@ -539,17 +550,8 @@ function OrderCard({ order, muted }: { order: Order; muted?: boolean }) {
             <div className="mt-1 text-xs text-hred">İptal: {order.cancelReason}</div>
           )}
         </div>
-        <div className="flex flex-col items-end gap-1.5 shrink-0">
-          <span
-            className="rounded-full px-2.5 py-0.5 text-[11px] font-medium"
-            style={{
-              background: "color-mix(in oklab, var(--sage) 22%, transparent)",
-              color: "var(--sage)",
-            }}
-          >
-            ✅ Ödeme Alındı
-          </span>
-          <span className="text-[10px] text-hmuted">{STATUS_TR[order.status] ?? order.status}</span>
+        <div className="flex shrink-0 flex-col items-end gap-1.5">
+          <LifecycleBadge tone={visual.tone}>{visual.label}</LifecycleBadge>
         </div>
       </div>
 
