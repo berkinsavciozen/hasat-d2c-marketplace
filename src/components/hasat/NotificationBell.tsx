@@ -1,12 +1,7 @@
 import { useState } from "react";
 import { Bell } from "lucide-react";
 import { useNavigate } from "@tanstack/react-router";
-import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-} from "@/components/ui/sheet";
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import {
   useNotifications,
   useUnreadCount,
@@ -72,7 +67,7 @@ export function NotificationBell() {
         {count > 0 ? (
           <span
             className="absolute -top-1 -right-1 grid min-w-[18px] h-[18px] place-items-center rounded-full px-1 text-[10px] font-bold text-white"
-            style={{ background: "var(--saffron)" }}
+            style={{ background: "var(--primary)" }}
           >
             {badge}
           </span>
@@ -82,19 +77,16 @@ export function NotificationBell() {
       <Sheet open={open} onOpenChange={setOpen}>
         <SheetContent
           side="right"
-          className="w-full sm:max-w-[380px] p-0 flex flex-col"
-          style={{ background: "var(--dark)", color: "var(--hwhite)" }}
+          className="flex w-full flex-col bg-popover p-0 text-popover-foreground sm:max-w-[400px]"
         >
           <SheetHeader className="px-4 pt-5 pb-3 text-left">
             <div className="flex items-center justify-between gap-3">
-              <SheetTitle className="text-hwhite font-serif text-lg">
-                Bildirimler
-              </SheetTitle>
+              <SheetTitle className="text-lg">Bildirimler</SheetTitle>
               <button
                 type="button"
                 onClick={() => markAll.mutate()}
                 disabled={count === 0 || markAll.isPending}
-                className="text-xs underline opacity-80 disabled:opacity-30"
+                className="min-h-[44px] text-xs font-medium text-primary underline disabled:opacity-30"
               >
                 Tümünü okundu işaretle
               </button>
@@ -107,8 +99,12 @@ export function NotificationBell() {
                 <LoadingDots />
               </div>
             ) : !rows || rows.length === 0 ? (
-              <div className="px-4 py-10 text-center text-sm opacity-60">
-                Henüz bildirim yok.
+              <div className="px-4 py-10 text-center">
+                <Bell className="mx-auto h-8 w-8 text-primary" />
+                <div className="mt-3 text-sm font-medium">Henüz bildirim yok</div>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Yeni hareketler burada okunabilir bir liste olarak görünecek.
+                </p>
               </div>
             ) : (
               <ul className="space-y-1">
@@ -123,34 +119,35 @@ export function NotificationBell() {
                           setOpen(false);
                           navigate({ to: destFor(n) });
                         }}
-                        className="w-full text-left rounded-lg px-3 py-3 flex gap-3 hover:bg-white/5 transition"
+                        className="flex min-h-[64px] w-full gap-3 rounded-xl px-3 py-3 text-left transition-colors hover:bg-muted"
                         style={
                           unread
                             ? {
-                                background:
-                                  "color-mix(in oklab, var(--cream) 14%, transparent)",
+                                background: "color-mix(in oklab, var(--primary) 8%, transparent)",
                               }
                             : undefined
                         }
                       >
-                        <span className="text-xl leading-none mt-0.5">
-                          {ICON[n.type] ?? "🔔"}
-                        </span>
+                        <span className="text-xl leading-none mt-0.5">{ICON[n.type] ?? "🔔"}</span>
                         <div className="flex-1 min-w-0">
-                          <div
-                            className={`text-sm ${unread ? "font-semibold" : "opacity-90"}`}
-                          >
+                          <div className={`text-sm ${unread ? "font-semibold" : "opacity-90"}`}>
                             {n.title}
                           </div>
                           {n.body ? (
-                            <div className="text-xs opacity-60 mt-0.5 truncate">
+                            <div className="mt-0.5 line-clamp-2 text-xs text-muted-foreground">
                               {n.body}
                             </div>
                           ) : null}
-                          <div className="text-[10px] opacity-50 mt-1">
+                          <div className="mt-1 text-[10px] text-muted-foreground">
                             {relTime(n.created_at)}
                           </div>
                         </div>
+                        {unread && (
+                          <span
+                            className="mt-2 h-2 w-2 shrink-0 rounded-full bg-primary"
+                            aria-label="Okunmadı"
+                          />
+                        )}
                       </button>
                     </li>
                   );

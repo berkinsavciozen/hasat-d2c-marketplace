@@ -43,7 +43,11 @@ function Billing() {
     navigate({ to: "/farmer/home" });
   };
 
-  const formatCard = (v: string) => v.replace(/\D/g, "").slice(0, 16).replace(/(\d{4})(?=\d)/g, "$1 ");
+  const formatCard = (v: string) =>
+    v
+      .replace(/\D/g, "")
+      .slice(0, 16)
+      .replace(/(\d{4})(?=\d)/g, "$1 ");
   const formatExp = (v: string) => {
     const d = v.replace(/\D/g, "").slice(0, 4);
     return d.length > 2 ? `${d.slice(0, 2)}/${d.slice(2)}` : d;
@@ -52,68 +56,108 @@ function Billing() {
   return (
     <>
       <FarmerHeader title="Ödeme" subtitle="Aboneliği tamamla" />
-      <div className="p-4 md:p-8 max-w-xl space-y-5">
-        <div className="rounded-xl p-5"
-          style={{ background: "color-mix(in oklab, var(--saffron) 14%, var(--card))", border: "1px solid var(--saffron)" }}>
+      <div className="max-w-xl space-y-5 p-4 pb-32 [&_input]:min-h-[48px] md:p-8">
+        <div className="rounded-2xl border border-gold/40 bg-card p-5">
           <div className="text-xs opacity-70">Seçilen Plan</div>
           <div className="flex items-baseline justify-between mt-1">
             <div className="font-serif text-2xl">{PLAN.name}</div>
-            <div className="font-mono text-lg" style={{ color: "var(--saffron)" }}>{PLAN.price}</div>
+            <div className="font-mono text-lg font-semibold text-gold">{PLAN.price}</div>
           </div>
         </div>
 
-        <div className="rounded-xl p-3 text-xs text-center"
-          style={{ background: "color-mix(in oklab, var(--saffron) 18%, transparent)", color: "var(--saffron)" }}>
+        <div className="rounded-xl bg-gold/10 p-3 text-center text-xs text-gold">
           🎁 İlk 30 gün ücretsiz dene — istediğin zaman iptal et
         </div>
 
         <Tabs defaultValue="cc">
           <TabsList className="grid grid-cols-2 w-full">
-            <TabsTrigger value="cc">Kredi Kartı</TabsTrigger>
-            <TabsTrigger value="bank">Banka Havalesi</TabsTrigger>
+            <TabsTrigger value="cc" className="min-h-[48px]">
+              Kredi Kartı
+            </TabsTrigger>
+            <TabsTrigger value="bank" className="min-h-[48px]">
+              Banka Havalesi
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="cc" className="space-y-3 mt-4">
             <div>
               <label className="text-xs text-muted-foreground">Kart Numarası</label>
-              <Input value={card.num} onChange={(e) => setCard({ ...card, num: formatCard(e.target.value) })}
-                placeholder="1234 5678 9012 3456" inputMode="numeric" className="mt-1 font-mono" />
+              <Input
+                value={card.num}
+                onChange={(e) => setCard({ ...card, num: formatCard(e.target.value) })}
+                placeholder="1234 5678 9012 3456"
+                inputMode="numeric"
+                className="mt-1 font-mono"
+              />
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="text-xs text-muted-foreground">Son Kullanım</label>
-                <Input value={card.exp} onChange={(e) => setCard({ ...card, exp: formatExp(e.target.value) })}
-                  placeholder="MM/YY" className="mt-1 font-mono" />
+                <Input
+                  value={card.exp}
+                  onChange={(e) => setCard({ ...card, exp: formatExp(e.target.value) })}
+                  placeholder="MM/YY"
+                  className="mt-1 font-mono"
+                />
               </div>
               <div>
                 <label className="text-xs text-muted-foreground">CVV</label>
-                <Input value={card.cvv} onChange={(e) => setCard({ ...card, cvv: e.target.value.replace(/\D/g, "").slice(0, 3) })}
-                  placeholder="123" className="mt-1 font-mono" />
+                <Input
+                  value={card.cvv}
+                  onChange={(e) =>
+                    setCard({ ...card, cvv: e.target.value.replace(/\D/g, "").slice(0, 3) })
+                  }
+                  placeholder="123"
+                  className="mt-1 font-mono"
+                />
               </div>
             </div>
             <div>
               <label className="text-xs text-muted-foreground">Kart Sahibi</label>
-              <Input value={card.name} onChange={(e) => setCard({ ...card, name: e.target.value })}
-                placeholder="Ad Soyad" className="mt-1" />
+              <Input
+                value={card.name}
+                onChange={(e) => setCard({ ...card, name: e.target.value })}
+                placeholder="Ad Soyad"
+                className="mt-1"
+              />
             </div>
           </TabsContent>
 
-          <TabsContent value="bank" className="mt-4 rounded-xl border border-border bg-card p-4 text-sm space-y-2">
-            <div><span className="text-muted-foreground">Banka:</span> Ziraat Bankası</div>
-            <div><span className="text-muted-foreground">IBAN:</span> <span className="font-mono">TR12 0001 0000 0000 0000 0000 00</span></div>
-            <div><span className="text-muted-foreground">Alıcı:</span> Hasat Tarım A.Ş.</div>
-            <div className="text-xs text-muted-foreground mt-2">Açıklamaya telefon numaranı yaz. Onay 1 iş günü içinde.</div>
+          <TabsContent
+            value="bank"
+            className="mt-4 rounded-xl border border-border bg-card p-4 text-sm space-y-2"
+          >
+            <div>
+              <span className="text-muted-foreground">Banka:</span> Ziraat Bankası
+            </div>
+            <div>
+              <span className="text-muted-foreground">IBAN:</span>{" "}
+              <span className="font-mono">TR12 0001 0000 0000 0000 0000 00</span>
+            </div>
+            <div>
+              <span className="text-muted-foreground">Alıcı:</span> Hasat Tarım A.Ş.
+            </div>
+            <div className="text-xs text-muted-foreground mt-2">
+              Açıklamaya telefon numaranı yaz. Onay 1 iş günü içinde.
+            </div>
           </TabsContent>
         </Tabs>
 
-        <button onClick={activate} disabled={submitting}
-          className="w-full rounded-xl py-3 text-sm font-medium disabled:opacity-60"
-          style={{ background: "var(--saffron)", color: "var(--hwhite)" }}>
+        <button
+          onClick={activate}
+          disabled={submitting}
+          className="min-h-[48px] w-full rounded-xl bg-primary py-3 text-sm font-medium text-primary-foreground disabled:opacity-60"
+        >
           {submitting ? "İşleniyor..." : "Aboneliği Başlat ✓"}
         </button>
       </div>
 
-      <Dialog open={done} onOpenChange={(o) => { if (!o) finish(); }}>
+      <Dialog
+        open={done}
+        onOpenChange={(o) => {
+          if (!o) finish();
+        }}
+      >
         <DialogContent className="text-center">
           <DialogHeader>
             <DialogTitle className="flex flex-col items-center gap-3">
@@ -122,9 +166,13 @@ function Billing() {
             </DialogTitle>
           </DialogHeader>
           <p className="text-sm text-muted-foreground">Tüm özelliklere erişimin var. Hoş geldin!</p>
-          <button onClick={finish}
+          <button
+            onClick={finish}
             className="w-full rounded-xl py-2.5 text-sm font-medium"
-            style={{ background: "var(--saffron)", color: "var(--hwhite)" }}>Devam</button>
+            style={{ background: "var(--primary)", color: "var(--primary-foreground)" }}
+          >
+            Devam
+          </button>
         </DialogContent>
       </Dialog>
     </>

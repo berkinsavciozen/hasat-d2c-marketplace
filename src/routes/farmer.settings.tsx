@@ -1,7 +1,22 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { FarmerHeader } from "./farmer";
-import { useParcels, useCreateParcel, useUpdateParcel, useDeleteParcel, useCertifications, useProfile, useUpdateProfile, useUploadCertification, useDeleteCertification, getCertificationSignedUrl, useAIUsageThisMonth, isEffectivelyPremium, CERT_TYPES, type CertType } from "@/lib/hasat/queries";
+import {
+  useParcels,
+  useCreateParcel,
+  useUpdateParcel,
+  useDeleteParcel,
+  useCertifications,
+  useProfile,
+  useUpdateProfile,
+  useUploadCertification,
+  useDeleteCertification,
+  getCertificationSignedUrl,
+  useAIUsageThisMonth,
+  isEffectivelyPremium,
+  CERT_TYPES,
+  type CertType,
+} from "@/lib/hasat/queries";
 import { ProgressDots } from "@/components/hasat/ProgressDots";
 import { Input } from "@/components/ui/input";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
@@ -16,8 +31,19 @@ import { markExpectedSignOut } from "@/lib/hasat/sessionGuard";
 import { vitrinUrl, copyVitrinLink } from "@/lib/hasat/vitrin";
 import { TR_PROVINCES } from "@/lib/hasat/cities";
 import { CropChips } from "@/components/hasat/CropChips";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from "@/components/ui/accordion";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Accordion,
+  AccordionItem,
+  AccordionTrigger,
+  AccordionContent,
+} from "@/components/ui/accordion";
 
 export const Route = createFileRoute("/farmer/settings")({ component: Settings });
 
@@ -59,23 +85,37 @@ function Settings() {
   const [nPhotoFiles, setNPhotoFiles] = useState<File[]>([]);
 
   const resetNewParcel = () => {
-    setNName(""); setNProvince(""); setNDistrict(""); setNArea(0); setNCrops([]); setNPhotoFiles([]);
+    setNName("");
+    setNProvince("");
+    setNDistrict("");
+    setNArea(0);
+    setNCrops([]);
+    setNPhotoFiles([]);
   };
 
   const addParcel = async () => {
-    if (!nName.trim()) { toast.error("Parsel adı girin"); return; }
+    if (!nName.trim()) {
+      toast.error("Parsel adı girin");
+      return;
+    }
     try {
       await createParcel.mutateAsync({
         name: nName.trim(),
         area: nArea,
         crops: nCrops,
-        location: { label: [nProvince, nDistrict.trim()].filter(Boolean).join(" / "), lat: 0, lng: 0 },
+        location: {
+          label: [nProvince, nDistrict.trim()].filter(Boolean).join(" / "),
+          lat: 0,
+          lng: 0,
+        },
         photoFiles: nPhotoFiles,
       });
       toast.success("Parsel eklendi");
       setNewParcelOpen(false);
       resetNewParcel();
-    } catch (e) { toast.error((e as Error).message); }
+    } catch (e) {
+      toast.error((e as Error).message);
+    }
   };
 
   useEffect(() => {
@@ -90,7 +130,9 @@ function Settings() {
     try {
       await updateProfile.mutateAsync({ name, city });
       toast.success("Profil güncellendi");
-    } catch (e) { toast.error((e as Error).message); }
+    } catch (e) {
+      toast.error((e as Error).message);
+    }
   };
 
   const saveBank = async () => {
@@ -105,31 +147,44 @@ function Settings() {
         bank_account_name: bankAccountName.trim() || null,
       });
       toast.success("Banka bilgileri güncellendi");
-    } catch (e) { toast.error((e as Error).message); }
+    } catch (e) {
+      toast.error((e as Error).message);
+    }
   };
-
 
   const openEdit = (id: string) => {
     const p = parcels.find((x) => x.id === id);
     if (!p) return;
-    setEditing(id); setPName(p.name); setPArea(p.area);
-    setPPhotos(p.photos ?? []); setPPhotoFiles([]);
+    setEditing(id);
+    setPName(p.name);
+    setPArea(p.area);
+    setPPhotos(p.photos ?? []);
+    setPPhotoFiles([]);
   };
 
   const saveParcel = async () => {
     if (!editing) return;
     try {
-      await updateParcel.mutateAsync({ id: editing, patch: { name: pName, area: pArea }, existingPhotos: pPhotos, photoFiles: pPhotoFiles });
+      await updateParcel.mutateAsync({
+        id: editing,
+        patch: { name: pName, area: pArea },
+        existingPhotos: pPhotos,
+        photoFiles: pPhotoFiles,
+      });
       setEditing(null);
       toast.success("Parsel güncellendi");
-    } catch (e) { toast.error((e as Error).message); }
+    } catch (e) {
+      toast.error((e as Error).message);
+    }
   };
 
   const removeParcel = async (id: string) => {
     try {
       await deleteParcel.mutateAsync(id);
       toast.success("Parsel silindi");
-    } catch (e) { toast.error((e as Error).message); }
+    } catch (e) {
+      toast.error((e as Error).message);
+    }
   };
 
   // P23-M8-b — `setRole(null)` + yönlendirme artık burada değil, tek yerde
@@ -138,23 +193,34 @@ function Settings() {
   // sessionGuard.ts dosya başlığı ("çıkış fatal hata" kök nedeni).
   const logout = async () => {
     markExpectedSignOut();
-    try { await supabase.auth.signOut(); }
-    catch (e) { toast.error((e as Error).message); }
+    try {
+      await supabase.auth.signOut();
+    } catch (e) {
+      toast.error((e as Error).message);
+    }
   };
 
   const afterAccountDeleted = async () => {
     markExpectedSignOut();
     // scope:"local" kasıtlı — bkz. buyer.account.tsx'teki aynı gerekçe
     // (banned_until='infinity' hesaba global signOut ağ bağımlılığı katar).
-    try { await supabase.auth.signOut({ scope: "local" }); }
-    catch { /* oturum zaten hesap silme RPC'siyle geçersizleşti */ }
+    try {
+      await supabase.auth.signOut({ scope: "local" });
+    } catch {
+      /* oturum zaten hesap silme RPC'siyle geçersizleşti */
+    }
     toast.success("Hesabın silindi");
   };
 
   const [exporting, setExporting] = useState(false);
   const exportData = async () => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) { toast.error("Oturum bulunamadı"); return; }
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) {
+      toast.error("Oturum bulunamadı");
+      return;
+    }
     setExporting(true);
     try {
       const [parcelsR, harvestsR, listingsR, certsR] = await Promise.all([
@@ -188,12 +254,12 @@ function Settings() {
     }
   };
 
-  const fmtDate = (s: string | null) => s ? new Date(s).toLocaleDateString("tr-TR") : "—";
+  const fmtDate = (s: string | null) => (s ? new Date(s).toLocaleDateString("tr-TR") : "—");
 
   return (
     <>
       <FarmerHeader title="Ayarlar" />
-      <div className="p-4 md:p-8 max-w-2xl space-y-5">
+      <div className="max-w-2xl space-y-5 p-4 pb-32 [&_input]:min-h-[48px] [&_button]:min-h-[44px] md:p-8">
         <Accordion type="single" collapsible className="rounded-xl border border-border bg-card">
           <AccordionItem value="farm-info" className="border-b-0">
             <AccordionTrigger className="px-4 py-3 min-h-[48px] font-medium text-sm hover:no-underline">
@@ -207,23 +273,42 @@ function Settings() {
                   </div>
                 )}
                 <div className="flex items-center gap-3 mb-4">
-                  <div className="grid h-14 w-14 place-items-center rounded-full text-lg font-bold"
-                    style={{ background: "var(--saffron)", color: "var(--hwhite)" }}>{name[0] ?? "?"}</div>
+                  <div className="grid h-14 w-14 place-items-center rounded-full bg-primary/10 text-lg font-bold text-primary">
+                    {name[0] ?? "?"}
+                  </div>
                   <div className="flex flex-col gap-1">
-                    <button className="text-xs text-muted-foreground underline text-left">Değiştir</button>
+                    <button className="text-xs text-muted-foreground underline text-left">
+                      Değiştir
+                    </button>
                     <TierBadge tier={isEffectivelyPremium(profile) ? "premium" : "free"} />
                   </div>
                 </div>
                 <label className="text-xs text-muted-foreground">Ad Soyad</label>
-                <Input value={name} onChange={(e) => setName(e.target.value)} className="mt-1 mb-3" />
+                <Input
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  className="mt-1 mb-3"
+                />
                 <label className="text-xs text-muted-foreground">Şehir</label>
                 <Select value={city} onValueChange={setCity}>
-                  <SelectTrigger className="mt-1 mb-3"><SelectValue placeholder="İl seçin" /></SelectTrigger>
-                  <SelectContent>{TR_PROVINCES.map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent>
+                  <SelectTrigger className="mt-1 mb-3">
+                    <SelectValue placeholder="İl seçin" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {TR_PROVINCES.map((c) => (
+                      <SelectItem key={c} value={c}>
+                        {c}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
                 </Select>
-                <button onClick={saveProfile}
+                <button
+                  onClick={saveProfile}
                   className="rounded-lg px-4 py-2 text-sm font-medium min-h-[48px]"
-                  style={{ background: "var(--saffron)", color: "var(--hwhite)" }}>Kaydet</button>
+                  style={{ background: "var(--primary)", color: "var(--primary-foreground)" }}
+                >
+                  Kaydet
+                </button>
 
                 <div className="mt-4 border-t pt-4">
                   <button
@@ -240,29 +325,47 @@ function Settings() {
 
               <Section title="Parsellerim">
                 {parcelsLoading ? (
-                  <div className="py-6"><ProgressDots current={2} total={3} /></div>
+                  <div className="py-6">
+                    <ProgressDots current={2} total={3} />
+                  </div>
                 ) : (
                   <div className="space-y-2">
                     {parcels.map((p) => (
-                      <div key={p.id} className="flex items-center justify-between rounded-lg border border-border p-3">
+                      <div
+                        key={p.id}
+                        className="flex items-center justify-between rounded-lg border border-border p-3"
+                      >
                         <div>
                           <div className="text-sm font-medium">{p.name}</div>
-                          <div className="text-xs text-muted-foreground">{p.area} dönüm · {p.location.label}</div>
+                          <div className="text-xs text-muted-foreground">
+                            {p.area} dönüm · {p.location.label}
+                          </div>
                         </div>
                         <div className="flex gap-1">
-                          <button onClick={() => openEdit(p.id)} className="grid h-12 w-12 place-items-center rounded-md hover:bg-muted">
+                          <button
+                            onClick={() => openEdit(p.id)}
+                            className="grid h-12 w-12 place-items-center rounded-md hover:bg-muted"
+                          >
                             <Pencil className="h-4 w-4" />
                           </button>
-                          <button onClick={() => removeParcel(p.id)}
-                            className="grid h-12 w-12 place-items-center rounded-md hover:bg-destructive/10 text-destructive">
+                          <button
+                            onClick={() => removeParcel(p.id)}
+                            className="grid h-12 w-12 place-items-center rounded-md hover:bg-destructive/10 text-destructive"
+                          >
                             <Trash2 className="h-4 w-4" />
                           </button>
                         </div>
                       </div>
                     ))}
-                    {parcels.length === 0 && <div className="text-xs text-muted-foreground py-4 text-center">Henüz parsel yok</div>}
-                    <button onClick={() => setNewParcelOpen(true)}
-                      className="mt-2 self-start rounded-lg px-3 py-2 text-xs font-medium border border-border hover:bg-muted min-h-[48px]">
+                    {parcels.length === 0 && (
+                      <div className="text-xs text-muted-foreground py-4 text-center">
+                        Henüz parsel yok
+                      </div>
+                    )}
+                    <button
+                      onClick={() => setNewParcelOpen(true)}
+                      className="mt-2 self-start rounded-lg px-3 py-2 text-xs font-medium border border-border hover:bg-muted min-h-[48px]"
+                    >
                       + Parsel Ekle
                     </button>
                   </div>
@@ -271,7 +374,9 @@ function Settings() {
 
               <Section title="Sertifikalar">
                 {certsLoading ? (
-                  <div className="py-4"><ProgressDots current={1} total={3} /></div>
+                  <div className="py-4">
+                    <ProgressDots current={1} total={3} />
+                  </div>
                 ) : (
                   <div className="flex flex-col gap-2">
                     {certs.length === 0 && (
@@ -293,7 +398,13 @@ function Settings() {
                         }
                         if (days <= 30) {
                           return (
-                            <span className="rounded-full px-2 py-0.5 text-[10px] font-medium" style={{ background: "color-mix(in oklab, var(--gold) 20%, transparent)", color: "var(--gold)" }}>
+                            <span
+                              className="rounded-full px-2 py-0.5 text-[10px] font-medium"
+                              style={{
+                                background: "color-mix(in oklab, var(--gold) 20%, transparent)",
+                                color: "var(--gold)",
+                              }}
+                            >
                               Yakında Sona Eriyor
                             </span>
                           );
@@ -301,43 +412,63 @@ function Settings() {
                         return null;
                       })();
                       return (
-                      <div key={c.id} className="flex items-center justify-between rounded-lg border border-border px-3 py-2">
-                        <div className="flex items-center gap-2">
-                          <button
-                            onClick={async () => {
-                              if (!c.document_url) return;
-                              try {
-                                const url = await getCertificationSignedUrl(c.document_url);
-                                window.open(url, "_blank");
-                              } catch (e) { toast.error((e as Error).message); }
-                            }}
-                            className="px-2 py-1 text-xs rounded-full hover:opacity-80"
-                            style={{ background: "color-mix(in oklab, var(--sage) 30%, transparent)" }}>
-                            ✓ {c.type}
-                          </button>
-                          {expiryBadge}
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <div className="text-[11px] text-muted-foreground text-right">
-                            <div>{c.verified_at ? `Doğrulandı: ${fmtDate(c.verified_at)}` : "Doğrulama bekleniyor"}</div>
-                            <div>Süre: {fmtDate(c.expires_at)}</div>
+                        <div
+                          key={c.id}
+                          className="flex items-center justify-between rounded-lg border border-border px-3 py-2"
+                        >
+                          <div className="flex items-center gap-2">
+                            <button
+                              onClick={async () => {
+                                if (!c.document_url) return;
+                                try {
+                                  const url = await getCertificationSignedUrl(c.document_url);
+                                  window.open(url, "_blank");
+                                } catch (e) {
+                                  toast.error((e as Error).message);
+                                }
+                              }}
+                              className="px-2 py-1 text-xs rounded-full hover:opacity-80"
+                              style={{
+                                background: "color-mix(in oklab, var(--sage) 30%, transparent)",
+                              }}
+                            >
+                              ✓ {c.type}
+                            </button>
+                            {expiryBadge}
                           </div>
-                          <button
-                            onClick={async () => {
-                              try {
-                                await deleteCert.mutateAsync({ id: c.id, document_url: c.document_url });
-                                toast.success("Sertifika silindi");
-                              } catch (e) { toast.error((e as Error).message); }
-                            }}
-                            className="grid h-12 w-12 place-items-center rounded-md hover:bg-destructive/10 text-destructive">
-                            <Trash2 className="h-4 w-4" />
-                          </button>
+                          <div className="flex items-center gap-2">
+                            <div className="text-[11px] text-muted-foreground text-right">
+                              <div>
+                                {c.verified_at
+                                  ? `Doğrulandı: ${fmtDate(c.verified_at)}`
+                                  : "Doğrulama bekleniyor"}
+                              </div>
+                              <div>Süre: {fmtDate(c.expires_at)}</div>
+                            </div>
+                            <button
+                              onClick={async () => {
+                                try {
+                                  await deleteCert.mutateAsync({
+                                    id: c.id,
+                                    document_url: c.document_url,
+                                  });
+                                  toast.success("Sertifika silindi");
+                                } catch (e) {
+                                  toast.error((e as Error).message);
+                                }
+                              }}
+                              className="grid h-12 w-12 place-items-center rounded-md hover:bg-destructive/10 text-destructive"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </button>
+                          </div>
                         </div>
-                      </div>
                       );
                     })}
-                    <button onClick={() => setCertSheet(true)}
-                      className="mt-2 self-start rounded-lg px-3 py-2 text-xs font-medium border border-border hover:bg-muted min-h-[48px]">
+                    <button
+                      onClick={() => setCertSheet(true)}
+                      className="mt-2 self-start rounded-lg px-3 py-2 text-xs font-medium border border-border hover:bg-muted min-h-[48px]"
+                    >
                       + Sertifika Ekle
                     </button>
                   </div>
@@ -365,10 +496,12 @@ function Settings() {
             placeholder="Ad Soyad"
             className="mt-1 mb-3"
           />
-          <button onClick={saveBank}
+          <button
+            onClick={saveBank}
             disabled={updateProfile.isPending}
             className="rounded-lg px-4 py-2 text-sm font-medium disabled:opacity-50 min-h-[48px]"
-            style={{ background: "var(--saffron)", color: "var(--hwhite)" }}>
+            style={{ background: "var(--primary)", color: "var(--primary-foreground)" }}
+          >
             {updateProfile.isPending ? "Kaydediliyor…" : "Kaydet"}
           </button>
         </Section>
@@ -378,7 +511,8 @@ function Settings() {
             const isPremium = isEffectivelyPremium(profile);
             const count = aiUsage?.count ?? 0;
             const pct = Math.min(100, (count / 50) * 100);
-            const color = count <= 35 ? "#16a34a" : count <= 45 ? "#d97706" : "#dc2626";
+            const color =
+              count >= 50 ? "var(--sage)" : count > 45 ? "var(--saffron)" : "var(--primary)";
             return (
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
@@ -399,13 +533,16 @@ function Settings() {
                       <span className="text-muted-foreground">{count} / 50 mesaj</span>
                     </div>
                     <div className="h-1.5 w-full rounded-full bg-muted overflow-hidden">
-                      <div className="h-full transition-all" style={{ width: `${pct}%`, background: color }} />
+                      <div
+                        className="h-full transition-all"
+                        style={{ width: `${pct}%`, background: color }}
+                      />
                     </div>
                     <button
                       type="button"
                       onClick={() => setUpgradeOpen(true)}
                       className="text-sm font-medium underline min-h-[48px]"
-                      style={{ color: "var(--saffron)" }}
+                      style={{ color: "var(--primary)" }}
                     >
                       Premium'a Geç →
                     </button>
@@ -416,11 +553,10 @@ function Settings() {
           })()}
         </Section>
 
-
-
-
-        <Link to="/farmer/settings/notifs"
-          className="flex items-center gap-3 rounded-xl border border-border bg-card p-4 hover:bg-muted/50">
+        <Link
+          to="/farmer/settings/notifs"
+          className="flex min-h-[56px] items-center gap-3 rounded-xl border border-border bg-card p-4 hover:bg-muted/50"
+        >
           <Bell className="h-5 w-5" />
           <span className="flex-1 text-sm">Bildirim Tercihleri</span>
           <ChevronRight className="h-4 w-4 text-muted-foreground" />
@@ -428,8 +564,8 @@ function Settings() {
 
         <Section title="Verilerim">
           <div className="text-xs text-muted-foreground mb-2">
-            Parsellerinizi, tarla günlüğü kayıtlarınızı, ilanlarınızı ve
-            sertifikalarınızı JSON dosyası olarak indirin.
+            Parsellerinizi, tarla günlüğü kayıtlarınızı, ilanlarınızı ve sertifikalarınızı JSON
+            dosyası olarak indirin.
           </div>
           <button
             onClick={exportData}
@@ -442,13 +578,17 @@ function Settings() {
 
         <Section title="Hesap">
           <div className="flex flex-col gap-2">
-            <button onClick={logout}
-              className="flex items-center gap-2 rounded-lg px-4 py-2.5 text-sm font-medium text-destructive border border-destructive/40 hover:bg-destructive/10">
+            <button
+              onClick={logout}
+              className="flex items-center gap-2 rounded-lg px-4 py-2.5 text-sm font-medium text-destructive border border-destructive/40 hover:bg-destructive/10"
+            >
               <LogOut className="h-4 w-4" /> Çıkış Yap
             </button>
-            <button onClick={() => setDeleteOpen(true)}
+            <button
+              onClick={() => setDeleteOpen(true)}
               className="flex items-center gap-2 rounded-lg px-4 py-2.5 text-sm font-medium text-white min-h-[48px]"
-              style={{ background: "var(--hred, #dc2626)" }}>
+              style={{ background: "var(--destructive)" }}
+            >
               <Trash2 className="h-4 w-4" /> Hesabımı Sil
             </button>
           </div>
@@ -463,7 +603,9 @@ function Settings() {
 
       <Sheet open={!!editing} onOpenChange={(o) => !o && setEditing(null)}>
         <SheetContent side="bottom" className="rounded-t-2xl max-h-[92vh] overflow-y-auto">
-          <SheetHeader><SheetTitle>Parseli Düzenle</SheetTitle></SheetHeader>
+          <SheetHeader>
+            <SheetTitle>Parseli Düzenle</SheetTitle>
+          </SheetHeader>
           <div className="mt-4 space-y-3">
             <div>
               <label className="text-xs text-muted-foreground">Parsel Adı</label>
@@ -471,7 +613,12 @@ function Settings() {
             </div>
             <div>
               <label className="text-xs text-muted-foreground">Alan (dönüm)</label>
-              <Input type="number" value={pArea} onChange={(e) => setPArea(Number(e.target.value))} className="mt-1" />
+              <Input
+                type="number"
+                value={pArea}
+                onChange={(e) => setPArea(Number(e.target.value))}
+                className="mt-1"
+              />
             </div>
             <div>
               <label className="text-xs text-muted-foreground">Fotoğraflar (en fazla 5)</label>
@@ -479,77 +626,157 @@ function Settings() {
                 <PhotoUploader
                   value={pPhotos}
                   files={pPhotoFiles}
-                  onChange={(v, f) => { setPPhotos(v); setPPhotoFiles(f); }}
+                  onChange={(v, f) => {
+                    setPPhotos(v);
+                    setPPhotoFiles(f);
+                  }}
                   max={5}
                 />
               </div>
             </div>
-            <button onClick={saveParcel}
+            <button
+              onClick={saveParcel}
               className="w-full rounded-xl py-2.5 text-sm font-medium"
-              style={{ background: "var(--saffron)", color: "var(--hwhite)" }}>Kaydet</button>
+              style={{ background: "var(--primary)", color: "var(--primary-foreground)" }}
+            >
+              Kaydet
+            </button>
           </div>
         </SheetContent>
       </Sheet>
 
-      <Sheet open={certSheet} onOpenChange={(o) => { if (!o) { setCertSheet(false); setCertFile(null); setCertExpires(""); } }}>
+      <Sheet
+        open={certSheet}
+        onOpenChange={(o) => {
+          if (!o) {
+            setCertSheet(false);
+            setCertFile(null);
+            setCertExpires("");
+          }
+        }}
+      >
         <SheetContent side="bottom" className="rounded-t-2xl">
-          <SheetHeader><SheetTitle>Sertifika Ekle</SheetTitle></SheetHeader>
+          <SheetHeader>
+            <SheetTitle>Sertifika Ekle</SheetTitle>
+          </SheetHeader>
           <div className="mt-4 space-y-3">
             <div>
               <label className="text-xs text-muted-foreground">Tür</label>
-              <select value={certType} onChange={(e) => setCertType(e.target.value as CertType)}
-                className="mt-1 w-full rounded-md border border-input bg-background px-3 py-2 text-sm">
-                {CERT_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
+              <select
+                value={certType}
+                onChange={(e) => setCertType(e.target.value as CertType)}
+                className="mt-1 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+              >
+                {CERT_TYPES.map((t) => (
+                  <option key={t} value={t}>
+                    {t}
+                  </option>
+                ))}
               </select>
             </div>
             <div>
               <label className="text-xs text-muted-foreground">Bitiş Tarihi (opsiyonel)</label>
-              <Input type="date" value={certExpires} onChange={(e) => setCertExpires(e.target.value)} className="mt-1" />
+              <Input
+                type="date"
+                value={certExpires}
+                onChange={(e) => setCertExpires(e.target.value)}
+                className="mt-1"
+              />
             </div>
             <div>
               <label className="text-xs text-muted-foreground">Dosya (PDF/Resim)</label>
-              <Input type="file" accept="application/pdf,image/*" onChange={(e) => setCertFile(e.target.files?.[0] ?? null)} className="mt-1" />
+              <Input
+                type="file"
+                accept="application/pdf,image/*"
+                onChange={(e) => setCertFile(e.target.files?.[0] ?? null)}
+                className="mt-1"
+              />
             </div>
             {uploadCert.isPending && <ProgressDots current={2} total={3} />}
             <button
               onClick={async () => {
-                if (!certFile) { toast.error("Dosya seçin"); return; }
+                if (!certFile) {
+                  toast.error("Dosya seçin");
+                  return;
+                }
                 try {
-                  await uploadCert.mutateAsync({ type: certType, file: certFile, expiresAt: certExpires || null });
+                  await uploadCert.mutateAsync({
+                    type: certType,
+                    file: certFile,
+                    expiresAt: certExpires || null,
+                  });
                   toast.success("Sertifika yüklendi");
-                  setCertSheet(false); setCertFile(null); setCertExpires("");
-                } catch (e) { toast.error((e as Error).message); }
+                  setCertSheet(false);
+                  setCertFile(null);
+                  setCertExpires("");
+                } catch (e) {
+                  toast.error((e as Error).message);
+                }
               }}
               disabled={uploadCert.isPending}
               className="w-full rounded-xl py-2.5 text-sm font-medium disabled:opacity-50"
-              style={{ background: "var(--saffron)", color: "var(--hwhite)" }}>
+              style={{ background: "var(--saffron)", color: "var(--hwhite)" }}
+            >
               {uploadCert.isPending ? "Yükleniyor…" : "Yükle"}
             </button>
           </div>
         </SheetContent>
       </Sheet>
-      <Sheet open={newParcelOpen} onOpenChange={(o) => { if (!o) { setNewParcelOpen(false); resetNewParcel(); } }}>
+      <Sheet
+        open={newParcelOpen}
+        onOpenChange={(o) => {
+          if (!o) {
+            setNewParcelOpen(false);
+            resetNewParcel();
+          }
+        }}
+      >
         <SheetContent side="bottom" className="rounded-t-2xl max-h-[92vh] overflow-y-auto">
-          <SheetHeader><SheetTitle>Yeni Parsel</SheetTitle></SheetHeader>
+          <SheetHeader>
+            <SheetTitle>Yeni Parsel</SheetTitle>
+          </SheetHeader>
           <div className="mt-4 space-y-3">
             <div>
               <label className="text-xs text-muted-foreground">Parsel Adı</label>
-              <Input value={nName} onChange={(e) => setNName(e.target.value)} placeholder="Ana Parsel" className="mt-1" />
+              <Input
+                value={nName}
+                onChange={(e) => setNName(e.target.value)}
+                placeholder="Ana Parsel"
+                className="mt-1"
+              />
             </div>
             <div>
               <label className="text-xs text-muted-foreground">İl</label>
               <Select value={nProvince} onValueChange={setNProvince}>
-                <SelectTrigger className="mt-1"><SelectValue placeholder="İl seçin" /></SelectTrigger>
-                <SelectContent>{TR_PROVINCES.map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent>
+                <SelectTrigger className="mt-1">
+                  <SelectValue placeholder="İl seçin" />
+                </SelectTrigger>
+                <SelectContent>
+                  {TR_PROVINCES.map((c) => (
+                    <SelectItem key={c} value={c}>
+                      {c}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
               </Select>
             </div>
             <div>
               <label className="text-xs text-muted-foreground">İlçe / Mahalle (opsiyonel)</label>
-              <Input value={nDistrict} onChange={(e) => setNDistrict(e.target.value)} placeholder="Safranbolu" className="mt-1" />
+              <Input
+                value={nDistrict}
+                onChange={(e) => setNDistrict(e.target.value)}
+                placeholder="Safranbolu"
+                className="mt-1"
+              />
             </div>
             <div>
               <label className="text-xs text-muted-foreground">Alan (dönüm)</label>
-              <Input type="number" value={nArea} onChange={(e) => setNArea(Number(e.target.value))} className="mt-1" />
+              <Input
+                type="number"
+                value={nArea}
+                onChange={(e) => setNArea(Number(e.target.value))}
+                className="mt-1"
+              />
             </div>
             <div>
               <label className="text-xs text-muted-foreground">Ana Ürünler</label>

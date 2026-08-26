@@ -13,7 +13,12 @@ import { LoadingDots } from "@/components/hasat/LoadingDots";
 import { formatCrop, priceWithUnit } from "@/lib/hasat/format";
 import { Info, Search, Star } from "lucide-react";
 import { toast } from "sonner";
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
 
 type Role = "farmer" | "buyer";
 
@@ -69,7 +74,9 @@ export function PricesPageBody({ role }: { role: Role }) {
     const needle = q.trim().toLocaleLowerCase("tr-TR");
     if (!needle) return list;
     return list.filter(
-      (c) => formatCrop(c).toLocaleLowerCase("tr-TR").includes(needle) || c.toLowerCase().includes(needle),
+      (c) =>
+        formatCrop(c).toLocaleLowerCase("tr-TR").includes(needle) ||
+        c.toLowerCase().includes(needle),
     );
   };
 
@@ -89,15 +96,14 @@ export function PricesPageBody({ role }: { role: Role }) {
   const totalMatches = tier1.length + tier2.length + tier3.length;
 
   return (
-    <div className="px-4 md:px-8 py-5 pb-32 md:pb-5 space-y-4">
-      <div className="rounded-xl border bg-muted/40 p-3 text-[11px] text-hmuted flex gap-2">
+    <div className="space-y-5 px-4 py-5 pb-32 md:px-8 md:pb-5">
+      <div className="flex gap-3 rounded-2xl border border-teal/20 bg-teal/10 p-4 text-xs text-muted-foreground">
         <Info className="h-3.5 w-3.5 mt-0.5 shrink-0" />
         <div>
-          Fiyatlar, platformda tamamlanan siparişlerden anonim olarak üretilir.
-          Rekabet hukuku gereği bireysel kayıtlar gösterilmez; yalnızca ortalama
-          ve piyasa aralığı yer alır. En az 5 farklı üreticiden veri gelmediği
-          ürünler için Hasat değerlendirmesi yapılmaz. Resmi kaynak (Hal Kayıt
-          Sistemi) ve toptancı hali verileri, mevcut olduğunda ayrı satırlarda
+          Fiyatlar, platformda tamamlanan siparişlerden anonim olarak üretilir. Rekabet hukuku
+          gereği bireysel kayıtlar gösterilmez; yalnızca ortalama ve piyasa aralığı yer alır. En az
+          5 farklı üreticiden veri gelmediği ürünler için Hasat değerlendirmesi yapılmaz. Resmi
+          kaynak (Hal Kayıt Sistemi) ve toptancı hali verileri, mevcut olduğunda ayrı satırlarda
           gösterilir ve topluluk verisiyle karıştırılmaz.
         </div>
       </div>
@@ -109,19 +115,22 @@ export function PricesPageBody({ role }: { role: Role }) {
             value={q}
             onChange={(e) => setQ(e.target.value)}
             placeholder="Ürün ara…"
-            className="w-full rounded-xl border bg-card pl-9 pr-3 py-3 min-h-[48px] text-sm outline-none focus:border-saffron"
+            className="min-h-[48px] w-full rounded-xl border bg-card py-3 pl-9 pr-3 text-sm outline-none focus:border-primary focus-visible:ring-2 focus-visible:ring-primary"
           />
         </div>
       )}
 
       {isLoading ? (
-        <div className="py-12"><LoadingDots /></div>
+        <div className="py-12">
+          <LoadingDots />
+        </div>
       ) : allCrops.length === 0 ? (
-        <div className="rounded-2xl border border-dashed py-12 text-center">
-          <div className="mb-3 text-5xl">📊</div>
+        <div className="rounded-2xl border border-dashed bg-card py-12 text-center">
+          <Info className="mx-auto mb-3 h-9 w-9 text-primary" />
           <div className="mb-1 font-medium">Henüz fiyat verisi yok</div>
           <div className="text-xs text-hmuted">
-            Platformda aktif ürün ve tamamlanmış sipariş biriktikçe piyasa aralıkları burada görünecek.
+            Platformda aktif ürün ve tamamlanmış sipariş biriktikçe piyasa aralıkları burada
+            görünecek.
           </div>
         </div>
       ) : searching && totalMatches === 0 ? (
@@ -144,7 +153,7 @@ export function PricesPageBody({ role }: { role: Role }) {
                 <button
                   type="button"
                   onClick={() => setAllOpen("all")}
-                  className="text-[11px] text-hmuted hover:text-saffron underline underline-offset-2"
+                  className="min-h-[44px] text-[11px] text-primary underline underline-offset-2"
                 >
                   +{tier1Hidden} tane daha — Tüm Piyasa'da gör
                 </button>
@@ -166,10 +175,16 @@ export function PricesPageBody({ role }: { role: Role }) {
           )}
 
           {tier3.length > 0 && (
-            <Accordion type="single" collapsible value={allOpen} onValueChange={(v) => setAllOpen(v || undefined)}>
+            <Accordion
+              type="single"
+              collapsible
+              value={allOpen}
+              onValueChange={(v) => setAllOpen(v || undefined)}
+            >
               <AccordionItem value="all" className="rounded-2xl border bg-card px-4">
                 <AccordionTrigger className="min-h-[48px] text-sm font-medium hover:no-underline">
-                  Tüm Piyasa <span className="ml-2 text-[11px] font-normal text-hmuted">({tier3.length})</span>
+                  Tüm Piyasa{" "}
+                  <span className="ml-2 text-[11px] font-normal text-hmuted">({tier3.length})</span>
                 </AccordionTrigger>
                 <AccordionContent className="pb-3">
                   <div className="space-y-2 pt-1">
@@ -227,8 +242,8 @@ function WatchStar({ crop }: { crop: string }) {
       <Star
         className="h-5 w-5"
         style={{
-          color: active ? "var(--saffron)" : "var(--hmuted)",
-          fill: active ? "var(--saffron)" : "transparent",
+          color: active ? "var(--primary)" : "var(--hmuted)",
+          fill: active ? "var(--primary)" : "transparent",
         }}
       />
     </button>
@@ -271,11 +286,11 @@ function PriceSummaryCard({ crop, role }: { crop: string; role: Role }) {
     <Link
       to={to}
       params={params}
-      className="block rounded-2xl border bg-card p-3 min-h-[48px] transition hover:border-saffron/60 focus:outline-none focus-visible:ring-2 focus-visible:ring-saffron"
+      className="block min-h-[48px] rounded-2xl border bg-card p-3 transition-colors hover:border-primary/40 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
     >
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0 flex-1">
-          <div className="font-medium truncate">{formatCrop(crop)}</div>
+          <div className="break-words font-medium">{formatCrop(crop)}</div>
           {isLoading ? (
             <div className="mt-1.5 text-[11px] text-hmuted">Yükleniyor…</div>
           ) : chips.length === 0 || !summary ? (

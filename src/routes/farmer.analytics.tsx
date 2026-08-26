@@ -3,7 +3,8 @@ import { useMemo } from "react";
 import { FarmerHeader } from "./farmer";
 import { AIBox } from "@/components/hasat/AIBox";
 import { useFarmerListings, useFarmerOrders } from "@/lib/hasat/queries";
-import { LoadingDots } from "@/components/hasat/LoadingDots";
+import { Skeleton } from "@/components/ui/skeleton";
+import { ArrowUpRight, BarChart3, PackageCheck } from "lucide-react";
 import { formatTRY, formatCrop } from "@/lib/hasat/format";
 
 export const Route = createFileRoute("/farmer/analytics")({
@@ -11,7 +12,20 @@ export const Route = createFileRoute("/farmer/analytics")({
   component: Analytics,
 });
 
-const TR_MONTHS = ["Oca", "Şub", "Mar", "Nis", "May", "Haz", "Tem", "Ağu", "Eyl", "Eki", "Kas", "Ara"];
+const TR_MONTHS = [
+  "Oca",
+  "Şub",
+  "Mar",
+  "Nis",
+  "May",
+  "Haz",
+  "Tem",
+  "Ağu",
+  "Eyl",
+  "Eki",
+  "Kas",
+  "Ara",
+];
 
 function Analytics() {
   const { data: listings = [], isLoading: lLoading } = useFarmerListings();
@@ -43,8 +57,10 @@ function Analytics() {
   const cropBreakdown = useMemo(() => {
     const rev = new Map<string, number>();
     for (const o of orders) rev.set(o.crop, (rev.get(o.crop) ?? 0) + (o.total ?? 0));
-    const arr = [...rev.entries()].map(([crop, total]) => ({ crop, total }))
-      .sort((a, b) => b.total - a.total).slice(0, 6);
+    const arr = [...rev.entries()]
+      .map(([crop, total]) => ({ crop, total }))
+      .sort((a, b) => b.total - a.total)
+      .slice(0, 6);
     const max = Math.max(1, ...arr.map((r) => r.total));
     return { arr, max };
   }, [orders]);
@@ -54,43 +70,68 @@ function Analytics() {
   return (
     <>
       <FarmerHeader title="Analitik" subtitle="Performansını takip et" />
-      <div className="p-4 md:p-8 space-y-4">
-        <AIBox page="analytics" />
-
+      <div className="space-y-6 p-4 pb-32 md:p-8">
         {loading ? (
-          <div className="py-10"><LoadingDots /></div>
-        ) : empty ? (
-          <div className="rounded-xl border border-border bg-card p-8 text-center">
-            <div className="text-sm text-muted-foreground">
-              Henüz analiz için yeterli veri yok. Hasat kayıtları ve siparişler eklendikçe burada görünecek.
+          <div className="space-y-4" aria-label="Analitik yükleniyor">
+            <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+              {[0, 1, 2, 3].map((item) => (
+                <Skeleton key={item} className="h-24 rounded-2xl" />
+              ))}
             </div>
+            <Skeleton className="h-56 rounded-2xl" />
+          </div>
+        ) : empty ? (
+          <div className="rounded-2xl border border-dashed bg-card p-8 text-center">
+            <BarChart3 className="mx-auto h-9 w-9 text-primary" />
+            <h2 className="mt-3 text-base font-semibold">Henüz analiz verisi yok</h2>
+            <p className="mx-auto mt-1 max-w-md text-sm text-muted-foreground">
+              Hasat kayıtları ve siparişler eklendikçe yönetim özetin burada oluşacak.
+            </p>
           </div>
         ) : (
           <>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-              <StatCard label="Toplam Sipariş" value={String(totalOrders)} />
-              <StatCard label="Toplam Ciro" value={formatTRY(totalRevenue)} accent="saffron" />
-              <StatCard label="Aktif Alıcı" value={String(uniqueBuyers)} />
-              <StatCard label="Aktif İlan" value={String(listings.filter((l) => l.status === "active").length)} />
-            </div>
+            <section aria-labelledby="summary-heading" className="space-y-3">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-wider text-primary">
+                  Güncel özet
+                </p>
+                <h2 id="summary-heading" className="mt-1 text-xl font-semibold">
+                  İşletmenin bugünkü görünümü
+                </h2>
+              </div>
+              <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+                <StatCard label="Toplam Sipariş" value={String(totalOrders)} />
+                <StatCard label="Toplam Ciro" value={formatTRY(totalRevenue)} primary />
+                <StatCard label="Aktif Alıcı" value={String(uniqueBuyers)} />
+                <StatCard
+                  label="Aktif İlan"
+                  value={String(listings.filter((l) => l.status === "active").length)}
+                />
+              </div>
+            </section>
 
-            <SectionCard title="Son 6 Ay Ciro">
-              <div className="flex items-end gap-2 h-32">
+            <SectionCard title="Gelir" description="Son 6 ayın tamamlanan sipariş cirosu">
+              <div className="mb-4 flex items-center gap-2 text-sm text-muted-foreground">
+                <ArrowUpRight className="h-4 w-4 text-teal" />
+                <span>Toplam gelir</span>
+                <strong className="font-mono text-foreground">{formatTRY(totalRevenue)}</strong>
+              </div>
+              <div className="flex h-36 items-end gap-2" aria-label="Son 6 ay ciro grafiği">
                 {monthly.buckets.map((b) => {
                   const pct = (b.total / monthly.max) * 100;
                   return (
-                    <div key={b.key} className="flex-1 flex flex-col items-center gap-1.5">
-                      <div className="flex-1 w-full flex items-end">
+                    <div key={b.key} className="flex min-w-0 flex-1 flex-col items-center gap-2">
+                      <div className="flex w-full flex-1 items-end">
                         <div
-                          className="w-full rounded-t-md transition-all"
+                          className="w-full rounded-t-md bg-teal/20 motion-safe:transition-[height]"
                           style={{
-                            height: `${Math.max(pct, 2)}%`,
-                            background: b.total > 0 ? "var(--saffron)" : "color-mix(in oklab, var(--saffron) 20%, transparent)",
+                            height: `${Math.max(pct, 3)}%`,
+                            backgroundColor: b.total > 0 ? "var(--teal)" : undefined,
                           }}
-                          title={formatTRY(b.total)}
+                          title={`${b.label}: ${formatTRY(b.total)}`}
                         />
                       </div>
-                      <div className="text-[10px] text-hmuted">{b.label}</div>
+                      <span className="text-[10px] text-muted-foreground">{b.label}</span>
                     </div>
                   );
                 })}
@@ -98,18 +139,30 @@ function Analytics() {
             </SectionCard>
 
             {cropBreakdown.arr.length > 0 && (
-              <SectionCard title="Ürüne Göre Ciro">
-                <div className="space-y-2.5">
+              <SectionCard title="Üretim" description="Ürüne göre ciro katkısı">
+                <div className="space-y-4">
                   {cropBreakdown.arr.map((r) => {
                     const pct = (r.total / cropBreakdown.max) * 100;
                     return (
                       <div key={r.crop}>
-                        <div className="flex items-baseline justify-between text-xs">
-                          <span className="text-dark">{formatCrop(r.crop)}</span>
-                          <span className="font-mono" style={{ color: "var(--saffron)" }}>{formatTRY(r.total)}</span>
+                        <div className="flex items-baseline justify-between gap-4 text-sm">
+                          <span className="min-w-0 truncate">{formatCrop(r.crop)}</span>
+                          <span className="shrink-0 font-mono font-semibold text-primary">
+                            {formatTRY(r.total)}
+                          </span>
                         </div>
-                        <div className="h-2 mt-1 rounded-full overflow-hidden" style={{ background: "color-mix(in oklab, var(--hmuted) 12%, transparent)" }}>
-                          <div className="h-full rounded-full" style={{ width: `${pct}%`, background: "var(--gold)" }} />
+                        <div
+                          className="mt-2 h-2 overflow-hidden rounded-full bg-muted"
+                          role="progressbar"
+                          aria-label={`${formatCrop(r.crop)} ciro payı`}
+                          aria-valuenow={Math.round(pct)}
+                          aria-valuemin={0}
+                          aria-valuemax={100}
+                        >
+                          <div
+                            className="h-full rounded-full bg-teal"
+                            style={{ width: `${pct}%` }}
+                          />
                         </div>
                       </div>
                     );
@@ -117,6 +170,24 @@ function Analytics() {
                 </div>
               </SectionCard>
             )}
+
+            <SectionCard
+              title="Güven göstergeleri"
+              description="Mevcut satış hareketlerinden oluşur"
+            >
+              <div className="flex items-start gap-3 rounded-xl bg-muted/60 p-4">
+                <PackageCheck className="mt-0.5 h-5 w-5 shrink-0 text-teal" />
+                <p className="text-sm text-muted-foreground">
+                  <strong className="text-foreground">{totalOrders} sipariş</strong> ve{" "}
+                  <strong className="text-foreground">{uniqueBuyers} alıcı</strong> mevcut
+                  performans özetine dahil edildi.
+                </p>
+              </div>
+            </SectionCard>
+
+            <section aria-label="Analitik içgörüleri">
+              <AIBox page="analytics" />
+            </section>
           </>
         )}
       </div>
@@ -124,20 +195,35 @@ function Analytics() {
   );
 }
 
-function StatCard({ label, value, accent }: { label: string; value: string; accent?: "saffron" }) {
+function StatCard({ label, value, primary }: { label: string; value: string; primary?: boolean }) {
   return (
-    <div className="rounded-xl border bg-card p-4">
-      <div className="text-[10px] uppercase tracking-widest text-hmuted">{label}</div>
-      <div className="mt-1 font-mono text-lg" style={{ color: accent === "saffron" ? "var(--saffron)" : "var(--dark)" }}>{value}</div>
+    <div className="rounded-2xl border bg-card p-4">
+      <div className="text-xs text-muted-foreground">{label}</div>
+      <div
+        className={`mt-2 font-mono text-xl font-semibold sm:text-2xl ${primary ? "text-primary" : "text-foreground"}`}
+      >
+        {value}
+      </div>
     </div>
   );
 }
 
-function SectionCard({ title, children }: { title: string; children: React.ReactNode }) {
+function SectionCard({
+  title,
+  description,
+  children,
+}: {
+  title: string;
+  description?: string;
+  children: React.ReactNode;
+}) {
   return (
-    <div className="rounded-2xl border bg-card p-4">
-      <div className="text-xs uppercase tracking-widest text-hmuted mb-3">{title}</div>
+    <section className="rounded-2xl border bg-card p-4 sm:p-5">
+      <div className="mb-4">
+        <h2 className="text-base font-semibold">{title}</h2>
+        {description && <p className="mt-0.5 text-xs text-muted-foreground">{description}</p>}
+      </div>
       {children}
-    </div>
+    </section>
   );
 }
