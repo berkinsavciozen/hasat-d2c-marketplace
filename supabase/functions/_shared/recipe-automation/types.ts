@@ -4,7 +4,7 @@
 // hand-maintained duplicate shape to drift out of sync. Import from this file (as `import type`)
 // wherever only the compile-time type is needed; import from `./schemas.ts` wherever runtime
 // validation is required.
-import type { z } from "npm:zod@3.23.8";
+import type { z } from "npm:zod@3.25.76";
 import type {
   recipeAuthorTypeSchema,
   recipeBatchInputSchema,

@@ -11,7 +11,7 @@
 import assert from "node:assert/strict";
 import { createAgentRunner, resolveAgentRuntimeMode, sanitizeForStructuredOutput } from "./agent-runner.ts";
 import { RecipeAutomationError } from "./errors.ts";
-import { z } from "npm:zod@3.23.8";
+import { z } from "npm:zod@3.25.76";
 
 const ENV_VAR = "RECIPE_AGENT_RUNTIME";
 

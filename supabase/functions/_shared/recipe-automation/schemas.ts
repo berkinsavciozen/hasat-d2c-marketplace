@@ -44,7 +44,7 @@
 // returning 1024x1024 in testing, and the final resolution choice is deferred to Step 09. The WebP
 // encoder itself is left unresolved/nullable, since Step 01 did not land a working Edge-compatible
 // WebP encoder (jSquash's WASM loading failed; wasm-vips was untried).
-import { z } from "npm:zod@3.23.8";
+import { z } from "npm:zod@3.25.76";
 
 // ---------------------------------------------------------------------------
 // Shared primitives
