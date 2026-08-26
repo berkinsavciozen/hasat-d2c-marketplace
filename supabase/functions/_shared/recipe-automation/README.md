@@ -80,6 +80,22 @@ refuses an `action='approve'` row unless all five human-checklist items are true
 Never invokes a `recipe-stage-*` Edge Function, never writes to `recipe_drafts`/`recipe_qa_results`/
 `recipe_assets`. See `admin/README.md`.
 
+**Step 12 (Publish vertical slice):** `publish/` holds the pipeline's terminal automated stage —
+`recipe-stage-publish` (entrypoint at `../recipe-stage-publish/index.ts`) — a deterministic,
+idempotent publish that creates the live `recipes`/`recipe_ingredients`/`recipe_steps` rows from an
+approved draft. Unlike every earlier stage, most of the actual work is NOT in TypeScript: it lives
+in one transaction-capable Postgres function, `publish_recipe_draft`
+(`../../migrations/20260826130000_f2s12_recipe_publish_rpc.sql`), which re-derives every PROMPT 12
+precondition (exact approved draft version, matching blocker-free QA result, a complete
+`recipe_admin_reviews` approve row, both crop-photos assets, still-unique slug, valid crop values)
+before writing anything, then creates the recipe/ingredients/steps, maps the hero asset onto
+`cover_photo_url`, sets `recipes.status='published'`, and marks the job completed — all atomically,
+so any failure (an explicit precondition or a raw constraint violation) rolls back every write. A
+repeated publish call for an already-completed job returns the same recipe rather than creating a
+duplicate. See `publish/README.md` for the full precondition-to-check mapping and the "job approved
+and at publish" interpretive decision this step had to make (nothing before it ever set
+`stage='publish'`). SQL test suite: `../../tests/f2_recipe_publish/run.sh`.
+
 **Step 03A (foundation reconciliation, PRs #40–#42):** the stage/status enums, `RecipeQAResult`,
 and `RecipePlanBatch` below were realigned to RecipeAutomation.md §3/§5.3's canonical
 state-machine and QA-routing contract. In particular: `RecipeJobStage`/`RecipeJobStatus` now use
