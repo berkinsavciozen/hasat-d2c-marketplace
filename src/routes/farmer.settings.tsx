@@ -383,6 +383,10 @@ function Settings() {
                       <div className="text-xs text-muted-foreground">Sertifika eklenmemiş</div>
                     )}
                     {certs.map((c) => {
+                      const verified = !!c.verified_at;
+                      const expiresAt = c.expires_at ? new Date(c.expires_at).getTime() : null;
+                      const expired =
+                        expiresAt != null && !isNaN(expiresAt) && expiresAt < Date.now();
                       const expiryBadge = (() => {
                         if (!c.expires_at) return null;
                         const now = Date.now();
@@ -429,10 +433,20 @@ function Settings() {
                               }}
                               className="px-2 py-1 text-xs rounded-full hover:opacity-80"
                               style={{
-                                background: "color-mix(in oklab, var(--sage) 30%, transparent)",
+                                background: expired
+                                  ? "color-mix(in oklab, var(--destructive) 15%, transparent)"
+                                  : verified
+                                    ? "color-mix(in oklab, var(--sage) 30%, transparent)"
+                                    : "color-mix(in oklab, var(--primary) 10%, transparent)",
+                                color: expired
+                                  ? "var(--destructive)"
+                                  : verified
+                                    ? "var(--sage)"
+                                    : "var(--primary)",
                               }}
                             >
-                              ✓ {c.type}
+                              {verified && !expired ? "✓ " : ""}
+                              {c.type}
                             </button>
                             {expiryBadge}
                           </div>
@@ -512,7 +526,7 @@ function Settings() {
             const count = aiUsage?.count ?? 0;
             const pct = Math.min(100, (count / 50) * 100);
             const color =
-              count >= 50 ? "var(--sage)" : count > 45 ? "var(--saffron)" : "var(--primary)";
+              count >= 50 ? "var(--destructive)" : count > 45 ? "var(--saffron)" : "var(--primary)";
             return (
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
@@ -580,7 +594,7 @@ function Settings() {
           <div className="flex flex-col gap-2">
             <button
               onClick={logout}
-              className="flex items-center gap-2 rounded-lg px-4 py-2.5 text-sm font-medium text-destructive border border-destructive/40 hover:bg-destructive/10"
+              className="flex items-center gap-2 rounded-lg border border-border px-4 py-2.5 text-sm font-medium text-foreground hover:bg-muted"
             >
               <LogOut className="h-4 w-4" /> Çıkış Yap
             </button>

@@ -279,7 +279,7 @@ export function CommunityFeed({ categories, defaultCategory = "Genel" }: Communi
         <SheetTrigger asChild>
           <button
             aria-label="Yeni gönderi"
-            className="fixed bottom-24 right-4 z-30 grid h-14 w-14 place-items-center rounded-full bg-primary text-primary-foreground shadow-md md:bottom-6"
+            className="fixed bottom-[calc(56px+max(env(safe-area-inset-bottom),0.5rem)+96px)] right-4 z-30 grid h-14 w-14 place-items-center rounded-full bg-primary text-primary-foreground shadow-md md:bottom-24"
           >
             <Plus className="h-6 w-6" />
           </button>

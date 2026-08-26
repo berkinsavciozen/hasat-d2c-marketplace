@@ -110,7 +110,7 @@ function Analytics() {
               </div>
             </section>
 
-            <SectionCard title="Gelir" description="Son 6 ayın tamamlanan sipariş cirosu">
+            <SectionCard title="Gelir" description="Son 6 ayda kaydedilen siparişlerin cirosu">
               <div className="mb-4 flex items-center gap-2 text-sm text-muted-foreground">
                 <ArrowUpRight className="h-4 w-4 text-teal" />
                 <span>Toplam gelir</span>
