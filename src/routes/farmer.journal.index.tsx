@@ -411,7 +411,7 @@ function Journal() {
 
             <button
               onClick={() => navigate({ to: "/farmer/journal/new" })}
-              className="fixed bottom-[calc(5rem+max(env(safe-area-inset-bottom),0.5rem))] right-4 md:bottom-8 md:right-8 z-30 flex items-center gap-2 rounded-xl bg-primary px-5 py-3.5 text-white font-medium shadow-lg transition"
+              className="fixed bottom-[calc(56px+max(env(safe-area-inset-bottom),0.5rem)+96px)] right-4 z-30 flex items-center gap-2 rounded-xl bg-primary px-5 py-3.5 text-white font-medium shadow-lg transition md:bottom-24 md:right-4"
             >
               <Plus className="h-4 w-4" /> Yeni Kayıt
             </button>
