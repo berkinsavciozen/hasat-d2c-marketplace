@@ -31,6 +31,9 @@ echo "==> Applying 20260819120000_f2s03_recipe_automation_schema.sql"
 echo "==> Applying 20260819150000_f2s04_recipe_validation_rpcs.sql"
 "${PSQL[@]}" -d "$DB_NAME" -f "$MIGRATIONS_DIR/20260819150000_f2s04_recipe_validation_rpcs.sql"
 
+echo "==> Applying 20260826120000_f2s11_recipe_admin_reviews.sql"
+"${PSQL[@]}" -d "$DB_NAME" -f "$MIGRATIONS_DIR/20260826120000_f2s11_recipe_admin_reviews.sql"
+
 echo "==> Static check: neither F2 migration writes to recipes.status"
 if grep -Eiq 'update[[:space:]]+public\.recipes|insert[[:space:]]+into[[:space:]]+public\.recipes' \
   "$MIGRATIONS_DIR/20260819120000_f2s03_recipe_automation_schema.sql" \
@@ -50,5 +53,8 @@ echo "==> Running Step 07 QA-stage vertical slice (kabak)"
 
 echo "==> Running Step 08 revise-stage vertical slice (kabak)"
 "${PSQL[@]}" -d "$DB_NAME" -f "$SCRIPT_DIR/04_revise_stage_vertical_slice.sql"
+
+echo "==> Running Step 11 admin-review vertical slice"
+"${PSQL[@]}" -d "$DB_NAME" -f "$SCRIPT_DIR/05_admin_review_vertical_slice.sql"
 
 echo "==> F2 recipe automation SQL test suite: PASSED"
