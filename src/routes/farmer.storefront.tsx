@@ -260,7 +260,7 @@ function Storefront() {
       {active.length > 0 && (
         <button
           onClick={() => setSheet({ open: true })}
-          className="fixed bottom-[calc(9rem+max(env(safe-area-inset-bottom),0.5rem))] right-4 md:bottom-6 z-30 flex items-center gap-1.5 rounded-xl bg-primary px-4 py-3 text-sm font-medium text-white shadow-xl"
+          className="fixed bottom-[calc(56px+max(env(safe-area-inset-bottom),0.5rem)+96px)] right-4 z-30 flex items-center gap-1.5 rounded-xl bg-primary px-4 py-3 text-sm font-medium text-white shadow-xl md:bottom-24"
         >
           <Plus className="h-4 w-4" /> Yeni Ürün
         </button>
