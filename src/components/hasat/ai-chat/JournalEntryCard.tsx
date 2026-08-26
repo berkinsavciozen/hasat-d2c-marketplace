@@ -28,7 +28,10 @@ interface ExistingRow {
   parcel_id: string;
 }
 
-interface CostRow { label: string; amount: string }
+interface CostRow {
+  label: string;
+  amount: string;
+}
 
 const KNOWN_COST_KEYS = new Set(["labor", "fertilizer", "packaging", "transport", "other"]);
 
@@ -59,7 +62,8 @@ function resolveInitialParcel(
   parcels: { id: string; name: string }[],
 ): string {
   if (!parcels.length) return "";
-  if (initial.parcel_id && parcels.some((p) => p.id === initial.parcel_id)) return initial.parcel_id;
+  if (initial.parcel_id && parcels.some((p) => p.id === initial.parcel_id))
+    return initial.parcel_id;
   if (initial.parcel_name) {
     const target = initial.parcel_name.trim().toLowerCase();
     const m = parcels.find((p) => p.name.trim().toLowerCase() === target);
@@ -85,7 +89,9 @@ export function JournalEntryCard({ initial }: Props) {
   const [parcelId, setParcelId] = useState<string>("");
   const [notes, setNotes] = useState<string>(initial.notes ?? "");
   const [costRows, setCostRows] = useState<CostRow[]>(initialCostRows(initial.costs));
-  const [costsOpen, setCostsOpen] = useState<boolean>((initial.costs && Object.keys(initial.costs).length > 0) ?? false);
+  const [costsOpen, setCostsOpen] = useState<boolean>(
+    (initial.costs && Object.keys(initial.costs).length > 0) ?? false,
+  );
 
   const [dismissed, setDismissed] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -97,7 +103,10 @@ export function JournalEntryCard({ initial }: Props) {
 
   const { data: batches = [] } = useExistingBatches(parcelId || null, crop || null);
   useEffect(() => {
-    if (batches.length === 0) { setListingId(""); return; }
+    if (batches.length === 0) {
+      setListingId("");
+      return;
+    }
     const preferred = batches[batches.length - 1].id;
     setListingId((prev) => (prev && batches.some((b) => b.id === prev) ? prev : preferred));
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -131,7 +140,10 @@ export function JournalEntryCard({ initial }: Props) {
       checkedKeyRef.current = key;
       setExisting((data as ExistingRow | null) ?? null);
     }, 250);
-    return () => { cancelled = true; clearTimeout(t); };
+    return () => {
+      cancelled = true;
+      clearTimeout(t);
+    };
   }, [userId, crop, date]);
 
   const validate = (): boolean => {
@@ -172,13 +184,16 @@ export function JournalEntryCard({ initial }: Props) {
     if (!userId || !existing) return;
     if (!validate()) return;
     setSaveState({ kind: "saving" });
-    const { error } = await supabase.from("harvest_entries").update({
-      quantity: Number(quantity),
-      unit,
-      quality,
-      notes: notes.trim() || null,
-      costs: buildCostsPayload(costRows) as any,
-    }).eq("id", existing.id);
+    const { error } = await supabase
+      .from("harvest_entries")
+      .update({
+        quantity: Number(quantity),
+        unit,
+        quality,
+        notes: notes.trim() || null,
+        costs: buildCostsPayload(costRows) as any,
+      })
+      .eq("id", existing.id);
     if (error) {
       setSaveState({ kind: "error", message: "Kayıt sırasında bir hata oluştu. Tekrar deneyin." });
       return;
@@ -193,7 +208,10 @@ export function JournalEntryCard({ initial }: Props) {
     return (
       <div
         className="mt-2 rounded-xl border-l-2 px-3 py-2 text-sm flex items-center gap-2"
-        style={{ borderLeftColor: "var(--gold)", background: "color-mix(in oklab, var(--gold) 10%, white)" }}
+        style={{
+          borderLeftColor: "var(--gold)",
+          background: "color-mix(in oklab, var(--gold) 10%, white)",
+        }}
       >
         <Check className="h-4 w-4" style={{ color: "var(--sage)" }} />
         <span>{saveState.updated ? "Güncellendi" : "Kaydedildi"}</span>
@@ -214,20 +232,28 @@ export function JournalEntryCard({ initial }: Props) {
     <div
       className="mt-2 rounded-xl border-l-2 p-3 space-y-3 text-sm"
       style={{
-        borderLeftColor: "var(--gold)",
-        background: "color-mix(in oklab, var(--gold) 8%, white)",
-        border: "1px solid color-mix(in oklab, var(--gold) 30%, transparent)",
+        borderLeftColor: "var(--primary)",
+        background: "color-mix(in oklab, var(--primary) 6%, white)",
+        border: "1px solid color-mix(in oklab, var(--primary) 24%, transparent)",
       }}
     >
       <div className="flex items-center gap-2">
-        <span className="text-xs font-medium uppercase tracking-wider" style={{ color: "var(--gold)" }}>
-          Günlük Kaydı
+        <span
+          className="text-xs font-medium uppercase tracking-wider"
+          style={{ color: "var(--primary)" }}
+        >
+          AI tarafından çıkarıldı · kaydetmeden önce gözden geçir
         </span>
       </div>
 
       {existing && !forceInsert && (
-        <div className="rounded-lg px-2.5 py-2 text-xs flex items-start gap-2"
-          style={{ background: "color-mix(in oklab, var(--saffron) 15%, white)", color: "var(--saffron)" }}>
+        <div
+          className="rounded-lg px-2.5 py-2 text-xs flex items-start gap-2"
+          style={{
+            background: "color-mix(in oklab, var(--saffron) 15%, white)",
+            color: "var(--saffron)",
+          }}
+        >
           <AlertTriangle className="h-3.5 w-3.5 mt-0.5 shrink-0" />
           <span>Bu tarihte aynı ürün için bir kayıt var.</span>
         </div>
@@ -239,9 +265,11 @@ export function JournalEntryCard({ initial }: Props) {
         </Field>
         <Field label="Miktar" error={errors.quantity}>
           <input
-            type="number" inputMode="decimal" value={quantity}
+            type="number"
+            inputMode="decimal"
+            value={quantity}
             onChange={(e) => setQuantity(e.target.value)}
-            className={inputCls + " font-mono"}
+            className={inputCls + " tabular-nums"}
           />
         </Field>
         <Field label="Birim">
@@ -251,13 +279,24 @@ export function JournalEntryCard({ initial }: Props) {
           <Segmented value={quality} options={["A", "B", "C"] as const} onChange={setQuality} />
         </Field>
         <Field label="Tarih" error={errors.date}>
-          <input type="date" value={date} onChange={(e) => setDate(e.target.value)} className={inputCls} />
+          <input
+            type="date"
+            value={date}
+            onChange={(e) => setDate(e.target.value)}
+            className={inputCls}
+          />
         </Field>
         <Field label="Parsel" error={errors.parcel} className="col-span-2">
-          <select value={parcelId} onChange={(e) => setParcelId(e.target.value)} className={inputCls}>
+          <select
+            value={parcelId}
+            onChange={(e) => setParcelId(e.target.value)}
+            className={inputCls}
+          >
             <option value="">Parsel seçin</option>
             {parcels.map((p) => (
-              <option key={p.id} value={p.id}>{p.name}</option>
+              <option key={p.id} value={p.id}>
+                {p.name}
+              </option>
             ))}
           </select>
         </Field>
@@ -275,22 +314,28 @@ export function JournalEntryCard({ initial }: Props) {
                     className={`rounded-full border px-2.5 py-1 text-xs transition ${
                       active ? "text-white" : "text-dark"
                     }`}
-                    style={active
-                      ? { background: "var(--saffron)", borderColor: "var(--saffron)" }
-                      : { background: "white" }}
+                    style={
+                      active
+                        ? { background: "var(--primary)", borderColor: "var(--primary)" }
+                        : { background: "white" }
+                    }
                   >
                     📦 {label} <span className="opacity-70 ml-0.5">{b.status}</span>
                   </button>
                 );
               })}
             </div>
-            <span className="text-[10px] text-muted-foreground">Bu kayıt seçili batch'e bağlanacak.</span>
+            <span className="text-[10px] text-muted-foreground">
+              Bu kayıt seçili batch'e bağlanacak.
+            </span>
           </Field>
         )}
         <Field label="Not (opsiyonel)" className="col-span-2">
           <textarea
-            value={notes} onChange={(e) => setNotes(e.target.value)}
-            rows={2} className={inputCls + " resize-none"}
+            value={notes}
+            onChange={(e) => setNotes(e.target.value)}
+            rows={2}
+            className={inputCls + " resize-none"}
           />
         </Field>
       </div>
@@ -311,14 +356,24 @@ export function JournalEntryCard({ initial }: Props) {
                 <input
                   placeholder="Etiket (örn. labor)"
                   value={r.label}
-                  onChange={(e) => setCostRows((rows) => rows.map((x, j) => j === i ? { ...x, label: e.target.value } : x))}
+                  onChange={(e) =>
+                    setCostRows((rows) =>
+                      rows.map((x, j) => (j === i ? { ...x, label: e.target.value } : x)),
+                    )
+                  }
                   className={inputCls + " flex-1"}
                 />
                 <input
-                  type="number" inputMode="decimal" placeholder="0"
+                  type="number"
+                  inputMode="decimal"
+                  placeholder="0"
                   value={r.amount}
-                  onChange={(e) => setCostRows((rows) => rows.map((x, j) => j === i ? { ...x, amount: e.target.value } : x))}
-                  className={inputCls + " w-24 font-mono"}
+                  onChange={(e) =>
+                    setCostRows((rows) =>
+                      rows.map((x, j) => (j === i ? { ...x, amount: e.target.value } : x)),
+                    )
+                  }
+                  className={inputCls + " w-24 tabular-nums"}
                 />
                 <button
                   type="button"
@@ -341,7 +396,13 @@ export function JournalEntryCard({ initial }: Props) {
       </div>
 
       {saveState.kind === "error" && (
-        <div className="text-xs rounded-md px-2.5 py-1.5" style={{ background: "color-mix(in oklab, var(--hred) 12%, white)", color: "var(--hred)" }}>
+        <div
+          className="text-xs rounded-md px-2.5 py-1.5"
+          style={{
+            background: "color-mix(in oklab, var(--hred) 12%, white)",
+            color: "var(--hred)",
+          }}
+        >
           {saveState.message}
         </div>
       )}
@@ -361,9 +422,12 @@ export function JournalEntryCard({ initial }: Props) {
             <button
               type="button"
               disabled={saving}
-              onClick={() => { setForceInsert(true); doInsert(); }}
+              onClick={() => {
+                setForceInsert(true);
+                doInsert();
+              }}
               className="rounded-lg px-3 py-1.5 text-xs font-medium text-white disabled:opacity-50"
-              style={{ background: "var(--saffron)" }}
+              style={{ background: "var(--primary)" }}
             >
               {saving ? "Kaydediliyor…" : "Yine de Kaydet"}
             </button>
@@ -374,7 +438,7 @@ export function JournalEntryCard({ initial }: Props) {
             disabled={saving}
             onClick={doInsert}
             className="rounded-lg px-3 py-1.5 text-xs font-medium text-white disabled:opacity-50"
-            style={{ background: "var(--saffron)" }}
+            style={{ background: "var(--primary)" }}
           >
             {saving ? "Kaydediliyor…" : "Kaydet"}
           </button>
@@ -396,8 +460,16 @@ const inputCls =
   "w-full rounded-md border bg-white px-2 py-1.5 text-sm outline-none focus:border-[var(--gold)]";
 
 function Field({
-  label, error, children, className,
-}: { label: string; error?: string; children: React.ReactNode; className?: string }) {
+  label,
+  error,
+  children,
+  className,
+}: {
+  label: string;
+  error?: string;
+  children: React.ReactNode;
+  className?: string;
+}) {
   return (
     <label className={`block ${className ?? ""}`}>
       <span className="text-[10px] uppercase tracking-wider text-muted-foreground">{label}</span>
@@ -408,8 +480,14 @@ function Field({
 }
 
 function Segmented<T extends string>({
-  value, options, onChange,
-}: { value: T; options: readonly T[]; onChange: (v: T) => void }) {
+  value,
+  options,
+  onChange,
+}: {
+  value: T;
+  options: readonly T[];
+  onChange: (v: T) => void;
+}) {
   return (
     <div className="flex rounded-md border overflow-hidden">
       {options.map((o) => {
@@ -420,9 +498,11 @@ function Segmented<T extends string>({
             type="button"
             onClick={() => onChange(o)}
             className="flex-1 px-2 py-1.5 text-xs transition"
-            style={active
-              ? { background: "var(--gold)", color: "white" }
-              : { background: "white", color: "var(--dark)" }}
+            style={
+              active
+                ? { background: "var(--gold)", color: "white" }
+                : { background: "white", color: "var(--dark)" }
+            }
           >
             {o}
           </button>

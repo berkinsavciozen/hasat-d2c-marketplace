@@ -1,6 +1,6 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
-import { Plus, ChevronDown } from "lucide-react";
+import { Plus, ChevronDown, ClipboardList, MapPin, Sprout } from "lucide-react";
 import { FarmerHeader } from "./farmer";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { Stepper } from "@/components/hasat/Stepper";
@@ -27,7 +27,6 @@ import {
   monthLabel,
   shortDay,
   relativeTr,
-  cropChipColor,
 } from "@/lib/hasat/journal-meta";
 import { toast } from "sonner";
 import { formatCrop, formatQuantity } from "@/lib/hasat/format";
@@ -45,7 +44,11 @@ function LoadingDots() {
     const t = setInterval(() => setI((p) => (p % 3) + 1), 400);
     return () => clearInterval(t);
   }, []);
-  return <div className="py-12"><ProgressDots current={i} total={3} /></div>;
+  return (
+    <div className="py-12">
+      <ProgressDots current={i} total={3} />
+    </div>
+  );
 }
 
 function HealthDots({ value }: { value?: number }) {
@@ -57,7 +60,8 @@ function HealthDots({ value }: { value?: number }) {
           key={i}
           className="block h-1.5 w-1.5 rounded-full"
           style={{
-            background: i <= value ? "var(--saffron)" : "color-mix(in oklab, var(--dark) 15%, transparent)",
+            background:
+              i <= value ? "var(--teal)" : "color-mix(in oklab, var(--dark) 15%, transparent)",
           }}
         />
       ))}
@@ -89,10 +93,7 @@ function Journal() {
     return Array.from(m.entries());
   }, [sorted]);
 
-  const parcelById = useMemo(
-    () => Object.fromEntries(parcels.map((p) => [p.id, p])),
-    [parcels],
-  );
+  const parcelById = useMemo(() => Object.fromEntries(parcels.map((p) => [p.id, p])), [parcels]);
 
   const lastDate = sorted[0]?.date;
 
@@ -131,7 +132,11 @@ function Journal() {
           : { lat: 0, lng: 0, label: "" },
       });
       setOpen(false);
-      setPName(""); setPArea(2); setPCrops([]); setGpsState("idle"); setCoords(null);
+      setPName("");
+      setPArea(2);
+      setPCrops([]);
+      setGpsState("idle");
+      setCoords(null);
       toast.success("Parsel eklendi");
     } catch (err) {
       toast.error((err as Error).message);
@@ -150,12 +155,15 @@ function Journal() {
         <AIBox page="journal" />
 
         {/* Tab switcher */}
-        <div className="flex gap-2 rounded-full border p-1" style={{ background: "var(--cream)", borderColor: "var(--border)" }}>
+        <div
+          className="flex gap-2 rounded-xl border p-1"
+          style={{ background: "var(--cream)", borderColor: "var(--border)" }}
+        >
           <button
             onClick={() => setActiveTab("harvest")}
-            className="flex-1 rounded-full py-2 text-sm font-medium transition"
+            className="flex-1 rounded-lg py-2 text-sm font-medium transition"
             style={{
-              background: activeTab === "harvest" ? "var(--saffron)" : "transparent",
+              background: activeTab === "harvest" ? "var(--primary)" : "transparent",
               color: activeTab === "harvest" ? "white" : "var(--dark)",
             }}
           >
@@ -163,200 +171,251 @@ function Journal() {
           </button>
           <button
             onClick={() => setActiveTab("routine")}
-            className="flex-1 rounded-full py-2 text-sm font-medium transition"
+            className="flex-1 rounded-lg py-2 text-sm font-medium transition"
             style={{
-              background: activeTab === "routine" ? "var(--saffron)" : "transparent",
+              background: activeTab === "routine" ? "var(--primary)" : "transparent",
               color: activeTab === "routine" ? "white" : "var(--dark)",
             }}
           >
-            🌱 Rutin Bakım
+            Rutin Bakım
           </button>
         </div>
 
         {activeTab === "routine" && <RoutineTab parcels={parcels} />}
 
         {activeTab === "harvest" && (
-        <>
-        {/* Compact stats bar */}
-        <div className="rounded-2xl border px-4 py-3 flex flex-wrap items-center justify-between gap-x-3 gap-y-1" style={{ background: "var(--cream)", borderColor: "var(--border)" }}>
-          <div className="min-w-0 text-sm text-dark">
-            <span className="font-mono font-medium">{entries.length}</span> kayıt
-            <span className="mx-1.5 opacity-40">·</span>
-            <span className="font-mono font-medium">{parcels.length}</span> parsel
-            {lastDate && (
-              <>
+          <>
+            {/* Compact stats bar */}
+            <div
+              className="rounded-2xl border px-4 py-3 flex flex-wrap items-center justify-between gap-x-3 gap-y-1"
+              style={{ background: "var(--cream)", borderColor: "var(--border)" }}
+            >
+              <div className="min-w-0 text-sm text-dark">
+                <span className="font-medium tabular-nums">{entries.length}</span> kayıt
                 <span className="mx-1.5 opacity-40">·</span>
-                <span className="text-hmuted">Son: {relativeTr(lastDate)}</span>
-              </>
-            )}
-          </div>
-          <div className="flex items-center gap-3 shrink-0">
-            <Sheet open={open} onOpenChange={setOpen}>
-              <SheetTrigger asChild>
-                <button className="shrink-0 text-xs text-saffron font-medium whitespace-nowrap">+ Parsel</button>
-              </SheetTrigger>
+                <span className="font-medium tabular-nums">{parcels.length}</span> parsel
+                {lastDate && (
+                  <>
+                    <span className="mx-1.5 opacity-40">·</span>
+                    <span className="text-hmuted">Son: {relativeTr(lastDate)}</span>
+                  </>
+                )}
+              </div>
+              <div className="flex items-center gap-3 shrink-0">
+                <Sheet open={open} onOpenChange={setOpen}>
+                  <SheetTrigger asChild>
+                    <button className="shrink-0 text-xs text-primary font-medium whitespace-nowrap">
+                      + Parsel
+                    </button>
+                  </SheetTrigger>
 
-            <SheetContent side="bottom" className="rounded-t-3xl max-h-[85vh]">
-              <div className="mx-auto h-1.5 w-12 rounded-full bg-muted -mt-2 mb-3" />
-              <SheetHeader>
-                <SheetTitle className="font-serif">Yeni Parsel</SheetTitle>
-              </SheetHeader>
-              <div className="mt-4 space-y-4 pb-6">
-                <div>
-                  <label className="text-xs text-hmuted">Parsel Adı</label>
-                  <input value={pName} onChange={(e) => setPName(e.target.value)}
-                    placeholder="Örn: Parsel C — Lavanta"
-                    className="mt-1 w-full rounded-lg border bg-input px-3 py-2.5 outline-none focus:border-saffron" />
-                </div>
-                <div>
-                  <label className="text-xs text-hmuted">Büyüklük (dönüm)</label>
-                  <div className="mt-1">
-                    <Stepper value={pArea} onChange={setPArea} step={0.5} min={0.5} unit="dönüm" />
-                  </div>
-                </div>
-                <div>
-                  <label className="text-xs text-hmuted">Ürün</label>
-                  <div className="mt-1">
-                    <CropChips value={pCrops} onChange={setPCrops} context="farmer" />
-                  </div>
-                </div>
-                <div>
-                  <label className="text-xs text-hmuted">Konum</label>
-                  <div className="mt-1">
-                    {gpsState === "idle" && (
-                      <button type="button" onClick={startGps} className="w-full rounded-lg border border-dashed py-3 text-sm text-hmuted hover:border-saffron">
-                        📍 GPS ile algıla
-                      </button>
-                    )}
-                    {gpsState === "loading" && (
-                      <div className="rounded-lg bg-muted/40 py-3 text-center text-sm text-hmuted">
-                        <span className="inline-block animate-pulse">📡 Konum algılanıyor…</span>
+                  <SheetContent side="bottom" className="rounded-t-3xl max-h-[85vh]">
+                    <div className="mx-auto h-1.5 w-12 rounded-full bg-muted -mt-2 mb-3" />
+                    <SheetHeader>
+                      <SheetTitle>Yeni Parsel</SheetTitle>
+                    </SheetHeader>
+                    <div className="mt-4 space-y-4 pb-6">
+                      <div>
+                        <label className="text-xs text-hmuted">Parsel Adı</label>
+                        <input
+                          value={pName}
+                          onChange={(e) => setPName(e.target.value)}
+                          placeholder="Örn: Parsel C — Lavanta"
+                          className="mt-1 w-full rounded-xl border bg-input px-3 py-2.5 outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
+                        />
                       </div>
-                    )}
-                    {gpsState === "done" && coords && (
-                      <div className="rounded-lg bg-sage/15 px-3 py-2.5 text-sm text-sage">
-                        ✓ Konum kaydedildi ({coords.lat.toFixed(4)}, {coords.lng.toFixed(4)})
+                      <div>
+                        <label className="text-xs text-hmuted">Büyüklük (dönüm)</label>
+                        <div className="mt-1">
+                          <Stepper
+                            value={pArea}
+                            onChange={setPArea}
+                            step={0.5}
+                            min={0.5}
+                            unit="dönüm"
+                          />
+                        </div>
                       </div>
-                    )}
-                    {gpsState === "error" && (
-                      <button type="button" onClick={startGps} className="w-full rounded-lg border border-dashed border-hred/40 py-3 text-sm text-hred hover:bg-hred/5">
-                        Konum alınamadı — tekrar dene
+                      <div>
+                        <label className="text-xs text-hmuted">Ürün</label>
+                        <div className="mt-1">
+                          <CropChips value={pCrops} onChange={setPCrops} context="farmer" />
+                        </div>
+                      </div>
+                      <div>
+                        <label className="text-xs text-hmuted">Konum</label>
+                        <div className="mt-1">
+                          {gpsState === "idle" && (
+                            <button
+                              type="button"
+                              onClick={startGps}
+                              className="w-full rounded-lg border border-dashed py-3 text-sm text-hmuted hover:border-saffron"
+                            >
+                              <MapPin className="mr-1 inline h-4 w-4" /> GPS ile algıla
+                            </button>
+                          )}
+                          {gpsState === "loading" && (
+                            <div className="rounded-lg bg-muted/40 py-3 text-center text-sm text-hmuted">
+                              <span className="inline-block animate-pulse">
+                                📡 Konum algılanıyor…
+                              </span>
+                            </div>
+                          )}
+                          {gpsState === "done" && coords && (
+                            <div className="rounded-lg bg-sage/15 px-3 py-2.5 text-sm text-sage">
+                              ✓ Konum kaydedildi ({coords.lat.toFixed(4)}, {coords.lng.toFixed(4)})
+                            </div>
+                          )}
+                          {gpsState === "error" && (
+                            <button
+                              type="button"
+                              onClick={startGps}
+                              className="w-full rounded-lg border border-dashed border-hred/40 py-3 text-sm text-hred hover:bg-hred/5"
+                            >
+                              Konum alınamadı — tekrar dene
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                      <button
+                        onClick={saveParcel}
+                        disabled={!pName.trim() || createParcel.isPending}
+                        className="w-full rounded-xl bg-primary py-3 text-white font-medium disabled:opacity-40"
+                      >
+                        {createParcel.isPending ? "Kaydediliyor…" : "Parseli Kaydet ✓"}
                       </button>
-                    )}
-                  </div>
+                    </div>
+                  </SheetContent>
+                </Sheet>
+              </div>
+            </div>
+
+            {isLoading ? (
+              <LoadingDots />
+            ) : sorted.length === 0 ? (
+              <div
+                className="rounded-2xl border border-dashed py-14 text-center"
+                style={{ background: "var(--cream)", borderColor: "var(--border)" }}
+              >
+                <Sprout className="mx-auto mb-2 h-10 w-10 text-primary" />
+                <div className="text-xl font-semibold text-dark">İlk üretim kaydını oluştur</div>
+                <div className="text-sm text-hmuted mt-1">
+                  Sulama, gözlem, hasat — hepsi tek bir akışta.
                 </div>
                 <button
-                  onClick={saveParcel}
-                  disabled={!pName.trim() || createParcel.isPending}
-                  className="w-full rounded-xl bg-saffron py-3 text-white font-medium disabled:opacity-40"
+                  onClick={() => navigate({ to: "/farmer/journal/new" })}
+                  className="mt-5 inline-flex items-center gap-2 rounded-xl bg-primary px-5 py-2.5 text-sm text-white font-medium"
                 >
-                  {createParcel.isPending ? "Kaydediliyor…" : "Parseli Kaydet ✓"}
+                  <Plus className="h-4 w-4" /> Yeni Kayıt
                 </button>
               </div>
-            </SheetContent>
-            </Sheet>
-          </div>
-        </div>
+            ) : (
+              <div className="space-y-5">
+                {groups.map(([ym, rows]) => (
+                  <section key={ym}>
+                    <div
+                      className="sticky top-0 z-10 -mx-4 md:-mx-8 px-4 md:px-8 py-2 backdrop-blur"
+                      style={{
+                        background: "color-mix(in oklab, var(--background) 85%, transparent)",
+                      }}
+                    >
+                      <h3 className="text-sm font-semibold uppercase tracking-widest text-hmuted">
+                        {monthLabel(ym)}
+                      </h3>
+                    </div>
+                    <ul className="mt-2 space-y-2">
+                      {rows.map((e) => {
+                        const meta = parseNotes(e.notes);
+                        const wt = WORK_TYPE_MAP[meta.work];
+                        const parcel = parcelById[e.parcelId];
+                        const sd = shortDay(e.date);
+                        return (
+                          <li key={e.id}>
+                            <Link
+                              to="/farmer/journal/$entryId"
+                              params={{ entryId: e.id }}
+                              className="block rounded-2xl border px-4 py-3.5 hover:border-primary transition"
+                              style={{ background: "var(--cream)", borderColor: "var(--border)" }}
+                            >
+                              <div className="flex items-start gap-4">
+                                {/* Date */}
+                                <div className="text-center shrink-0 w-12">
+                                  <div className="text-2xl font-semibold leading-none text-dark tabular-nums">
+                                    {sd.day}
+                                  </div>
+                                  <div className="text-[10px] uppercase tracking-widest text-hmuted mt-1">
+                                    {sd.mon}
+                                  </div>
+                                </div>
+                                {/* Body */}
+                                <div className="flex-1 min-w-0">
+                                  <div className="flex items-center gap-2 flex-wrap">
+                                    <span
+                                      className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium"
+                                      style={{
+                                        background:
+                                          "color-mix(in oklab, var(--teal) 14%, transparent)",
+                                        color: "var(--primary)",
+                                      }}
+                                    >
+                                      {formatCrop(parcel?.name ?? "—")}
+                                    </span>
+                                    <span className="inline-flex items-center gap-1 text-xs font-medium text-dark/80">
+                                      <ClipboardList className="h-3.5 w-3.5 text-primary" />
+                                      {wt.label}
+                                    </span>
+                                    {meta.tags
+                                      .filter((t) => t.key !== "work" && t.key !== "category")
+                                      .map((t, i) => (
+                                        <span
+                                          key={`${t.key}-${i}`}
+                                          className="inline-flex items-center rounded-full border px-1.5 py-0.5 text-[10px] font-medium text-hmuted"
+                                          style={{
+                                            borderColor: "var(--border)",
+                                            background: "var(--background)",
+                                          }}
+                                        >
+                                          {t.key === "health"
+                                            ? `health: ${t.value}`
+                                            : `${t.key}: ${t.value}`}
+                                        </span>
+                                      ))}
+                                  </div>
+                                  {meta.text && (
+                                    <p className="mt-1.5 text-sm text-dark/70 truncate">
+                                      {meta.text}
+                                    </p>
+                                  )}
+                                </div>
 
+                                {/* Health */}
+                                <div className="shrink-0 pt-2">
+                                  <HealthDots value={meta.health} />
+                                  {e.quantity > 0 && (
+                                    <div className="mt-1.5 text-right text-[11px] text-hmuted tabular-nums">
+                                      {formatQuantity(e.quantity, e.unit)}
+                                      {e.unit}
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            </Link>
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  </section>
+                ))}
+              </div>
+            )}
 
-        {isLoading ? (
-          <LoadingDots />
-        ) : sorted.length === 0 ? (
-          <div className="rounded-2xl border border-dashed py-14 text-center" style={{ background: "var(--cream)", borderColor: "var(--border)" }}>
-            <div className="text-4xl mb-2">🌱</div>
-            <div className="font-serif text-xl text-dark">İlk hasat kaydını oluştur</div>
-            <div className="text-sm text-hmuted mt-1">Sulama, gözlem, hasat — hepsi tek bir akışta.</div>
             <button
               onClick={() => navigate({ to: "/farmer/journal/new" })}
-              className="mt-5 inline-flex items-center gap-2 rounded-full bg-saffron px-5 py-2.5 text-sm text-white font-medium"
+              className="fixed bottom-[calc(56px+max(env(safe-area-inset-bottom),0.5rem)+96px)] right-4 z-30 flex items-center gap-2 rounded-xl bg-primary px-5 py-3.5 text-white font-medium shadow-lg transition md:bottom-24 md:right-4"
             >
               <Plus className="h-4 w-4" /> Yeni Kayıt
             </button>
-          </div>
-        ) : (
-          <div className="space-y-5">
-            {groups.map(([ym, rows]) => (
-              <section key={ym}>
-                <div className="sticky top-0 z-10 -mx-4 md:-mx-8 px-4 md:px-8 py-2 backdrop-blur" style={{ background: "color-mix(in oklab, var(--background) 85%, transparent)" }}>
-                  <h3 className="font-serif text-sm uppercase tracking-widest text-hmuted">{monthLabel(ym)}</h3>
-                </div>
-                <ul className="mt-2 space-y-2">
-                  {rows.map((e) => {
-                    const meta = parseNotes(e.notes);
-                    const wt = WORK_TYPE_MAP[meta.work];
-                    const parcel = parcelById[e.parcelId];
-                    const sd = shortDay(e.date);
-                    const chip = cropChipColor(parcel?.crops[0] ?? e.crop);
-                    return (
-                      <li key={e.id}>
-                        <Link
-                          to="/farmer/journal/$entryId"
-                          params={{ entryId: e.id }}
-                          className="block rounded-2xl border px-4 py-3.5 hover:border-saffron transition"
-                          style={{ background: "var(--cream)", borderColor: "var(--border)" }}
-                        >
-                          <div className="flex items-start gap-4">
-                            {/* Date */}
-                            <div className="text-center shrink-0 w-12">
-                              <div className="font-serif text-2xl leading-none text-dark">{sd.day}</div>
-                              <div className="text-[10px] uppercase tracking-widest text-hmuted mt-1">{sd.mon}</div>
-                            </div>
-                            {/* Body */}
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-center gap-2 flex-wrap">
-                                <span
-                                  className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium"
-                                  style={{ background: chip.bg, color: chip.fg }}
-                                >
-                                  {formatCrop(parcel?.name ?? "—")}
-                                </span>
-                                <span className="text-xs text-dark/80">
-                                  <span className="mr-1">{wt.emoji}</span>{wt.label}
-                                </span>
-                                {meta.tags
-                                  .filter((t) => t.key !== "work" && t.key !== "category")
-                                  .map((t, i) => (
-                                    <span
-                                      key={`${t.key}-${i}`}
-                                      className="inline-flex items-center rounded-full border px-1.5 py-0.5 text-[10px] font-medium text-hmuted"
-                                      style={{ borderColor: "var(--border)", background: "var(--background)" }}
-                                    >
-                                      {t.key === "health" ? `health: ${t.value}` : `${t.key}: ${t.value}`}
-                                    </span>
-                                  ))}
-                              </div>
-                              {meta.text && (
-                                <p className="mt-1.5 text-sm text-dark/70 truncate">{meta.text}</p>
-                              )}
-                            </div>
-
-                            {/* Health */}
-                            <div className="shrink-0 pt-2">
-                              <HealthDots value={meta.health} />
-                              {e.quantity > 0 && (
-                                <div className="mt-1.5 text-right font-mono text-[11px] text-hmuted">
-                                  {formatQuantity(e.quantity, e.unit)}{e.unit}
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                        </Link>
-                      </li>
-                    );
-                  })}
-                </ul>
-              </section>
-            ))}
-          </div>
-        )}
-
-        <button
-          onClick={() => navigate({ to: "/farmer/journal/new" })}
-          className="fixed bottom-20 right-4 md:bottom-8 md:right-8 z-30 flex items-center gap-2 rounded-full bg-saffron px-5 py-3.5 text-white font-medium shadow-lg shadow-saffron/40 hover:scale-105 transition"
-        >
-          <Plus className="h-4 w-4" /> Yeni Kayıt
-        </button>
-        </>
+          </>
         )}
       </div>
     </>
@@ -375,13 +434,19 @@ function rowStatus(row: RoutineMaintenanceStatusRow): RowStatus {
   return daysUntil <= 2 ? "soon" : "ok";
 }
 
-function statusStyle(status: RowStatus): { bg: string; fg: string; label: (row: RoutineMaintenanceStatusRow) => string } {
+function statusStyle(status: RowStatus): {
+  bg: string;
+  fg: string;
+  label: (row: RoutineMaintenanceStatusRow) => string;
+} {
   if (status === "overdue") {
     return {
       bg: "color-mix(in oklab, var(--hred) 15%, transparent)",
       fg: "var(--hred)",
       label: (row) => {
-        const days = row.next_due_date ? Math.abs(Math.floor((new Date(row.next_due_date).getTime() - Date.now()) / 86400000)) : 0;
+        const days = row.next_due_date
+          ? Math.abs(Math.floor((new Date(row.next_due_date).getTime() - Date.now()) / 86400000))
+          : 0;
         return `${days} gün gecikti`;
       },
     };
@@ -391,7 +456,9 @@ function statusStyle(status: RowStatus): { bg: string; fg: string; label: (row: 
       bg: "color-mix(in oklab, var(--gold) 20%, transparent)",
       fg: "var(--dark)",
       label: (row) => {
-        const days = row.next_due_date ? Math.max(0, Math.floor((new Date(row.next_due_date).getTime() - Date.now()) / 86400000)) : 0;
+        const days = row.next_due_date
+          ? Math.max(0, Math.floor((new Date(row.next_due_date).getTime() - Date.now()) / 86400000))
+          : 0;
         return days === 0 ? "Bugün sırası" : `${days} gün sonra`;
       },
     };
@@ -401,8 +468,14 @@ function statusStyle(status: RowStatus): { bg: string; fg: string; label: (row: 
       bg: "color-mix(in oklab, var(--sage) 15%, transparent)",
       fg: "var(--sage)",
       label: (row) => {
-        if (!row.next_due_date) return row.last_performed_date ? `Son: ${relativeTr(row.last_performed_date)}` : "Olay bazlı";
-        const days = Math.max(0, Math.floor((new Date(row.next_due_date).getTime() - Date.now()) / 86400000));
+        if (!row.next_due_date)
+          return row.last_performed_date
+            ? `Son: ${relativeTr(row.last_performed_date)}`
+            : "Olay bazlı";
+        const days = Math.max(
+          0,
+          Math.floor((new Date(row.next_due_date).getTime() - Date.now()) / 86400000),
+        );
         return `${days} gün sonra`;
       },
     };
@@ -451,7 +524,10 @@ function RoutineTab({ parcels }: { parcels: Parcel[] }) {
     // parcels dizisindeki sırayı (created_at asc) koru
     return parcels
       .map((p) => m.get(p.id))
-      .filter((g): g is { parcel: Parcel; rows: RoutineMaintenanceStatusRow[] } => !!g && g.rows.length > 0);
+      .filter(
+        (g): g is { parcel: Parcel; rows: RoutineMaintenanceStatusRow[] } =>
+          !!g && g.rows.length > 0,
+      );
   }, [visibleRows, parcels]);
 
   const farmerCrops = useMemo(() => {
@@ -463,16 +539,31 @@ function RoutineTab({ parcels }: { parcels: Parcel[] }) {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between gap-2 flex-wrap">
-        <Link to="/farmer/journal/customize" className="text-xs text-hmuted hover:text-saffron font-medium whitespace-nowrap">
+        <Link
+          to="/farmer/journal/customize"
+          className="text-xs text-hmuted hover:text-saffron font-medium whitespace-nowrap"
+        >
           ⚙️ Rutin Bakımı Özelleştir
         </Link>
-        <div className="flex gap-1 rounded-full border p-0.5" style={{ borderColor: "var(--border)" }}>
-          {([["today", "Bugün"], ["week", "Bu Hafta"], ["all", "Tümü"]] as [DateFilter, string][]).map(([key, label]) => (
+        <div
+          className="flex gap-1 rounded-full border p-0.5"
+          style={{ borderColor: "var(--border)" }}
+        >
+          {(
+            [
+              ["today", "Bugün"],
+              ["week", "Bu Hafta"],
+              ["all", "Tümü"],
+            ] as [DateFilter, string][]
+          ).map(([key, label]) => (
             <button
               key={key}
               onClick={() => setDateFilter(key)}
               className="rounded-full px-2.5 py-1 text-[11px] font-medium"
-              style={{ background: dateFilter === key ? "var(--saffron)" : "transparent", color: dateFilter === key ? "white" : "var(--dark)" }}
+              style={{
+                background: dateFilter === key ? "var(--saffron)" : "transparent",
+                color: dateFilter === key ? "white" : "var(--dark)",
+              }}
             >
               {label}
             </button>
@@ -483,10 +574,17 @@ function RoutineTab({ parcels }: { parcels: Parcel[] }) {
       {isLoading ? (
         <div className="py-10 text-center text-sm text-hmuted">Yükleniyor…</div>
       ) : rows.length === 0 ? (
-        <div className="rounded-2xl border border-dashed py-14 text-center" style={{ background: "var(--cream)", borderColor: "var(--border)" }}>
+        <div
+          className="rounded-2xl border border-dashed py-14 text-center"
+          style={{ background: "var(--cream)", borderColor: "var(--border)" }}
+        >
           <div className="text-4xl mb-2">🌱</div>
-          <div className="font-serif text-xl text-dark">Henüz bir bakım eylemi takip etmiyorsun</div>
-          <div className="text-sm text-hmuted mt-1">Sulama, gübreleme, ilaçlama — takip etmek istediklerini seç.</div>
+          <div className="font-serif text-xl text-dark">
+            Henüz bir bakım eylemi takip etmiyorsun
+          </div>
+          <div className="text-sm text-hmuted mt-1">
+            Sulama, gübreleme, ilaçlama — takip etmek istediklerini seç.
+          </div>
           <Link
             to="/farmer/journal/customize"
             className="mt-5 inline-flex items-center gap-2 rounded-full bg-saffron px-5 py-2.5 text-sm text-white font-medium"
@@ -495,7 +593,10 @@ function RoutineTab({ parcels }: { parcels: Parcel[] }) {
           </Link>
         </div>
       ) : visibleRows.length === 0 ? (
-        <div className="rounded-2xl border border-dashed py-10 text-center text-sm text-hmuted" style={{ background: "var(--cream)", borderColor: "var(--border)" }}>
+        <div
+          className="rounded-2xl border border-dashed py-10 text-center text-sm text-hmuted"
+          style={{ background: "var(--cream)", borderColor: "var(--border)" }}
+        >
           Bekleyen bakım eylemi yok 🎉
         </div>
       ) : (
@@ -515,25 +616,37 @@ function RoutineTab({ parcels }: { parcels: Parcel[] }) {
                       className="flex items-center gap-3 rounded-2xl border px-4 py-3.5"
                       style={{ background: "var(--cream)", borderColor: "var(--border)" }}
                     >
-                      <div className="text-2xl shrink-0 w-8 text-center">{row.entry_type_icon ?? "•"}</div>
+                      <div className="text-2xl shrink-0 w-8 text-center">
+                        {row.entry_type_icon ?? "•"}
+                      </div>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 flex-wrap">
-                          <span className="font-medium text-dark truncate">{row.entry_type_name}</span>
+                          <span className="font-medium text-dark truncate">
+                            {row.entry_type_name}
+                          </span>
                           <span
                             className="rounded-full px-2 py-0.5 text-[10px] font-medium"
-                            style={{ background: cropChipColor(row.crop).bg, color: cropChipColor(row.crop).fg }}
+                            style={{
+                              background: "color-mix(in oklab, var(--teal) 14%, transparent)",
+                              color: "var(--primary)",
+                            }}
                           >
                             {formatCrop(row.crop)}
                           </span>
                         </div>
                         <div className="mt-1 flex items-center gap-2 flex-wrap">
-                          <span className="inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium" style={{ background: st.bg, color: st.fg }}>
+                          <span
+                            className="inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium"
+                            style={{ background: st.bg, color: st.fg }}
+                          >
                             {st.label(row)}
                           </span>
                           {row.last_performed_date && (
                             <span className="text-[11px] text-hmuted">
-                              Son: {shortDay(row.last_performed_date).day} {shortDay(row.last_performed_date).mon}
-                              {row.next_due_date && ` · Sıradaki: ${shortDay(row.next_due_date).day} ${shortDay(row.next_due_date).mon}`}
+                              Son: {shortDay(row.last_performed_date).day}{" "}
+                              {shortDay(row.last_performed_date).mon}
+                              {row.next_due_date &&
+                                ` · Sıradaki: ${shortDay(row.next_due_date).day} ${shortDay(row.next_due_date).mon}`}
                             </span>
                           )}
                         </div>
@@ -563,7 +676,11 @@ function RoutineTab({ parcels }: { parcels: Parcel[] }) {
       )}
 
       {logRow && (
-        <LogRoutineEntrySheet row={logRow} cropConfigMap={cropConfigMap} onClose={() => setLogRow(null)} />
+        <LogRoutineEntrySheet
+          row={logRow}
+          cropConfigMap={cropConfigMap}
+          onClose={() => setLogRow(null)}
+        />
       )}
     </div>
   );
@@ -572,15 +689,29 @@ function RoutineTab({ parcels }: { parcels: Parcel[] }) {
 const todayIso = () => new Date().toISOString().slice(0, 10);
 
 /** "✓ Yaptım" → günlüğe (harvest_entries) yeni bir kayıt ekler, birden fazla batch varsa hangisine bağlanacağını sorar. */
-function LogRoutineEntrySheet({ row, cropConfigMap, onClose }: { row: RoutineMaintenanceStatusRow; cropConfigMap: Map<string, any>; onClose: () => void }) {
-  const { data: batches = [], isLoading: batchesLoading } = useExistingBatches(row.parcel_id, row.crop);
+function LogRoutineEntrySheet({
+  row,
+  cropConfigMap,
+  onClose,
+}: {
+  row: RoutineMaintenanceStatusRow;
+  cropConfigMap: Map<string, any>;
+  onClose: () => void;
+}) {
+  const { data: batches = [], isLoading: batchesLoading } = useExistingBatches(
+    row.parcel_id,
+    row.crop,
+  );
   const createEntry = useCreateEntry();
   const [listingId, setListingId] = useState("");
   const [note, setNote] = useState("");
   const [performedDate, setPerformedDate] = useState(todayIso());
 
   useEffect(() => {
-    if (batches.length === 0) { setListingId(""); return; }
+    if (batches.length === 0) {
+      setListingId("");
+      return;
+    }
     const preferred = batches[batches.length - 1].id;
     setListingId((prev) => (prev && batches.some((b) => b.id === prev) ? prev : preferred));
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -700,7 +831,10 @@ function CropInfoPanel({ crop, cropConfigMap }: { crop: string; cropConfigMap: M
   if (orderedGlossary.length === 0) return null;
 
   return (
-    <div className="rounded-2xl border overflow-hidden" style={{ background: "var(--cream)", borderColor: "var(--border)" }}>
+    <div
+      className="rounded-2xl border overflow-hidden"
+      style={{ background: "var(--cream)", borderColor: "var(--border)" }}
+    >
       <button
         onClick={() => setOpen((o) => !o)}
         className="w-full flex items-center justify-between px-4 py-3 text-sm font-medium text-dark"

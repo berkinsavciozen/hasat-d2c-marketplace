@@ -37,7 +37,7 @@ function CustomizePage() {
 
   const farmerCrops = useMemo(() => {
     const s = new Set<string>();
-    for (const p of parcels) for (const c of (p.crops ?? [])) s.add(c.toLowerCase());
+    for (const p of parcels) for (const c of p.crops ?? []) s.add(c.toLowerCase());
     return s;
   }, [parcels]);
 
@@ -73,7 +73,7 @@ function CustomizePage() {
   const [cIcon, setCIcon] = useState("🌿");
   const [cFreq, setCFreq] = useState<number | null>(7);
 
-  const openFreqSheet = (t: typeof visibleTypes[number]) => {
+  const openFreqSheet = (t: (typeof visibleTypes)[number]) => {
     setFreqSheet({
       entry_type_id: t.id,
       name: t.name,
@@ -83,7 +83,7 @@ function CustomizePage() {
     setNote(prefs[t.id]?.threshold_note ?? "");
   };
 
-  const handleToggle = async (t: typeof visibleTypes[number], next: boolean) => {
+  const handleToggle = async (t: (typeof visibleTypes)[number], next: boolean) => {
     if (next) {
       openFreqSheet(t);
     } else {
@@ -122,7 +122,9 @@ function CustomizePage() {
       });
       toast.success("Kendi eyleminiz eklendi ve aktif");
       setAddOpen(false);
-      setCName(""); setCIcon("🌿"); setCFreq(7);
+      setCName("");
+      setCIcon("🌿");
+      setCFreq(7);
     } catch (err) {
       toast.error((err as Error).message);
     }
@@ -132,12 +134,16 @@ function CustomizePage() {
     <>
       <FarmerHeader title="Rutin Bakımı Özelleştir">
         <div className="mt-2 flex items-center gap-2">
-          <Link to="/farmer/journal" className="inline-flex items-center gap-1 text-sm text-hwhite/70 hover:text-hwhite">
+          <Link
+            to="/farmer/journal"
+            className="inline-flex items-center gap-1 text-sm text-hwhite/70 hover:text-hwhite"
+          >
             <ChevronLeft className="h-4 w-4" /> Günlüğe dön
           </Link>
         </div>
         <p className="mt-2 text-sm text-hwhite/70">
-          Takip etmek istediğin bakım eylemlerini seç. Aktif olanlar için hatırlatma ve geçmiş kaydı tutulur.
+          Takip etmek istediğin bakım eylemlerini seç. Aktif olanlar için hatırlatma ve geçmiş kaydı
+          tutulur.
         </p>
       </FarmerHeader>
 
@@ -146,8 +152,10 @@ function CustomizePage() {
         {themesLoading ? (
           <div className="text-sm text-hmuted">Yükleniyor…</div>
         ) : visibleThemes.length === 0 ? (
-          <div className="rounded-2xl border border-dashed p-6 text-center text-sm text-hmuted"
-            style={{ background: "var(--cream)", borderColor: "var(--border)" }}>
+          <div
+            className="rounded-2xl border border-dashed p-6 text-center text-sm text-hmuted"
+            style={{ background: "var(--cream)", borderColor: "var(--border)" }}
+          >
             Henüz kategori yok.
           </div>
         ) : (
@@ -158,11 +166,11 @@ function CustomizePage() {
                 <button
                   key={t.id}
                   onClick={() => setActiveThemeId(t.id)}
-                  className="shrink-0 rounded-full border px-4 py-2 text-sm transition"
+                  className="shrink-0 rounded-xl border px-4 py-2 text-sm transition"
                   style={{
-                    background: active ? "var(--saffron)" : "var(--cream)",
+                    background: active ? "var(--primary)" : "var(--cream)",
                     color: active ? "white" : "var(--dark)",
-                    borderColor: active ? "var(--saffron)" : "var(--border)",
+                    borderColor: active ? "var(--primary)" : "var(--border)",
                   }}
                 >
                   <span className="mr-1.5">{t.icon ?? "•"}</span>
@@ -179,8 +187,10 @@ function CustomizePage() {
             {typesLoading ? (
               <div className="text-sm text-hmuted py-6 text-center">Yükleniyor…</div>
             ) : visibleTypes.length === 0 ? (
-              <div className="rounded-2xl border border-dashed p-6 text-center text-sm text-hmuted"
-                style={{ background: "var(--cream)", borderColor: "var(--border)" }}>
+              <div
+                className="rounded-2xl border border-dashed p-6 text-center text-sm text-hmuted"
+                style={{ background: "var(--cream)", borderColor: "var(--border)" }}
+              >
                 Bu kategoride henüz eylem yok. Aşağıdan kendi eylemini ekle.
               </div>
             ) : (
@@ -199,8 +209,10 @@ function CustomizePage() {
                       <div className="flex items-center gap-2 flex-wrap">
                         <div className="font-medium text-dark truncate">{t.name}</div>
                         {!t.is_preset && (
-                          <span className="rounded-full border px-1.5 py-0.5 text-[10px] text-hmuted"
-                            style={{ borderColor: "var(--border)" }}>
+                          <span
+                            className="rounded-full border px-1.5 py-0.5 text-[10px] text-hmuted"
+                            style={{ borderColor: "var(--border)" }}
+                          >
                             Özel
                           </span>
                         )}
@@ -220,7 +232,7 @@ function CustomizePage() {
                       {isOn && (
                         <button
                           onClick={() => openFreqSheet(t)}
-                          className="rounded-full border p-1.5 text-hmuted hover:text-saffron hover:border-saffron transition"
+                          className="rounded-xl border p-1.5 text-hmuted hover:text-primary hover:border-primary transition"
                           style={{ borderColor: "var(--border)" }}
                           aria-label="Sıklığı ayarla"
                         >
@@ -236,7 +248,7 @@ function CustomizePage() {
 
             <button
               onClick={() => setAddOpen(true)}
-              className="w-full rounded-2xl border border-dashed py-3.5 text-sm text-hmuted hover:border-saffron hover:text-saffron transition inline-flex items-center justify-center gap-2"
+              className="w-full rounded-xl border border-dashed py-3.5 text-sm text-hmuted hover:border-primary hover:text-primary transition inline-flex items-center justify-center gap-2"
               style={{ borderColor: "var(--border)" }}
             >
               <Plus className="h-4 w-4" /> Kendi Bakım Eylemini Ekle
@@ -250,7 +262,7 @@ function CustomizePage() {
         <SheetContent side="bottom" className="rounded-t-3xl max-h-[85vh]">
           <div className="mx-auto h-1.5 w-12 rounded-full bg-muted -mt-2 mb-3" />
           <SheetHeader>
-            <SheetTitle className="font-serif">Ne sıklıkla hatırlatalım?</SheetTitle>
+            <SheetTitle>Ne sıklıkla hatırlatalım?</SheetTitle>
           </SheetHeader>
           <div className="mt-1 text-sm text-hmuted">{freqSheet?.name}</div>
           <div className="mt-4 space-y-2 pb-6">
@@ -259,23 +271,32 @@ function CustomizePage() {
                 onClick={() => setPickedFreq(freqSheet.default_frequency_days)}
                 className="w-full rounded-xl border px-4 py-3 text-left text-sm transition"
                 style={{
-                  background: pickedFreq === freqSheet.default_frequency_days ? "color-mix(in oklab, var(--saffron) 15%, transparent)" : "var(--cream)",
-                  borderColor: pickedFreq === freqSheet.default_frequency_days ? "var(--saffron)" : "var(--border)",
+                  background:
+                    pickedFreq === freqSheet.default_frequency_days
+                      ? "color-mix(in oklab, var(--primary) 10%, transparent)"
+                      : "var(--cream)",
+                  borderColor:
+                    pickedFreq === freqSheet.default_frequency_days
+                      ? "var(--primary)"
+                      : "var(--border)",
                 }}
               >
                 ⭐ Önerilen (her {freqSheet.default_frequency_days} günde bir)
               </button>
             ) : null}
             {FREQ_OPTIONS.map((opt) => {
-              const selected = pickedFreq === opt.value && opt.value !== freqSheet?.default_frequency_days;
+              const selected =
+                pickedFreq === opt.value && opt.value !== freqSheet?.default_frequency_days;
               return (
                 <button
                   key={String(opt.value)}
                   onClick={() => setPickedFreq(opt.value)}
                   className="w-full rounded-xl border px-4 py-3 text-left text-sm transition"
                   style={{
-                    background: selected ? "color-mix(in oklab, var(--saffron) 15%, transparent)" : "var(--cream)",
-                    borderColor: selected ? "var(--saffron)" : "var(--border)",
+                    background: selected
+                      ? "color-mix(in oklab, var(--primary) 10%, transparent)"
+                      : "var(--cream)",
+                    borderColor: selected ? "var(--primary)" : "var(--border)",
                   }}
                 >
                   {opt.label}
@@ -288,13 +309,13 @@ function CustomizePage() {
                 value={note}
                 onChange={(e) => setNote(e.target.value)}
                 placeholder="Örn: yaprak sararırsa"
-                className="mt-1 w-full rounded-lg border bg-input px-3 py-2.5 outline-none focus:border-saffron"
+                className="mt-1 w-full rounded-xl border bg-input px-3 py-2.5 outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
               />
             </div>
             <button
               onClick={saveFreq}
               disabled={togglePref.isPending}
-              className="mt-2 w-full rounded-xl bg-saffron py-3 text-white font-medium disabled:opacity-40"
+              className="mt-2 w-full rounded-xl bg-primary py-3 text-white font-medium disabled:opacity-40"
             >
               {togglePref.isPending ? "Kaydediliyor…" : "Kaydet ✓"}
             </button>
@@ -307,7 +328,7 @@ function CustomizePage() {
         <SheetContent side="bottom" className="rounded-t-3xl max-h-[85vh]">
           <div className="mx-auto h-1.5 w-12 rounded-full bg-muted -mt-2 mb-3" />
           <SheetHeader>
-            <SheetTitle className="font-serif">Kendi Bakım Eylemini Ekle</SheetTitle>
+            <SheetTitle>Kendi Bakım Eylemini Ekle</SheetTitle>
           </SheetHeader>
           <div className="mt-4 space-y-4 pb-6">
             <div>
@@ -316,7 +337,7 @@ function CustomizePage() {
                 value={cName}
                 onChange={(e) => setCName(e.target.value)}
                 placeholder="Örn: Toprak pH ölçümü"
-                className="mt-1 w-full rounded-lg border bg-input px-3 py-2.5 outline-none focus:border-saffron"
+                className="mt-1 w-full rounded-xl border bg-input px-3 py-2.5 outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
               />
             </div>
             <div>
@@ -339,8 +360,10 @@ function CustomizePage() {
                       onClick={() => setCFreq(opt.value)}
                       className="rounded-xl border px-3 py-2.5 text-left text-sm transition"
                       style={{
-                        background: selected ? "color-mix(in oklab, var(--saffron) 15%, transparent)" : "var(--cream)",
-                        borderColor: selected ? "var(--saffron)" : "var(--border)",
+                        background: selected
+                          ? "color-mix(in oklab, var(--primary) 10%, transparent)"
+                          : "var(--cream)",
+                        borderColor: selected ? "var(--primary)" : "var(--border)",
                       }}
                     >
                       {opt.label}
@@ -352,7 +375,7 @@ function CustomizePage() {
             <button
               onClick={saveCustom}
               disabled={!cName.trim() || createCustom.isPending}
-              className="w-full rounded-xl bg-saffron py-3 text-white font-medium disabled:opacity-40"
+              className="w-full rounded-xl bg-primary py-3 text-white font-medium disabled:opacity-40"
             >
               {createCustom.isPending ? "Kaydediliyor…" : "Ekle & Aktifleştir ✓"}
             </button>
