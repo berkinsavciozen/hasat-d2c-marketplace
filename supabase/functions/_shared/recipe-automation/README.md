@@ -47,6 +47,25 @@ QA blocking issues only (never the full QA result), stores the result as the NEX
 incremented atomically in the same CAS update via `advanceStageAndDispatch`'s `patch` parameter.
 See `revise/README.md`. Still no Planner/Image/Finalize logic.
 
+**Step 09 (Image vertical slice):** `image/` holds the fourth content agent —
+`recipe-stage-image` (entrypoint at `../recipe-stage-image/index.ts`) — claims an `image`-stage
+job, loads the exact QA-approved draft (`context.ts`), builds the Gemini prompt deterministically
+from the draft (`prompt.ts` — see its header for why this is NOT an agent-runner call, unlike
+Writer/QA/Reviser), generates one square source image via the Lovable AI Gateway
+(`gemini-client.ts` — Gate A: adopts whatever that route actually returns, no new infra added to
+chase 2048; see the Step 09 completion report), chops 14% off the right/bottom and center-crops
+16:9 + 1:1 with no resize (`geometry.ts`, `imagescript` via `jsr:@matmen/imagescript`), encodes
+WebP q82 with metadata stripped by construction (`webp-codec.ts` — Gate B: `@jsquash/webp`, its
+known WASM self-locate/init failure fixed by vendoring the `.wasm` binaries and manually
+instantiating them — see `vendor/README.md`), runs a warning-only outer-pixel frame-suspicion
+check (`frame-suspicion.ts` — never auto-repairs, never blocks), uploads to the existing
+`crop-photos` bucket (`storage.ts`), stores `recipe_assets` rows, and advances to `finalize`.
+Idempotent per (job, draft, asset_type) — reuses an existing source/variant instead of paying for
+another Gemini generation. **Sandbox note:** `geometry.ts`/`gemini-client.ts`/`image-stage.ts`
+and their test files depend on `jsr:@matmen/imagescript`, which is blocked in the Claude Code
+session that wrote this step (same class of pre-existing limitation as `esm.sh` blocking
+`supabase-admin.test.ts`) — `webp-codec.ts` (Gate B) has no such dependency and was fully verified.
+
 **Step 03A (foundation reconciliation, PRs #40–#42):** the stage/status enums, `RecipeQAResult`,
 and `RecipePlanBatch` below were realigned to RecipeAutomation.md §3/§5.3's canonical
 state-machine and QA-routing contract. In particular: `RecipeJobStage`/`RecipeJobStatus` now use
@@ -68,7 +87,7 @@ uses Deno's built-in test runner directly:
 deno test --allow-net supabase/functions/_shared/recipe-automation/schemas.test.ts
 ```
 
-`--allow-net` is required only to fetch the `npm:zod@3.23.8` dependency on first run (cached
+`--allow-net` is required only to fetch the `npm:zod@3.25.76` dependency on first run (cached
 afterwards); no network calls happen inside the tests themselves. The suite uses Deno's built-in
 `node:assert` instead of `jsr:@std/assert` / `deno.land/std` so it has no dependency on hosts an
 egress policy might block.

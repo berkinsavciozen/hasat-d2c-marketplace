@@ -20,8 +20,15 @@
 // for real below; `DEFAULT_RUNTIME_ENV_VAR` now defaults to `"sdk"` instead of `"deno-native"`.
 // `DenoNativeAgentRunner` is left as a NOT_IMPLEMENTED stub — the untaken alternative, kept only so
 // the seam still has two names if a future migration off the SDK is ever needed.
-import { Agent, run as runAgentSdk } from "npm:@openai/agents";
-import { z } from "npm:zod@3.23.8";
+// Pinned to 0.3.9 — the last @openai/agents release whose zod peer dependency range
+// ("^3.25.40 || ^4.0", per npm) still accepts a zod v3 install. Every version from 0.4.0 onward
+// tightens that peer range to "^4.0.0" only, which is incompatible with the zod v3 line this
+// pipeline's schemas (schemas.ts) are written against — an unpinned `npm:@openai/agents` resolves
+// to whatever is latest (0.17.0 as of this pin), which is zod-v4-only and fails Deno's type-check
+// at import time with the local zod v3 types (TS2322/TS2345/TS2740 on `Agent`'s `outputType` and
+// `run()`'s return type). This is a dependency pin only — no behavior change to this file's logic.
+import { Agent, run as runAgentSdk } from "npm:@openai/agents@0.3.9";
+import { z } from "npm:zod@3.25.76";
 import { RecipeAutomationError } from "./errors.ts";
 
 export interface AgentRunRequest {
@@ -156,9 +163,8 @@ export function sanitizeForStructuredOutput(schema: z.ZodTypeAny): z.ZodTypeAny 
       for (const [key, value] of Object.entries(shape)) {
         newShape[key] = sanitizeForStructuredOutput(value as z.ZodTypeAny);
       }
-      let rebuilt = z.object(newShape);
-      if (def.unknownKeys === "strict") rebuilt = rebuilt.strict();
-      return rebuilt;
+      const rebuilt = z.object(newShape);
+      return def.unknownKeys === "strict" ? rebuilt.strict() : rebuilt;
     }
     case "ZodArray": {
       const element = (schema as unknown as z.ZodArray<z.ZodTypeAny>).element;
@@ -170,13 +176,17 @@ export function sanitizeForStructuredOutput(schema: z.ZodTypeAny): z.ZodTypeAny 
       return rebuilt;
     }
     case "ZodString": {
-      const checks = (def.checks as Array<{ kind: string }>) ?? [];
+      const stringDef = def as unknown as z.ZodStringDef;
+      const checks = stringDef.checks ?? [];
       if (!checks.some((c) => c.kind === "url")) return schema;
       // Rebuild with the SAME _def, minus the `url` check — the only one OpenAI's Structured
-      // Outputs rejects; every other check (min/max/trim/...) is preserved unchanged.
+      // Outputs rejects; every other check (min/max/trim/...) is preserved unchanged. The cast on
+      // the filtered array is type-only (zod's ZodStringCheck is a discriminated union that
+      // Array.filter's predicate doesn't narrow) — the filtered *values* are still exactly the
+      // same check objects zod itself produced, just with the "url" one removed.
       return new z.ZodString({
-        ...(def as unknown as z.ZodStringDef),
-        checks: checks.filter((c) => c.kind !== "url"),
+        ...stringDef,
+        checks: checks.filter((c) => c.kind !== "url") as z.ZodStringDef["checks"],
       });
     }
     default:
@@ -186,17 +196,31 @@ export function sanitizeForStructuredOutput(schema: z.ZodTypeAny): z.ZodTypeAny 
 
 class SdkAgentRunner implements AgentRunner {
   async run(request: AgentRunRequest): Promise<AgentRunResult> {
+    // `Agent`'s `outputType` is typed against the SDK's own bundled zod import, which Deno's npm
+    // resolution instantiates as a nominally distinct package from this file's `npm:zod@3.25.76` —
+    // structurally identical (both are zod v3 ZodObject instances at runtime), but TypeScript
+    // treats them as unrelated types. The cast here is type-only; `sanitizeForStructuredOutput`
+    // still runs, and the SDK's own runtime `zodToJsonSchema` conversion works off the schema's
+    // actual shape, not this static type. Real correctness is enforced by the caller re-parsing
+    // the raw output against the full, original schema afterward (see the docstring above).
+    const outputType = request.outputSchema
+      ? (sanitizeForStructuredOutput(request.outputSchema) as unknown as ConstructorParameters<typeof Agent>[0]["outputType"])
+      : undefined;
     const agent = new Agent({
       name: request.agentName,
       instructions: request.systemPrompt,
       ...(request.model ? { model: request.model } : {}),
-      ...(request.outputSchema ? { outputType: sanitizeForStructuredOutput(request.outputSchema) } : {}),
+      ...(outputType ? { outputType } : {}),
     });
 
     const inputText = typeof request.input === "string" ? request.input : JSON.stringify(request.input);
     const startedAt = Date.now();
 
-    let result: Awaited<ReturnType<typeof runAgentSdk>>;
+    // No explicit type annotation on `result`: `runAgentSdk` is overloaded (streaming vs.
+    // non-streaming), and `Awaited<ReturnType<typeof runAgentSdk>>` resolves to the *last*
+    // overload (the streaming one) rather than the one this specific, non-streaming call actually
+    // selects — inferring from the call expression itself picks the right overload instead.
+    let result;
     try {
       result = await runAgentSdk(agent, inputText, { maxTurns: request.maxTurns ?? 4 });
     } catch (e) {
