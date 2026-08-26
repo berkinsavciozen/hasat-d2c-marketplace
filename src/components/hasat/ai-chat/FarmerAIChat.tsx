@@ -241,14 +241,12 @@ export function FarmerAIChat() {
           type="button"
           onClick={openPanel}
           aria-label="Hasat AI ile sohbet et"
-          className="fixed z-50 grid place-items-center rounded-full shadow-lg transition active:scale-95"
+          className="fixed bottom-[calc(56px+max(env(safe-area-inset-bottom),0.5rem)+16px)] right-4 z-50 grid place-items-center rounded-full shadow-lg transition active:scale-95 md:bottom-4"
           style={{
             background: "var(--primary)",
             color: "white",
             width: 56,
             height: 56,
-            right: 16,
-            bottom: "calc(56px + max(env(safe-area-inset-bottom), 0.5rem) + 16px)",
           }}
         >
           <Sparkles className="h-6 w-6" />
@@ -259,17 +257,15 @@ export function FarmerAIChat() {
       {showCoach && !open && (
         <div
           onClick={dismissCoach}
-          className="fixed z-50 max-w-[260px] text-xs rounded-xl px-3 py-2 shadow-lg cursor-pointer"
+          className="fixed bottom-[calc(56px+max(env(safe-area-inset-bottom),0.5rem)+16px)] right-[88px] z-50 max-w-[calc(100vw-104px)] text-xs rounded-xl px-3 py-2 shadow-lg cursor-pointer md:bottom-4"
           style={{
             background: "var(--primary)",
             color: "var(--hwhite)",
-            right: 16,
-            bottom: "calc(56px + env(safe-area-inset-bottom, 0px) + 80px)",
           }}
         >
           Fiyat sor, günlük ekle veya sipariş durumunu öğren — Türkçe yaz, anlayalım ✨
           <span
-            className="absolute -bottom-1 right-6 h-2 w-2 rotate-45"
+            className="absolute bottom-5 -right-1 h-2 w-2 rotate-45"
             style={{ background: "var(--primary)" }}
           />
         </div>
