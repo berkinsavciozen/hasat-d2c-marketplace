@@ -46,7 +46,7 @@ function statusFor(outcome: string): number {
   return 200;
 }
 
-Deno.serve(async (req) => {
+async function handleRequest(req: Request): Promise<Response> {
   if (req.method === "OPTIONS") return new Response(null, { status: 204, headers: CORS });
   if (req.method !== "POST") {
     return json({ error: "method_not_allowed" }, 405);
@@ -79,4 +79,12 @@ Deno.serve(async (req) => {
     console.error("recipe-stage-revise unexpected error", error);
     return json({ error: error.code, message: error.message }, 500);
   }
-});
+}
+
+// Exposed for index.test.ts, which exercises this entrypoint's request-shape logic (auth gate,
+// JSON/jobId parsing, method handling) directly — every early-return path in `handleRequest` above
+// returns BEFORE ever constructing a Supabase client or calling runReviseStage, so the test needs
+// no network/DB double, just the handler function itself.
+(globalThis as unknown as { __denoServeHandler?: (req: Request) => Promise<Response> }).__denoServeHandler = handleRequest;
+
+Deno.serve(handleRequest);
