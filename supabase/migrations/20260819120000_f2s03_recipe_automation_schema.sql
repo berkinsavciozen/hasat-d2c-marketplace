@@ -16,6 +16,22 @@
 -- timestamp, same migration identity — rather than superseded by a forward corrective migration.
 -- Nothing below rewrites the history of an already-applied migration.
 --
+-- Step 08A correction (narrow, post-PR-#52): all three F2 migrations (this file, f2s04, f2s05)
+-- remain unapplied to any environment per the Step 08A task brief, so this file is again corrected
+-- IN PLACE. `recipe_qa_results` gets a `unique (job_id, draft_id, draft_version)` constraint,
+-- closing the concurrency gap `qa/README.md` and `revise/README.md` both flagged as "known, out of
+-- scope for that step": `qa-stage.ts`'s own idempotency check (`findExistingQaResult`) was an
+-- application-level check-then-insert with no DB-level backstop, so two genuinely concurrent QA
+-- invocations against the same exact draft version could each pass the check before either
+-- inserted, producing two `recipe_qa_results` rows for one draft version — exactly the ambiguity
+-- `revise-stage.ts`'s own `loadLatestQaResult` (anchored on "most recent by `checked_at`") was
+-- built to route around, not something it should ever need to. One row per exact
+-- (job_id, draft_id, draft_version) is also what this table's own comment already claimed as
+-- fact ("One row per QA pass against an EXACT recipe_drafts (id, version)") — this constraint is
+-- what actually makes that claim true. See the Step 08A SQL regression test
+-- (03_qa_stage_vertical_slice.sql) for the fresh-DB proof. Nothing else in this migration is
+-- touched by this correction.
+--
 -- Step 03B correction (narrow, post-PR-#43): re-verified via the same `list_migrations`/
 -- `list_branches` check (still unapplied everywhere, still no branches) immediately before this
 -- revision, so this file is again corrected IN PLACE. Step 03A's `recipe_qa_results` accidentally
@@ -305,6 +321,13 @@ create table public.recipe_qa_results (
     foreign key (job_id, draft_id, draft_version) references public.recipe_drafts(job_id, id, version)
     on delete cascade,
 
+  -- Step 08A: one QA verdict per exact draft version, enforced at the DB layer — see this
+  -- migration's header for the concurrency gap this closes. Not redundant with the composite FK
+  -- above: the FK is about ownership (this triple must point at a real recipe_drafts row owned by
+  -- this job), this UNIQUE is about multiplicity (at most one recipe_qa_results row may ever name
+  -- that exact triple).
+  constraint recipe_qa_results_job_draft_version_key unique (job_id, draft_id, draft_version),
+
   decision text not null check (decision = any (array['approved','revision_required','manual_review_required'])),
   overall_score numeric not null check (overall_score >= 0 and overall_score <= 100),
   -- Shape-checked mirror of recipeQAResultSchema.scores (named groups: clarity/feasibility/
@@ -353,8 +376,9 @@ create table public.recipe_qa_results (
 );
 
 comment on table public.recipe_qa_results is
-  'F2 Step 03/03B. One row per QA pass against an EXACT recipe_drafts (id, version) — enforced by '
-  'the composite FK, not just trusted. decision is an automated verdict independent of human '
+  'F2 Step 03/03B/08A. One row per QA pass against an EXACT recipe_drafts (id, version) — the '
+  'composite FK enforces which draft a row may name, the (job_id, draft_id, draft_version) UNIQUE '
+  'constraint enforces at most one row per exact draft version. decision is an automated verdict independent of human '
   'safety sign-off (safety_approved=true always requires a recorded reviewer, but is not required '
   'for decision=''approved''; the human safety gate applies later, at awaiting_approval/publish). '
   'approved_for_imaging can never be true with unresolved blocking issues.';

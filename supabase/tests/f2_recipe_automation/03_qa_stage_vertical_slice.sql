@@ -41,6 +41,7 @@ declare
   v_wrong_version_failed boolean := false;
   v_imaging_check_failed boolean := false;
   v_safety_check_failed boolean := false;
+  v_duplicate_triple_failed boolean := false;
   v_scores jsonb := '{"clarity":90,"feasibility":85,"ingredientConsistency":90,"originality":80,"hasatRelevance":95}'::jsonb;
   v_safety_review jsonb := '{"temperature":{"flagged":false,"notes":null},"timing":{"flagged":false,"notes":null},"allergens":{"flagged":false,"notes":null,"detectedLabels":[]},"requiresHumanReview":true,"reviewedBy":null,"reviewedAt":null,"approved":null}'::jsonb;
 begin
@@ -141,6 +142,27 @@ begin
     v_safety_check_failed := true;
   end;
   perform pg_temp.assert(v_safety_check_failed, 'expected safety_approved=true with no reviewer identity/timestamp to violate the CHECK constraint');
+
+  -- 7. Step 08A: at most one recipe_qa_results row may ever name the same EXACT (job_id, draft_id,
+  --    draft_version) triple — recipe_qa_results_job_draft_version_key, added to close the
+  --    concurrency gap this file's own module docs used to flag as "known, out of scope for this
+  --    step" (see this migration's Step 08A header note). A second QA verdict for the SAME draft
+  --    version this test already stored one for (step 3 above) must be rejected as a duplicate, not
+  --    silently accepted as a second row.
+  begin
+    insert into public.recipe_qa_results (
+      job_id, draft_id, draft_version, decision, overall_score, scores, safety_review
+    ) values (
+      v_job_id, v_draft_id, v_draft_version, 'revision_required', 40, v_scores, v_safety_review
+    );
+  exception when unique_violation then
+    v_duplicate_triple_failed := true;
+  end;
+  perform pg_temp.assert(v_duplicate_triple_failed, 'expected a second recipe_qa_results row for the same (job_id, draft_id, draft_version) triple to violate the new unique constraint');
+  perform pg_temp.assert(
+    (select count(*) from public.recipe_qa_results where job_id = v_job_id and draft_id = v_draft_id and draft_version = v_draft_version) = 1,
+    'expected exactly one recipe_qa_results row for this exact draft version after the rejected duplicate insert'
+  );
 
   raise notice 'F2 Step 07 QA-stage vertical slice (kabak): qa_result_id=%, duplicates=%', v_qa_result_id, jsonb_array_length(v_duplicates);
 end;

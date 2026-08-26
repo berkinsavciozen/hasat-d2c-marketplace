@@ -10,15 +10,57 @@ unit-testable.
 
 | File | Purpose |
 |---|---|
-| `revise-stage.ts` | `runReviseStage()` — claim the job, resolve the current draft + the QA result that sent it here, enforce the two-automatic-revision cap, check idempotency, run the Reviser agent, validate its output (Zod + the Step 04 Postgres RPCs), store it as the NEXT draft version, record telemetry, and route back to `qa` with `revision_count` incremented atomically. |
-| `context.ts` | `loadQaResultForDraft()` — the ONE new read this stage needs: the `recipe_qa_results` row tied to the exact current draft. The current draft itself is loaded via `../qa/context.ts`'s `loadCurrentDraft()`, reused as-is. |
-| `revise-rules.ts` | Content-level constraints a JSON Schema can't express: fix only what `blockingIssues` flags, restate everything else byte-for-byte, never touch `jobId`/`briefId`/`sourceType`/`authorType`/`visibility`/`ownerId`/photo fields as part of a content revision. |
+| `revise-stage.ts` | `runReviseStage()` — claim the job, resolve the current draft + the QA result that sent it here, enforce the two-automatic-revision cap, check idempotency, derive the allowed-change surface and reject an unlocatable blocking issue (Step 08A, see below), run the Reviser agent, reject a candidate that changed anything outside that surface (Step 08A), validate its output (Zod + the Step 04 Postgres RPCs), store it as the NEXT draft version, record telemetry, and route back to `qa` with `revision_count` incremented atomically. |
+| `allowed-changes.ts` | Step 08A: `computeAllowedChangeSurface()` derives a deterministic, per-field/per-index mutation surface from `blockingIssues` alone; `findOutOfScopeChanges()` diffs the candidate draft against the exact previous one and reports every change outside that surface. See below. |
+| `context.ts` | `loadLatestQaResult()`/`loadDraftByVersion()` — the reads this stage needs: the LATEST `recipe_qa_results` row for the job, and the EXACT `recipe_drafts` row at the version that result named (see this file's own module header for why "latest QA result", not "current highest draft version"). |
+| `revise-rules.ts` | Content-level constraints a JSON Schema can't express: fix only what `blockingIssues` flags, restate everything else byte-for-byte, never touch `jobId`/`briefId`/`sourceType`/`authorType`/`visibility`/`ownerId`/photo fields as part of a content revision. `allowed-changes.ts` is the mechanical check that this actually happened, not just an instruction the model is told. |
 | `system-prompt.ts` | Assembles the Reviser agent's system prompt from the revision rules + a short framing paragraph. |
 
 `../writer/context.ts`'s `briefFromJobRow()`, `../writer/write-stage.ts`'s
-`normalizeEmptyUrlFields()`, `../writer/validate-draft.ts`'s `validateDraft()`, and
-`../qa/context.ts`'s `loadCurrentDraft()` are all reused as-is — none of those are Writer/QA-
-specific, they operate on the same job/draft row shape every stage in this pipeline shares.
+`normalizeEmptyUrlFields()`, and `../writer/validate-draft.ts`'s `validateDraft()` are all reused
+as-is — none of those are Writer-specific, they operate on the same job/draft row shape every
+stage in this pipeline shares.
+
+## Step 08A: constrained revision boundary enforcement
+
+The finding this closes: revise-rules.ts item 2 always TOLD the Reviser agent "fix only blocking
+issues and preserve everything else", but until now nothing MECHANICALLY checked that the agent
+actually did — a model could accept a complete regenerated draft that changed an unrelated field
+(or an identity/server-owned one) and it would pass through as long as it satisfied schema +
+Postgres validation, neither of which has any notion of "unrelated to what QA flagged".
+
+`allowed-changes.ts` closes this in two steps, both driven ONLY by `qaResult.blockingIssues` —
+`nonBlockingSuggestions` is never consulted, so a non-blocking suggestion can never grant mutation
+permission:
+
+1. **`computeAllowedChangeSurface(blockingIssues)`** parses each issue's `field` against the SAME
+   bracket-path convention the Step 04 Postgres validation RPCs already emit (`title`,
+   `ingredients`, `ingredients[2]`, `ingredients[2].crop`, `steps[3]`, `steps[3].instruction` — see
+   `20260819150000_f2s04_recipe_validation_rpcs.sql`'s own `format(...)` calls). A `field` that
+   doesn't resolve to a recognized, mutable, in-range location — free text, an identity/pipeline
+   field name, an index-less bracket like `steps[].stepNo` (`STEP_NO_NOT_NUMBER`'s own shape when
+   it can't even identify which step) — grants nothing. If even ONE blocking issue is unresolvable
+   this way, `revise-stage.ts` never calls the Reviser at all: it routes the job straight to manual
+   review (the same resting state the revision-cap branch uses), because a QA verdict too vague to
+   locate isn't one a targeted, mechanically-checked revision can safely act on.
+2. **`findOutOfScopeChanges(previous, candidate, surface)`** diffs the Reviser's full candidate
+   draft against the EXACT previous draft (never "the current highest version") and returns every
+   changed field/index outside that surface. `revise-stage.ts` rejects the candidate outright if
+   this returns anything — no partial acceptance of "the good part" of a drifted candidate.
+   Identity/server-owned fields (`coverPhotoUrl`, `sourceType`, `authorType`, `visibility`,
+   `ownerId`, `extractionConfidence`) and every step's `photoUrl` are checked UNCONDITIONALLY,
+   regardless of what any issue names — never grantable, per revise-rules.ts items 5/9.
+
+Both failure modes have their own outcome: `"unresolvable_blocking_issue"` (routes to manual
+review, no agent call, no draft stored) and `"out_of_scope_change"` (rejects via `failJob` with
+`retryable: true` — the SAME job stays claimable at `revise` afterward, so a rejected candidate
+never consumes a draft version or `revision_count`; only a genuinely accepted revision does, via
+the existing `advanceStageAndDispatch` path).
+
+Deliberately conservative, not exhaustive — see `allowed-changes.ts`'s own module header for the
+exact structural shapes it does and doesn't reconcile (e.g. it does not attempt to reconcile
+revise-rules.ts item 6's "renumber remaining steps after an ingredient-driven step removal"; that
+shape fails CLOSED — rejected as out-of-scope — rather than guessed at).
 
 ## Why "the Writer in constrained revision mode", not a new agent
 
@@ -75,6 +117,19 @@ separate update, no window where one could happen without the other.
   is the application-level half of the same guarantee — race-safe at the DB layer either way,
   unlike QA's own `recipe_qa_results` idempotency check (see `../qa/README.md`'s "known gap").
 
+## A previously-known gap, now closed (Step 08A)
+
+`qa/README.md` used to flag `recipe_qa_results` having no DB-level uniqueness on `(job_id,
+draft_id, draft_version)` as "known, out of scope for that step" — two genuinely concurrent QA
+invocations against the same draft version could each pass `qa-stage.ts`'s own
+check-then-insert idempotency check before either inserted, producing two rows for one draft
+version. Step 08A added `recipe_qa_results_job_draft_version_key` (unique on `(job_id, draft_id,
+draft_version)`) to `20260819120000_f2s03_recipe_automation_schema.sql` — an in-place correction,
+since all three F2 migrations remain unapplied to any environment — with a fresh-DB regression
+test in `03_qa_stage_vertical_slice.sql` (`supabase/tests/f2_recipe_automation/`). This module's own
+`loadLatestQaResult` (anchored on "most recent by `checked_at`") no longer has to arbitrate between
+two rows that should never have coexisted in the first place.
+
 ## Running the tests
 
 Same convention as `../infra/`/`../writer/`/`../qa/`:
@@ -84,4 +139,11 @@ deno test --allow-net --allow-env supabase/functions/_shared/recipe-automation/r
 ```
 
 `revise-stage.test.ts` uses `../infra/testing/fake-supabase-client.ts` plus a fake `AgentRunner` —
-no live model call, no live Supabase project.
+no live model call, no live Supabase project. `allowed-changes.test.ts` is standalone by design —
+it only imports `../types.ts` (pure Zod-inferred types) and the shared fixtures, never
+`revise-stage.ts`/`../infra/agent-runner.ts` — so it has no Supabase/OpenAI dependency at all and
+can run on its own:
+
+```sh
+deno test --allow-net --allow-env supabase/functions/_shared/recipe-automation/revise/allowed-changes.test.ts
+```

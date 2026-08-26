@@ -30,6 +30,7 @@ import { normalizeEmptyUrlFields } from "../writer/write-stage.ts";
 import { validateDraft } from "../writer/validate-draft.ts";
 import { buildReviserSystemPrompt } from "./system-prompt.ts";
 import { loadDraftByVersion, loadLatestQaResult, type DraftAtVersion, type LatestQaResult } from "./context.ts";
+import { computeAllowedChangeSurface, findOutOfScopeChanges } from "./allowed-changes.ts";
 
 const REVISE_STAGE = "revise" as const;
 const NEXT_STAGE = "qa" as const;
@@ -56,9 +57,11 @@ export type RunReviseStageOutcome =
   | "no_qa_result"
   | "unexpected_qa_decision"
   | "revision_limit_reached"
+  | "unresolvable_blocking_issue"
   | "agent_call_failed"
   | "invalid_output"
   | "validation_failed"
+  | "out_of_scope_change"
   | "revised"
   | "already_revised";
 
@@ -327,6 +330,33 @@ export async function runReviseStage(
     };
   }
 
+  // Step 08A: the mechanical form of revise-rules.ts item 2 ("do not change anything the blocking
+  // issues did not flag") — derive an explicit, deterministic allowed-change surface from
+  // `qaResult.blockingIssues` BEFORE ever spending an agent call. If any blocking issue's `field`
+  // cannot be mapped to a safe, in-scope target, this job is not one a targeted revision can safely
+  // act on at all — route straight to manual review, the same resting state the revision-cap branch
+  // above uses, without running the Reviser or storing a new draft version (see
+  // allowed-changes.ts's own module header for why "route to manual review" rather than "grant a
+  // broad mutation scope" or "silently drop the unresolvable issue and proceed").
+  const surfaceResult = computeAllowedChangeSurface(qaResult.blockingIssues);
+  if (!surfaceResult.ok) {
+    await recordStageRun(client, {
+      jobId: params.jobId, batchId: brief.batchId, stage: REVISE_STAGE, status: "completed",
+      attempt, startedAt, finishedAt: new Date().toISOString(),
+      output: {
+        reason: "unresolvable_blocking_issue",
+        unresolvedIssueCode: surfaceResult.unresolvedIssue.code,
+        unresolvedIssueField: surfaceResult.unresolvedIssue.field,
+        draftId: targetDraft.id, draftVersion: targetDraft.version, qaResultId: qaResult.id,
+      },
+    });
+    await routeToManualReview(client, { jobId: params.jobId, lockToken });
+    return {
+      outcome: "unresolvable_blocking_issue", jobId: params.jobId,
+      draftId: targetDraft.id, draftVersion: targetDraft.version, revisionCount,
+    };
+  }
+
   let agentResult;
   try {
     agentResult = await runReviserAgent(agentRunner, {
@@ -377,6 +407,29 @@ export async function runReviseStage(
   }
 
   const revisedDraft = parsed.data;
+
+  // Step 08A: the mechanical enforcement half of the boundary — diff the candidate against the
+  // EXACT previous draft (never "the current highest version"; see this function's opening
+  // comment) and reject outright if anything outside the surface computed above changed. No
+  // partial acceptance: an agent call that both fixed the flagged issue AND drifted on an unrelated
+  // field is treated the same as one that only drifted — see allowed-changes.ts's own module
+  // header for why "reject the whole candidate" rather than "keep the good part".
+  const outOfScopeChanges = findOutOfScopeChanges(targetDraft.payload, revisedDraft, surfaceResult.surface);
+  if (outOfScopeChanges.length > 0) {
+    const error = toSafeErrorPayload(
+      `revised draft changed fields outside the blocking-issue-derived allowed surface: ${outOfScopeChanges.join(", ")}`,
+      { code: "REVISER_OUT_OF_SCOPE_CHANGE", stage: REVISE_STAGE, retryable: true },
+    );
+    await recordStageRun(client, {
+      jobId: params.jobId, batchId: brief.batchId, stage: REVISE_STAGE, status: "failed",
+      attempt, startedAt, finishedAt: new Date().toISOString(), error,
+      output: { draftId: targetDraft.id, draftVersion: targetDraft.version, outOfScopeChanges },
+      provider: agentResult.provider, model: agentResult.model, usage: agentResult.usage,
+    });
+    await failJob(client, { jobId: params.jobId, lockToken, stage: REVISE_STAGE, error });
+    return { outcome: "out_of_scope_change", jobId: params.jobId, errorCode: error.code };
+  }
+
   const validation = await validateDraft(client, revisedDraft);
   const blockingValidationIssues = validation.issues.filter((issue) => issue.severity === "blocking");
 

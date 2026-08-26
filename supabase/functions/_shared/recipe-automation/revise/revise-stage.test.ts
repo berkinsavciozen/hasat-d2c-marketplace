@@ -5,6 +5,7 @@ import { runReviseStage } from "./revise-stage.ts";
 import { FakeSupabaseClient } from "../infra/testing/fake-supabase-client.ts";
 import type { SupabaseClient } from "../infra/supabase-admin.ts";
 import type { AgentRunner } from "../infra/agent-runner.ts";
+import type { RecipeQAResult } from "../types.ts";
 import {
   validKabakRecipeDraft,
   validQAResult,
@@ -352,4 +353,184 @@ Deno.test("runReviseStage: a blocking Postgres validation issue on the revised d
   const job = client.getRow("recipe_generation_jobs", jobId)!;
   assert.equal(job.stage, "revise");
   assert.equal(job.locked_by, null);
+});
+
+// ---------------------------------------------------------------------------------------------
+// Step 08A: constrained revision boundary enforcement
+// ---------------------------------------------------------------------------------------------
+
+/** A fake AgentRunner returning a RAW draft object as-is (no jobId/briefId stripping) — used where
+ * the test itself already built the exact candidate shape it wants the "agent" to have produced. */
+function fixedOutputAgentRunner(output: Record<string, unknown>): AgentRunner {
+  return {
+    run: () => Promise.resolve({
+      output,
+      provider: "openai",
+      model: "test-revise-model",
+      usage: { inputTokens: 60, outputTokens: 50, totalTokens: 110 },
+      durationMs: 20,
+    }),
+  };
+}
+
+/** The Reviser's own valid fix (kasar peyniri removed, matching validQAResultRevisionRequired's
+ * ingredients[1] issue) minus jobId/briefId, as a plain object other tests below can spread onto to
+ * layer an ADDITIONAL, out-of-scope change alongside an otherwise-correct revision. */
+const { jobId: _validFixJobId, briefId: _validFixBriefId, ...validFixWithoutIds } = validRevisedKabakRecipeDraft;
+
+Deno.test("runReviseStage: an unrelated title change alongside a valid fix is rejected, outcome out_of_scope_change, no draft stored", async () => {
+  const client = new FakeSupabaseClient();
+  const jobId = seedReviseJob(client, { revision_count: 0 });
+  const draftId = seedDraftVersion(client, jobId, 1, validKabakRecipeDraft);
+  seedQaResult(client, { jobId, draftId, draftVersion: 1 }, validQAResultRevisionRequired);
+  registerHappyPathRpcs(client);
+
+  const result = await runReviseStage(asClient(client), {
+    jobId,
+    agentRunner: fixedOutputAgentRunner({ ...validFixWithoutIds, title: "Baska Bir Baslik" }),
+  });
+
+  assert.equal(result.outcome, "out_of_scope_change");
+  const job = client.getRow("recipe_generation_jobs", jobId)!;
+  assert.equal(job.stage, "revise", "an out-of-scope candidate must stay at revise, not advance to qa");
+  assert.equal(job.revision_count, 0, "a rejected candidate must not consume a revision");
+  assert.equal(job.locked_by, null);
+
+  const { data: draftsAtVersion2 } = await client.from("recipe_drafts").select("id").eq("job_id", jobId).eq("version", 2);
+  assert.equal(draftsAtVersion2!.length, 0, "no version=2 draft may ever be stored for a rejected candidate");
+});
+
+Deno.test("runReviseStage: an unrelated servings change alongside a valid fix is rejected, outcome out_of_scope_change", async () => {
+  const client = new FakeSupabaseClient();
+  const jobId = seedReviseJob(client, { revision_count: 0 });
+  const draftId = seedDraftVersion(client, jobId, 1, validKabakRecipeDraft);
+  seedQaResult(client, { jobId, draftId, draftVersion: 1 }, validQAResultRevisionRequired);
+  registerHappyPathRpcs(client);
+
+  const result = await runReviseStage(asClient(client), {
+    jobId,
+    agentRunner: fixedOutputAgentRunner({ ...validFixWithoutIds, servings: 8 }),
+  });
+
+  assert.equal(result.outcome, "out_of_scope_change");
+  const { data: draftsAtVersion2 } = await client.from("recipe_drafts").select("id").eq("job_id", jobId).eq("version", 2);
+  assert.equal(draftsAtVersion2!.length, 0);
+});
+
+Deno.test("runReviseStage: a non-blocking suggestion never grants mutation permission — the matching change is rejected", async () => {
+  const client = new FakeSupabaseClient();
+  const jobId = seedReviseJob(client, { revision_count: 0 });
+  const draftId = seedDraftVersion(client, jobId, 1, validKabakRecipeDraft);
+  const qaWithSuggestion: RecipeQAResult = {
+    ...validQAResultRevisionRequired,
+    nonBlockingSuggestions: [
+      {
+        code: "STEP_WORDING",
+        field: "steps[2].instruction",
+        severity: "warning",
+        message: "Daha net yazilabilir.",
+        requiredChange: null,
+      },
+    ],
+  };
+  seedQaResult(client, { jobId, draftId, draftVersion: 1 }, qaWithSuggestion);
+  registerHappyPathRpcs(client);
+
+  const candidate = {
+    ...validFixWithoutIds,
+    steps: validFixWithoutIds.steps.map((s, i) => i === 1 ? { ...s, instruction: "Degistirilmis talimat." } : s),
+  };
+
+  const result = await runReviseStage(asClient(client), {
+    jobId,
+    agentRunner: fixedOutputAgentRunner(candidate),
+  });
+
+  assert.equal(result.outcome, "out_of_scope_change", "a nonBlockingSuggestion-only change must never be accepted, even though QA itself suggested it");
+});
+
+Deno.test("runReviseStage: identity/server-owned fields are rejected as out-of-scope even alongside a valid fix", async () => {
+  const client = new FakeSupabaseClient();
+  const jobId = seedReviseJob(client, { revision_count: 0 });
+  const draftId = seedDraftVersion(client, jobId, 1, validKabakRecipeDraft);
+  seedQaResult(client, { jobId, draftId, draftVersion: 1 }, validQAResultRevisionRequired);
+  registerHappyPathRpcs(client);
+
+  const result = await runReviseStage(asClient(client), {
+    jobId,
+    agentRunner: fixedOutputAgentRunner({ ...validFixWithoutIds, authorType: "kullanici", visibility: "public" }),
+  });
+
+  assert.equal(result.outcome, "out_of_scope_change");
+  const job = client.getRow("recipe_generation_jobs", jobId)!;
+  assert.equal(job.revision_count, 0);
+  const { data: draftsAtVersion2 } = await client.from("recipe_drafts").select("id").eq("job_id", jobId).eq("version", 2);
+  assert.equal(draftsAtVersion2!.length, 0);
+});
+
+Deno.test("runReviseStage: an unlocatable blocking issue routes to manual review without calling the agent or storing a new draft", async () => {
+  const client = new FakeSupabaseClient();
+  const jobId = seedReviseJob(client, { revision_count: 0 });
+  const draftId = seedDraftVersion(client, jobId, 1, validKabakRecipeDraft);
+  const qaWithUnresolvableIssue: RecipeQAResult = {
+    ...validQAResultRevisionRequired,
+    blockingIssues: [
+      {
+        code: "STEP_NO_NOT_NUMBER",
+        field: "steps[].stepNo",
+        severity: "blocking",
+        message: "Bir adimin stepNo degeri sayisal degil.",
+        requiredChange: null,
+      },
+    ],
+  };
+  seedQaResult(client, { jobId, draftId, draftVersion: 1 }, qaWithUnresolvableIssue);
+  registerHappyPathRpcs(client);
+
+  const result = await runReviseStage(asClient(client), { jobId, agentRunner: throwingAgentRunner() });
+
+  assert.equal(result.outcome, "unresolvable_blocking_issue");
+  // throwingAgentRunner would turn this into outcome "agent_call_failed" if it were ever invoked —
+  // "unresolvable_blocking_issue" alone proves the agent call was skipped entirely.
+
+  const job = client.getRow("recipe_generation_jobs", jobId)!;
+  assert.equal(job.stage, "qa", "no next-stage function to dispatch to for a human decision — parked at qa, same resting state as the revision-cap branch");
+  assert.equal(job.status, "awaiting_approval");
+  assert.equal(job.revision_count, 0, "routing to manual review must never consume a revision");
+  assert.equal(job.locked_by, null);
+
+  const { data: draftsForJob } = await client.from("recipe_drafts").select("version").eq("job_id", jobId);
+  const versions = (draftsForJob ?? []).map((r) => r.version);
+  assert.deepEqual(versions.sort(), [1], "no new draft version may ever be created when a blocking issue cannot be located");
+});
+
+Deno.test("runReviseStage: retrying after a rejected out-of-scope candidate does not consume a draft version or revision count", async () => {
+  const client = new FakeSupabaseClient();
+  const jobId = seedReviseJob(client, { revision_count: 0 });
+  const draftId = seedDraftVersion(client, jobId, 1, validKabakRecipeDraft);
+  seedQaResult(client, { jobId, draftId, draftVersion: 1 }, validQAResultRevisionRequired);
+  registerHappyPathRpcs(client);
+
+  const first = await runReviseStage(asClient(client), {
+    jobId,
+    agentRunner: fixedOutputAgentRunner({ ...validFixWithoutIds, title: "Baska Bir Baslik" }),
+  });
+  assert.equal(first.outcome, "out_of_scope_change");
+
+  const jobAfterFirst = client.getRow("recipe_generation_jobs", jobId)!;
+  assert.equal(jobAfterFirst.stage, "revise");
+  assert.equal(jobAfterFirst.status, "retryable", "a retryable error leaves the job re-claimable at the same stage");
+  assert.equal(jobAfterFirst.revision_count, 0);
+
+  const second = await runReviseStage(asClient(client), {
+    jobId,
+    agentRunner: fixtureAgentRunner(validRevisedKabakRecipeDraft),
+  });
+
+  assert.equal(second.outcome, "revised", "the SAME job must still be revisable normally after an earlier rejected candidate");
+  assert.equal(second.draftVersion, 2);
+  assert.equal(second.revisionCount, 1, "the rejected attempt must not have pre-incremented revision_count");
+
+  const { data: draftsAtVersion2 } = await client.from("recipe_drafts").select("id").eq("job_id", jobId).eq("version", 2);
+  assert.equal(draftsAtVersion2!.length, 1, "exactly one version=2 draft after the retry succeeds — the earlier rejected candidate stored nothing");
 });

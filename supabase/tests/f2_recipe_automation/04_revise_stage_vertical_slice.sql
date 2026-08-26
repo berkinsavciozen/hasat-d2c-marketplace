@@ -16,8 +16,13 @@
 -- Run via supabase/tests/f2_recipe_automation/run.sh, after 03_qa_stage_vertical_slice.sql —
 -- depends on that script's job/version-1-draft already existing in the test database. Unlike that
 -- script (which stored an 'approved' QA result), this test stores its OWN 'revision_required' QA
--- result against the same version-1 draft — recipe_qa_results has no uniqueness restriction on
--- (job_id, draft_id, draft_version) (see qa/README.md's documented gap), so both coexist.
+-- result against the same version-1 draft. Step 08A added `recipe_qa_results_job_draft_version_key`
+-- (unique on (job_id, draft_id, draft_version) — see that migration's header and
+-- 03_qa_stage_vertical_slice.sql's own new assertion for it), so the two scripts can no longer both
+-- have a live row for this exact triple at once: this script first removes 03's 'approved' row for
+-- this triple, then stores its own 'revision_required' one — the real pipeline invariant this
+-- constraint now enforces is exactly "one QA verdict per exact draft version", never "one script's
+-- fixture data coexisting with another's for the same version".
 
 \set ON_ERROR_STOP on
 
@@ -77,9 +82,15 @@ begin
   --    03_qa_stage_vertical_slice.sql's own QA verdict, this is SYNTHETIC, not a live-captured QA
   --    agent call (no live-call gate was open for Step 08 either — see the Step 08 completion
   --    report): a plausible UNUSED_INGREDIENT finding on "domates salçası", in the same shape
-  --    qa-stage.ts's qaResultToInsertRow() produces. Independent of 03's own (separate) 'approved'
-  --    result for the same draft — recipe_qa_results has no uniqueness restriction on (job_id,
-  --    draft_id, draft_version).
+  --    qa-stage.ts's qaResultToInsertRow() produces. 03_qa_stage_vertical_slice.sql already stored
+  --    an 'approved' verdict for this EXACT (job_id, draft_id, draft_version) triple; Step 08A's new
+  --    recipe_qa_results_job_draft_version_key unique constraint means only one row can ever exist
+  --    for it, so remove that row first — simulating the real invariant "one QA verdict per exact
+  --    draft version" (a job cannot simultaneously have been both approved and sent to revise for
+  --    the same draft), not a schema workaround.
+  delete from public.recipe_qa_results
+  where job_id = v_job_id and draft_id = v_draft_id and draft_version = v_draft_version;
+
   insert into public.recipe_qa_results (
     job_id, draft_id, draft_version, recipe_id, decision, overall_score, scores,
     blocking_issues, non_blocking_suggestions, safety_review, approved_for_imaging, model
