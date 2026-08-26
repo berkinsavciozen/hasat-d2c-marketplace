@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Star } from "lucide-react";
+import { Info, Star } from "lucide-react";
 import { toast } from "sonner";
 import { SectionCard } from "@/components/hasat/common/SectionCard";
 import { PriceChart } from "@/components/hasat/PriceChart";
@@ -60,8 +60,8 @@ function BigWatchStar({ crop }: { crop: string }) {
       <Star
         className="h-5 w-5"
         style={{
-          color: active ? "var(--saffron)" : "var(--hmuted)",
-          fill: active ? "var(--saffron)" : "transparent",
+          color: active ? "var(--primary)" : "var(--hmuted)",
+          fill: active ? "var(--primary)" : "transparent",
         }}
       />
     </button>
@@ -95,10 +95,17 @@ export function CropDetailBody({ crop }: { crop: string }) {
 
   return (
     <div className="px-4 md:px-8 py-5 pb-32 md:pb-5 space-y-4">
-      <div className="flex items-start justify-between gap-3">
+      <div className="flex items-start justify-between gap-3 rounded-2xl border bg-card p-4">
         <div className="min-w-0">
-          <h1 className="font-serif text-2xl md:text-3xl truncate">{formatCrop(crop)}</h1>
-          <p className="mt-0.5 text-xs text-hmuted">Haftalık ortalama fiyat serileri</p>
+          <p className="text-xs font-semibold uppercase tracking-wider text-primary">
+            Güncel fiyat
+          </p>
+          <h1 className="mt-1 break-words font-mono text-2xl font-semibold md:text-3xl">
+            {formatCrop(crop)}
+          </h1>
+          <p className="mt-1 text-xs text-hmuted">
+            Önce güncel karşılaştırma, ardından geçmiş eğilimler
+          </p>
         </div>
         <BigWatchStar crop={crop} />
       </div>
@@ -114,10 +121,12 @@ export function CropDetailBody({ crop }: { crop: string }) {
       </Tabs>
 
       {anyLoading ? (
-        <div className="py-12"><LoadingDots /></div>
+        <div className="py-12">
+          <LoadingDots />
+        </div>
       ) : !anything ? (
-        <div className="rounded-2xl border border-dashed py-12 text-center">
-          <div className="mb-3 text-5xl">📊</div>
+        <div className="rounded-2xl border border-dashed bg-card py-12 text-center">
+          <Info className="mx-auto mb-3 h-9 w-9 text-primary" />
           <div className="mb-1 font-medium">Bu ürün için henüz yeterli fiyat verisi yok</div>
           <div className="text-xs text-hmuted">
             Platformda sipariş ve resmi kaynak verisi biriktikçe grafikler burada görünecek.
@@ -130,21 +139,24 @@ export function CropDetailBody({ crop }: { crop: string }) {
               <div className="flex flex-wrap items-baseline gap-3">
                 <div>
                   <div className="text-[10px] text-hmuted">Ortalama</div>
-                  <div className="font-mono text-xl font-semibold">{priceWithUnit(hasat!.avgPrice!, unit)}</div>
+                  <div className="font-mono text-3xl font-semibold text-primary">
+                    {priceWithUnit(hasat!.avgPrice!, unit)}
+                  </div>
                 </div>
                 {hasat!.stddevPrice != null && (
-                  <span
-                    className="inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium"
-                    style={{ background: "color-mix(in oklab, var(--gold) 15%, transparent)", color: "var(--gold)" }}
-                  >
-                    Aralık: {priceWithUnit(Math.max(0, hasat!.avgPrice! - hasat!.stddevPrice), unit)} – {priceWithUnit(hasat!.avgPrice! + hasat!.stddevPrice, unit)}
+                  <span className="inline-flex items-center rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
+                    Aralık:{" "}
+                    {priceWithUnit(Math.max(0, hasat!.avgPrice! - hasat!.stddevPrice), unit)} –{" "}
+                    {priceWithUnit(hasat!.avgPrice! + hasat!.stddevPrice, unit)}
                   </span>
                 )}
-                <span className="text-[11px] text-hmuted">{hasat!.distinctFarmerCount} üretici</span>
+                <span className="text-[11px] text-hmuted">
+                  {hasat!.distinctFarmerCount} üretici
+                </span>
               </div>
               {hasatSeries.length >= 2 && (
                 <div className="mt-3">
-                  <PriceChart data={hasatSeries} color="var(--saffron)" unit={unit} />
+                  <PriceChart data={hasatSeries} color="var(--teal)" unit={unit} />
                 </div>
               )}
             </SectionCard>
@@ -155,12 +167,14 @@ export function CropDetailBody({ crop }: { crop: string }) {
               <div className="flex flex-wrap items-baseline gap-3">
                 <div>
                   <div className="text-[10px] text-hmuted">Ortalama</div>
-                  <div className="font-mono text-xl font-semibold">{priceWithUnit(official.avgPrice, unit)}</div>
+                  <div className="font-mono text-xl font-semibold">
+                    {priceWithUnit(official.avgPrice, unit)}
+                  </div>
                 </div>
               </div>
               {officialSeries && officialSeries.length >= 2 && (
                 <div className="mt-3">
-                  <PriceChart data={officialSeries} color="var(--gold)" unit={unit} />
+                  <PriceChart data={officialSeries} color="var(--primary)" unit={unit} />
                 </div>
               )}
             </SectionCard>
@@ -175,7 +189,9 @@ export function CropDetailBody({ crop }: { crop: string }) {
                   <div className="flex flex-wrap items-baseline gap-3">
                     <div>
                       <div className="text-[10px] text-hmuted">Ortalama</div>
-                      <div className="font-mono text-xl font-semibold">{priceWithUnit(src.avgPrice, unit)}</div>
+                      <div className="font-mono text-xl font-semibold">
+                        {priceWithUnit(src.avgPrice, unit)}
+                      </div>
                     </div>
                   </div>
                 )}

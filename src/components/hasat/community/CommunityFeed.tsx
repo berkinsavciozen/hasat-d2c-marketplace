@@ -30,7 +30,13 @@ function relTime(iso: string) {
   return new Date(iso).toLocaleDateString("tr-TR");
 }
 
-function AuthorName({ post, className }: { post: Pick<CommunityPostRow, "authorId" | "authorName" | "authorRole">; className?: string }) {
+function AuthorName({
+  post,
+  className,
+}: {
+  post: Pick<CommunityPostRow, "authorId" | "authorName" | "authorRole">;
+  className?: string;
+}) {
   const name = post.authorName ?? "Üretici";
   if (post.authorRole === "farmer") {
     const slug = post.authorName ? slugifyFarmer(post.authorName) || post.authorId : post.authorId;
@@ -57,7 +63,11 @@ function ReplyThread({ post }: { post: CommunityPostRow }) {
   const submit = async () => {
     if (!draft.trim()) return;
     try {
-      await createReply.mutateAsync({ postId: post.id, content: draft.trim(), parentAuthorId: post.authorId });
+      await createReply.mutateAsync({
+        postId: post.id,
+        content: draft.trim(),
+        parentAuthorId: post.authorId,
+      });
       setDraft("");
     } catch (e: any) {
       toast.error(e?.message ?? "Yanıtlanamadı");
@@ -76,14 +86,22 @@ function ReplyThread({ post }: { post: CommunityPostRow }) {
             const rname = r.authorName ?? "Üretici";
             return (
               <li key={r.id} className="flex gap-2 text-xs">
-                <div className="grid h-7 w-7 shrink-0 place-items-center rounded-full text-[11px] font-bold"
-                  style={{ background: "var(--muted)" }}>{rname[0]}</div>
+                <div
+                  className="grid h-7 w-7 shrink-0 place-items-center rounded-full text-[11px] font-bold"
+                  style={{ background: "var(--muted)" }}
+                >
+                  {rname[0]}
+                </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
                     <AuthorName post={r} className="font-medium" />
                     <span className="text-[10px] text-hmuted">{relTime(r.createdAt)}</span>
                   </div>
-                  <div className={`whitespace-pre-wrap break-words ${r.flaggedForReview && r.authorId !== viewerId ? "italic text-hmuted" : ""}`}>{maskIfFlagged(r, viewerId)}</div>
+                  <div
+                    className={`whitespace-pre-wrap break-words ${r.flaggedForReview && r.authorId !== viewerId ? "italic text-hmuted" : ""}`}
+                  >
+                    {maskIfFlagged(r, viewerId)}
+                  </div>
                 </div>
               </li>
             );
@@ -94,15 +112,20 @@ function ReplyThread({ post }: { post: CommunityPostRow }) {
         <Input
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
-          onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); void submit(); } }}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") {
+              e.preventDefault();
+              void submit();
+            }
+          }}
           placeholder="Yanıt yaz…"
-          className="text-xs h-9"
+          className="min-h-[44px] text-xs"
         />
         <button
           onClick={submit}
           disabled={!draft.trim() || createReply.isPending}
           className="rounded-lg px-3 text-xs font-medium disabled:opacity-40"
-          style={{ background: "var(--saffron)", color: "var(--hwhite)" }}
+          style={{ background: "var(--primary)", color: "var(--primary-foreground)" }}
         >
           {createReply.isPending ? "…" : "Yanıtla"}
         </button>
@@ -139,7 +162,10 @@ export function CommunityFeed({ categories, defaultCategory = "Genel" }: Communi
   const publish = async () => {
     if (!draft.trim()) return;
     try {
-      await createPost.mutateAsync({ content: draft.trim(), category: cat === "Tümü" ? defaultCategory : cat });
+      await createPost.mutateAsync({
+        content: draft.trim(),
+        category: cat === "Tümü" ? defaultCategory : cat,
+      });
       setDraft("");
       setOpen(false);
     } catch (e: any) {
@@ -149,30 +175,42 @@ export function CommunityFeed({ categories, defaultCategory = "Genel" }: Communi
 
   return (
     <>
-      <div className="p-4 md:p-8 space-y-4">
+      <div className="space-y-5 p-4 pb-32 md:p-8">
         <div className="relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Gönderilerde ara..." className="pl-9" />
+          <Input
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            placeholder="Gönderilerde ara..."
+            className="min-h-[48px] pl-9"
+          />
         </div>
 
-        <div className="flex gap-2 overflow-x-auto">
+        <div className="flex gap-2 overflow-x-auto pb-1" aria-label="Topluluk kategorileri">
           {categories.map((c) => (
-            <button key={c} onClick={() => setCat(c)}
-              className="rounded-full px-3 py-1.5 text-xs whitespace-nowrap border transition"
+            <button
+              key={c}
+              onClick={() => setCat(c)}
+              className="min-h-[44px] whitespace-nowrap rounded-full border px-4 py-2 text-xs transition-colors"
               style={{
-                background: cat === c ? "var(--saffron)" : "transparent",
+                background: cat === c ? "var(--primary)" : "transparent",
                 color: cat === c ? "var(--hwhite)" : "inherit",
-                borderColor: cat === c ? "var(--saffron)" : "var(--border)",
-              }}>{c}</button>
+                borderColor: cat === c ? "var(--primary)" : "var(--border)",
+              }}
+            >
+              {c}
+            </button>
           ))}
         </div>
 
         {isLoading ? (
           <LoadingDots />
         ) : filtered.length === 0 ? (
-          <div className="rounded-2xl border border-dashed p-10 text-center text-hmuted">
+          <div className="rounded-2xl border border-dashed bg-card p-10 text-center text-hmuted">
             <div className="text-4xl mb-2">🌾</div>
-            {posts.length === 0 ? "Henüz gönderi yok. İlk gönderiyi sen paylaş!" : "Sonuç bulunamadı"}
+            {posts.length === 0
+              ? "Henüz gönderi yok. İlk gönderiyi sen paylaş!"
+              : "Sonuç bulunamadı"}
           </div>
         ) : (
           <div className="space-y-3">
@@ -183,19 +221,30 @@ export function CommunityFeed({ categories, defaultCategory = "Genel" }: Communi
               return (
                 <div
                   key={p.id}
-                  className="rounded-xl border border-border bg-card p-4 cursor-pointer"
+                  className="cursor-pointer rounded-2xl border border-border bg-card p-4 sm:p-5"
                   onClick={() => setExpandedId(expanded ? null : p.id)}
                 >
                   <div className="flex items-center gap-3 mb-2">
-                    <div className="grid h-9 w-9 place-items-center rounded-full text-sm font-bold"
-                      style={{ background: "var(--saffron)", color: "var(--hwhite)" }}>{name[0]}</div>
-                    <div className="flex-1" onClick={(e) => e.stopPropagation()}>
-                      <div className="text-sm font-medium"><AuthorName post={p} /></div>
-                      <div className="text-[11px] text-muted-foreground">{p.authorCity ?? "—"} · {relTime(p.createdAt)}</div>
+                    <div className="grid h-10 w-10 place-items-center rounded-full bg-primary/10 text-sm font-bold text-primary">
+                      {name[0]}
                     </div>
-                    <span className="text-[10px] px-2 py-0.5 rounded-full" style={{ background: "var(--muted)" }}>{p.category}</span>
+                    <div className="flex-1" onClick={(e) => e.stopPropagation()}>
+                      <div className="text-sm font-medium">
+                        <AuthorName post={p} />
+                      </div>
+                      <div className="text-[11px] text-muted-foreground">
+                        {p.authorCity ?? "—"} · {relTime(p.createdAt)}
+                      </div>
+                    </div>
+                    <span className="rounded-full bg-muted px-2 py-1 text-[10px] text-muted-foreground">
+                      {p.category}
+                    </span>
                   </div>
-                  <p className={`text-sm mb-3 whitespace-pre-wrap ${p.flaggedForReview && p.authorId !== viewerId ? "italic text-hmuted" : ""}`}>{maskIfFlagged(p, viewerId)}</p>
+                  <p
+                    className={`text-sm mb-3 whitespace-pre-wrap ${p.flaggedForReview && p.authorId !== viewerId ? "italic text-hmuted" : ""}`}
+                  >
+                    {maskIfFlagged(p, viewerId)}
+                  </p>
                   <div className="flex items-center gap-4 text-xs text-muted-foreground">
                     <button
                       onClick={(e) => {
@@ -204,12 +253,19 @@ export function CommunityFeed({ categories, defaultCategory = "Genel" }: Communi
                         toggleLike.mutate({ postId: p.id, liked });
                       }}
                       disabled={!viewerId || toggleLike.isPending}
-                      className="flex items-center gap-1 disabled:opacity-40"
+                      className="flex min-h-[44px] items-center gap-1 rounded-md px-2 text-primary disabled:opacity-40"
                     >
-                      <Heart className="h-4 w-4" fill={liked ? "var(--hred)" : "none"} color={liked ? "var(--hred)" : "currentColor"} />
+                      <Heart
+                        className="h-4 w-4"
+                        fill={liked ? "var(--hred)" : "none"}
+                        color={liked ? "var(--hred)" : "currentColor"}
+                      />
                       {p.likesCount}
                     </button>
-                    <span className="flex items-center gap-1"><MessageCircle className="h-4 w-4" />{p.replyCount} yorum</span>
+                    <span className="flex items-center gap-1">
+                      <MessageCircle className="h-4 w-4" />
+                      {p.replyCount} yorum
+                    </span>
                   </div>
                   {expanded && <ReplyThread post={p} />}
                 </div>
@@ -221,18 +277,30 @@ export function CommunityFeed({ categories, defaultCategory = "Genel" }: Communi
 
       <Sheet open={open} onOpenChange={setOpen}>
         <SheetTrigger asChild>
-          <button className="fixed bottom-24 md:bottom-6 right-4 z-30 grid h-14 w-14 place-items-center rounded-full shadow-lg"
-            style={{ background: "var(--saffron)", color: "var(--hwhite)" }}>
+          <button
+            aria-label="Yeni gönderi"
+            className="fixed bottom-[calc(56px+max(env(safe-area-inset-bottom),0.5rem)+96px)] right-4 z-30 grid h-14 w-14 place-items-center rounded-full bg-primary text-primary-foreground shadow-md md:bottom-24"
+          >
             <Plus className="h-6 w-6" />
           </button>
         </SheetTrigger>
-        <SheetContent side="bottom" className="rounded-t-2xl">
-          <SheetHeader><SheetTitle>Yeni Gönderi</SheetTitle></SheetHeader>
+        <SheetContent side="bottom" className="max-h-[90dvh] overflow-y-auto rounded-t-2xl pb-safe">
+          <SheetHeader>
+            <SheetTitle>Yeni Gönderi</SheetTitle>
+          </SheetHeader>
           <div className="mt-4 space-y-3">
-            <Textarea value={draft} onChange={(e) => setDraft(e.target.value)} rows={5} placeholder="Topluluğa ne söylemek istersin?" />
-            <button onClick={publish} disabled={!draft.trim() || createPost.isPending}
+            <Textarea
+              value={draft}
+              onChange={(e) => setDraft(e.target.value)}
+              rows={5}
+              placeholder="Topluluğa ne söylemek istersin?"
+            />
+            <button
+              onClick={publish}
+              disabled={!draft.trim() || createPost.isPending}
               className="w-full rounded-xl py-3 text-sm font-medium disabled:opacity-40"
-              style={{ background: "var(--saffron)", color: "var(--hwhite)" }}>
+              style={{ background: "var(--primary)", color: "var(--primary-foreground)" }}
+            >
               {createPost.isPending ? "Paylaşılıyor…" : "Paylaş"}
             </button>
           </div>

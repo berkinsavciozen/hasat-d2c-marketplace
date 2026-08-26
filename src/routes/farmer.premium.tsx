@@ -21,14 +21,30 @@ function Premium() {
   return (
     <>
       <FarmerHeader title="Premium" subtitle="Sınırsız AI sohbeti" />
-      <div className="p-4 md:p-8 space-y-6 max-w-3xl">
+      <div className="max-w-3xl space-y-6 p-4 pb-32 md:p-8">
+        <section className="max-w-2xl">
+          <p className="text-xs font-semibold uppercase tracking-wider text-gold">Premium</p>
+          <h1 className="mt-2 text-2xl font-semibold sm:text-3xl">
+            Daha fazla AI sohbeti, aynı güçlü çiftlik araçları
+          </h1>
+          <p className="mt-2 text-sm text-muted-foreground">
+            Premium yalnızca sohbet limitini kaldırır; operasyonel özelliklerin tamamı ücretsiz
+            planda kalır.
+          </p>
+        </section>
         <div className="grid gap-3 md:grid-cols-2">
           <div
             className="rounded-2xl p-5 relative"
-            style={{ background: "var(--dark)", color: "var(--hwhite)", border: "1px solid rgba(255,255,255,0.15)" }}
+            style={{
+              background: "var(--dark)",
+              color: "var(--hwhite)",
+              border: "1px solid rgba(255,255,255,0.15)",
+            }}
           >
             {!isPremium && (
-              <span className="absolute -top-2 right-4 px-2 py-0.5 text-[10px] rounded-full bg-white/10">Mevcut</span>
+              <span className="absolute -top-2 right-4 px-2 py-0.5 text-[10px] rounded-full bg-white/10">
+                Mevcut
+              </span>
             )}
             <div className="text-sm opacity-70">Ücretsiz</div>
             <div className="font-serif text-3xl mt-1">
@@ -43,14 +59,18 @@ function Premium() {
           <div
             className="rounded-2xl p-5 relative"
             style={{
-              background: "color-mix(in oklab, var(--saffron) 18%, var(--dark))",
+              background: "var(--dark)",
               color: "var(--hwhite)",
               border: "1px solid var(--saffron)",
             }}
           >
             {isPremium && (
-              <span className="absolute -top-2 right-4 px-2 py-0.5 text-[10px] rounded-full"
-                style={{ background: "var(--saffron)", color: "var(--hwhite)" }}>Aktif</span>
+              <span
+                className="absolute -top-2 right-4 px-2 py-0.5 text-[10px] rounded-full"
+                style={{ background: "var(--sage)", color: "var(--hwhite)" }}
+              >
+                Aktif
+              </span>
             )}
             <div className="text-sm opacity-70">Premium</div>
             <div className="font-serif text-3xl mt-1">
@@ -63,8 +83,7 @@ function Premium() {
             {!isPremium && (
               <button
                 onClick={() => navigate({ to: "/farmer/billing" })}
-                className="mt-4 w-full rounded-xl py-2.5 text-sm font-medium"
-                style={{ background: "var(--saffron)", color: "var(--hwhite)" }}
+                className="mt-4 min-h-[48px] w-full rounded-xl bg-primary py-2.5 text-sm font-medium text-primary-foreground"
               >
                 Premium'a Geç
               </button>
@@ -83,7 +102,8 @@ function Premium() {
             ))}
           </ul>
           <p className="text-xs text-muted-foreground mt-4">
-            Premium yalnızca AI sohbet limitini kaldırır. Diğer tüm özellikler ücretsiz planda da tam olarak kullanılabilir.
+            Premium yalnızca AI sohbet limitini kaldırır. Diğer tüm özellikler ücretsiz planda da
+            tam olarak kullanılabilir.
           </p>
         </div>
       </div>

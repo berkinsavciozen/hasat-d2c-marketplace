@@ -34,7 +34,13 @@ function Notifs() {
           <ChevronLeft className="h-3 w-3" /> Ayarlar
         </Link>
       </FarmerHeader>
-      <div className="p-4 md:p-8 max-w-2xl">
+      <div className="max-w-2xl p-4 pb-32 md:p-8">
+        <div className="mb-5 rounded-2xl border border-teal/20 bg-teal/10 p-4">
+          <h2 className="text-sm font-semibold">Nasıl haber almak istersin?</h2>
+          <p className="mt-1 text-xs text-muted-foreground">
+            Her olay için yalnızca ihtiyacın olan kanalları açık bırakabilirsin.
+          </p>
+        </div>
         {isLoading || !prefs ? (
           <div className="grid place-items-center py-10">
             <LoadingDots />
@@ -70,7 +76,9 @@ function Notifs() {
                                   <Switch checked={prefs[col]} disabled aria-label="Yakında" />
                                 </span>
                               </TooltipTrigger>
-                              <TooltipContent>WhatsApp bildirimleri yakında aktif olacak</TooltipContent>
+                              <TooltipContent>
+                                WhatsApp bildirimleri yakında aktif olacak
+                              </TooltipContent>
                             </Tooltip>
                           ) : (
                             <Switch
@@ -92,7 +100,10 @@ function Notifs() {
             {/* Mobile: stacked cards */}
             <div className="sm:hidden space-y-3">
               {EVENTS.map((e) => (
-                <div key={e.key} className="rounded-xl border border-border bg-card overflow-hidden">
+                <div
+                  key={e.key}
+                  className="rounded-xl border border-border bg-card overflow-hidden"
+                >
                   <div className="px-4 py-3 border-b border-border bg-muted text-sm font-medium">
                     {e.label}
                   </div>
@@ -128,9 +139,7 @@ function Notifs() {
             </div>
           </>
         )}
-        <p className="text-xs text-muted-foreground mt-3">
-          Değişiklikler anında kaydedilir.
-        </p>
+        <p className="text-xs text-muted-foreground mt-3">Değişiklikler anında kaydedilir.</p>
       </div>
     </>
   );
