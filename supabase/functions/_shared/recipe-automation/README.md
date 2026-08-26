@@ -66,6 +66,20 @@ and their test files depend on `jsr:@matmen/imagescript`, which is blocked in th
 session that wrote this step (same class of pre-existing limitation as `esm.sh` blocking
 `supabase-admin.test.ts`) — `webp-codec.ts` (Gate B) has no such dependency and was fully verified.
 
+**Step 11 (Admin review surface):** `admin/` holds the pipeline's first human-facing surface — the
+admin review of a job parked at `awaiting_approval` (batch/job list, draft detail with content/
+images/QA/RPC-validation/revision-history/frame-warnings, and the four review actions: approve,
+reject, request revision, retry failed stage). Entrypoints:
+`../admin-recipe-jobs/index.ts`, `../admin-recipe-job-detail/index.ts`,
+`../admin-recipe-review-action/index.ts` — same timing-safe `x-admin-key`/service-role auth
+convention as `../admin-kpi/index.ts`, no `is_admin`/RLS/Lovable session. Approval is mechanically
+gated by a NEW table, `recipe_admin_reviews`
+(`../../migrations/20260826120000_f2s11_recipe_admin_reviews.sql`), whose own CHECK constraint
+refuses an `action='approve'` row unless all five human-checklist items are true — see
+`admin/README.md` for why this is a new table rather than `recipe_qa_results.safety_approved`.
+Never invokes a `recipe-stage-*` Edge Function, never writes to `recipe_drafts`/`recipe_qa_results`/
+`recipe_assets`. See `admin/README.md`.
+
 **Step 03A (foundation reconciliation, PRs #40–#42):** the stage/status enums, `RecipeQAResult`,
 and `RecipePlanBatch` below were realigned to RecipeAutomation.md §3/§5.3's canonical
 state-machine and QA-routing contract. In particular: `RecipeJobStage`/`RecipeJobStatus` now use
