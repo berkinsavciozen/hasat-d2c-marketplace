@@ -76,6 +76,7 @@ export async function claimJob(
       locked_at: nowIso,
       lock_expires_at: lockExpiresAt,
       status: "running",
+      started_at: nowIso,
     })
     .eq("id", jobId)
     .eq("stage", expectedStage)
