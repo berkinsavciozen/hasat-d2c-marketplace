@@ -63,38 +63,38 @@
   --radius: 12px;
 
   /* Hasat palette */
-  --saffron: #C8833B;   /* amber — discovery / editorial / attention only */
-  --sage: #6B8F5E;       /* verified / success / completed states only */
-  --cream: #F7F2E8;
-  --dark: #1A1A14;
-  --hmuted: #8A8678;
-  --gold: #D4A843;       /* amber (secondary) — commercial / editorial accent only */
-  --lav: #8B9BF0;
-  --hred: #C0392B;       /* destructive / error / unavailable only */
-  --hwhite: #FDFAF5;
-  --teal: #1F6E82;       /* blue-teal — neutral data, in-progress, informational (not success, not a CTA) */
-  --whatsapp: #25D366;   /* WhatsApp brand green — distinct from --sage verification green */
+  --saffron: #c8833b; /* amber — discovery / editorial / attention only */
+  --sage: #6b8f5e; /* verified / success / completed states only */
+  --cream: #f7f2e8;
+  --dark: #1a1a14;
+  --hmuted: #8a8678;
+  --gold: #d4a843; /* amber (secondary) — commercial / editorial accent only */
+  --lav: #8b9bf0;
+  --hred: #c0392b; /* destructive / error / unavailable only */
+  --hwhite: #fdfaf5;
+  --teal: #1f6e82; /* blue-teal — neutral data, in-progress, informational (not success, not a CTA) */
+  --whatsapp: #25d366; /* WhatsApp brand green — distinct from --sage verification green */
 
   /* shadcn tokens mapped to Hasat */
-  --background: #F0EBE0;
-  --foreground: #1A1A14;
-  --card: #F7F2E8;
-  --card-foreground: #1A1A14;
-  --popover: #FDFAF5;
-  --popover-foreground: #1A1A14;
-  --primary: #0D3B66;             /* deep blue — primary actions, active navigation, focus */
-  --primary-foreground: #FDFAF5;
-  --secondary: #F7F2E8;
-  --secondary-foreground: #1A1A14;
-  --muted: #E8E1D3;
-  --muted-foreground: #8A8678;
-  --accent: #E1E9EE;               /* neutral hover/highlight surface for menus, dropdowns, toggles, calendar — not a brand color */
-  --accent-foreground: #1A1A14;
-  --destructive: #C0392B;
-  --destructive-foreground: #FDFAF5;
-  --border: #E1D9C7;
-  --input: #FDFAF5;
-  --ring: #0D3B66;                 /* focus ring — matches primary */
+  --background: #f0ebe0;
+  --foreground: #1a1a14;
+  --card: #f7f2e8;
+  --card-foreground: #1a1a14;
+  --popover: #fdfaf5;
+  --popover-foreground: #1a1a14;
+  --primary: #0d3b66; /* deep blue — primary actions, active navigation, focus */
+  --primary-foreground: #fdfaf5;
+  --secondary: #f7f2e8;
+  --secondary-foreground: #1a1a14;
+  --muted: #e8e1d3;
+  --muted-foreground: #8a8678;
+  --accent: #e1e9ee; /* neutral hover/highlight surface for menus, dropdowns, toggles, calendar — not a brand color */
+  --accent-foreground: #1a1a14;
+  --destructive: #c0392b;
+  --destructive-foreground: #fdfaf5;
+  --border: #e1d9c7;
+  --input: #fdfaf5;
+  --ring: #0d3b66; /* focus ring — matches primary */
 }
 
 @layer base {
@@ -105,8 +105,13 @@
     background-color: var(--color-background);
     color: var(--color-foreground);
     font-family: var(--font-sans);
+    min-width: 0;
+    overflow-x: clip;
   }
-  h1, h2, h3, h4 {
+  h1,
+  h2,
+  h3,
+  h4 {
     font-weight: 700;
   }
   .font-mono {
@@ -120,6 +125,26 @@
   :focus-visible {
     outline: 2px solid var(--ring);
     outline-offset: 2px;
+  }
+  button,
+  input:not([type="hidden"]),
+  select {
+    min-height: 44px;
+  }
+  a[class*="inline-flex"],
+  a[class*=" flex"] {
+    min-height: 44px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
   }
 }
 

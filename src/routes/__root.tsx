@@ -7,7 +7,7 @@ import {
   HeadContent,
   Scripts,
 } from "@tanstack/react-router";
-import { useEffect, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { toast } from "sonner";
 
 import appCss from "../styles.css?url";
@@ -81,18 +81,38 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
       { title: "Hasat — Çiftçi & Alıcı Platformu" },
-      { name: "description", content: "Hasat, çiftçileri doğrudan restoran ve perakendecilere bağlayan izlenebilir tarım pazar yeridir." },
+      {
+        name: "description",
+        content:
+          "Hasat, çiftçileri doğrudan restoran ve perakendecilere bağlayan izlenebilir tarım pazar yeridir.",
+      },
       { name: "author", content: "Lovable" },
       { property: "og:title", content: "Hasat — Çiftçi & Alıcı Platformu" },
-      { property: "og:description", content: "Hasat, çiftçileri doğrudan restoran ve perakendecilere bağlayan izlenebilir tarım pazar yeridir." },
+      {
+        property: "og:description",
+        content:
+          "Hasat, çiftçileri doğrudan restoran ve perakendecilere bağlayan izlenebilir tarım pazar yeridir.",
+      },
       { property: "og:type", content: "website" },
       { property: "og:url", content: `${PUBLIC_BASE_URL}/` },
       { name: "twitter:card", content: "summary" },
       { name: "twitter:site", content: "@Lovable" },
       { name: "twitter:title", content: "Hasat — Çiftçi & Alıcı Platformu" },
-      { name: "twitter:description", content: "Hasat, çiftçileri doğrudan restoran ve perakendecilere bağlayan izlenebilir tarım pazar yeridir." },
-      { property: "og:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/a4aef110-8537-4306-8849-45326916aaee/id-preview-91b0abdf--0618c152-09fd-4b12-bfeb-a933f5cc1238.lovable.app-1781172310882.png" },
-      { name: "twitter:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/a4aef110-8537-4306-8849-45326916aaee/id-preview-91b0abdf--0618c152-09fd-4b12-bfeb-a933f5cc1238.lovable.app-1781172310882.png" },
+      {
+        name: "twitter:description",
+        content:
+          "Hasat, çiftçileri doğrudan restoran ve perakendecilere bağlayan izlenebilir tarım pazar yeridir.",
+      },
+      {
+        property: "og:image",
+        content:
+          "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/a4aef110-8537-4306-8849-45326916aaee/id-preview-91b0abdf--0618c152-09fd-4b12-bfeb-a933f5cc1238.lovable.app-1781172310882.png",
+      },
+      {
+        name: "twitter:image",
+        content:
+          "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/a4aef110-8537-4306-8849-45326916aaee/id-preview-91b0abdf--0618c152-09fd-4b12-bfeb-a933f5cc1238.lovable.app-1781172310882.png",
+      },
       { name: "theme-color", content: "#0D3B66" },
     ],
     links: [
@@ -121,7 +141,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
 
 function RootShell({ children }: { children: ReactNode }) {
   return (
-    <html lang="en">
+    <html lang="tr">
       <head>
         <HeadContent />
       </head>
@@ -148,7 +168,9 @@ function AuthBootstrap() {
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      const { data: { session } } = await supabase.auth.getSession();
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
       if (cancelled || !session?.user) return;
       const { data: profile } = await supabase
         .from("profiles")
@@ -212,7 +234,10 @@ function AuthBootstrap() {
         router.navigate({ to: "/" });
       }
     });
-    return () => { cancelled = true; sub.subscription.unsubscribe(); };
+    return () => {
+      cancelled = true;
+      sub.subscription.unsubscribe();
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -224,8 +249,15 @@ function RootComponent() {
 
   return (
     <QueryClientProvider client={queryClient}>
+      <a
+        href="#main-content"
+        className="fixed left-3 top-3 z-[10000] -translate-y-24 rounded-md bg-primary px-4 py-3 text-sm font-semibold text-primary-foreground shadow-lg transition-transform focus:translate-y-0 motion-reduce:transition-none"
+      >
+        Ana içeriğe geç
+      </a>
       <AuthBootstrap />
-      <main>
+      <NetworkStatus />
+      <main id="main-content" tabIndex={-1}>
         <Outlet />
       </main>
       <Toaster position="top-center" richColors className="z-[9999]" />
@@ -234,3 +266,34 @@ function RootComponent() {
   );
 }
 
+function NetworkStatus() {
+  const [online, setOnline] = useState(true);
+
+  useEffect(() => {
+    const update = () => setOnline(navigator.onLine);
+    update();
+    window.addEventListener("online", update);
+    window.addEventListener("offline", update);
+    return () => {
+      window.removeEventListener("online", update);
+      window.removeEventListener("offline", update);
+    };
+  }, []);
+
+  return (
+    <div
+      role="status"
+      aria-live="polite"
+      aria-atomic="true"
+      className={
+        online
+          ? "sr-only"
+          : "sticky top-0 z-[60] border-b border-saffron/40 bg-cream px-4 py-2 text-center text-sm font-medium text-foreground"
+      }
+    >
+      {online
+        ? "Bağlantı yeniden kuruldu."
+        : "Çevrimdışısınız. Bağlantı gelene kadar bazı işlemler kullanılamayabilir."}
+    </div>
+  );
+}
