@@ -44,6 +44,7 @@ import { Route as BuyerCommunityRouteImport } from './routes/buyer.community'
 import { Route as BuyerAccountRouteImport } from './routes/buyer.account'
 import { Route as BatchListingIdRouteImport } from './routes/batch.$listingId'
 import { Route as AuthMobileHandoffRouteImport } from './routes/auth.mobile-handoff'
+import { Route as AdminRecipesRouteImport } from './routes/admin.recipes'
 import { Route as AdminKpiRouteImport } from './routes/admin.kpi'
 import { Route as Char91DotwellKnownChar93OauthProtectedResourceRouteImport } from './routes/[.well-known]/oauth-protected-resource'
 import { Route as Char91DotmcpChar93ListToolsRouteImport } from './routes/[.mcp]/list-tools'
@@ -64,6 +65,7 @@ import { Route as BuyerPayOfferIdRouteImport } from './routes/buyer.pay.$offerId
 import { Route as BuyerOrdersOrderIdRouteImport } from './routes/buyer.orders.$orderId'
 import { Route as BuyerOfferListingIdRouteImport } from './routes/buyer.offer.$listingId'
 import { Route as BuyerNegotiationOfferIdRouteImport } from './routes/buyer.negotiation.$offerId'
+import { Route as AdminRecipesJobIdRouteImport } from './routes/admin.recipes.$jobId'
 import { Route as Char91DotmcpChar93InvokeToolToolRouteImport } from './routes/[.mcp]/invoke-tool/$tool'
 import { Route as DotlovableOauthConsentRouteImport } from './routes/[.]lovable.oauth.consent'
 import { Route as BuyerProductFarmerIdCropRouteImport } from './routes/buyer.product.$farmerId.$crop'
@@ -243,6 +245,11 @@ const AuthMobileHandoffRoute = AuthMobileHandoffRouteImport.update({
   path: '/auth/mobile-handoff',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AdminRecipesRoute = AdminRecipesRouteImport.update({
+  id: '/admin/recipes',
+  path: '/admin/recipes',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AdminKpiRoute = AdminKpiRouteImport.update({
   id: '/admin/kpi',
   path: '/admin/kpi',
@@ -346,6 +353,11 @@ const BuyerNegotiationOfferIdRoute = BuyerNegotiationOfferIdRouteImport.update({
   path: '/negotiation/$offerId',
   getParentRoute: () => BuyerRoute,
 } as any)
+const AdminRecipesJobIdRoute = AdminRecipesJobIdRouteImport.update({
+  id: '/$jobId',
+  path: '/$jobId',
+  getParentRoute: () => AdminRecipesRoute,
+} as any)
 const Char91DotmcpChar93InvokeToolToolRoute =
   Char91DotmcpChar93InvokeToolToolRouteImport.update({
     id: '/.mcp/invoke-tool/$tool',
@@ -377,6 +389,7 @@ export interface FileRoutesByFullPath {
   '/.mcp/list-tools': typeof Char91DotmcpChar93ListToolsRoute
   '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   '/admin/kpi': typeof AdminKpiRoute
+  '/admin/recipes': typeof AdminRecipesRouteWithChildren
   '/auth/mobile-handoff': typeof AuthMobileHandoffRoute
   '/batch/$listingId': typeof BatchListingIdRoute
   '/buyer/account': typeof BuyerAccountRoute
@@ -405,6 +418,7 @@ export interface FileRoutesByFullPath {
   '/tarifler/': typeof TariflerIndexRoute
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
+  '/admin/recipes/$jobId': typeof AdminRecipesJobIdRoute
   '/buyer/negotiation/$offerId': typeof BuyerNegotiationOfferIdRoute
   '/buyer/offer/$listingId': typeof BuyerOfferListingIdRoute
   '/buyer/orders/$orderId': typeof BuyerOrdersOrderIdRoute
@@ -437,6 +451,7 @@ export interface FileRoutesByTo {
   '/.mcp/list-tools': typeof Char91DotmcpChar93ListToolsRoute
   '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   '/admin/kpi': typeof AdminKpiRoute
+  '/admin/recipes': typeof AdminRecipesRouteWithChildren
   '/auth/mobile-handoff': typeof AuthMobileHandoffRoute
   '/batch/$listingId': typeof BatchListingIdRoute
   '/buyer/account': typeof BuyerAccountRoute
@@ -464,6 +479,7 @@ export interface FileRoutesByTo {
   '/tarifler': typeof TariflerIndexRoute
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
+  '/admin/recipes/$jobId': typeof AdminRecipesJobIdRoute
   '/buyer/negotiation/$offerId': typeof BuyerNegotiationOfferIdRoute
   '/buyer/offer/$listingId': typeof BuyerOfferListingIdRoute
   '/buyer/orders/$orderId': typeof BuyerOrdersOrderIdRoute
@@ -497,6 +513,7 @@ export interface FileRoutesById {
   '/.mcp/list-tools': typeof Char91DotmcpChar93ListToolsRoute
   '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   '/admin/kpi': typeof AdminKpiRoute
+  '/admin/recipes': typeof AdminRecipesRouteWithChildren
   '/auth/mobile-handoff': typeof AuthMobileHandoffRoute
   '/batch/$listingId': typeof BatchListingIdRoute
   '/buyer/account': typeof BuyerAccountRoute
@@ -525,6 +542,7 @@ export interface FileRoutesById {
   '/tarifler/': typeof TariflerIndexRoute
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
+  '/admin/recipes/$jobId': typeof AdminRecipesJobIdRoute
   '/buyer/negotiation/$offerId': typeof BuyerNegotiationOfferIdRoute
   '/buyer/offer/$listingId': typeof BuyerOfferListingIdRoute
   '/buyer/orders/$orderId': typeof BuyerOrdersOrderIdRoute
@@ -559,6 +577,7 @@ export interface FileRouteTypes {
     | '/.mcp/list-tools'
     | '/.well-known/oauth-protected-resource'
     | '/admin/kpi'
+    | '/admin/recipes'
     | '/auth/mobile-handoff'
     | '/batch/$listingId'
     | '/buyer/account'
@@ -587,6 +606,7 @@ export interface FileRouteTypes {
     | '/tarifler/'
     | '/.lovable/oauth/consent'
     | '/.mcp/invoke-tool/$tool'
+    | '/admin/recipes/$jobId'
     | '/buyer/negotiation/$offerId'
     | '/buyer/offer/$listingId'
     | '/buyer/orders/$orderId'
@@ -619,6 +639,7 @@ export interface FileRouteTypes {
     | '/.mcp/list-tools'
     | '/.well-known/oauth-protected-resource'
     | '/admin/kpi'
+    | '/admin/recipes'
     | '/auth/mobile-handoff'
     | '/batch/$listingId'
     | '/buyer/account'
@@ -646,6 +667,7 @@ export interface FileRouteTypes {
     | '/tarifler'
     | '/.lovable/oauth/consent'
     | '/.mcp/invoke-tool/$tool'
+    | '/admin/recipes/$jobId'
     | '/buyer/negotiation/$offerId'
     | '/buyer/offer/$listingId'
     | '/buyer/orders/$orderId'
@@ -678,6 +700,7 @@ export interface FileRouteTypes {
     | '/.mcp/list-tools'
     | '/.well-known/oauth-protected-resource'
     | '/admin/kpi'
+    | '/admin/recipes'
     | '/auth/mobile-handoff'
     | '/batch/$listingId'
     | '/buyer/account'
@@ -706,6 +729,7 @@ export interface FileRouteTypes {
     | '/tarifler/'
     | '/.lovable/oauth/consent'
     | '/.mcp/invoke-tool/$tool'
+    | '/admin/recipes/$jobId'
     | '/buyer/negotiation/$offerId'
     | '/buyer/offer/$listingId'
     | '/buyer/orders/$orderId'
@@ -739,6 +763,7 @@ export interface RootRouteChildren {
   Char91DotmcpChar93ListToolsRoute: typeof Char91DotmcpChar93ListToolsRoute
   Char91DotwellKnownChar93OauthProtectedResourceRoute: typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   AdminKpiRoute: typeof AdminKpiRoute
+  AdminRecipesRoute: typeof AdminRecipesRouteWithChildren
   AuthMobileHandoffRoute: typeof AuthMobileHandoffRoute
   BatchListingIdRoute: typeof BatchListingIdRoute
   OnboardingBuyerRoute: typeof OnboardingBuyerRoute
@@ -997,6 +1022,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthMobileHandoffRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/admin/recipes': {
+      id: '/admin/recipes'
+      path: '/admin/recipes'
+      fullPath: '/admin/recipes'
+      preLoaderRoute: typeof AdminRecipesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/admin/kpi': {
       id: '/admin/kpi'
       path: '/admin/kpi'
@@ -1136,6 +1168,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/buyer/negotiation/$offerId'
       preLoaderRoute: typeof BuyerNegotiationOfferIdRouteImport
       parentRoute: typeof BuyerRoute
+    }
+    '/admin/recipes/$jobId': {
+      id: '/admin/recipes/$jobId'
+      path: '/$jobId'
+      fullPath: '/admin/recipes/$jobId'
+      preLoaderRoute: typeof AdminRecipesJobIdRouteImport
+      parentRoute: typeof AdminRecipesRoute
     }
     '/.mcp/invoke-tool/$tool': {
       id: '/.mcp/invoke-tool/$tool'
@@ -1282,6 +1321,18 @@ const FarmerRouteChildren: FarmerRouteChildren = {
 const FarmerRouteWithChildren =
   FarmerRoute._addFileChildren(FarmerRouteChildren)
 
+interface AdminRecipesRouteChildren {
+  AdminRecipesJobIdRoute: typeof AdminRecipesJobIdRoute
+}
+
+const AdminRecipesRouteChildren: AdminRecipesRouteChildren = {
+  AdminRecipesJobIdRoute: AdminRecipesJobIdRoute,
+}
+
+const AdminRecipesRouteWithChildren = AdminRecipesRoute._addFileChildren(
+  AdminRecipesRouteChildren,
+)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   BuyerRoute: BuyerRouteWithChildren,
@@ -1296,6 +1347,7 @@ const rootRouteChildren: RootRouteChildren = {
   Char91DotwellKnownChar93OauthProtectedResourceRoute:
     Char91DotwellKnownChar93OauthProtectedResourceRoute,
   AdminKpiRoute: AdminKpiRoute,
+  AdminRecipesRoute: AdminRecipesRouteWithChildren,
   AuthMobileHandoffRoute: AuthMobileHandoffRoute,
   BatchListingIdRoute: BatchListingIdRoute,
   OnboardingBuyerRoute: OnboardingBuyerRoute,
