@@ -11,7 +11,7 @@
 // Supabase deploy pipeline itself) before treating geometry.ts as verified — `webp-codec.test.ts`
 // in this same directory (Gate B) DID run successfully, since it depends only on the npm registry.
 import assert from "node:assert/strict";
-import { Image } from "jsr:@matmen/imagescript@1.4.0";
+import { Image } from "jsr:@matmen/imagescript@1.3.1";
 import { chopAndCrop, decodeSourceImage } from "./geometry.ts";
 
 async function encodePngSquare(side: number): Promise<Uint8Array> {

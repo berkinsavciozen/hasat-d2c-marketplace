@@ -9,7 +9,7 @@
 // import does not apply a dependency's own import map, so it fails with `Relative import path
 // "env" not prefixed with / or ./ or ../` (reproduced while building this module). JSR is the
 // documented, current distribution channel for this package (`@matmen/imagescript`).
-import { Image } from "jsr:@matmen/imagescript@1.4.0";
+import { Image } from "jsr:@matmen/imagescript@1.3.1";
 import { RecipeAutomationError } from "../infra/errors.ts";
 import type { RgbaBitmap } from "./webp-codec.ts";
 
