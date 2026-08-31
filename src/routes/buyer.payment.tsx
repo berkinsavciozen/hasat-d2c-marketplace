@@ -4,6 +4,7 @@ import { useState } from "react";
 import { toast } from "sonner";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 import { formatTRY, formatCrop } from "@/lib/hasat/format";
 import { useHasat } from "@/lib/hasat/store";
 import { useCreateMultiBatchOffer, useCreateOffer } from "@/lib/hasat/queries";
@@ -42,7 +43,7 @@ function Payment() {
   const batchItems = pending?.items?.length ? pending.items : null;
 
   const complete = async () => {
-    if (!pending) return;
+    if (!pending || isPending) return;
     try {
       if (pending.items && pending.items.length > 0) {
         await createMultiOffer.mutateAsync({
@@ -73,8 +74,8 @@ function Payment() {
       setPendingOffer(null);
       setSuccess({ ref });
       toast.success("Teklifiniz gönderildi");
-    } catch (e: any) {
-      toast.error(e.message ?? "Teklif gönderilemedi");
+    } catch {
+      toast.error("Teklif gönderilemedi. Bilgileriniz korundu; tekrar deneyin.");
     }
   };
 
@@ -251,13 +252,14 @@ function Payment() {
             </TabsContent>
           </Tabs>
         </div>
-        <button
+        <Button
           onClick={complete}
-          disabled={isPending}
-          className="min-h-12 w-full rounded-xl bg-primary px-4 py-3.5 text-sm font-medium text-primary-foreground disabled:opacity-50"
+          loading={isPending}
+          loadingLabel="Teklif gönderiliyor"
+          className="min-h-12 w-full rounded-xl text-sm font-medium"
         >
-          {isPending ? "Teklif gönderiliyor…" : "Teklifi Gönder"}
-        </button>
+          Teklifi Gönder
+        </Button>
         <p className="text-center text-xs text-hmuted">
           Gönderimden sonra üretici onayı beklenecek. Şimdi tahsilat yapılmaz.
         </p>
