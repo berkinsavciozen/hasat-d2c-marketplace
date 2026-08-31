@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
-import { Clock, Filter, AlarmClock } from "lucide-react";
+import { Clock, Filter, AlarmClock, ChevronDown } from "lucide-react";
 import {
   fetchRecipeList,
   formatTotalMinutes,
@@ -14,6 +14,9 @@ import {
 import { RepresentativePhoto } from "@/components/hasat/RepresentativePhoto";
 import { MobileNudge } from "@/components/hasat/MobileNudge";
 import { PUBLIC_BASE_URL } from "@/lib/hasat/constants";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Command, CommandGroup, CommandItem, CommandList } from "@/components/ui/command";
+import { Checkbox } from "@/components/ui/checkbox";
 
 const TITLE = "Tarifler | Hasat";
 const DESCRIPTION =
@@ -175,33 +178,46 @@ function RecipeListPage() {
               ))}
             </select>
           )}
-        </div>
 
-        {/* F13-geniş: kontrollü ekipman listesi — dietTags/cuisine'in aksine
-            veriden türetilmiyor (recipes.required_equipment henüz boş), sabit
-            listeden render edilir ki filtre UI'ı veri dolmadan da kullanılabilir
-            olsun. Çoklu seçim, diğer filtrelerle AND (üstteki `filtered`). */}
-        <div className="flex flex-wrap items-center gap-2 text-xs">
-          <span className="text-hmuted">Ekipman:</span>
-          {Object.entries(EQUIPMENT_LABELS).map(([slug, label]) => {
-            const active = equipment.includes(slug);
-            return (
+          {/* F13-geniş: kontrollü ekipman listesi — dietTags/cuisine'in aksine
+              veriden türetilmiyor (recipes.required_equipment henüz boş), sabit
+              listeden render edilir ki filtre UI'ı veri dolmadan da kullanılabilir
+              olsun. Çoklu seçim, diğer filtrelerle AND (üstteki `filtered`).
+              Diğer filtreler tekli-seçim `<select>` olduğu için düz bir
+              `<select multiple>` yerine checkbox listesi olan bir popover
+              kullanılıyor — görsel olarak aynı pill stilini paylaşıyor. */}
+          <Popover>
+            <PopoverTrigger asChild>
               <button
-                key={slug}
                 type="button"
-                aria-pressed={active}
-                onClick={() => toggleEquipment(slug)}
-                className="rounded-full border px-3 py-1.5 transition min-h-[44px]"
-                style={
-                  active
-                    ? { background: "color-mix(in oklab, var(--primary) 20%, transparent)", borderColor: "var(--primary)", color: "var(--primary)" }
-                    : undefined
-                }
+                className="inline-flex items-center gap-1 rounded-full border px-3 py-1.5 bg-card min-h-[44px]"
               >
-                {label}
+                Ekipman{equipment.length > 0 ? ` (${equipment.length})` : " (hepsi)"}
+                <ChevronDown className="h-3.5 w-3.5 opacity-60" />
               </button>
-            );
-          })}
+            </PopoverTrigger>
+            <PopoverContent align="start" className="w-64 p-0">
+              <Command>
+                <CommandList>
+                  <CommandGroup>
+                    {Object.entries(EQUIPMENT_LABELS).map(([slug, label]) => {
+                      const active = equipment.includes(slug);
+                      return (
+                        <CommandItem
+                          key={slug}
+                          onSelect={() => toggleEquipment(slug)}
+                          className="cursor-pointer gap-2"
+                        >
+                          <Checkbox checked={active} className="pointer-events-none" />
+                          {label}
+                        </CommandItem>
+                      );
+                    })}
+                  </CommandGroup>
+                </CommandList>
+              </Command>
+            </PopoverContent>
+          </Popover>
         </div>
 
         {/* P23-M7-a: isim düzeltildi — bu filtre "tam alınabilir" değil, "en az bir

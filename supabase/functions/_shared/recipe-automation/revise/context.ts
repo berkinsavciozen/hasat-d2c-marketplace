@@ -134,7 +134,7 @@ export async function loadDraftByVersion(
       cuisine: (row.cuisine as string | null) ?? null,
       dietTags: Array.isArray(row.diet_tags) ? (row.diet_tags as string[]) : [],
       allergenLabels: (row.allergen_labels as string[] | null) ?? null,
-      requiredEquipment: (row.required_equipment as string[] | null) ?? null,
+      requiredEquipment: (row.required_equipment as RecipeDraftPayload["requiredEquipment"]) ?? null,
       sourceType: row.source_type as RecipeDraftPayload["sourceType"],
       authorType: row.author_type as RecipeDraftPayload["authorType"],
       visibility: row.visibility as RecipeDraftPayload["visibility"],

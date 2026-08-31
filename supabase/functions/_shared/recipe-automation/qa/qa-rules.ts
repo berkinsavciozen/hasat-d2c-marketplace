@@ -64,4 +64,14 @@ empty — never assert it independently.
 
 Use "nonBlockingSuggestions" for anything worth improving that should NOT hold up approval (minor
 wording, a nice-to-have garnish idea, ...).
+
+Diet-tag consistency check (non-blocking): compare "dietTags" against the draft's actual
+ingredients. If the ingredients contain no animal product at all (no meat, poultry, fish, seafood,
+dairy, egg, or honey) but "dietTags" is missing "vegan" or "vejetaryen"; or the ingredients contain
+no meat/poultry/fish/seafood but "dietTags" is missing "vejetaryen"; or none of the ingredients are
+wheat/barley/rye/a gluten-containing processed product but "dietTags" is missing "glutensiz" — raise
+a "nonBlockingSuggestions" entry with code "DIET_TAGS_INCONSISTENT", severity "warning", and a
+"requiredChange" naming the missing tag(s). This is a visibility aid for a later revision or manual
+fix, never a reason to set "decision" to "revision_required" or "manual_review_required" by itself,
+and it never affects "approvedForImaging".
 `.trim();
