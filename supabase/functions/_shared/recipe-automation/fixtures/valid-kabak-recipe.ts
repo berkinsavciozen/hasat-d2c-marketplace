@@ -60,7 +60,7 @@ export const validKabakRecipeDraft: RecipeDraftPayload = {
   cuisine: "turk",
   dietTags: ["vejetaryen"],
   allergenLabels: ["sut"],
-  requiredEquipment: ["firin_tepsisi"],
+  requiredEquipment: ["firin"],
   sourceType: "manual",
   authorType: "hasat",
   visibility: "private",

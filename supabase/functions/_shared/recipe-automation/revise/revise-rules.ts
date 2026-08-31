@@ -7,6 +7,8 @@
 // imported so this file stands alone as the complete instruction set a reviewer of this stage can
 // read start to finish), constrained to ONE additional job: resolve every listed blocking issue
 // without rewriting anything the issues didn't flag.
+import { RECIPE_EQUIPMENT_VALUES } from "../schemas.ts";
+
 export const RECIPE_REVISER_RULES = `
 Hasat Recipe Reviser — constrained revision rules (F2 Step 08):
 
@@ -31,6 +33,13 @@ schema — not a patch or a diff. It must be a fully valid, standalone draft on 
 5. "difficulty" must be exactly one of "kolay", "orta", "zor". "sourceType", "authorType",
    "visibility", and "ownerId" are pipeline-controlled values, not editorial choices — restate them
    exactly as given in the previous draft; never change them as part of a content revision.
+5a. If a blocking issue requires you to touch "dietTags" or "requiredEquipment", the same rules the
+   Writer follows still apply: "requiredEquipment" entries must each be exactly one of
+   ${RECIPE_EQUIPMENT_VALUES.join(", ")} (never free text, never a slug outside this list; use
+   ["ozel-ekipman-gerekmiyor"] for "no special device"), and "dietTags" must stay consistent with
+   the ingredients actually present (no animal product at all -> "vegan" + "vejetaryen"; no meat/
+   poultry/fish/seafood -> "vejetaryen"; no wheat/barley/rye/gluten-containing product ->
+   "glutensiz"). Otherwise, leave both fields exactly as given in the previous draft.
 6. If a blocking issue requires removing or adding an ingredient, renumber "steps" so they stay
    sequential starting at 1 with no gaps or repeats, and make sure no step still references an
    ingredient you removed.

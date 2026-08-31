@@ -76,6 +76,30 @@ export const recipeVisibilitySchema = z.enum(RECIPE_VISIBILITY_VALUES);
 export const RECIPE_INGREDIENT_CLASS_VALUES = ["tarimsal", "platform_disi"] as const;
 export const recipeIngredientClassSchema = z.enum(RECIPE_INGREDIENT_CLASS_VALUES);
 
+/**
+ * Controlled top-level equipment vocabulary for `recipes.required_equipment`. The live column
+ * itself is a plain `text[]` with no DB CHECK constraint (see the audit note above `recipe_drafts`
+ * insert paths) — this enum is an application-layer restriction only, deliberately mirroring
+ * `EQUIPMENT_LABELS` in `src/lib/hasat/recipes.ts` (the `/tarifler` filter UI's own controlled
+ * list, Berkin-approved) VALUE FOR VALUE. These two lists cannot share a literal import across the
+ * Deno edge-function boundary and the Vite frontend build, so keep them in sync by hand: any change
+ * on either side must be mirrored on the other. This is a top-level DEVICE list — general kitchen
+ * tools every recipe already assumes (a knife, a mixing bowl, a baking tray) are never members;
+ * use "ozel-ekipman-gerekmiyor" when no special device is required.
+ */
+export const RECIPE_EQUIPMENT_VALUES = [
+  "firin",
+  "ocak",
+  "mikrodalga",
+  "airfryer",
+  "blender",
+  "mutfak-robotu",
+  "duduklu-tencere",
+  "izgara",
+  "ozel-ekipman-gerekmiyor",
+] as const;
+export const recipeEquipmentSchema = z.enum(RECIPE_EQUIPMENT_VALUES);
+
 // ---------------------------------------------------------------------------
 // Pipeline job stage / status (deliberately separate from recipes.status)
 // ---------------------------------------------------------------------------
@@ -258,7 +282,8 @@ export const recipeDraftPayloadSchema = z.object({
   dietTags: z.array(nonEmptyTrimmedString).default([]),
   /** Models `recipes.allergen_labels` exactly: nullable text[], no enum restriction. */
   allergenLabels: z.array(nonEmptyTrimmedString).nullable().default(null),
-  requiredEquipment: z.array(nonEmptyTrimmedString).nullable().default(null),
+  /** Restricted to `RECIPE_EQUIPMENT_VALUES` above — see that constant's doc comment. */
+  requiredEquipment: z.array(recipeEquipmentSchema).nullable().default(null),
   sourceType: recipeSourceTypeSchema.default("manual"),
   authorType: recipeAuthorTypeSchema.default("hasat"),
   visibility: recipeVisibilitySchema.default("private"),
