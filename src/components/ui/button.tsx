@@ -32,14 +32,37 @@ const buttonVariants = cva(
   },
 );
 
-export interface ButtonProps
-  extends React.ButtonHTMLAttributes<HTMLButtonElement>, VariantProps<typeof buttonVariants> {
-  asChild?: boolean;
-  loading?: boolean;
-  loadingLabel?: string;
+type ButtonBaseProps = VariantProps<typeof buttonVariants> & {
+  className?: string;
+  children?: React.ReactNode;
+};
+
+type NativeButtonProps = ButtonBaseProps &
+  Omit<React.ButtonHTMLAttributes<HTMLButtonElement>, "children" | "className"> & {
+    asChild?: false;
+    loading?: boolean;
+    loadingLabel?: string;
+  };
+
+type SlottedButtonProps = ButtonBaseProps &
+  Omit<React.ButtonHTMLAttributes<HTMLButtonElement>, "children" | "className" | "disabled"> & {
+    asChild: true;
+    disabled?: never;
+    loading?: never;
+    loadingLabel?: never;
+  };
+
+export type ButtonProps = NativeButtonProps;
+
+type ButtonImplementationProps = NativeButtonProps | SlottedButtonProps;
+
+interface ButtonComponent {
+  (props: SlottedButtonProps & React.RefAttributes<HTMLElement>): React.ReactElement | null;
+  (props: NativeButtonProps & React.RefAttributes<HTMLButtonElement>): React.ReactElement | null;
+  displayName?: string;
 }
 
-const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
+const Button = React.forwardRef<HTMLElement, ButtonImplementationProps>(
   (
     {
       className,
@@ -54,27 +77,43 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
     },
     ref,
   ) => {
-    const Comp = asChild ? Slot : "button";
+    if (asChild) {
+      return (
+        <Slot className={cn(buttonVariants({ variant, size, className }))} ref={ref} {...props}>
+          {children}
+        </Slot>
+      );
+    }
+
     return (
-      <Comp
+      <button
         className={cn(buttonVariants({ variant, size, className }))}
-        ref={ref}
+        ref={ref as React.Ref<HTMLButtonElement>}
         aria-busy={loading || undefined}
         data-loading={loading || undefined}
-        disabled={asChild ? undefined : disabled || loading}
+        disabled={disabled || loading}
         {...props}
       >
         {loading && (
-          <LoaderCircle className="animate-spin motion-reduce:animate-none" aria-hidden="true" />
+          <span className="absolute inset-0 flex items-center justify-center" aria-hidden="true">
+            <LoaderCircle className="animate-spin motion-reduce:animate-none" />
+          </span>
         )}
-        <span className={cn("inline-flex items-center gap-2", loading && "sr-only")}>
+        <span
+          className={cn("inline-flex items-center gap-2", loading && "invisible")}
+          aria-hidden={loading || undefined}
+        >
           {children}
         </span>
-        {loading && <span>{loadingLabel}</span>}
-      </Comp>
+        {loading && (
+          <span className="sr-only" role="status">
+            {loadingLabel}
+          </span>
+        )}
+      </button>
     );
   },
-);
+) as ButtonComponent;
 Button.displayName = "Button";
 
 export { Button, buttonVariants };
