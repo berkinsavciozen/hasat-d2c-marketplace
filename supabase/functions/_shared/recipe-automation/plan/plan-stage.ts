@@ -320,9 +320,25 @@ export async function runPlanStage(
     return { outcome: "agent_call_failed", batchId: batch.id, errorCode: error.code };
   }
 
+  // The Planner is never trusted to generate `briefId` itself — same principle as the top-level
+  // `batchId` override just below: it is a pure internal identity field with no content-bearing
+  // role, so a model asked to independently emit N of them (a known structured-output failure mode
+  // for semantically-empty "id" placeholders) can and does sometimes repeat one across briefs
+  // within a batch. Replacing every brief's `briefId` with a fresh server-side UUID here, before
+  // `recipePlanBatchSchema`'s own unique-briefId refine ever sees the output, makes that collision
+  // structurally impossible rather than merely detected.
+  const rawOutput = agentResult.output as Record<string, unknown>;
+  const rawBriefs = rawOutput.briefs;
+  const briefsWithFreshIds = Array.isArray(rawBriefs)
+    ? rawBriefs.map((brief) =>
+      brief && typeof brief === "object" ? { ...brief, briefId: crypto.randomUUID() } : brief
+    )
+    : rawBriefs;
+
   const parsed = recipePlanBatchSchema.safeParse({
-    ...(agentResult.output as Record<string, unknown>),
+    ...rawOutput,
     batchId: batch.id,
+    briefs: briefsWithFreshIds,
   });
 
   if (!parsed.success) {

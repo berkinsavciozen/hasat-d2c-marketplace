@@ -204,6 +204,24 @@ Deno.test("runPlanStage: batch_not_reviewable refuses to (re)plan an already-dec
   assert.equal(result.outcome, "batch_not_reviewable");
 });
 
+Deno.test("runPlanStage: server-side briefId override fixes a planner briefId collision (2026-08-31 prod incident)", async () => {
+  const client = new FakeSupabaseClient();
+  registerHappyPathRpcs(client);
+  // Mirrors the real live failure: the model returned two briefs sharing one briefId, which used
+  // to fail recipePlanBatchSchema's unique-briefId refine with PLANNER_OUTPUT_SCHEMA_INVALID.
+  const collidingBriefId = crypto.randomUUID();
+  const runner = fixtureAgentRunner(4, (i) => (i < 2 ? { briefId: collidingBriefId } : {}));
+
+  const result = await runPlanStage(asClient(client), { batchInput: validBatchInput(), agentRunner: runner });
+
+  assert.equal(result.outcome, "planned");
+  assert.equal(result.briefCount, 4);
+  const { data } = await client.from("recipe_plan_briefs").select("id, brief_id");
+  const briefIds = (data as Array<{ brief_id: string }>).map((row) => row.brief_id);
+  assert.equal(briefIds.length, 4);
+  assert.equal(new Set(briefIds).size, 4, "every stored brief_id must be unique");
+});
+
 Deno.test("runPlanStage: agent_call_failed records plan_error and never stores briefs", async () => {
   const client = new FakeSupabaseClient();
   registerHappyPathRpcs(client);
