@@ -1,9 +1,11 @@
-import { useState } from "react";
+import { useId, useRef, useState } from "react";
+import * as DialogPrimitive from "@radix-ui/react-dialog";
 import { X } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useCreateCropRequest } from "@/lib/hasat/queries";
 import { TR_PROVINCES } from "@/lib/hasat/cities";
+import { Button } from "@/components/ui/button";
 
 /**
  * Shared "Talep Et" (request) form — used by both `/buyer/discover` (generic
@@ -49,8 +51,14 @@ export function CropRequestModal({
   const [endDate, setEndDate] = useState("");
   const [targetPrice, setTargetPrice] = useState("");
   const [note, setNote] = useState("");
+  const idPrefix = useId();
+  const firstFieldRef = useRef<HTMLInputElement | null>(null);
+  const quantityRef = useRef<HTMLInputElement | null>(null);
+  const returnFocusRef = useRef<HTMLElement | null>(null);
+  const fieldId = (name: string) => `${idPrefix}-${name}`;
 
   const submit = async () => {
+    if (create.isPending) return;
     if (!cropName.trim()) {
       toast.error("Ürün adı gerekli");
       return;
@@ -80,150 +88,193 @@ export function CropRequestModal({
       );
       onSuccess?.();
       onClose();
-    } catch (e) {
-      toast.error((e as Error).message);
+    } catch {
+      toast.error("Talep oluşturulamadı. Bilgileriniz korundu; tekrar deneyin.");
     }
   };
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-end md:items-center justify-center bg-black/60 p-0 md:p-4"
-      onClick={onClose}
-    >
-      <div
-        className="w-full md:max-w-md rounded-t-2xl md:rounded-2xl bg-card p-5 max-h-[90vh] overflow-y-auto"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="flex items-center justify-between mb-4">
-          <div className="font-serif text-lg">Ürün Talep Et</div>
-          <button
-            onClick={onClose}
-            aria-label="Kapat"
-            className="grid h-9 w-9 place-items-center rounded-lg hover:bg-muted"
-          >
-            <X className="h-4 w-4" />
-          </button>
-        </div>
-
-        <div className="space-y-3">
-          <div>
-            <label className="text-xs text-hmuted">Ürün *</label>
-            {lockCropName ? (
-              <div className="mt-1 w-full rounded-lg border bg-muted px-3 py-2 text-sm min-h-[44px] flex items-center capitalize">
-                {cropName}
-              </div>
-            ) : (
-              <input
-                value={cropName}
-                onChange={(e) => setCropName(e.target.value)}
-                placeholder="Ör. safran, zeytinyağı"
-                className="mt-1 w-full rounded-lg border px-3 py-2 text-sm min-h-[44px]"
-              />
-            )}
+    <DialogPrimitive.Root open onOpenChange={(open) => !open && !create.isPending && onClose()}>
+      <DialogPrimitive.Portal>
+        <DialogPrimitive.Overlay className="fixed inset-0 z-50 bg-black/60 motion-reduce:animate-none" />
+        <DialogPrimitive.Content
+          aria-describedby={undefined}
+          onEscapeKeyDown={(event) => create.isPending && event.preventDefault()}
+          onPointerDownOutside={(event) => create.isPending && event.preventDefault()}
+          onOpenAutoFocus={(event) => {
+            event.preventDefault();
+            returnFocusRef.current = document.activeElement as HTMLElement | null;
+            (lockCropName ? quantityRef.current : firstFieldRef.current)?.focus();
+          }}
+          onCloseAutoFocus={(event) => {
+            event.preventDefault();
+            returnFocusRef.current?.focus();
+          }}
+          className="fixed bottom-0 left-1/2 z-50 max-h-[90dvh] w-full -translate-x-1/2 overflow-y-auto overscroll-contain rounded-t-2xl bg-card p-5 shadow-lg outline-none md:bottom-auto md:top-1/2 md:max-w-md md:-translate-y-1/2 md:rounded-2xl"
+        >
+          <div className="flex items-center justify-between mb-4">
+            <DialogPrimitive.Title className="font-serif text-lg">
+              Ürün Talep Et
+            </DialogPrimitive.Title>
+            <DialogPrimitive.Close asChild>
+              <button
+                type="button"
+                disabled={create.isPending}
+                aria-label="Ürün talebi penceresini kapat"
+                className="grid h-11 w-11 place-items-center rounded-lg hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </DialogPrimitive.Close>
           </div>
 
-          <div className="grid grid-cols-3 gap-2">
-            <div className="col-span-2">
-              <label className="text-xs text-hmuted">Miktar</label>
+          <div className="space-y-3">
+            <div>
+              <label
+                htmlFor={lockCropName ? undefined : fieldId("crop")}
+                className="text-xs text-hmuted"
+              >
+                Ürün *
+              </label>
+              {lockCropName ? (
+                <div className="mt-1 w-full rounded-lg border bg-muted px-3 py-2 text-sm min-h-[44px] flex items-center capitalize">
+                  {cropName}
+                </div>
+              ) : (
+                <input
+                  ref={firstFieldRef}
+                  id={fieldId("crop")}
+                  value={cropName}
+                  onChange={(e) => setCropName(e.target.value)}
+                  placeholder="Ör. safran, zeytinyağı"
+                  className="mt-1 w-full rounded-lg border px-3 py-2 text-sm min-h-[44px]"
+                />
+              )}
+            </div>
+
+            <div className="grid grid-cols-3 gap-2">
+              <div className="col-span-2">
+                <label htmlFor={fieldId("quantity")} className="text-xs text-hmuted">
+                  Miktar
+                </label>
+                <input
+                  ref={quantityRef}
+                  id={fieldId("quantity")}
+                  value={quantity}
+                  onChange={(e) => setQuantity(e.target.value)}
+                  type="number"
+                  min="0"
+                  placeholder="Opsiyonel"
+                  className="mt-1 w-full rounded-lg border px-3 py-2 text-sm min-h-[44px]"
+                />
+              </div>
+              <div>
+                <label htmlFor={fieldId("unit")} className="text-xs text-hmuted">
+                  Birim
+                </label>
+                <select
+                  id={fieldId("unit")}
+                  value={unit}
+                  onChange={(e) => setUnit(e.target.value as "kg" | "g" | "L")}
+                  className="mt-1 w-full rounded-lg border px-2 py-2 text-sm min-h-[44px] bg-card"
+                >
+                  <option value="kg">kg</option>
+                  <option value="g">g</option>
+                  <option value="L">L</option>
+                </select>
+              </div>
+            </div>
+
+            <div>
+              <label htmlFor={fieldId("region")} className="text-xs text-hmuted">
+                Bölge
+              </label>
+              <select
+                id={fieldId("region")}
+                value={region}
+                onChange={(e) => setRegion(e.target.value)}
+                className="mt-1 w-full rounded-lg border px-2 py-2 text-sm min-h-[44px] bg-card"
+              >
+                <option value="">Farketmez</option>
+                {TR_PROVINCES.map((p) => (
+                  <option key={p} value={p}>
+                    {p}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <label htmlFor={fieldId("start")} className="text-xs text-hmuted">
+                  Hedef tarih (başlangıç)
+                </label>
+                <input
+                  id={fieldId("start")}
+                  type="date"
+                  value={startDate}
+                  onChange={(e) => setStartDate(e.target.value)}
+                  className="mt-1 w-full rounded-lg border px-3 py-2 text-sm min-h-[44px]"
+                />
+              </div>
+              <div>
+                <label htmlFor={fieldId("end")} className="text-xs text-hmuted">
+                  Bitiş
+                </label>
+                <input
+                  id={fieldId("end")}
+                  type="date"
+                  value={endDate}
+                  onChange={(e) => setEndDate(e.target.value)}
+                  className="mt-1 w-full rounded-lg border px-3 py-2 text-sm min-h-[44px]"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label htmlFor={fieldId("price")} className="text-xs text-hmuted">
+                Hedef fiyat (₺{quantity && unit ? `/${unit}` : ""})
+              </label>
               <input
-                value={quantity}
-                onChange={(e) => setQuantity(e.target.value)}
+                id={fieldId("price")}
+                value={targetPrice}
+                onChange={(e) => setTargetPrice(e.target.value)}
                 type="number"
                 min="0"
                 placeholder="Opsiyonel"
                 className="mt-1 w-full rounded-lg border px-3 py-2 text-sm min-h-[44px]"
               />
             </div>
-            <div>
-              <label className="text-xs text-hmuted">Birim</label>
-              <select
-                value={unit}
-                onChange={(e) => setUnit(e.target.value as "kg" | "g" | "L")}
-                className="mt-1 w-full rounded-lg border px-2 py-2 text-sm min-h-[44px] bg-card"
-              >
-                <option value="kg">kg</option>
-                <option value="g">g</option>
-                <option value="L">L</option>
-              </select>
-            </div>
-          </div>
 
-          <div>
-            <label className="text-xs text-hmuted">Bölge</label>
-            <select
-              value={region}
-              onChange={(e) => setRegion(e.target.value)}
-              className="mt-1 w-full rounded-lg border px-2 py-2 text-sm min-h-[44px] bg-card"
+            <div>
+              <label htmlFor={fieldId("note")} className="text-xs text-hmuted">
+                Not
+              </label>
+              <textarea
+                id={fieldId("note")}
+                value={note}
+                onChange={(e) => setNote(e.target.value)}
+                rows={2}
+                placeholder="Kalite, teslim koşulu vb."
+                className="mt-1 w-full rounded-lg border px-3 py-2 text-sm resize-none"
+              />
+            </div>
+
+            <p className="text-[11px] text-hmuted">
+              🔔 Bu ürün geldiğinde (bir çiftçi ilan açtığında) size otomatik haber veririz.
+            </p>
+
+            <Button
+              onClick={submit}
+              loading={create.isPending}
+              loadingLabel="Talep oluşturuluyor"
+              className="w-full rounded-xl py-3 text-sm font-medium min-h-[48px]"
             >
-              <option value="">Farketmez</option>
-              {TR_PROVINCES.map((p) => (
-                <option key={p} value={p}>
-                  {p}
-                </option>
-              ))}
-            </select>
+              Talep Oluştur
+            </Button>
           </div>
-
-          <div className="grid grid-cols-2 gap-2">
-            <div>
-              <label className="text-xs text-hmuted">Hedef tarih (başlangıç)</label>
-              <input
-                type="date"
-                value={startDate}
-                onChange={(e) => setStartDate(e.target.value)}
-                className="mt-1 w-full rounded-lg border px-3 py-2 text-sm min-h-[44px]"
-              />
-            </div>
-            <div>
-              <label className="text-xs text-hmuted">Bitiş</label>
-              <input
-                type="date"
-                value={endDate}
-                onChange={(e) => setEndDate(e.target.value)}
-                className="mt-1 w-full rounded-lg border px-3 py-2 text-sm min-h-[44px]"
-              />
-            </div>
-          </div>
-
-          <div>
-            <label className="text-xs text-hmuted">
-              Hedef fiyat (₺{quantity && unit ? `/${unit}` : ""})
-            </label>
-            <input
-              value={targetPrice}
-              onChange={(e) => setTargetPrice(e.target.value)}
-              type="number"
-              min="0"
-              placeholder="Opsiyonel"
-              className="mt-1 w-full rounded-lg border px-3 py-2 text-sm min-h-[44px]"
-            />
-          </div>
-
-          <div>
-            <label className="text-xs text-hmuted">Not</label>
-            <textarea
-              value={note}
-              onChange={(e) => setNote(e.target.value)}
-              rows={2}
-              placeholder="Kalite, teslim koşulu vb."
-              className="mt-1 w-full rounded-lg border px-3 py-2 text-sm resize-none"
-            />
-          </div>
-
-          <p className="text-[11px] text-hmuted">
-            🔔 Bu ürün geldiğinde (bir çiftçi ilan açtığında) size otomatik haber veririz.
-          </p>
-
-          <button
-            onClick={submit}
-            disabled={create.isPending}
-            className="w-full rounded-xl py-3 text-sm font-medium min-h-[48px]"
-            style={{ background: "var(--primary)", color: "var(--primary-foreground)" }}
-          >
-            {create.isPending ? "Gönderiliyor…" : "Talep Oluştur"}
-          </button>
-        </div>
-      </div>
-    </div>
+        </DialogPrimitive.Content>
+      </DialogPrimitive.Portal>
+    </DialogPrimitive.Root>
   );
 }

@@ -320,7 +320,7 @@ function CounterSheet({
   const [note, setNote] = useState("");
 
   return (
-    <Sheet open={open} onOpenChange={onOpenChange}>
+    <Sheet open={open} onOpenChange={(nextOpen) => !pending && onOpenChange(nextOpen)}>
       <SheetContent side="bottom" className="rounded-t-2xl max-h-[92vh] overflow-y-auto pb-safe">
         <SheetHeader>
           <SheetTitle className="font-serif text-xl">Karşı Teklif Yap</SheetTitle>
@@ -336,10 +336,11 @@ function CounterSheet({
             />
           </div>
           <div>
-            <div className="mb-1.5 text-xs font-medium text-hmuted">
+            <label htmlFor="counter-price" className="mb-1.5 block text-xs font-medium text-hmuted">
               Birim fiyat (₺/{offer.unit})
-            </div>
+            </label>
             <Input
+              id="counter-price"
               type="number"
               value={price}
               onChange={(e) => setPrice(Number(e.target.value) || 0)}
@@ -354,6 +355,7 @@ function CounterSheet({
                   key={d}
                   type="button"
                   onClick={() => setDelivery(d)}
+                  aria-pressed={delivery === d}
                   className={`rounded-xl border py-2.5 text-xs font-medium ${delivery === d ? "bg-saffron text-white border-saffron" : "border-input text-hmuted"}`}
                 >
                   {d}
@@ -362,12 +364,26 @@ function CounterSheet({
             </div>
           </div>
           <div>
-            <div className="mb-1.5 text-xs font-medium text-hmuted">Teslim tarihi</div>
-            <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
+            <label htmlFor="counter-date" className="mb-1.5 block text-xs font-medium text-hmuted">
+              Teslim tarihi
+            </label>
+            <Input
+              id="counter-date"
+              type="date"
+              value={date}
+              onChange={(e) => setDate(e.target.value)}
+            />
           </div>
           <div>
-            <div className="mb-1.5 text-xs font-medium text-hmuted">Not (opsiyonel)</div>
-            <Textarea value={note} onChange={(e) => setNote(e.target.value)} rows={3} />
+            <label htmlFor="counter-note" className="mb-1.5 block text-xs font-medium text-hmuted">
+              Not (opsiyonel)
+            </label>
+            <Textarea
+              id="counter-note"
+              value={note}
+              onChange={(e) => setNote(e.target.value)}
+              rows={3}
+            />
           </div>
           <div className="rounded-2xl bg-saffron/10 border border-saffron/30 p-3">
             <div className="text-xs text-hmuted">Yeni toplam</div>
@@ -375,7 +391,7 @@ function CounterSheet({
               {formatTRY(qty * price)}
             </div>
           </div>
-          <button
+          <Button
             onClick={() =>
               onSubmit({
                 quantity: qty,
@@ -385,11 +401,12 @@ function CounterSheet({
                 note: note || offer.note || "",
               })
             }
-            disabled={pending}
-            className="w-full rounded-xl bg-saffron py-3 text-sm font-medium text-white disabled:opacity-50"
+            loading={pending}
+            loadingLabel="Karşı teklif gönderiliyor"
+            className="w-full rounded-xl bg-saffron text-sm font-medium text-white hover:bg-saffron/90"
           >
-            {pending ? "Gönderiliyor…" : "Karşı Teklif Gönder"}
-          </button>
+            Karşı Teklif Gönder
+          </Button>
         </div>
       </SheetContent>
     </Sheet>

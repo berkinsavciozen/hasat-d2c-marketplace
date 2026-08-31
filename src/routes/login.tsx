@@ -6,6 +6,7 @@ import { MessageCircle, MessageSquareText } from "lucide-react";
 import { useHasat } from "@/lib/hasat/store";
 import { supabase } from "@/integrations/supabase/client";
 import { BrandLogo } from "@/components/hasat/BrandLogo";
+import { Button } from "@/components/ui/button";
 
 export const Route = createFileRoute("/login")({
   head: () => ({ meta: [{ title: "Giriş — Hasat" }] }),
@@ -24,14 +25,21 @@ export const Route = createFileRoute("/login")({
 
 function translateAuthError(e: Error): string {
   const m = (e?.message || "").toLowerCase();
-  if (m.includes("expired") || m.includes("invalid") && m.includes("token") || m.includes("otp")) {
+  if (
+    m.includes("expired") ||
+    (m.includes("invalid") && m.includes("token")) ||
+    m.includes("otp")
+  ) {
     return "Kod hatalı veya süresi dolmuş. Tekrar deneyin.";
   }
   if (m.includes("rate") || m.includes("too many") || m.includes("limit")) {
     return "Çok fazla deneme. Lütfen biraz bekleyin.";
   }
   if (m.includes("phone")) return "Telefon numarası geçersiz.";
-  return e?.message || "Bir hata oluştu.";
+  if (m.includes("network") || m.includes("fetch") || m.includes("offline")) {
+    return "Bağlantı kurulamadı. İnternetinizi kontrol edip tekrar deneyin.";
+  }
+  return "Giriş tamamlanamadı. Lütfen tekrar deneyin.";
 }
 
 function LoginPage() {
@@ -46,6 +54,7 @@ function LoginPage() {
   const [channel, setChannel] = useState<"wa" | "sms">("wa");
   const [otp, setOtp] = useState<string[]>(["", "", "", "", "", ""]);
   const [otpError, setOtpError] = useState<string | null>(null);
+  const [phoneError, setPhoneError] = useState<string | null>(null);
   const [countdown, setCountdown] = useState(30);
   const [sending, setSending] = useState(false);
   const [verifying, setVerifying] = useState(false);
@@ -62,7 +71,9 @@ function LoginPage() {
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      const { data: { session } } = await supabase.auth.getSession();
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
       if (cancelled || !session?.user) return;
       const { data: profile } = await supabase
         .from("profiles")
@@ -82,19 +93,24 @@ function LoginPage() {
         navigate({ to: r === "buyer" ? "/buyer/discover" : "/farmer/home" });
       }
     })();
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Strip leading 0 (TR local format: 0533... -> 533...) before taking 10 digits
   const phoneDigits = phone.replace(/\D/g, "").replace(/^0+/, "").slice(0, 10);
-  const formattedPhone = phoneDigits.replace(/(\d{3})(\d{0,3})(\d{0,2})(\d{0,2})/, (_, a, b, c, d) =>
-    [a, b, c, d].filter(Boolean).join(" "),
+  const formattedPhone = phoneDigits.replace(
+    /(\d{3})(\d{0,3})(\d{0,2})(\d{0,2})/,
+    (_, a, b, c, d) => [a, b, c, d].filter(Boolean).join(" "),
   );
 
   const handleOtpChange = (i: number, val: string) => {
     const digit = val.replace(/\D/g, "").slice(-1);
-    const next = [...otp]; next[i] = digit; setOtp(next);
+    const next = [...otp];
+    next[i] = digit;
+    setOtp(next);
     setOtpError(null);
     if (digit && i < 5) inputsRef.current[i + 1]?.focus();
   };
@@ -103,7 +119,8 @@ function LoginPage() {
   };
   const handleOtpPaste = (e: React.ClipboardEvent) => {
     const txt = e.clipboardData.getData("text").replace(/\D/g, "").slice(0, 6);
-    if (!txt) return; e.preventDefault();
+    if (!txt) return;
+    e.preventDefault();
     const next = ["", "", "", "", "", ""];
     txt.split("").forEach((d, i) => (next[i] = d));
     setOtp(next);
@@ -123,10 +140,13 @@ function LoginPage() {
       });
       if (error) throw error;
       setOtpError(null);
+      setPhoneError(null);
       setStep("otp");
       setOtp(["", "", "", "", "", ""]);
     } catch (e) {
-      toast.error(translateAuthError(e as Error));
+      const message = translateAuthError(e as Error);
+      setPhoneError(message);
+      toast.error(message);
     } finally {
       setSending(false);
     }
@@ -198,14 +218,19 @@ function LoginPage() {
   const otherRole: "farmer" | "buyer" = role === "buyer" ? "farmer" : "buyer";
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center p-6" style={{ background: "var(--dark)", color: "var(--hwhite)" }}>
+    <div
+      className="min-h-screen flex flex-col items-center justify-center p-6"
+      style={{ background: "var(--dark)", color: "var(--hwhite)" }}
+    >
       <div className="mb-10 text-center">
         <BrandLogo variant="wordmark" tone="white" height={36} className="mx-auto mb-2" />
-        <div className="mt-2 text-xs text-hwhite/60">{role === "buyer" ? "Alıcı Girişi" : "Üretici Girişi"}</div>
+        <div className="mt-2 text-xs text-hwhite/60">
+          {role === "buyer" ? "Alıcı Girişi" : "Üretici Girişi"}
+        </div>
         <Link
           to="/login"
           search={{ role: otherRole, ...(next ? { next } : {}) }}
-          className="mt-1 inline-block text-[11px] underline text-hwhite/50 hover:text-hwhite/80"
+          className="mt-1 inline-flex min-h-11 items-center px-2 text-[11px] underline text-hwhite/50 hover:text-hwhite/80"
         >
           Rol değiştir
         </Link>
@@ -214,40 +239,85 @@ function LoginPage() {
       <div className="w-full max-w-sm">
         {step === "phone" ? (
           <>
-            <label className="text-xs text-hwhite/60 mb-2 block">Telefon Numaranız</label>
+            <label htmlFor="login-phone" className="text-xs text-hwhite/60 mb-2 block">
+              Telefon Numaranız
+            </label>
             <div className="flex items-center gap-2 rounded-xl border border-white/15 bg-white/5 px-3 py-2.5 focus-within:border-primary">
               <span className="rounded-md bg-white/10 px-2 py-1 text-sm text-hwhite/80">+90</span>
-              <input value={formattedPhone} onChange={(e) => setPhone(e.target.value)} inputMode="numeric" placeholder="5XX XXX XX XX"
-                className="flex-1 bg-transparent outline-none text-base placeholder:text-hwhite/30" />
+              <input
+                id="login-phone"
+                value={formattedPhone}
+                onChange={(e) => {
+                  setPhone(e.target.value);
+                  setPhoneError(null);
+                }}
+                inputMode="numeric"
+                autoComplete="tel"
+                aria-invalid={phoneError ? true : undefined}
+                aria-describedby={phoneError ? "login-phone-error" : "login-phone-help"}
+                placeholder="5XX XXX XX XX"
+                className="flex-1 bg-transparent outline-none text-base placeholder:text-hwhite/30"
+              />
             </div>
+            <p id="login-phone-help" className="mt-2 text-[11px] text-hwhite/50">
+              Başındaki 0 olmadan 10 haneli cep telefonu numaranız.
+            </p>
+            {phoneError && (
+              <p id="login-phone-error" role="alert" className="mt-2 text-xs text-red-300">
+                {phoneError}
+              </p>
+            )}
             <div className="mt-5">
               <div className="text-xs text-hwhite/60 mb-2">Kod nereye gelsin?</div>
               <div className="grid grid-cols-2 gap-2">
                 <button
+                  type="button"
                   onClick={() => setChannel("wa")}
+                  aria-pressed={channel === "wa"}
                   className="rounded-xl px-3 py-3 text-sm min-h-[48px] inline-flex items-center justify-center gap-1.5 transition"
                   style={{
-                    background: channel === "wa" ? "color-mix(in oklab, var(--primary) 22%, var(--dark))" : "rgba(255,255,255,0.05)",
-                    border: channel === "wa" ? "1px solid var(--primary)" : "1px solid rgba(255,255,255,0.1)",
+                    background:
+                      channel === "wa"
+                        ? "color-mix(in oklab, var(--primary) 22%, var(--dark))"
+                        : "rgba(255,255,255,0.05)",
+                    border:
+                      channel === "wa"
+                        ? "1px solid var(--primary)"
+                        : "1px solid rgba(255,255,255,0.1)",
                   }}
                 >
-                  <MessageCircle className="w-4 h-4" style={{ color: "var(--whatsapp)" }} /> WhatsApp
+                  <MessageCircle className="w-4 h-4" style={{ color: "var(--whatsapp)" }} />{" "}
+                  WhatsApp
                 </button>
                 <button
+                  type="button"
                   onClick={() => setChannel("sms")}
+                  aria-pressed={channel === "sms"}
                   className="rounded-xl px-3 py-3 text-sm min-h-[48px] inline-flex items-center justify-center gap-1.5 transition"
                   style={{
-                    background: channel === "sms" ? "color-mix(in oklab, var(--primary) 22%, var(--dark))" : "rgba(255,255,255,0.05)",
-                    border: channel === "sms" ? "1px solid var(--primary)" : "1px solid rgba(255,255,255,0.1)",
+                    background:
+                      channel === "sms"
+                        ? "color-mix(in oklab, var(--primary) 22%, var(--dark))"
+                        : "rgba(255,255,255,0.05)",
+                    border:
+                      channel === "sms"
+                        ? "1px solid var(--primary)"
+                        : "1px solid rgba(255,255,255,0.1)",
                   }}
                 >
                   <MessageSquareText className="w-4 h-4 text-hwhite/70" /> SMS
                 </button>
               </div>
             </div>
-            <button disabled={phoneDigits.length !== 10 || sending} onClick={sendOtp}
-              className="mt-6 w-full rounded-xl py-3 text-sm font-medium disabled:opacity-40"
-              style={{ background: "var(--primary)", color: "var(--hwhite)" }}>{sending ? "Gönderiliyor..." : "Kod Gönder →"}</button>
+            <Button
+              disabled={phoneDigits.length !== 10}
+              loading={sending}
+              loadingLabel="Kod gönderiliyor"
+              onClick={sendOtp}
+              className="mt-6 w-full rounded-xl text-sm font-medium"
+            >
+              Kod Gönder →
+            </Button>
           </>
         ) : (
           <>
@@ -257,32 +327,88 @@ function LoginPage() {
             </div>
             <div className="flex justify-between gap-1" onPaste={handleOtpPaste}>
               {otp.map((d, i) => (
-                <input key={i} ref={(el) => { inputsRef.current[i] = el; }} value={d}
-                  onChange={(e) => handleOtpChange(i, e.target.value)} onKeyDown={(e) => handleOtpKey(i, e)}
-                  inputMode="numeric" maxLength={1}
+                <input
+                  key={i}
+                  ref={(el) => {
+                    inputsRef.current[i] = el;
+                  }}
+                  value={d}
+                  onChange={(e) => handleOtpChange(i, e.target.value)}
+                  onKeyDown={(e) => handleOtpKey(i, e)}
+                  inputMode="numeric"
+                  maxLength={1}
+                  autoComplete={i === 0 ? "one-time-code" : "off"}
+                  aria-label={`Doğrulama kodu ${i + 1}. hane`}
                   aria-invalid={otpError ? true : undefined}
+                  aria-describedby={otpError ? "otp-error" : undefined}
                   className="w-10 h-12 sm:w-12 sm:h-14 min-w-0 flex-1 text-center rounded-lg border bg-white/5 outline-none font-mono text-xl transition-colors"
-                  style={{ borderColor: otpError ? "var(--hred)" : "rgba(255,255,255,0.15)" }} />
+                  style={{ borderColor: otpError ? "var(--hred)" : "rgba(255,255,255,0.15)" }}
+                />
               ))}
             </div>
             {otpError && (
-              <p className="mt-2 text-center text-[11px]" style={{ color: "var(--hred)" }}>{otpError}</p>
+              <p
+                id="otp-error"
+                role="alert"
+                className="mt-2 text-center text-[11px]"
+                style={{ color: "var(--hred)" }}
+              >
+                {otpError}
+              </p>
             )}
             <div className="mt-3 text-center text-[11px] text-hwhite/50">
-              {countdown > 0 ? `Tekrar gönder (${countdown}s)` : (<button onClick={resend} className="underline" style={{ color: "var(--teal)" }}>Tekrar gönder</button>)}
+              {countdown > 0 ? (
+                `Tekrar gönder (${countdown}s)`
+              ) : (
+                <button
+                  type="button"
+                  onClick={resend}
+                  disabled={sending}
+                  className="min-h-11 px-3 underline disabled:opacity-50"
+                  style={{ color: "var(--teal)" }}
+                >
+                  Tekrar gönder
+                </button>
+              )}
             </div>
-            <button disabled={otp.some((d) => !d) || verifying} onClick={verify}
-              className="mt-6 w-full rounded-xl py-3 text-sm font-medium disabled:opacity-40"
-              style={{ background: "var(--primary)", color: "var(--hwhite)" }}>{verifying ? "Doğrulanıyor..." : "Giriş Yap"}</button>
-            <button onClick={() => { setStep("phone"); setOtpError(null); }} className="mt-3 w-full text-xs text-hwhite/50">← Numarayı değiştir</button>
+            <Button
+              disabled={otp.some((d) => !d)}
+              loading={verifying}
+              loadingLabel="Kod doğrulanıyor"
+              onClick={verify}
+              className="mt-6 w-full rounded-xl text-sm font-medium"
+            >
+              Giriş Yap
+            </Button>
+            <button
+              type="button"
+              disabled={verifying}
+              onClick={() => {
+                setStep("phone");
+                setOtpError(null);
+              }}
+              className="mt-3 min-h-11 w-full text-xs text-hwhite/50 disabled:opacity-50"
+            >
+              ← Numarayı değiştir
+            </button>
           </>
         )}
         <div className="mt-8 text-center text-xs text-hwhite/50">
           Hesabın yoksa otomatik oluşturulur. Telefonunla devam et.
         </div>
         <div className="mt-4 flex items-center justify-center gap-4 text-[11px] text-hwhite/50">
-          <Link to="/terms" className="underline hover:text-hwhite/80">Kullanım Koşulları</Link>
-          <Link to="/privacy" className="underline hover:text-hwhite/80">Gizlilik</Link>
+          <Link
+            to="/terms"
+            className="inline-flex min-h-11 items-center px-2 underline hover:text-hwhite/80"
+          >
+            Kullanım Koşulları
+          </Link>
+          <Link
+            to="/privacy"
+            className="inline-flex min-h-11 items-center px-2 underline hover:text-hwhite/80"
+          >
+            Gizlilik
+          </Link>
         </div>
       </div>
     </div>

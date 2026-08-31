@@ -1,6 +1,12 @@
 import { useState } from "react";
 import { Star } from "lucide-react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 
@@ -24,9 +30,22 @@ export function ReviewModal({
   const [comment, setComment] = useState("");
 
   return (
-    <Dialog open={open} onOpenChange={(v) => { if (!v) { setRating(0); setHover(0); setComment(""); } onOpenChange(v); }}>
+    <Dialog
+      open={open}
+      onOpenChange={(v) => {
+        if (!v && pending) return;
+        if (!v) {
+          setRating(0);
+          setHover(0);
+          setComment("");
+        }
+        onOpenChange(v);
+      }}
+    >
       <DialogContent>
-        <DialogHeader><DialogTitle>{title}</DialogTitle></DialogHeader>
+        <DialogHeader>
+          <DialogTitle>{title}</DialogTitle>
+        </DialogHeader>
         {subtitle && <p className="text-sm text-hmuted">{subtitle}</p>}
         <div className="flex items-center gap-1.5 py-2" role="radiogroup" aria-label="Puan">
           {[1, 2, 3, 4, 5].map((n) => {
@@ -61,13 +80,16 @@ export function ReviewModal({
           placeholder="Yorumunuz (opsiyonel)"
         />
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>Vazgeç</Button>
+          <Button variant="outline" disabled={pending} onClick={() => onOpenChange(false)}>
+            Vazgeç
+          </Button>
           <Button
             onClick={() => onSubmit({ rating, comment: comment.trim() || undefined })}
-            disabled={pending || rating < 1}
-            style={{ background: "var(--gold)", color: "var(--dark)" }}
+            disabled={rating < 1}
+            loading={pending}
+            loadingLabel="Değerlendirme gönderiliyor"
           >
-            {pending ? "..." : "Gönder"}
+            Gönder
           </Button>
         </DialogFooter>
       </DialogContent>

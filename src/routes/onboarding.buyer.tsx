@@ -6,6 +6,7 @@ import { useHasat } from "@/lib/hasat/store";
 import { ProgressDots } from "@/components/hasat/ProgressDots";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
+import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { CropChips } from "@/components/hasat/CropChips";
 import { activatePremium } from "@/lib/api/premium.functions";
@@ -45,7 +46,10 @@ function BuyerOnboarding() {
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      const { data: { session }, error } = await supabase.auth.getSession();
+      const {
+        data: { session },
+        error,
+      } = await supabase.auth.getSession();
       if (cancelled) return;
       if (!session?.user) {
         // P23-M8-b-2 — geçici bir ağ hatası bu sayfaya doğru şekilde
@@ -70,7 +74,9 @@ function BuyerOnboarding() {
         navigate({ to: r === "buyer" ? "/buyer/discover" : "/farmer/home" });
       }
     })();
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -93,16 +99,19 @@ function BuyerOnboarding() {
     if (saving) return;
     setSaving(true);
     try {
-      const { data: { user } } = await supabase.auth.getUser();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
       if (!user) {
         toast.error("Oturum bulunamadı, lütfen tekrar giriş yapın.");
         navigate({ to: "/login", search: { role: "buyer" } });
         return;
       }
       const isIndividual = mode === "individual";
-      const buyerType = isIndividual ? "bireysel" : ((type || "diger") as (typeof TYPES)[number]["id"]);
-      const dbType =
-        buyerType === "market" ? "organik_market" : buyerType;
+      const buyerType = isIndividual
+        ? "bireysel"
+        : ((type || "diger") as (typeof TYPES)[number]["id"]);
+      const dbType = buyerType === "market" ? "organik_market" : buyerType;
 
       const { error: pErr } = await supabase.from("profiles").upsert({
         id: user.id,
@@ -133,13 +142,17 @@ function BuyerOnboarding() {
           await activatePremium();
           setPremium(true);
         } catch (e) {
-          toast.error("Premium deneme başlatılamadı: " + (e as Error).message);
+          toast.error("Premium deneme başlatılamadı. Bilgileriniz korundu; tekrar deneyin.");
           return;
         }
       }
       navigate({ to: "/buyer/discover" });
     } catch (e) {
-      toast.error((e as Error).message);
+      toast.error(
+        isNetworkAuthError(e instanceof Error ? e : null)
+          ? "Bağlantı kurulamadı. Bilgileriniz korundu; internetinizi kontrol edip tekrar deneyin."
+          : "Kayıt tamamlanamadı. Bilgileriniz korundu; lütfen tekrar deneyin.",
+      );
     } finally {
       setSaving(false);
     }
@@ -151,8 +164,9 @@ function BuyerOnboarding() {
         <div className="mb-6 flex items-center justify-between">
           <ProgressDots current={step} total={3} />
           <button
+            type="button"
             onClick={handleSignOut}
-            className="text-xs underline text-hwhite/60 hover:text-hwhite"
+            className="inline-flex min-h-11 min-w-11 items-center justify-center px-2 text-xs underline text-hwhite/60 hover:text-hwhite"
           >
             Çıkış Yap
           </button>
@@ -160,26 +174,45 @@ function BuyerOnboarding() {
 
         {step === 1 && (
           <div className="mt-4">
-            <h2 className="font-serif text-2xl mb-1">{mode === "individual" ? "Kişisel Bilgiler" : "Şirket Bilgileri"}</h2>
+            <h2 className="font-serif text-2xl mb-1">
+              {mode === "individual" ? "Kişisel Bilgiler" : "Şirket Bilgileri"}
+            </h2>
             <p className="text-sm text-hwhite/60 mb-6">Üreticilerin sizi tanıması için.</p>
 
             <div className="mb-5 grid grid-cols-2 gap-1 rounded-xl p-1 border border-white/10 bg-white/5">
               {(["company", "individual"] as const).map((m) => {
                 const on = mode === m;
                 return (
-                  <button key={m} onClick={() => { setMode(m); if (m === "individual") setType(""); }}
-                    className="rounded-lg py-2 text-sm font-medium transition"
-                    style={{ background: on ? "var(--primary)" : "transparent", color: "var(--hwhite)" }}>
+                  <button
+                    type="button"
+                    key={m}
+                    aria-pressed={on}
+                    onClick={() => {
+                      setMode(m);
+                      if (m === "individual") setType("");
+                    }}
+                    className="min-h-11 rounded-lg px-3 py-2 text-sm font-medium transition"
+                    style={{
+                      background: on ? "var(--primary)" : "transparent",
+                      color: "var(--hwhite)",
+                    }}
+                  >
                     {m === "company" ? "Şirket" : "Bireysel"}
                   </button>
                 );
               })}
             </div>
 
-            <label className="text-xs text-hwhite/60">{mode === "individual" ? "Adınız Soyadınız" : "Şirket Adı"}</label>
-            <Input value={company} onChange={(e) => setCompany(e.target.value)}
+            <label htmlFor="buyer-name" className="text-xs text-hwhite/60">
+              {mode === "individual" ? "Adınız Soyadınız" : "Şirket Adı"}
+            </label>
+            <Input
+              id="buyer-name"
+              value={company}
+              onChange={(e) => setCompany(e.target.value)}
               placeholder={mode === "individual" ? "Örn. Ayşe Yılmaz" : "Örn. Mikla Restaurant"}
-              className="mt-1 mb-5 bg-white/5 border-white/10 text-hwhite" />
+              className="mt-1 mb-5 bg-white/5 border-white/10 text-hwhite"
+            />
 
             {mode === "company" && (
               <>
@@ -189,10 +222,23 @@ function BuyerOnboarding() {
                     const on = type === t.id;
                     const Icon = t.icon;
                     return (
-                      <button key={t.id} onClick={() => setType(t.id)}
+                      <button
+                        type="button"
+                        key={t.id}
+                        aria-pressed={on}
+                        onClick={() => setType(t.id)}
                         className="rounded-xl p-4 text-left border transition"
-                        style={{ background: on ? "color-mix(in oklab, var(--primary) 18%, var(--dark))" : "rgba(255,255,255,0.05)", borderColor: on ? "var(--primary)" : "rgba(255,255,255,0.1)" }}>
-                        <Icon className="w-5 h-5 mb-1.5" style={{ color: on ? "var(--primary)" : "var(--hwhite)" }} />
+                        style={{
+                          background: on
+                            ? "color-mix(in oklab, var(--primary) 18%, var(--dark))"
+                            : "rgba(255,255,255,0.05)",
+                          borderColor: on ? "var(--primary)" : "rgba(255,255,255,0.1)",
+                        }}
+                      >
+                        <Icon
+                          className="w-5 h-5 mb-1.5"
+                          style={{ color: on ? "var(--primary)" : "var(--hwhite)" }}
+                        />
                         <div className="text-sm font-medium">{t.label}</div>
                       </button>
                     );
@@ -200,11 +246,24 @@ function BuyerOnboarding() {
                 </div>
               </>
             )}
-            <button onClick={() => setStep(2)} disabled={!company || (mode === "company" && !type)}
+            <button
+              type="button"
+              onClick={() => setStep(2)}
+              disabled={!company || (mode === "company" && !type)}
               className="mt-8 w-full rounded-xl py-3 text-sm font-medium disabled:opacity-40"
-              style={{ background: "var(--primary)", color: "var(--hwhite)" }}>Devam →</button>
+              style={{ background: "var(--primary)", color: "var(--hwhite)" }}
+            >
+              Devam →
+            </button>
             <div className="mt-4 text-center text-sm text-hwhite/60">
-              Zaten hesabın var mı? <Link to="/login" search={{ role: "buyer" }} className="underline text-hwhite/80">Giriş Yap</Link>
+              Zaten hesabın var mı?{" "}
+              <Link
+                to="/login"
+                search={{ role: "buyer" }}
+                className="inline-flex min-h-11 min-w-11 items-center justify-center px-2 underline text-hwhite/80"
+              >
+                Giriş Yap
+              </Link>
             </div>
           </div>
         )}
@@ -222,39 +281,95 @@ function BuyerOnboarding() {
               {VOLUMES.map((v) => {
                 const on = volume === v;
                 return (
-                  <button key={v} onClick={() => setVolume(v)}
+                  <button
+                    type="button"
+                    key={v}
+                    aria-pressed={on}
+                    onClick={() => setVolume(v)}
                     className="rounded-xl px-3 py-3 text-sm border transition"
-                    style={{ background: on ? "color-mix(in oklab, var(--primary) 18%, var(--dark))" : "rgba(255,255,255,0.05)", borderColor: on ? "var(--primary)" : "rgba(255,255,255,0.1)" }}>{v}</button>
+                    style={{
+                      background: on
+                        ? "color-mix(in oklab, var(--primary) 18%, var(--dark))"
+                        : "rgba(255,255,255,0.05)",
+                      borderColor: on ? "var(--primary)" : "rgba(255,255,255,0.1)",
+                    }}
+                  >
+                    {v}
+                  </button>
                 );
               })}
             </div>
-            <button onClick={() => setStep(3)} disabled={!interests.length || !volume}
+            <button
+              type="button"
+              onClick={() => setStep(3)}
+              disabled={!interests.length || !volume}
               className="w-full rounded-xl py-3 text-sm font-medium disabled:opacity-40"
-              style={{ background: "var(--primary)", color: "var(--hwhite)" }}>Devam →</button>
-            <button onClick={() => setStep(1)} className="mt-3 w-full text-xs text-hwhite/50">← Geri</button>
+              style={{ background: "var(--primary)", color: "var(--hwhite)" }}
+            >
+              Devam →
+            </button>
+            <button
+              type="button"
+              onClick={() => setStep(1)}
+              className="mt-3 min-h-11 w-full text-xs text-hwhite/50"
+            >
+              ← Geri
+            </button>
           </div>
         )}
 
         {step === 3 && (
           <div className="mt-4">
             <h2 className="font-serif text-2xl mb-1">Son Adım</h2>
-            <p className="text-sm text-hwhite/60 mb-6">Adresinizi ekleyin ve denemenizi başlatın.</p>
-            <label className="text-xs text-hwhite/60">{mode === "individual" ? "Adres (opsiyonel)" : "Şirket Adresi (opsiyonel)"}</label>
-            <Input value={address} onChange={(e) => setAddress(e.target.value)} placeholder="Beyoğlu, İstanbul"
-              className="mt-1 mb-6 bg-white/5 border-white/10 text-hwhite" />
-            <div className="rounded-xl p-4 flex items-start gap-3 border"
-              style={{ background: "color-mix(in oklab, var(--gold) 14%, var(--dark))", borderColor: "var(--gold)" }}>
+            <p className="text-sm text-hwhite/60 mb-6">
+              Adresinizi ekleyin ve denemenizi başlatın.
+            </p>
+            <label htmlFor="buyer-address" className="text-xs text-hwhite/60">
+              {mode === "individual" ? "Adres (opsiyonel)" : "Şirket Adresi (opsiyonel)"}
+            </label>
+            <Input
+              id="buyer-address"
+              value={address}
+              onChange={(e) => setAddress(e.target.value)}
+              placeholder="Beyoğlu, İstanbul"
+              className="mt-1 mb-6 bg-white/5 border-white/10 text-hwhite"
+            />
+            <div
+              className="rounded-xl p-4 flex items-start gap-3 border"
+              style={{
+                background: "color-mix(in oklab, var(--gold) 14%, var(--dark))",
+                borderColor: "var(--gold)",
+              }}
+            >
               <Star className="w-5 h-5 shrink-0" style={{ color: "var(--gold)" }} />
               <div className="flex-1">
                 <div className="font-medium text-sm">30 gün ücretsiz Premium</div>
-                <div className="text-xs text-hwhite/70 mt-0.5">Öncelikli eşleşme, gelişmiş analitik ve hasat aboneliği.</div>
+                <div className="text-xs text-hwhite/70 mt-0.5">
+                  Öncelikli eşleşme, gelişmiş analitik ve hasat aboneliği.
+                </div>
               </div>
-              <Switch checked={trial} onCheckedChange={setTrial} />
+              <Switch
+                checked={trial}
+                onCheckedChange={setTrial}
+                aria-label="30 günlük Premium denemeyi başlat"
+              />
             </div>
-            <button onClick={finish} disabled={saving}
-              className="mt-8 w-full rounded-xl py-3 text-sm font-medium disabled:opacity-40"
-              style={{ background: "var(--primary)", color: "var(--hwhite)" }}>{saving ? "Kaydediliyor..." : "Keşfetmeye Başla →"}</button>
-            <button onClick={() => setStep(2)} disabled={saving} className="mt-3 w-full text-xs text-hwhite/50 disabled:opacity-40">← Geri</button>
+            <Button
+              onClick={finish}
+              loading={saving}
+              loadingLabel="Bilgiler kaydediliyor"
+              className="mt-8 w-full rounded-xl text-sm font-medium"
+            >
+              Keşfetmeye Başla →
+            </Button>
+            <button
+              type="button"
+              onClick={() => setStep(2)}
+              disabled={saving}
+              className="mt-3 min-h-11 w-full text-xs text-hwhite/50 disabled:opacity-40"
+            >
+              ← Geri
+            </button>
           </div>
         )}
       </div>

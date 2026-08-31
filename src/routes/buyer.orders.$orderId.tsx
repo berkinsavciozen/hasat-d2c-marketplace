@@ -284,7 +284,10 @@ function OrderTracker() {
       </div>
 
       {/* Confirm delivery modal */}
-      <Dialog open={deliverOpen} onOpenChange={setDeliverOpen}>
+      <Dialog
+        open={deliverOpen}
+        onOpenChange={(open) => !confirmDelivery.isPending && setDeliverOpen(open)}
+      >
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Teslim Aldım</DialogTitle>
@@ -299,22 +302,30 @@ function OrderTracker() {
             onChange={(e) => setPhotoFile(e.target.files?.[0] ?? null)}
           />
           <DialogFooter>
-            <Button variant="outline" onClick={() => setDeliverOpen(false)}>
+            <Button
+              variant="outline"
+              disabled={confirmDelivery.isPending}
+              onClick={() => setDeliverOpen(false)}
+            >
               Vazgeç
             </Button>
             <Button
               onClick={onConfirmDelivery}
-              disabled={confirmDelivery.isPending}
+              loading={confirmDelivery.isPending}
+              loadingLabel="Teslimat onaylanıyor"
               style={{ background: "var(--sage)", color: "var(--hwhite)" }}
             >
-              {confirmDelivery.isPending ? "..." : "Onayla"}
+              Onayla
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
       {/* Dispute modal */}
-      <Dialog open={disputeOpen} onOpenChange={setDisputeOpen}>
+      <Dialog
+        open={disputeOpen}
+        onOpenChange={(open) => !openDispute.isPending && setDisputeOpen(open)}
+      >
         <DialogContent>
           <DialogHeader>
             <DialogTitle>İhtilaf Aç</DialogTitle>
@@ -322,7 +333,11 @@ function OrderTracker() {
           <p className="text-sm text-hmuted">
             Siparişle ilgili yaşadığınız sorunu açıklayın. Kanıt fotoğrafı ekleyebilirsiniz.
           </p>
+          <label htmlFor="dispute-reason" className="text-sm font-medium">
+            Sorun açıklaması
+          </label>
           <Textarea
+            id="dispute-reason"
             rows={4}
             value={disputeReason}
             onChange={(e) => setDisputeReason(e.target.value)}
@@ -335,15 +350,21 @@ function OrderTracker() {
             onChange={(e) => setDisputeFiles(Array.from(e.target.files ?? []))}
           />
           <DialogFooter>
-            <Button variant="outline" onClick={() => setDisputeOpen(false)}>
+            <Button
+              variant="outline"
+              disabled={openDispute.isPending}
+              onClick={() => setDisputeOpen(false)}
+            >
               Vazgeç
             </Button>
             <Button
               onClick={onOpenDispute}
-              disabled={openDispute.isPending || !disputeReason.trim()}
+              disabled={!disputeReason.trim()}
+              loading={openDispute.isPending}
+              loadingLabel="İhtilaf açılıyor"
               variant="destructive"
             >
-              {openDispute.isPending ? "..." : "İhtilaf Aç"}
+              İhtilaf Aç
             </Button>
           </DialogFooter>
         </DialogContent>
