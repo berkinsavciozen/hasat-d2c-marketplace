@@ -160,16 +160,21 @@ function AdminRecipeJobsPage() {
       <div className="mx-auto max-w-6xl px-4 py-8 space-y-6">
         <header className="flex items-center justify-between">
           <h1 className="font-serif text-2xl">Tarif Otomasyonu — İş Listesi</h1>
-          <button
-            onClick={() => {
-              sessionStorage.removeItem(ADMIN_RECIPE_KEY_STORAGE);
-              setSubmittedKey(null);
-              setKey("");
-            }}
-            className="text-xs text-hmuted underline"
-          >
-            Çıkış
-          </button>
+          <div className="flex items-center gap-4">
+            <Link to="/admin/recipes/plan" className="text-xs text-hmuted underline">
+              Plan İnceleme
+            </Link>
+            <button
+              onClick={() => {
+                sessionStorage.removeItem(ADMIN_RECIPE_KEY_STORAGE);
+                setSubmittedKey(null);
+                setKey("");
+              }}
+              className="text-xs text-hmuted underline"
+            >
+              Çıkış
+            </button>
+          </div>
         </header>
 
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
