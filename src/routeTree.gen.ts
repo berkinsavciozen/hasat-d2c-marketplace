@@ -52,6 +52,7 @@ import { Route as FarmerPricesIndexRouteImport } from './routes/farmer.prices.in
 import { Route as FarmerOrdersIndexRouteImport } from './routes/farmer.orders.index'
 import { Route as FarmerJournalIndexRouteImport } from './routes/farmer.journal.index'
 import { Route as BuyerPricesIndexRouteImport } from './routes/buyer.prices.index'
+import { Route as AdminRecipesIndexRouteImport } from './routes/admin.recipes.index'
 import { Route as FarmerSettingsNotifsRouteImport } from './routes/farmer.settings.notifs'
 import { Route as FarmerPricesCropRouteImport } from './routes/farmer.prices.$crop'
 import { Route as FarmerJournalNewRouteImport } from './routes/farmer.journal.new'
@@ -287,6 +288,11 @@ const BuyerPricesIndexRoute = BuyerPricesIndexRouteImport.update({
   path: '/prices/',
   getParentRoute: () => BuyerRoute,
 } as any)
+const AdminRecipesIndexRoute = AdminRecipesIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => AdminRecipesRoute,
+} as any)
 const FarmerSettingsNotifsRoute = FarmerSettingsNotifsRouteImport.update({
   id: '/notifs',
   path: '/notifs',
@@ -432,6 +438,7 @@ export interface FileRoutesByFullPath {
   '/farmer/journal/new': typeof FarmerJournalNewRoute
   '/farmer/prices/$crop': typeof FarmerPricesCropRoute
   '/farmer/settings/notifs': typeof FarmerSettingsNotifsRoute
+  '/admin/recipes/': typeof AdminRecipesIndexRoute
   '/buyer/prices/': typeof BuyerPricesIndexRoute
   '/farmer/journal/': typeof FarmerJournalIndexRoute
   '/farmer/orders/': typeof FarmerOrdersIndexRoute
@@ -451,7 +458,6 @@ export interface FileRoutesByTo {
   '/.mcp/list-tools': typeof Char91DotmcpChar93ListToolsRoute
   '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   '/admin/kpi': typeof AdminKpiRoute
-  '/admin/recipes': typeof AdminRecipesRouteWithChildren
   '/auth/mobile-handoff': typeof AuthMobileHandoffRoute
   '/batch/$listingId': typeof BatchListingIdRoute
   '/buyer/account': typeof BuyerAccountRoute
@@ -493,6 +499,7 @@ export interface FileRoutesByTo {
   '/farmer/journal/new': typeof FarmerJournalNewRoute
   '/farmer/prices/$crop': typeof FarmerPricesCropRoute
   '/farmer/settings/notifs': typeof FarmerSettingsNotifsRoute
+  '/admin/recipes': typeof AdminRecipesIndexRoute
   '/buyer/prices': typeof BuyerPricesIndexRoute
   '/farmer/journal': typeof FarmerJournalIndexRoute
   '/farmer/orders': typeof FarmerOrdersIndexRoute
@@ -556,6 +563,7 @@ export interface FileRoutesById {
   '/farmer/journal/new': typeof FarmerJournalNewRoute
   '/farmer/prices/$crop': typeof FarmerPricesCropRoute
   '/farmer/settings/notifs': typeof FarmerSettingsNotifsRoute
+  '/admin/recipes/': typeof AdminRecipesIndexRoute
   '/buyer/prices/': typeof BuyerPricesIndexRoute
   '/farmer/journal/': typeof FarmerJournalIndexRoute
   '/farmer/orders/': typeof FarmerOrdersIndexRoute
@@ -620,6 +628,7 @@ export interface FileRouteTypes {
     | '/farmer/journal/new'
     | '/farmer/prices/$crop'
     | '/farmer/settings/notifs'
+    | '/admin/recipes/'
     | '/buyer/prices/'
     | '/farmer/journal/'
     | '/farmer/orders/'
@@ -639,7 +648,6 @@ export interface FileRouteTypes {
     | '/.mcp/list-tools'
     | '/.well-known/oauth-protected-resource'
     | '/admin/kpi'
-    | '/admin/recipes'
     | '/auth/mobile-handoff'
     | '/batch/$listingId'
     | '/buyer/account'
@@ -681,6 +689,7 @@ export interface FileRouteTypes {
     | '/farmer/journal/new'
     | '/farmer/prices/$crop'
     | '/farmer/settings/notifs'
+    | '/admin/recipes'
     | '/buyer/prices'
     | '/farmer/journal'
     | '/farmer/orders'
@@ -743,6 +752,7 @@ export interface FileRouteTypes {
     | '/farmer/journal/new'
     | '/farmer/prices/$crop'
     | '/farmer/settings/notifs'
+    | '/admin/recipes/'
     | '/buyer/prices/'
     | '/farmer/journal/'
     | '/farmer/orders/'
@@ -1078,6 +1088,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof BuyerPricesIndexRouteImport
       parentRoute: typeof BuyerRoute
     }
+    '/admin/recipes/': {
+      id: '/admin/recipes/'
+      path: '/'
+      fullPath: '/admin/recipes/'
+      preLoaderRoute: typeof AdminRecipesIndexRouteImport
+      parentRoute: typeof AdminRecipesRoute
+    }
     '/farmer/settings/notifs': {
       id: '/farmer/settings/notifs'
       path: '/notifs'
@@ -1323,10 +1340,12 @@ const FarmerRouteWithChildren =
 
 interface AdminRecipesRouteChildren {
   AdminRecipesJobIdRoute: typeof AdminRecipesJobIdRoute
+  AdminRecipesIndexRoute: typeof AdminRecipesIndexRoute
 }
 
 const AdminRecipesRouteChildren: AdminRecipesRouteChildren = {
   AdminRecipesJobIdRoute: AdminRecipesJobIdRoute,
+  AdminRecipesIndexRoute: AdminRecipesIndexRoute,
 }
 
 const AdminRecipesRouteWithChildren = AdminRecipesRoute._addFileChildren(
