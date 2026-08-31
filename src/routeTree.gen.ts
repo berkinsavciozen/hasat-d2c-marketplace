@@ -66,10 +66,13 @@ import { Route as BuyerPayOfferIdRouteImport } from './routes/buyer.pay.$offerId
 import { Route as BuyerOrdersOrderIdRouteImport } from './routes/buyer.orders.$orderId'
 import { Route as BuyerOfferListingIdRouteImport } from './routes/buyer.offer.$listingId'
 import { Route as BuyerNegotiationOfferIdRouteImport } from './routes/buyer.negotiation.$offerId'
+import { Route as AdminRecipesPlanRouteImport } from './routes/admin.recipes.plan'
 import { Route as AdminRecipesJobIdRouteImport } from './routes/admin.recipes.$jobId'
 import { Route as Char91DotmcpChar93InvokeToolToolRouteImport } from './routes/[.mcp]/invoke-tool/$tool'
 import { Route as DotlovableOauthConsentRouteImport } from './routes/[.]lovable.oauth.consent'
+import { Route as AdminRecipesPlanIndexRouteImport } from './routes/admin.recipes.plan.index'
 import { Route as BuyerProductFarmerIdCropRouteImport } from './routes/buyer.product.$farmerId.$crop'
+import { Route as AdminRecipesPlanBatchIdRouteImport } from './routes/admin.recipes.plan.$batchId'
 
 const TermsRoute = TermsRouteImport.update({
   id: '/terms',
@@ -359,6 +362,11 @@ const BuyerNegotiationOfferIdRoute = BuyerNegotiationOfferIdRouteImport.update({
   path: '/negotiation/$offerId',
   getParentRoute: () => BuyerRoute,
 } as any)
+const AdminRecipesPlanRoute = AdminRecipesPlanRouteImport.update({
+  id: '/plan',
+  path: '/plan',
+  getParentRoute: () => AdminRecipesRoute,
+} as any)
 const AdminRecipesJobIdRoute = AdminRecipesJobIdRouteImport.update({
   id: '/$jobId',
   path: '/$jobId',
@@ -375,12 +383,22 @@ const DotlovableOauthConsentRoute = DotlovableOauthConsentRouteImport.update({
   path: '/.lovable/oauth/consent',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AdminRecipesPlanIndexRoute = AdminRecipesPlanIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => AdminRecipesPlanRoute,
+} as any)
 const BuyerProductFarmerIdCropRoute =
   BuyerProductFarmerIdCropRouteImport.update({
     id: '/product/$farmerId/$crop',
     path: '/product/$farmerId/$crop',
     getParentRoute: () => BuyerRoute,
   } as any)
+const AdminRecipesPlanBatchIdRoute = AdminRecipesPlanBatchIdRouteImport.update({
+  id: '/$batchId',
+  path: '/$batchId',
+  getParentRoute: () => AdminRecipesPlanRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -425,6 +443,7 @@ export interface FileRoutesByFullPath {
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
   '/admin/recipes/$jobId': typeof AdminRecipesJobIdRoute
+  '/admin/recipes/plan': typeof AdminRecipesPlanRouteWithChildren
   '/buyer/negotiation/$offerId': typeof BuyerNegotiationOfferIdRoute
   '/buyer/offer/$listingId': typeof BuyerOfferListingIdRoute
   '/buyer/orders/$orderId': typeof BuyerOrdersOrderIdRoute
@@ -443,7 +462,9 @@ export interface FileRoutesByFullPath {
   '/farmer/journal/': typeof FarmerJournalIndexRoute
   '/farmer/orders/': typeof FarmerOrdersIndexRoute
   '/farmer/prices/': typeof FarmerPricesIndexRoute
+  '/admin/recipes/plan/$batchId': typeof AdminRecipesPlanBatchIdRoute
   '/buyer/product/$farmerId/$crop': typeof BuyerProductFarmerIdCropRoute
+  '/admin/recipes/plan/': typeof AdminRecipesPlanIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -504,7 +525,9 @@ export interface FileRoutesByTo {
   '/farmer/journal': typeof FarmerJournalIndexRoute
   '/farmer/orders': typeof FarmerOrdersIndexRoute
   '/farmer/prices': typeof FarmerPricesIndexRoute
+  '/admin/recipes/plan/$batchId': typeof AdminRecipesPlanBatchIdRoute
   '/buyer/product/$farmerId/$crop': typeof BuyerProductFarmerIdCropRoute
+  '/admin/recipes/plan': typeof AdminRecipesPlanIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -550,6 +573,7 @@ export interface FileRoutesById {
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
   '/admin/recipes/$jobId': typeof AdminRecipesJobIdRoute
+  '/admin/recipes/plan': typeof AdminRecipesPlanRouteWithChildren
   '/buyer/negotiation/$offerId': typeof BuyerNegotiationOfferIdRoute
   '/buyer/offer/$listingId': typeof BuyerOfferListingIdRoute
   '/buyer/orders/$orderId': typeof BuyerOrdersOrderIdRoute
@@ -568,7 +592,9 @@ export interface FileRoutesById {
   '/farmer/journal/': typeof FarmerJournalIndexRoute
   '/farmer/orders/': typeof FarmerOrdersIndexRoute
   '/farmer/prices/': typeof FarmerPricesIndexRoute
+  '/admin/recipes/plan/$batchId': typeof AdminRecipesPlanBatchIdRoute
   '/buyer/product/$farmerId/$crop': typeof BuyerProductFarmerIdCropRoute
+  '/admin/recipes/plan/': typeof AdminRecipesPlanIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -615,6 +641,7 @@ export interface FileRouteTypes {
     | '/.lovable/oauth/consent'
     | '/.mcp/invoke-tool/$tool'
     | '/admin/recipes/$jobId'
+    | '/admin/recipes/plan'
     | '/buyer/negotiation/$offerId'
     | '/buyer/offer/$listingId'
     | '/buyer/orders/$orderId'
@@ -633,7 +660,9 @@ export interface FileRouteTypes {
     | '/farmer/journal/'
     | '/farmer/orders/'
     | '/farmer/prices/'
+    | '/admin/recipes/plan/$batchId'
     | '/buyer/product/$farmerId/$crop'
+    | '/admin/recipes/plan/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -694,7 +723,9 @@ export interface FileRouteTypes {
     | '/farmer/journal'
     | '/farmer/orders'
     | '/farmer/prices'
+    | '/admin/recipes/plan/$batchId'
     | '/buyer/product/$farmerId/$crop'
+    | '/admin/recipes/plan'
   id:
     | '__root__'
     | '/'
@@ -739,6 +770,7 @@ export interface FileRouteTypes {
     | '/.lovable/oauth/consent'
     | '/.mcp/invoke-tool/$tool'
     | '/admin/recipes/$jobId'
+    | '/admin/recipes/plan'
     | '/buyer/negotiation/$offerId'
     | '/buyer/offer/$listingId'
     | '/buyer/orders/$orderId'
@@ -757,7 +789,9 @@ export interface FileRouteTypes {
     | '/farmer/journal/'
     | '/farmer/orders/'
     | '/farmer/prices/'
+    | '/admin/recipes/plan/$batchId'
     | '/buyer/product/$farmerId/$crop'
+    | '/admin/recipes/plan/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -1186,6 +1220,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof BuyerNegotiationOfferIdRouteImport
       parentRoute: typeof BuyerRoute
     }
+    '/admin/recipes/plan': {
+      id: '/admin/recipes/plan'
+      path: '/plan'
+      fullPath: '/admin/recipes/plan'
+      preLoaderRoute: typeof AdminRecipesPlanRouteImport
+      parentRoute: typeof AdminRecipesRoute
+    }
     '/admin/recipes/$jobId': {
       id: '/admin/recipes/$jobId'
       path: '/$jobId'
@@ -1207,12 +1248,26 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DotlovableOauthConsentRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/admin/recipes/plan/': {
+      id: '/admin/recipes/plan/'
+      path: '/'
+      fullPath: '/admin/recipes/plan/'
+      preLoaderRoute: typeof AdminRecipesPlanIndexRouteImport
+      parentRoute: typeof AdminRecipesPlanRoute
+    }
     '/buyer/product/$farmerId/$crop': {
       id: '/buyer/product/$farmerId/$crop'
       path: '/product/$farmerId/$crop'
       fullPath: '/buyer/product/$farmerId/$crop'
       preLoaderRoute: typeof BuyerProductFarmerIdCropRouteImport
       parentRoute: typeof BuyerRoute
+    }
+    '/admin/recipes/plan/$batchId': {
+      id: '/admin/recipes/plan/$batchId'
+      path: '/$batchId'
+      fullPath: '/admin/recipes/plan/$batchId'
+      preLoaderRoute: typeof AdminRecipesPlanBatchIdRouteImport
+      parentRoute: typeof AdminRecipesPlanRoute
     }
   }
 }
@@ -1338,13 +1393,28 @@ const FarmerRouteChildren: FarmerRouteChildren = {
 const FarmerRouteWithChildren =
   FarmerRoute._addFileChildren(FarmerRouteChildren)
 
+interface AdminRecipesPlanRouteChildren {
+  AdminRecipesPlanBatchIdRoute: typeof AdminRecipesPlanBatchIdRoute
+  AdminRecipesPlanIndexRoute: typeof AdminRecipesPlanIndexRoute
+}
+
+const AdminRecipesPlanRouteChildren: AdminRecipesPlanRouteChildren = {
+  AdminRecipesPlanBatchIdRoute: AdminRecipesPlanBatchIdRoute,
+  AdminRecipesPlanIndexRoute: AdminRecipesPlanIndexRoute,
+}
+
+const AdminRecipesPlanRouteWithChildren =
+  AdminRecipesPlanRoute._addFileChildren(AdminRecipesPlanRouteChildren)
+
 interface AdminRecipesRouteChildren {
   AdminRecipesJobIdRoute: typeof AdminRecipesJobIdRoute
+  AdminRecipesPlanRoute: typeof AdminRecipesPlanRouteWithChildren
   AdminRecipesIndexRoute: typeof AdminRecipesIndexRoute
 }
 
 const AdminRecipesRouteChildren: AdminRecipesRouteChildren = {
   AdminRecipesJobIdRoute: AdminRecipesJobIdRoute,
+  AdminRecipesPlanRoute: AdminRecipesPlanRouteWithChildren,
   AdminRecipesIndexRoute: AdminRecipesIndexRoute,
 }
 
@@ -1380,13 +1450,3 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}
