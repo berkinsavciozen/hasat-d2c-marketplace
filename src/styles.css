@@ -106,7 +106,6 @@
     color: var(--color-foreground);
     font-family: var(--font-sans);
     min-width: 0;
-    overflow-x: clip;
   }
   h1,
   h2,
@@ -126,13 +125,15 @@
     outline: 2px solid var(--ring);
     outline-offset: 2px;
   }
-  button,
-  input:not([type="hidden"]),
+  input:not(
+    [type="checkbox"],
+    [type="radio"],
+    [type="range"],
+    [type="color"],
+    [type="file"],
+    [type="hidden"]
+  ),
   select {
-    min-height: 44px;
-  }
-  a[class*="inline-flex"],
-  a[class*=" flex"] {
     min-height: 44px;
   }
 }
