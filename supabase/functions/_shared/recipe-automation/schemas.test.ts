@@ -9,6 +9,7 @@ import {
   RECIPE_JOB_STAGE_VALUES,
   RECIPE_JOB_STATUS_VALUES,
   recipeBatchInputSchema,
+  recipeBriefSchema,
   recipeDraftPayloadSchema,
   recipeImageSpecSchema,
   recipePlanBatchSchema,
@@ -284,6 +285,53 @@ Deno.test("RecipePlanBatch: rejects a brief whose batchId does not match the bat
     briefs: [{ ...validBrief, batchId: "99999999-9999-4999-8999-999999999999" }],
   };
   const result = recipePlanBatchSchema.safeParse(batch);
+  assertFalse(result.success);
+});
+
+// ---------------------------------------------------------------------------
+// RecipeBrief — Step 13: audience/mealType/selectionReason
+// ---------------------------------------------------------------------------
+
+Deno.test("RecipeBrief: valid brief (with audience/mealType/selectionReason) parses", () => {
+  const result = recipeBriefSchema.safeParse(validBrief);
+  assert(result.success, JSON.stringify(result.success ? null : result.error.format()));
+});
+
+Deno.test("RecipeBrief: audience defaults to 'bireysel' when omitted", () => {
+  const { audience: _a, ...withoutAudience } = validBrief;
+  const result = recipeBriefSchema.safeParse(withoutAudience);
+  assert(result.success, JSON.stringify(result.success ? null : result.error.format()));
+  if (result.success) assertEquals(result.data.audience, "bireysel");
+});
+
+Deno.test("RecipeBrief: rejects an audience outside bireysel|horeca", () => {
+  const brief = { ...validBrief, audience: "kurumsal" };
+  const result = recipeBriefSchema.safeParse(brief);
+  assertFalse(result.success);
+});
+
+Deno.test("RecipeBrief: mealType defaults to null when omitted", () => {
+  const { mealType: _m, ...withoutMealType } = validBrief;
+  const result = recipeBriefSchema.safeParse(withoutMealType);
+  assert(result.success, JSON.stringify(result.success ? null : result.error.format()));
+  if (result.success) assertEquals(result.data.mealType, null);
+});
+
+Deno.test("RecipeBrief: rejects a mealType outside the fixed enum", () => {
+  const brief = { ...validBrief, mealType: "brunch" };
+  const result = recipeBriefSchema.safeParse(brief);
+  assertFalse(result.success);
+});
+
+Deno.test("RecipeBrief: rejects a missing selectionReason", () => {
+  const { selectionReason: _s, ...withoutReason } = validBrief;
+  const result = recipeBriefSchema.safeParse(withoutReason);
+  assertFalse(result.success);
+});
+
+Deno.test("RecipeBrief: rejects a blank selectionReason", () => {
+  const brief = { ...validBrief, selectionReason: "   " };
+  const result = recipeBriefSchema.safeParse(brief);
   assertFalse(result.success);
 });
 

@@ -67,6 +67,16 @@ admin-identity model first, so that column can finally be set legitimately.
 - **Never reads or writes `is_admin`, any RLS policy, or a Lovable user session.** Auth is the
   same shared-secret comparison every other admin/dispatch endpoint in this pipeline already uses.
 
+## Step 13 addendum: `plan-review.ts`
+
+`plan-review.ts` (Step 13) is a SIBLING admin surface in this same directory, for a different
+target: `recipe_generation_batches`/`recipe_plan_briefs` (the Planner's pre-approval output), not
+`recipe_generation_jobs` (a job already past planning). Same CAS-update discipline as
+`review-actions.ts` above, but it is the one place in this whole pipeline that creates a
+`recipe_generation_jobs` row and dispatches a `recipe-stage-*` function at all. See
+`../plan/README.md` for the full writeup — this file's own conventions (auth, checklist pattern,
+never touching `recipe_drafts`/`recipe_qa_results`/`recipe_assets`) still apply to it.
+
 ## Running the tests
 
 Same convention as `../qa/`/`../revise/`/`../image/`/`../finalize/`:

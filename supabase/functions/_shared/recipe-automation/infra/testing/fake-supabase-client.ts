@@ -44,7 +44,7 @@ class FakeTable {
 class FakeQueryBuilder<T = Row> {
   private mode: "select" | "update" | "insert" = "select";
   private patch: Row | null = null;
-  private insertRow: Row | null = null;
+  private insertRows: Row[] | null = null;
   private predicates: Predicate[] = [];
   private orderCol: string | null = null;
   private orderAscending = true;
@@ -62,9 +62,10 @@ class FakeQueryBuilder<T = Row> {
     return this;
   }
 
-  insert(row: Row): this {
+  /** Mirrors supabase-js's `.insert(row)` / `.insert(rows[])` — a single object or a bulk array. */
+  insert(rowOrRows: Row | Row[]): this {
     this.mode = "insert";
-    this.insertRow = row;
+    this.insertRows = Array.isArray(rowOrRows) ? rowOrRows : [rowOrRows];
     return this;
   }
 
@@ -75,6 +76,14 @@ class FakeQueryBuilder<T = Row> {
 
   in(col: string, vals: readonly unknown[]): this {
     this.predicates.push((row) => vals.includes(row[col]));
+    return this;
+  }
+
+  /** Mirrors supabase-js's `.is(col, null)` — the only value real callers in this pipeline ever
+   * pass (an IS NULL check; `.is(col, true/false)` is not used anywhere this fake backs). Treats a
+   * genuinely-absent key the same as an explicit `null`, matching Postgres' own IS NULL semantics. */
+  is(col: string, val: null): this {
+    this.predicates.push((row) => row[col] === val || row[col] === undefined);
     return this;
   }
 
@@ -129,9 +138,12 @@ class FakeQueryBuilder<T = Row> {
 
   private async executeList(): Promise<FakeQueryResult<T[]>> {
     if (this.mode === "insert") {
-      const row: Row = { id: crypto.randomUUID(), ...this.insertRow };
-      this.table.rows.set(row.id as string, row);
-      return { data: [row as T], error: null };
+      const rows = (this.insertRows ?? []).map((insertRow) => {
+        const row: Row = { id: crypto.randomUUID(), ...insertRow };
+        this.table.rows.set(row.id as string, row);
+        return row;
+      });
+      return { data: rows as T[], error: null };
     }
 
     let matches = [...this.table.rows.values()].filter((row) =>
