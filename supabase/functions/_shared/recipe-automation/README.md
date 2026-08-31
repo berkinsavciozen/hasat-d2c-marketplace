@@ -96,6 +96,30 @@ duplicate. See `publish/README.md` for the full precondition-to-check mapping an
 and at publish" interpretive decision this step had to make (nothing before it ever set
 `stage='publish'`). SQL test suite: `../../tests/f2_recipe_publish/run.sh`.
 
+**Step 13 (Planner vertical slice — Weekly Portfolio Planner, PROMPT 13):** `plan/` holds the fifth
+content agent — `recipe-stage-plan` (entrypoint at `../recipe-stage-plan/index.ts`) — the pipeline's
+FIRST node: resolves/creates a `recipe_generation_batches` row from a `RecipeBatchInput`, loads
+narrow read context (seasonal crop candidates, recent recipe mix, existing/duplicate recipe sample
+— `get_seasonal_crop_candidates`/`get_recent_recipe_mix`/`search_existing_recipes`, all f2s04), runs
+the Planner (zero tools, same restriction as every other content agent) for one
+`recipePlanBatchSchema`-shaped output, gates it through `validate_recipe_plan` (f2s04, structural)
+then the new `validate_recipe_plan_diversity` (f2s13 migration — primary-crop-from-crop_config +
+no-repeat, near/exact-duplicate avoidance via `find_recipe_duplicates`, audience/meal-type/
+difficulty balance), and persists one `recipe_plan_briefs` row per brief — **never** a
+`recipe_generation_jobs` row. `recipe_plan_briefs` (new table, f2s13) is the plan pending admin
+review: `../admin/plan-review.ts` (entrypoints `../../admin-recipe-plan-batches/index.ts`,
+`../../admin-recipe-plan-batch-detail/index.ts`, `../../admin-recipe-plan-review-action/index.ts`)
+lets an admin view/edit/exclude individual briefs and approve or reject the batch BEFORE any job
+exists — `approvePlanBatch()` is the only function in this pipeline that ever creates a
+`recipe_generation_jobs` row (via the new, transactional, idempotent `fan_out_recipe_plan_batch` RPC
+— reuses `recipe_generation_jobs_batch_id_brief_id_key`'s existing f2s03 UNIQUE constraint via
+`ON CONFLICT DO NOTHING`) and dispatches `recipe-stage-write` for each with bounded concurrency
+(`../infra/stage-dispatch.ts`'s existing `dispatchNextStage`, never all at once). See `plan/README.md`
+for the full precondition-to-check mapping. SQL test suite:
+`../../tests/f2_recipe_plan/run.sh` — verified for real in this session against a local PostgreSQL
+16 server (see `plan/README.md`'s own "Verified for real in this session" section); not applied to
+any shared/live Supabase environment.
+
 **Step 03A (foundation reconciliation, PRs #40–#42):** the stage/status enums, `RecipeQAResult`,
 and `RecipePlanBatch` below were realigned to RecipeAutomation.md §3/§5.3's canonical
 state-machine and QA-routing contract. In particular: `RecipeJobStage`/`RecipeJobStatus` now use

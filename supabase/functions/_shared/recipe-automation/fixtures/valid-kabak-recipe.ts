@@ -36,6 +36,9 @@ export const validBrief: RecipeBrief = {
   targetDifficulty: "orta",
   dietTags: ["vejetaryen"],
   locale: "tr",
+  audience: "bireysel",
+  mealType: "ana_yemek",
+  selectionReason: "Kabak mevsiminde ve son 30 gunde az kullanilan bir ana yemek acisi.",
 };
 
 export const validPlanBatch: RecipePlanBatch = {

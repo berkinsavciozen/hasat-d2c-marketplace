@@ -19,6 +19,7 @@ import type {
   recipeIngredientDraftSchema,
   recipeJobStageSchema,
   recipeJobStatusSchema,
+  recipeMealTypeSchema,
   recipePlanBatchSchema,
   recipeQADecisionSchema,
   recipeQAIssueSchema,
@@ -27,6 +28,7 @@ import type {
   recipeSourceTypeSchema,
   recipeStageResultSchema,
   recipeStepDraftSchema,
+  recipeTargetAudienceSchema,
   recipeVisibilitySchema,
 } from "./schemas.ts";
 
@@ -44,6 +46,8 @@ export type RecipeBatchStatus = z.infer<typeof recipeBatchStatusSchema>;
 export type RecipeErrorPayload = z.infer<typeof recipeErrorPayloadSchema>;
 
 export type RecipeBatchInput = z.infer<typeof recipeBatchInputSchema>;
+export type RecipeTargetAudience = z.infer<typeof recipeTargetAudienceSchema>;
+export type RecipeMealType = z.infer<typeof recipeMealTypeSchema>;
 export type RecipeBrief = z.infer<typeof recipeBriefSchema>;
 export type RecipePlanBatch = z.infer<typeof recipePlanBatchSchema>;
 

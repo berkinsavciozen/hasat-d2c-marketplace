@@ -165,17 +165,58 @@ export const recipeBatchInputSchema = z.object({
 // ---------------------------------------------------------------------------
 // RecipeBrief — a single planned recipe idea, prior to drafting
 // ---------------------------------------------------------------------------
+//
+// Step 13 (Planner/plan-stage): added `audience`/`mealType`/`selectionReason` — the plan-diversity
+// dimensions PROMPT 13 requires the Planner to balance across a batch (bireysel vs HoReCa, meal
+// type mix) and the per-brief editorial justification PROMPT 13 requires be kept ("her brief için
+// bir seçim gerekçesi sakla"). All three are additive: nothing before Step 13 ever constructed a
+// `RecipeBrief` (see the Step 03A note below — briefs were never persisted until
+// `recipe_plan_briefs`, Step 13), so this widens the contract without touching a shipped shape.
+// `focusCrop` stays nullable at the Zod layer for backward compatibility with the existing
+// `WriteStageBrief`/job-row mapping (write/context.ts's `briefFromJobRow` reads a possibly-null
+// `focus_crop` column) — Step 13's own planning-stage rule ("primary crop'lar mutlaka
+// crop_config'den gelmeli") is enforced as a BLOCKING diversity-gate issue instead
+// (`validate_recipe_plan_diversity`'s `DIVERSITY_CROP_REQUIRED`/`DIVERSITY_CROP_NOT_IN_CONFIG`,
+// f2s13 migration), not a schema-level `.min(1)` — same "Zod enforces shape, the deterministic
+// Postgres RPC enforces the business rule" split every other stage in this pipeline already uses
+// (see e.g. `recipeQAResultSchema`'s own header on refine-vs-RPC responsibilities).
+
+/** Per-brief target audience — PROMPT 13's "hem bireysel hem HoReCa hedef kitlelerini kapsa". */
+export const RECIPE_TARGET_AUDIENCE_VALUES = ["bireysel", "horeca"] as const;
+export const recipeTargetAudienceSchema = z.enum(RECIPE_TARGET_AUDIENCE_VALUES);
+
+/** Per-brief meal/dish type — PROMPT 13's "yemek türlerini ... dengele". Free-form Turkish meal
+ * categories, not tied to any live DB enum (there is no `recipes.meal_type` column). */
+export const RECIPE_MEAL_TYPE_VALUES = [
+  "kahvalti",
+  "ana_yemek",
+  "aperatif_meze",
+  "corba",
+  "salata",
+  "tatli",
+  "icecek",
+] as const;
+export const recipeMealTypeSchema = z.enum(RECIPE_MEAL_TYPE_VALUES);
 
 export const recipeBriefSchema = z.object({
   briefId: uuidSchema,
   batchId: uuidSchema,
   workingTitle: nonEmptyTrimmedString.max(200),
-  /** Text crop slug matching `crop_config.crop`. Never a `crop_id`. */
+  /** Text crop slug matching `crop_config.crop`. Never a `crop_id`. Nullable at the Zod layer —
+   * see this section's header for why "must come from crop_config" is a diversity-gate RPC check,
+   * not a schema constraint. */
   focusCrop: nonEmptyTrimmedString.nullable().default(null),
   angle: z.string().trim().max(1000).nullable().default(null),
   targetDifficulty: recipeDifficultySchema.nullable().default(null),
   dietTags: z.array(nonEmptyTrimmedString).default([]),
   locale: z.string().trim().min(2).default("tr"),
+  /** Defaults to 'bireysel' — a Planner that ignores audience mix still produces a schema-valid
+   * (if diversity-flagged) brief rather than an outright parse failure. */
+  audience: recipeTargetAudienceSchema.default("bireysel"),
+  mealType: recipeMealTypeSchema.nullable().default(null),
+  /** Required, non-empty — PROMPT 13: "her brief için bir seçim gerekçesi (selection reason)
+   * sakla". Why THIS crop/angle/audience/difficulty was chosen, for the admin plan-review surface. */
+  selectionReason: z.string().trim().min(1).max(1000),
 }).strict();
 
 // ---------------------------------------------------------------------------
