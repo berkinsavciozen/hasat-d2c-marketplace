@@ -14,7 +14,10 @@ const PASS = { valid: true, issues: [], briefCount: 0 };
 
 /** Registers the happy-path stub for every narrow RPC plan-stage.ts calls: seasonal candidates
  * cover exactly "kabak"/"domates" (so a Planner fixture can legally choose either), recent mix and
- * existing-recipe sample are both empty, and both validation gates pass with no issues. */
+ * existing-recipe sample are both empty, both validation gates pass with no issues, and the three
+ * f2s16 market-signal RPCs return a small non-empty fixture (active supply, demand, engagement) for
+ * "kabak" only — the same shape a real batch would see when only one of the two candidates is
+ * actually being sold/ordered/read about right now. */
 function registerHappyPathRpcs(client: FakeSupabaseClient) {
   client.onRpc("get_seasonal_crop_candidates", () => ({
     data: [
@@ -25,6 +28,18 @@ function registerHappyPathRpcs(client: FakeSupabaseClient) {
   }));
   client.onRpc("get_recent_recipe_mix", () => ({ data: [], error: null }));
   client.onRpc("search_existing_recipes", () => ({ data: [], error: null }));
+  client.onRpc("get_active_listing_crops", () => ({
+    data: [{ crop: "kabak", display_name: "Kabak", active_listing_count: 3, total_quantity: "120.00", farmer_count: 2 }],
+    error: null,
+  }));
+  client.onRpc("get_crop_demand_signal", () => ({
+    data: [{ crop: "kabak", display_name: "Kabak", order_count: 4, total_quantity: "80.00" }],
+    error: null,
+  }));
+  client.onRpc("get_recipe_engagement_signal", () => ({
+    data: [{ crop: "kabak", display_name: "Kabak", view_count: 12, save_count: 2, recipe_count: 1 }],
+    error: null,
+  }));
   client.onRpc("validate_recipe_plan", () => ({ data: PASS, error: null }));
   client.onRpc("validate_recipe_plan_diversity", () => ({ data: PASS, error: null }));
 }
@@ -232,4 +247,64 @@ Deno.test("runPlanStage: agent_call_failed records plan_error and never stores b
   assert.equal(result.outcome, "agent_call_failed");
   const batch = client.getRow("recipe_generation_batches", result.batchId!)!;
   assert.ok(batch.plan_error);
+});
+
+// F2 Step 16 regression tests: the three new market-signal context loaders
+// (loadActiveListingCrops/loadCropDemandSignal/loadRecipeEngagementSignal) are called through the
+// same fixture client the original three loaders already use, and their absence of data must never
+// break planning.
+
+Deno.test("runPlanStage: loads all three f2s16 market-signal RPCs and passes them straight through to the Planner's input", async () => {
+  const client = new FakeSupabaseClient();
+  registerHappyPathRpcs(client);
+  let capturedInput: Record<string, unknown> | undefined;
+  const runner: AgentRunner = {
+    run: async ({ input }) => {
+      capturedInput = input as Record<string, unknown>;
+      const batchId = (input as { batchId: string }).batchId;
+      const briefs = Array.from({ length: 4 }, (_, i) => makeBrief(batchId, i));
+      return {
+        output: { batchId, briefs, plannedAt: new Date().toISOString(), plannerModel: "test-model" },
+        provider: "openai",
+        model: "test-model",
+        usage: { inputTokens: 10, outputTokens: 5, totalTokens: 15 },
+        durationMs: 10,
+      };
+    },
+  };
+
+  const result = await runPlanStage(asClient(client), { batchInput: validBatchInput(), agentRunner: runner });
+
+  assert.equal(result.outcome, "planned");
+  assert.ok(capturedInput, "agent must have been called");
+  assert.deepEqual(capturedInput!.activeListingCrops, [
+    { crop: "kabak", displayName: "Kabak", activeListingCount: 3, totalQuantity: 120, farmerCount: 2 },
+  ]);
+  assert.deepEqual(capturedInput!.cropDemandSignal, [
+    { crop: "kabak", displayName: "Kabak", orderCount: 4, totalQuantity: 80 },
+  ]);
+  assert.deepEqual(capturedInput!.recipeEngagementSignal, [
+    { crop: "kabak", displayName: "Kabak", viewCount: 12, saveCount: 2, recipeCount: 1 },
+  ]);
+  // The original three context arrays must still be present, untouched, alongside the new ones.
+  assert.ok(Array.isArray(capturedInput!.seasonalCropCandidates));
+  assert.deepEqual(capturedInput!.recentRecipeMix, []);
+  assert.deepEqual(capturedInput!.existingRecipeSample, []);
+});
+
+Deno.test("runPlanStage: still completes successfully when get_active_listing_crops (and the other two f2s16 signals) return empty", async () => {
+  const client = new FakeSupabaseClient();
+  registerHappyPathRpcs(client);
+  // Overrides the happy-path fixture: no active listings, no demand, no engagement at all — the
+  // "brand new marketplace, nothing sold yet" case every f2s16 RPC must degrade to an empty array
+  // for, never an error.
+  client.onRpc("get_active_listing_crops", () => ({ data: [], error: null }));
+  client.onRpc("get_crop_demand_signal", () => ({ data: [], error: null }));
+  client.onRpc("get_recipe_engagement_signal", () => ({ data: [], error: null }));
+  const runner = fixtureAgentRunner(4);
+
+  const result = await runPlanStage(asClient(client), { batchInput: validBatchInput(), agentRunner: runner });
+
+  assert.equal(result.outcome, "planned");
+  assert.equal(result.briefCount, 4);
 });

@@ -9,6 +9,14 @@
 // `crop_config`/`recipes` table scan the model itself could somehow influence. "Editorial
 // constraints admin tarafından sağlanan" is simply the caller's own `RecipeBatchInput`
 // (focusCrops/dietFocus/notes) — no separate RPC needed, it is passed straight through.
+//
+// F2 Step 16 (additive, below the original three loaders): three more narrow RPC helpers
+// (`loadActiveListingCrops`, `loadCropDemandSignal`, `loadRecipeEngagementSignal`, backed by the
+// f2s16 migration's `get_active_listing_crops`/`get_crop_demand_signal`/
+// `get_recipe_engagement_signal`) give the Planner real marketplace signal — active supply, actual
+// orders, recipe view/save engagement — on top of the static seasonal calendar. Same narrow-RPC-only
+// discipline as the original three; no raw `listings`/`orders`/`offers`/`recipe_views`/
+// `recipe_saves` scan anywhere in this file.
 import type { SupabaseClient } from "../infra/supabase-admin.ts";
 import { RecipeAutomationError } from "../infra/errors.ts";
 
@@ -132,5 +140,123 @@ export async function loadExistingRecipeSample(
     title: String(row.title),
     status: String(row.status),
     createdAt: String(row.created_at),
+  }));
+}
+
+// -------------------------------------------------------------------------------------------------
+// F2 Recipe Automation — Step 16: real-world market-signal RPCs (f2s16 migration), added ALONGSIDE
+// the three loaders above — never replacing them. `get_seasonal_crop_candidates` stays the sole
+// source of the Planner's candidate universe (crop_config only); these three additionally tell the
+// Planner which of those candidates have real, live marketplace activity behind them right now.
+// -------------------------------------------------------------------------------------------------
+
+export interface ActiveListingCrop {
+  crop: string;
+  displayName: string | null;
+  activeListingCount: number;
+  totalQuantity: number;
+  farmerCount: number;
+}
+
+/** Narrow RPC helper: calls ONLY get_active_listing_crops(...). Never a raw `listings` table scan.
+ * "gerçek aktif arz" (PROMPT 16) — which candidate crops actually have an active listing right now,
+ * as opposed to merely falling inside crop_config's static seasonal window. */
+export async function loadActiveListingCrops(
+  client: SupabaseClient,
+  params: { limit?: number } = {},
+): Promise<ActiveListingCrop[]> {
+  const { data, error } = await client.rpc("get_active_listing_crops", {
+    p_limit: params.limit ?? 30,
+  });
+  if (error) {
+    throw new RecipeAutomationError({
+      code: "ACTIVE_LISTING_CROPS_RPC_FAILED",
+      message: "get_active_listing_crops RPC failed",
+      stage: "plan",
+      retryable: true,
+      details: { pgCode: (error as { code?: string }).code },
+    });
+  }
+  return ((data as Array<Record<string, unknown>> | null) ?? []).map((row) => ({
+    crop: String(row.crop),
+    displayName: (row.display_name as string | null) ?? null,
+    activeListingCount: Number(row.active_listing_count),
+    totalQuantity: Number(row.total_quantity),
+    farmerCount: Number(row.farmer_count),
+  }));
+}
+
+export interface CropDemandSignalEntry {
+  crop: string;
+  displayName: string | null;
+  orderCount: number;
+  totalQuantity: number;
+}
+
+/** Narrow RPC helper: calls ONLY get_crop_demand_signal(days, limit). Never a raw `orders`/`offers`
+ * table scan. "gerçek talep" (PROMPT 16) — real, accepted transactions from `orders`, never
+ * `offers` (whose `status` also carries pending/rejected/counter rows that never became a real
+ * sale and would inflate apparent demand). */
+export async function loadCropDemandSignal(
+  client: SupabaseClient,
+  params: { days?: number; limit?: number } = {},
+): Promise<CropDemandSignalEntry[]> {
+  const { data, error } = await client.rpc("get_crop_demand_signal", {
+    p_days: params.days ?? 30,
+    p_limit: params.limit ?? 20,
+  });
+  if (error) {
+    throw new RecipeAutomationError({
+      code: "CROP_DEMAND_SIGNAL_RPC_FAILED",
+      message: "get_crop_demand_signal RPC failed",
+      stage: "plan",
+      retryable: true,
+      details: { pgCode: (error as { code?: string }).code },
+    });
+  }
+  return ((data as Array<Record<string, unknown>> | null) ?? []).map((row) => ({
+    crop: String(row.crop),
+    displayName: (row.display_name as string | null) ?? null,
+    orderCount: Number(row.order_count),
+    totalQuantity: Number(row.total_quantity),
+  }));
+}
+
+export interface RecipeEngagementSignalEntry {
+  crop: string;
+  displayName: string | null;
+  viewCount: number;
+  saveCount: number;
+  recipeCount: number;
+}
+
+/** Narrow RPC helper: calls ONLY get_recipe_engagement_signal(days, limit). Never a raw
+ * `recipe_views`/`recipe_saves` table scan. "gerçek tarif etkileşimi" (PROMPT 16) — which crops'
+ * recipes are actually getting viewed/saved lately, additional to (never a replacement for)
+ * `get_recent_recipe_mix` + the deterministic `validate_recipe_plan_diversity` repeat-avoidance
+ * gate. */
+export async function loadRecipeEngagementSignal(
+  client: SupabaseClient,
+  params: { days?: number; limit?: number } = {},
+): Promise<RecipeEngagementSignalEntry[]> {
+  const { data, error } = await client.rpc("get_recipe_engagement_signal", {
+    p_days: params.days ?? 30,
+    p_limit: params.limit ?? 20,
+  });
+  if (error) {
+    throw new RecipeAutomationError({
+      code: "RECIPE_ENGAGEMENT_SIGNAL_RPC_FAILED",
+      message: "get_recipe_engagement_signal RPC failed",
+      stage: "plan",
+      retryable: true,
+      details: { pgCode: (error as { code?: string }).code },
+    });
+  }
+  return ((data as Array<Record<string, unknown>> | null) ?? []).map((row) => ({
+    crop: String(row.crop),
+    displayName: (row.display_name as string | null) ?? null,
+    viewCount: Number(row.view_count),
+    saveCount: Number(row.save_count),
+    recipeCount: Number(row.recipe_count),
   }));
 }

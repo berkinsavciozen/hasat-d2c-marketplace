@@ -17,17 +17,28 @@
 // call via context.ts, and every write (recipe_generation_batches/recipe_plan_briefs only, never
 // recipe_generation_jobs/recipes) happens AFTER it, entirely in this trusted stage-runner code the
 // agent's output can only ever flow through, never invoke.
+//
+// F2 Step 16 (additive): three more narrow reads — active listing supply, real order demand, recipe
+// view/save engagement — are loaded here alongside the original three and folded into the same
+// agent input, never replacing them. See context.ts's own Step 16 section and system-prompt.ts's
+// new instruction block for what these mean and how the Planner is told to use them.
 import type { SupabaseClient } from "../infra/supabase-admin.ts";
 import { RecipeAutomationError, toSafeErrorPayload } from "../infra/errors.ts";
 import { createAgentRunner, type AgentRunner } from "../infra/agent-runner.ts";
 import { recipeBatchInputSchema, recipePlanBatchSchema } from "../schemas.ts";
 import type { RecipeBatchInput, RecipeBrief, RecipeErrorPayload, RecipePlanBatch } from "../types.ts";
 import {
+  loadActiveListingCrops,
+  loadCropDemandSignal,
   loadExistingRecipeSample,
   loadRecentRecipeMix,
+  loadRecipeEngagementSignal,
   loadSeasonalCropCandidates,
+  type ActiveListingCrop,
+  type CropDemandSignalEntry,
   type ExistingRecipeSummary,
   type RecentRecipeMixEntry,
+  type RecipeEngagementSignalEntry,
   type SeasonalCropCandidate,
 } from "./context.ts";
 import { buildPlannerSystemPrompt } from "./system-prompt.ts";
@@ -235,6 +246,9 @@ async function runPlannerAgent(
   cropCandidates: SeasonalCropCandidate[],
   recentMix: RecentRecipeMixEntry[],
   existingRecipes: ExistingRecipeSummary[],
+  activeListingCrops: ActiveListingCrop[],
+  cropDemandSignal: CropDemandSignalEntry[],
+  recipeEngagementSignal: RecipeEngagementSignalEntry[],
 ) {
   return agentRunner.run({
     agentName: "recipe-planner",
@@ -254,6 +268,12 @@ async function runPlannerAgent(
       seasonalCropCandidates: cropCandidates,
       recentRecipeMix: recentMix,
       existingRecipeSample: existingRecipes,
+      // F2 Step 16: real-world market signals, ALONGSIDE the three original context arrays above
+      // (never replacing them) — see system-prompt.ts's own new instruction block for how the
+      // Planner is told to weigh these against the static seasonal calendar.
+      activeListingCrops,
+      cropDemandSignal,
+      recipeEngagementSignal,
     },
     outputSchema: recipePlanBatchSchema,
     model: Deno.env.get(PLANNER_MODEL_ENV_VAR) || undefined,
@@ -298,18 +318,31 @@ export async function runPlanStage(
   // rule 1 (focusCrop must be a candidate) and rule 9 (focusCrop must be in focusCrops when given)
   // are never in tension for the model.
   const hasFocusCrops = Boolean(batch.focusCrops && batch.focusCrops.length > 0);
-  const [allCandidates, recentMix, existingRecipes] = await Promise.all([
-    loadSeasonalCropCandidates(client, { onlyInSeason: !hasFocusCrops, edibleOnly: true, limit: 60 }),
-    loadRecentRecipeMix(client, { days: 30, limit: 20 }),
-    loadExistingRecipeSample(client, { limit: 30 }),
-  ]);
+  const [allCandidates, recentMix, existingRecipes, activeListingCrops, cropDemandSignal, recipeEngagementSignal] =
+    await Promise.all([
+      loadSeasonalCropCandidates(client, { onlyInSeason: !hasFocusCrops, edibleOnly: true, limit: 60 }),
+      loadRecentRecipeMix(client, { days: 30, limit: 20 }),
+      loadExistingRecipeSample(client, { limit: 30 }),
+      loadActiveListingCrops(client, { limit: 30 }),
+      loadCropDemandSignal(client, { days: 30, limit: 20 }),
+      loadRecipeEngagementSignal(client, { days: 30, limit: 20 }),
+    ]);
   const cropCandidates = hasFocusCrops
     ? allCandidates.filter((c) => batch.focusCrops!.includes(c.crop))
     : allCandidates;
 
   let agentResult;
   try {
-    agentResult = await runPlannerAgent(agentRunner, batch, cropCandidates, recentMix, existingRecipes);
+    agentResult = await runPlannerAgent(
+      agentRunner,
+      batch,
+      cropCandidates,
+      recentMix,
+      existingRecipes,
+      activeListingCrops,
+      cropDemandSignal,
+      recipeEngagementSignal,
+    );
   } catch (e) {
     const error = toSafeErrorPayload(e, {
       code: "PLANNER_AGENT_CALL_FAILED",
