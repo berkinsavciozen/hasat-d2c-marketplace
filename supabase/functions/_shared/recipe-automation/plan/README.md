@@ -20,8 +20,8 @@ function uses) with a `RecipeBatchInput` body, not a `{ jobId }` body.
 
 | File | Purpose |
 |---|---|
-| `context.ts` | Narrow RPC read helpers: `loadSeasonalCropCandidates` (`get_seasonal_crop_candidates`, f2s04), `loadRecentRecipeMix` (`get_recent_recipe_mix`, f2s04), `loadExistingRecipeSample` (`search_existing_recipes`, f2s04). No raw `crop_config`/`recipes` table scan. |
-| `system-prompt.ts` | `buildPlannerSystemPrompt()` — PROMPT 13's "Başlangıç kuralları" restated as agent instructions (`RECIPE_PLANNER_RULES`). |
+| `context.ts` | Narrow RPC read helpers: `loadSeasonalCropCandidates` (`get_seasonal_crop_candidates`, f2s04), `loadRecentRecipeMix` (`get_recent_recipe_mix`, f2s04), `loadExistingRecipeSample` (`search_existing_recipes`, f2s04). No raw `crop_config`/`recipes` table scan. **f2s16 (additive):** `loadActiveListingCrops` (`get_active_listing_crops`), `loadCropDemandSignal` (`get_crop_demand_signal`), `loadRecipeEngagementSignal` (`get_recipe_engagement_signal`) — real marketplace signal (active supply, order demand, recipe view/save engagement), see `../../migrations/20260901130000_f2s16_recipe_plan_market_signals.sql`. |
+| `system-prompt.ts` | `buildPlannerSystemPrompt()` — PROMPT 13's "Başlangıç kuralları" restated as agent instructions (`RECIPE_PLANNER_RULES`), plus (f2s16) `RECIPE_MARKET_SIGNAL_RULES` explaining the three market-signal arrays and the hard "no active supply, no focusCrop" rule. |
 | `plan-stage.ts` | `runPlanStage()` — the orchestration: resolve/create batch, idempotency check, load context, call the agent (zero tools), Zod-validate, exact-count check, `validate_recipe_plan` (f2s04, structural) then `validate_recipe_plan_diversity` (f2s13, diversity) gates, persist `recipe_plan_briefs`. |
 
 ## Planner restrictions enforced in code, not just in the prompt
