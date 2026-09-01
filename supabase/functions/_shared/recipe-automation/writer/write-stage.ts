@@ -44,6 +44,7 @@ export type RunWriteStageOutcome =
   | "agent_call_failed"
   | "invalid_output"
   | "validation_failed"
+  | "insert_failed"
   | "stored"
   | "already_stored";
 
@@ -111,7 +112,13 @@ function draftToInsertRow(jobId: string, draft: RecipeDraftPayload, normalizedIn
     source_type: draft.sourceType,
     author_type: draft.authorType,
     visibility: draft.visibility,
-    owner_id: draft.ownerId,
+    // Never `draft.ownerId` — same principle as the Planner's `briefId` override (plan-stage.ts):
+    // the Writer is never trusted to generate an identity field itself. Unlike `briefId`, there is
+    // no server-side "fresh identity" for this one either, because these drafts have no real user
+    // owner at all — they are `authorType: "hasat"` (AI-authored). A model given zero instructions
+    // about `ownerId` has been observed hallucinating a UUID here, which then violates
+    // `recipe_drafts_owner_id_fkey` against `profiles.id`. Hard-code null instead of trusting it.
+    owner_id: null,
     extraction_confidence: draft.extractionConfidence,
     ingredients: normalizedIngredients,
     steps: draft.steps,
@@ -274,13 +281,24 @@ export async function runWriteStage(
     // success case rather than an error, instead of failing a job that actually has a valid draft.
     const raced = await findExistingVersion1Draft(client, params.jobId);
     if (!raced) {
-      throw new RecipeAutomationError({
-        code: "DRAFT_INSERT_FAILED",
-        message: "recipe_drafts insert failed",
-        stage: WRITE_STAGE,
-        retryable: true,
-        details: { pgCode: (insertResult.error as { code?: string }).code },
+      // A genuine insert failure (e.g. an FK violation) — not a race. Same pattern as the other
+      // three failure branches above: record the failed stage run, fail the job (releasing the
+      // lock), and return a normal outcome. Must never throw here — an uncaught throw skips
+      // recordStageRun/failJob entirely, leaving the job's lock held and its status stuck at
+      // "running" forever (nothing re-claims it until the lock's own TTL expires, and nothing
+      // triggers that reclaim automatically).
+      const pgCode = (insertResult.error as { code?: string }).code;
+      const error = toSafeErrorPayload(
+        `recipe_drafts insert failed${pgCode ? ` (pgCode: ${pgCode})` : ""}`,
+        { code: "DRAFT_INSERT_FAILED", stage: WRITE_STAGE, retryable: true },
+      );
+      await recordStageRun(client, {
+        jobId: params.jobId, batchId: brief.batchId, stage: WRITE_STAGE, status: "failed",
+        attempt, startedAt, finishedAt: new Date().toISOString(), error,
+        provider: agentResult.provider, model: agentResult.model, usage: agentResult.usage,
       });
+      await failJob(client, { jobId: params.jobId, lockToken, stage: WRITE_STAGE, error });
+      return { outcome: "insert_failed", jobId: params.jobId, errorCode: error.code };
     }
     draftId = raced.id;
   } else {
