@@ -39,6 +39,10 @@ function parseClause(clause: string): Predicate {
 
 class FakeTable {
   rows = new Map<string, Row>();
+  /** One-shot error injected by `FakeSupabaseClient.failNextInsert()` — consumed by the very next
+   * `.insert()` against this table, then cleared, so a test can force exactly one insert failure
+   * (e.g. an FK violation) without the fake client needing a real constraint engine. */
+  pendingInsertError: { message: string; code?: string } | null = null;
 }
 
 class FakeQueryBuilder<T = Row> {
@@ -138,6 +142,11 @@ class FakeQueryBuilder<T = Row> {
 
   private async executeList(): Promise<FakeQueryResult<T[]>> {
     if (this.mode === "insert") {
+      if (this.table.pendingInsertError) {
+        const error = this.table.pendingInsertError;
+        this.table.pendingInsertError = null;
+        return { data: null, error };
+      }
       const rows = (this.insertRows ?? []).map((insertRow) => {
         const row: Row = { id: crypto.randomUUID(), ...insertRow };
         this.table.rows.set(row.id as string, row);
@@ -201,6 +210,12 @@ export class FakeSupabaseClient {
   seed(tableName: string, rows: Row[]): void {
     const t = this.table(tableName);
     for (const row of rows) t.rows.set(row.id as string, row);
+  }
+
+  /** Test setup: makes the very next `.insert()` against `tableName` fail with `error` (e.g. an
+   * FK-violation-shaped `{ message, code: "23503" }`), then reverts to normal behavior. */
+  failNextInsert(tableName: string, error: { message: string; code?: string }): void {
+    this.table(tableName).pendingInsertError = error;
   }
 
   getRow(tableName: string, id: string): Row | null {

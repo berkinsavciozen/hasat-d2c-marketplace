@@ -242,3 +242,51 @@ Deno.test("runWriteStage: an ingredient carrying crop_id is rejected (crop text 
   const result = await runWriteStage(asClient(client), { jobId, agentRunner: runner });
   assert.equal(result.outcome, "invalid_output");
 });
+
+Deno.test("runWriteStage: a hallucinated ownerId from the Writer is never persisted — owner_id is always stored as null", async () => {
+  // Live-observed bug: the Writer's structured output includes an `ownerId` field it has zero
+  // instructions about, and it sometimes fabricates a UUID that doesn't exist in `profiles`,
+  // violating recipe_drafts_owner_id_fkey (pgCode 23503). These drafts are authorType: "hasat"
+  // (AI-authored, no real user owner) — draftToInsertRow must hard-code owner_id to null
+  // regardless of whatever the Writer returned.
+  const client = new FakeSupabaseClient();
+  const jobId = seedWriteJob(client);
+  registerHappyPathRpcs(client);
+  const runner = fixtureAgentRunner({ ownerId: crypto.randomUUID() });
+
+  const result = await runWriteStage(asClient(client), { jobId, agentRunner: runner });
+
+  assert.equal(result.outcome, "stored");
+  const draft = client.getRow("recipe_drafts", result.draftId!)!;
+  assert.equal(draft.owner_id, null);
+});
+
+Deno.test("runWriteStage: a genuine (non-race) recipe_drafts insert failure -> failJob, outcome insert_failed, job left retryable with lock released", async () => {
+  // Live-observed bug: an FK-violation-shaped insert error that ISN'T a unique(job_id, version)
+  // race used to `throw` directly, bypassing recordStageRun/failJob entirely — the job's
+  // last_error was never set, no recipe_generation_stage_runs row was written, and locked_by was
+  // never cleared, leaving the job stuck at status "running" forever. This proves the fix: the
+  // function returns normally with outcome "insert_failed" instead of throwing, and the job ends
+  // up in the same recorded, unlocked state the other three failure branches leave it in.
+  const client = new FakeSupabaseClient();
+  const jobId = seedWriteJob(client);
+  registerHappyPathRpcs(client);
+  client.failNextInsert("recipe_drafts", { message: "insert or update on table \"recipe_drafts\" violates foreign key constraint \"recipe_drafts_owner_id_fkey\"", code: "23503" });
+
+  const result = await runWriteStage(asClient(client), { jobId, agentRunner: fixtureAgentRunner() });
+
+  assert.equal(result.outcome, "insert_failed");
+  assert.equal(result.errorCode, "DRAFT_INSERT_FAILED");
+
+  const job = client.getRow("recipe_generation_jobs", jobId)!;
+  assert.equal(job.stage, "write", "a failed job stays at its current stage, not advanced");
+  assert.equal(job.status, "retryable", "attempt 1 of 3 with a retryable error must be scheduled for retry");
+  assert.equal(job.locked_by, null, "lock must be released, never left stuck");
+  assert.notEqual(job.last_error, undefined, "last_error must be populated, not silently skipped");
+
+  const { data: stageRuns } = await client.from("recipe_generation_stage_runs");
+  const failedRuns = (stageRuns as Array<{ job_id: string; status: string }>).filter(
+    (r) => r.job_id === jobId && r.status === "failed",
+  );
+  assert.equal(failedRuns.length, 1, "a failed recipe_generation_stage_runs row must be written");
+});
