@@ -1,9 +1,13 @@
 // Deno.test suite for webp-codec.ts (F2 Step 09 — Gate B evidence). Run with:
-//   deno test --allow-net --allow-env --allow-read --node-modules-dir=none \
+//   deno test --allow-net --allow-env --node-modules-dir=none \
 //     supabase/functions/_shared/recipe-automation/image/webp-codec.test.ts
 //
+// No --allow-read needed as of the 2026-09-01 hotfix: the encoder/decoder WASM bytes are now
+// base64-embedded directly in webp-codec.ts (see that file's header) rather than read from a
+// vendored file on disk.
+//
 // These are the tests behind the Step 09 completion report's Gate B evidence: manual WASM
-// instantiation from the vendored bytes succeeds (no self-locate/fetch failure), q82 encoding
+// instantiation from the embedded bytes succeeds (no self-locate/fetch failure), q82 encoding
 // intent is honored (pixel fidelity improves monotonically with quality), dimensions round-trip
 // exactly through decode, and no EXIF/ICCP/XMP metadata chunk is ever present.
 import assert from "node:assert/strict";

@@ -1,12 +1,29 @@
-# Vendored WebP WASM binaries (F2 Step 09 — Gate B)
+# WebP WASM binaries (F2 Step 09 — Gate B)
 
-`webp_enc.wasm` and `webp_dec.wasm` are the non-SIMD Emscripten WASM binaries from
+`webp_enc.wasm` and `webp_dec.wasm` were the non-SIMD Emscripten WASM binaries from
 [`@jsquash/webp@1.5.0`](https://www.npmjs.com/package/@jsquash/webp)
 (`codec/enc/webp_enc.wasm` / `codec/dec/webp_dec.wasm` in that package), which itself vendors
 Google's `libwebp` encoder/decoder compiled to WebAssembly (Apache-2.0, see
 [the codec's own LICENSE](https://github.com/jamsinclair/jSquash/blob/main/packages/webp/codec/LICENSE.codec.md)).
 
-## Why these are committed here instead of resolved at import time
+## 2026-09-01 hotfix: no longer vendored as separate files here
+
+These two files used to live in this directory and were read via
+`Deno.readFile(new URL("./vendor/webp_enc.wasm", import.meta.url))`. That depended on Supabase's
+Edge Function deploy pipeline actually bundling non-JS/TS binary assets alongside the function's
+source — **live-verified NOT to hold**: inspecting the deployed `recipe-stage-image` function's own
+file listing after both an MCP-tool deploy and a `supabase functions deploy` CLI run via GitHub
+Actions showed neither included `vendor/*.wasm`. Every real invocation failed with
+`IMAGE_WEBP_ENCODE_FAILED` ("path not found") — the encoder was silently missing in every
+production deploy this function ever had.
+
+Fix: both `.wasm` payloads are now embedded as base64 string constants directly in
+`../webp-codec.ts`, decoded via `atob()` at init time. This removes the dependency on
+asset-bundling entirely — whatever a deploy pipeline does with non-`.ts` files, the bytes now
+travel with the source itself. This directory is kept only for this README's provenance notes; the
+binaries themselves are not present here anymore (see `../webp-codec.ts` for the live copy).
+
+## Why a manually-instantiated WASM module at all
 
 `@jsquash/webp`'s own `encode()`/`decode()` entry points lazily call `init()`, which by default
 lets the Emscripten glue self-locate and `fetch()`/`readFile()` its `.wasm` file relative to the
@@ -15,14 +32,9 @@ F2 Step 01 hit on Supabase's Edge Runtime (a sandboxed Deno isolate with no file
 an npm cache directory and no guarantee a same-origin relative `fetch()` resolves). jSquash's own
 documented fix for constrained runtimes (Cloudflare Workers, Deno Deploy) is to instantiate the
 WASM module yourself and hand `init()` a `WebAssembly.Module` instead of letting it self-locate —
-see `../webp-codec.ts`. That still requires the raw `.wasm` bytes to come from *somewhere* Deno can
-reach deterministically at both `deno test` time and Supabase deploy time; vendoring the two files
-directly into this directory and reading them via
-`Deno.readFile(new URL("./vendor/webp_enc.wasm", import.meta.url))` is that deterministic source —
-no runtime dependency on npm's CDN, no reliance on Deno's npm-cache layout, works identically
-locally and once deployed (Supabase bundles a function's entire directory, binary assets included).
+see `../webp-codec.ts`.
 
-The SIMD variant (`webp_enc_simd.wasm`/`webp_enc_simd.js`) was deliberately NOT vendored — Supabase
+The SIMD variant (`webp_enc_simd.wasm`/`webp_enc_simd.js`) was deliberately not used — Supabase
 Edge Runtime's exact CPU/SIMD support isn't something this step could verify, and the non-SIMD
 binary is the portable, always-correct choice; it costs some encode speed, not correctness.
 
@@ -33,6 +45,7 @@ binary is the portable, always-correct choice; it costs some encode speed, not c
 - `webp_dec.wasm` sha256: `30fb52fa2a80166d25ba7debf902218904ba1f05ccce9f959f722beff9e2f344`
 
 To upgrade: download the new package's `codec/enc/webp_enc.wasm` and `codec/dec/webp_dec.wasm`,
-replace these two files, bump the `npm:@jsquash/webp@...` version pin in `../webp-codec.ts` to
-match (the JS glue and the WASM binary must come from the same package version), and re-run
-`../webp-codec.test.ts`.
+base64-encode each (`base64 -w0 webp_enc.wasm`) and replace the `ENCODER_WASM_BASE64` /
+`DECODER_WASM_BASE64` constants in `../webp-codec.ts`, bump the `npm:@jsquash/webp@...` version pin
+in that same file to match (the JS glue and the WASM binary must come from the same package
+version), update the sha256 values above, and re-run `../webp-codec.test.ts`.
