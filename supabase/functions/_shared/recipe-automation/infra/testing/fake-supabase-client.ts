@@ -83,6 +83,16 @@ class FakeQueryBuilder<T = Row> {
     return this;
   }
 
+  /** Mirrors supabase-js's `.lte(col, val)` — string/ISO-timestamp comparison, the only shape any
+   * caller in this pipeline needs (recipe-stage-sweep's `next_attempt_at <= now()` check). */
+  lte(col: string, val: unknown): this {
+    this.predicates.push((row) => {
+      const v = row[col];
+      return v !== null && v !== undefined && (v as string | number) <= (val as string | number);
+    });
+    return this;
+  }
+
   /** Mirrors supabase-js's `.is(col, null)` — the only value real callers in this pipeline ever
    * pass (an IS NULL check; `.is(col, true/false)` is not used anywhere this fake backs). Treats a
    * genuinely-absent key the same as an explicit `null`, matching Postgres' own IS NULL semantics. */
