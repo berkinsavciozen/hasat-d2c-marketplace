@@ -1,11 +1,14 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 
 import { supabase } from "@/integrations/supabase/client";
 import { SectionCard } from "@/components/hasat/common/SectionCard";
 import { StatCard } from "@/components/hasat/common/StatCard";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import { ADMIN_RECIPE_KEY_STORAGE } from "./admin.recipes";
 
@@ -54,7 +57,291 @@ const REVIEW_STATUS_STYLES: Record<ReviewStatus, string> = {
   rejected: "bg-[color-mix(in_oklab,var(--hred)_20%,transparent)] text-[color:var(--hred)]",
 };
 
+// ---------------------------------------------------------------------------
+// Manual batch creation (mirrors admin-recipe-plan-create/index.ts's own response shape —
+// runPlanStage's RunPlanStageResult, forwarded as-is).
+// ---------------------------------------------------------------------------
+
+type RunPlanStageResult = {
+  outcome: string;
+  batchId?: string;
+  briefCount?: number;
+  errorCode?: string;
+  issues?: unknown[];
+};
+
+type CreateBatchForm = {
+  targetCount: string;
+  focusCrops: string;
+  dietFocus: string;
+  notes: string;
+};
+
+const EMPTY_CREATE_FORM: CreateBatchForm = { targetCount: "", focusCrops: "", dietFocus: "", notes: "" };
+
+function splitCsv(value: string): string[] | null {
+  const items = value.split(",").map((s) => s.trim()).filter(Boolean);
+  return items.length > 0 ? items : null;
+}
+
+const CREATE_OUTCOME_LABELS: Record<string, string> = {
+  planned: "Plan oluşturuldu",
+  already_planned: "Bu batch zaten planlanmış",
+  invalid_batch_input: "Girdi geçersiz",
+  batch_not_reviewable: "Batch onay bekleyen durumda değil",
+  agent_call_failed: "Planlayıcı çağrısı başarısız oldu",
+  invalid_output: "Planlayıcı çıktısı geçersiz",
+  brief_count_mismatch: "Üretilen tarif sayısı hedeften farklı",
+  structural_validation_failed: "Yapısal doğrulama başarısız",
+  diversity_validation_failed: "Çeşitlilik doğrulaması başarısız",
+};
+
+// ---------------------------------------------------------------------------
+// Automatic weekly schedule (mirrors admin-recipe-plan-schedule/index.ts's own response shape).
+// ---------------------------------------------------------------------------
+
+type SchedulePreset = "weekly" | "monthly" | "off" | "custom";
+type ScheduleState = { schedule: string | null; active: boolean; preset: SchedulePreset };
+
+const SCHEDULE_PRESET_LABELS: Record<SchedulePreset, string> = {
+  weekly: "Haftalık — her Pazartesi 06:00",
+  monthly: "Aylık — ayın 1'i, 06:00",
+  off: "Kapalı",
+  custom: "Özel (dashboard dışından ayarlanmış)",
+};
+
+const SCHEDULE_PRESET_CRON: Record<"weekly" | "monthly" | "off", string> = {
+  weekly: "0 6 * * 1",
+  monthly: "0 6 1 * *",
+  off: "off",
+};
+
+class UnauthorizedActionError extends Error {}
+
+/** POSTs/GETs an admin-recipe-plan-* function and returns the parsed body for both 2xx (`data`)
+ * and non-2xx responses, since supabase-js only populates `data` on 2xx and otherwise hands back a
+ * FunctionsHttpError whose `context` is the raw, unread Response — same helper shape
+ * admin.recipes.plan.$batchId.tsx's own `invokeAdminPlanAction` uses, generalized over function
+ * name/method so this page can call both admin-recipe-plan-create and admin-recipe-plan-schedule
+ * with it. */
+async function invokeAdminFn<T>(
+  functionName: string,
+  adminKey: string,
+  options: { method: "GET" | "POST"; body?: Record<string, unknown> },
+): Promise<T> {
+  const { data, error } = await supabase.functions.invoke(functionName, {
+    method: options.method,
+    headers: { "x-admin-key": adminKey, "content-type": "application/json" },
+    body: options.body,
+  });
+  if (!error) return data as T;
+
+  const anyErr = error as { context?: Response; status?: number; message?: string };
+  const status = anyErr.context?.status ?? anyErr.status;
+  if (status === 401 || status === 403) throw new UnauthorizedActionError("unauthorized");
+
+  if (anyErr.context && typeof anyErr.context.json === "function") {
+    try {
+      return (await anyErr.context.json()) as T;
+    } catch {
+      // fall through to throw below
+    }
+  }
+  throw error;
+}
+
+function CreateBatchCard({ adminKey, onCreated }: { adminKey: string; onCreated: () => void }) {
+  const [open, setOpen] = useState(false);
+  const [form, setForm] = useState<CreateBatchForm>(EMPTY_CREATE_FORM);
+  const [result, setResult] = useState<RunPlanStageResult | null>(null);
+
+  const mutation = useMutation({
+    mutationFn: () => {
+      const body: Record<string, unknown> = {
+        targetCount: Number(form.targetCount),
+        focusCrops: splitCsv(form.focusCrops),
+        dietFocus: splitCsv(form.dietFocus) ?? [],
+        notes: form.notes.trim() || null,
+      };
+      return invokeAdminFn<RunPlanStageResult>("admin-recipe-plan-create", adminKey, { method: "POST", body });
+    },
+    onSuccess: (data) => {
+      setResult(data);
+      const succeeded = data.outcome === "planned" || data.outcome === "already_planned";
+      if (succeeded) {
+        toast.success(CREATE_OUTCOME_LABELS[data.outcome] ?? data.outcome);
+        setForm(EMPTY_CREATE_FORM);
+        onCreated();
+      } else {
+        toast.error(CREATE_OUTCOME_LABELS[data.outcome] ?? data.outcome);
+      }
+    },
+    onError: (err) => {
+      toast.error(err instanceof UnauthorizedActionError ? "Hatalı anahtar" : "Plan oluşturma başarısız");
+    },
+  });
+
+  const targetCountNum = Number(form.targetCount);
+  const canSubmit =
+    form.targetCount.trim() !== "" && Number.isInteger(targetCountNum) && targetCountNum > 0 && targetCountNum <= 25;
+  const succeeded = result?.outcome === "planned" || result?.outcome === "already_planned";
+
+  return (
+    <SectionCard
+      title="Yeni Plan Oluştur"
+      action={
+        <Button type="button" variant="outline" size="sm" onClick={() => setOpen((o) => !o)}>
+          {open ? "Kapat" : "Aç"}
+        </Button>
+      }
+    >
+      {!open ? (
+        <p className="text-xs text-hmuted">Elle yeni bir plan batch'i tetiklemek için açın.</p>
+      ) : (
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            if (!canSubmit || mutation.isPending) return;
+            setResult(null);
+            mutation.mutate();
+          }}
+          className="space-y-3"
+        >
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <label className="text-xs space-y-1">
+              <span className="text-hmuted block">Hedef Tarif Sayısı *</span>
+              <Input
+                type="number"
+                min={1}
+                max={25}
+                value={form.targetCount}
+                onChange={(e) => setForm((f) => ({ ...f, targetCount: e.target.value }))}
+                required
+              />
+            </label>
+            <label className="text-xs space-y-1">
+              <span className="text-hmuted block">Odak Ürünler</span>
+              <Input
+                value={form.focusCrops}
+                onChange={(e) => setForm((f) => ({ ...f, focusCrops: e.target.value }))}
+                placeholder="opsiyonel, virgülle ayır"
+              />
+            </label>
+            <label className="text-xs space-y-1">
+              <span className="text-hmuted block">Diyet Odağı</span>
+              <Input
+                value={form.dietFocus}
+                onChange={(e) => setForm((f) => ({ ...f, dietFocus: e.target.value }))}
+                placeholder="opsiyonel, virgülle ayır"
+              />
+            </label>
+          </div>
+          <label className="text-xs space-y-1 block">
+            <span className="text-hmuted block">Not</span>
+            <Textarea
+              rows={2}
+              value={form.notes}
+              onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))}
+              placeholder="opsiyonel"
+            />
+          </label>
+
+          <Button type="submit" size="sm" disabled={!canSubmit || mutation.isPending}>
+            {mutation.isPending ? "Oluşturuluyor…" : "Plan Oluştur"}
+          </Button>
+
+          {result && (
+            <div
+              className={cn(
+                "rounded-lg border px-3 py-2 text-xs",
+                succeeded ? "border-[color:var(--sage)] text-[color:var(--sage)]" : "border-[color:var(--hred)] text-[color:var(--hred)]",
+              )}
+            >
+              <div className="font-medium">{CREATE_OUTCOME_LABELS[result.outcome] ?? result.outcome}</div>
+              {result.errorCode && <div className="mt-0.5 font-mono">{result.errorCode}</div>}
+              {result.issues && result.issues.length > 0 && (
+                <div className="mt-0.5 font-mono break-all">{JSON.stringify(result.issues)}</div>
+              )}
+              {result.batchId && succeeded && (
+                <Link
+                  to="/admin/recipes/plan/$batchId"
+                  params={{ batchId: result.batchId }}
+                  className="mt-1 inline-block underline font-medium"
+                >
+                  Batch'i görüntüle{result.briefCount != null ? ` (${result.briefCount} brief)` : ""}
+                </Link>
+              )}
+            </div>
+          )}
+        </form>
+      )}
+    </SectionCard>
+  );
+}
+
+function ScheduleCard({ adminKey }: { adminKey: string }) {
+  const [pendingPreset, setPendingPreset] = useState<"weekly" | "monthly" | "off" | "">("");
+
+  const query = useQuery({
+    queryKey: ["admin-recipe-plan-schedule", adminKey],
+    retry: false,
+    queryFn: () => invokeAdminFn<ScheduleState>("admin-recipe-plan-schedule", adminKey, { method: "GET" }),
+  });
+
+  const mutation = useMutation({
+    mutationFn: (preset: "weekly" | "monthly" | "off") =>
+      invokeAdminFn<ScheduleState>("admin-recipe-plan-schedule", adminKey, {
+        method: "POST",
+        body: { cronExpression: SCHEDULE_PRESET_CRON[preset] },
+      }),
+    onSuccess: (data) => {
+      toast.success(`Sıklık güncellendi: ${SCHEDULE_PRESET_LABELS[data.preset]}`);
+      setPendingPreset("");
+      query.refetch();
+    },
+    onError: (err) => {
+      toast.error(err instanceof UnauthorizedActionError ? "Hatalı anahtar" : "Sıklık güncellenemedi");
+    },
+  });
+
+  const current = query.data?.preset;
+  const selectValue = pendingPreset || (current === "weekly" || current === "monthly" || current === "off" ? current : "");
+
+  return (
+    <SectionCard title="Otomatik Plan Sıklığı">
+      <div className="flex flex-wrap items-center gap-3">
+        <div className="text-sm min-w-[220px]">
+          {query.isLoading
+            ? "Yükleniyor…"
+            : query.isError
+              ? "Durum okunamadı"
+              : `Şu an: ${SCHEDULE_PRESET_LABELS[query.data!.preset]}`}
+        </div>
+        <select
+          value={selectValue}
+          onChange={(e) => setPendingPreset(e.target.value as "weekly" | "monthly" | "off")}
+          className="rounded-lg border px-3 py-2 text-sm bg-background"
+        >
+          <option value="" disabled>Seçin…</option>
+          <option value="weekly">Haftalık</option>
+          <option value="monthly">Aylık</option>
+          <option value="off">Kapalı</option>
+        </select>
+        <Button
+          type="button"
+          size="sm"
+          disabled={!pendingPreset || mutation.isPending}
+          onClick={() => pendingPreset && mutation.mutate(pendingPreset)}
+        >
+          {mutation.isPending ? "Kaydediliyor…" : "Kaydet"}
+        </Button>
+      </div>
+    </SectionCard>
+  );
+}
+
 function AdminRecipePlanBatchesPage() {
+  const queryClient = useQueryClient();
   const [key, setKey] = useState("");
   const [submittedKey, setSubmittedKey] = useState<string | null>(null);
   const [reviewStatusFilter, setReviewStatusFilter] = useState<ReviewStatus | "">("");
@@ -152,6 +439,13 @@ function AdminRecipePlanBatchesPage() {
           <StatCard label="Onay bekleyen" accent="saffron" value={pendingCount} />
           <StatCard label="Onaylanan" accent="sage" value={approvedCount} />
         </div>
+
+        <CreateBatchCard
+          adminKey={submittedKey}
+          onCreated={() => queryClient.invalidateQueries({ queryKey: ["admin-recipe-plan-batches"] })}
+        />
+
+        <ScheduleCard adminKey={submittedKey} />
 
         <div className="flex flex-wrap gap-3">
           <select
