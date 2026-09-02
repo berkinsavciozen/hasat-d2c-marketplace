@@ -122,6 +122,38 @@ Deno.test("runRetrySweep: never touches a queued, awaiting_approval, or terminal
   assert.equal(calls.length, 0);
 });
 
+Deno.test("runRetrySweep: redispatches a job approved but stuck awaiting publish", async () => {
+  const client = new FakeSupabaseClient();
+  const jobId = seedJob(client, { stage: "awaiting_approval", status: "approved" });
+  const calls: Array<{ jobId: string; functionName: string }> = [];
+  registerDispatchRpc(client, calls);
+  Deno.env.set("RECIPE_STAGE_DISPATCH_SECRET", "test-secret");
+
+  const result = await runRetrySweep(asClient(client));
+
+  assert.equal(result.approvedAwaitingPublishRedispatched, 1);
+  assert.equal(result.retryableRedispatched, 0);
+  assert.equal(result.staleLockRedispatched, 0);
+  assert.deepEqual(result.skippedUnknownStage, []);
+  assert.equal(calls.length, 1);
+  assert.equal(calls[0].jobId, jobId);
+  assert.equal(calls[0].functionName, "recipe-stage-publish");
+});
+
+Deno.test("runRetrySweep: never touches an awaiting_approval job that hasn't been approved yet", async () => {
+  const client = new FakeSupabaseClient();
+  seedJob(client, { stage: "awaiting_approval", status: "awaiting_approval" });
+  seedJob(client, { stage: "awaiting_approval", status: "rejected" });
+  const calls: Array<{ jobId: string; functionName: string }> = [];
+  registerDispatchRpc(client, calls);
+  Deno.env.set("RECIPE_STAGE_DISPATCH_SECRET", "test-secret");
+
+  const result = await runRetrySweep(asClient(client));
+
+  assert.equal(result.approvedAwaitingPublishRedispatched, 0);
+  assert.equal(calls.length, 0);
+});
+
 Deno.test("runRetrySweep: redispatches both a due-retryable job and a stale-lock job in one tick", async () => {
   const client = new FakeSupabaseClient();
   const retryableJobId = seedJob(client, { stage: "finalize", status: "retryable", next_attempt_at: PAST, locked_by: null });
