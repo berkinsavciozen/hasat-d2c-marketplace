@@ -30,7 +30,7 @@ import { normalizeEmptyUrlFields } from "../writer/write-stage.ts";
 import { validateDraft } from "../writer/validate-draft.ts";
 import { buildReviserSystemPrompt } from "./system-prompt.ts";
 import { loadDraftByVersion, loadLatestQaResult, type DraftAtVersion, type LatestQaResult } from "./context.ts";
-import { computeAllowedChangeSurface, findOutOfScopeChanges } from "./allowed-changes.ts";
+import { computeAllowedChangeSurface, findOutOfScopeChanges, reconcileOutOfScopeChanges } from "./allowed-changes.ts";
 
 const REVISE_STAGE = "revise" as const;
 const NEXT_STAGE = "qa" as const;
@@ -410,27 +410,40 @@ export async function runReviseStage(
 
   // Step 08A: the mechanical enforcement half of the boundary — diff the candidate against the
   // EXACT previous draft (never "the current highest version"; see this function's opening
-  // comment) and reject outright if anything outside the surface computed above changed. No
-  // partial acceptance: an agent call that both fixed the flagged issue AND drifted on an unrelated
-  // field is treated the same as one that only drifted — see allowed-changes.ts's own module
-  // header for why "reject the whole candidate" rather than "keep the good part".
+  // comment) against the surface computed above. Any out-of-scope change is force-reverted to
+  // `previous`'s own value, server-side, rather than rejecting the whole candidate outright — a
+  // Reviser call that both fixed the flagged issue AND drifted on an unrelated field (the common
+  // real-world failure mode; see allowed-changes.ts's own module header) now still gets the fix it
+  // was asked for, with the drift silently corrected instead of discarding the good part too.
   const outOfScopeChanges = findOutOfScopeChanges(targetDraft.payload, revisedDraft, surfaceResult.surface);
+  let finalDraft = revisedDraft;
   if (outOfScopeChanges.length > 0) {
-    const error = toSafeErrorPayload(
-      `revised draft changed fields outside the blocking-issue-derived allowed surface: ${outOfScopeChanges.join(", ")}`,
-      { code: "REVISER_OUT_OF_SCOPE_CHANGE", stage: REVISE_STAGE, retryable: true },
-    );
-    await recordStageRun(client, {
-      jobId: params.jobId, batchId: brief.batchId, stage: REVISE_STAGE, status: "failed",
-      attempt, startedAt, finishedAt: new Date().toISOString(), error,
-      output: { draftId: targetDraft.id, draftVersion: targetDraft.version, outOfScopeChanges },
-      provider: agentResult.provider, model: agentResult.model, usage: agentResult.usage,
-    });
-    await failJob(client, { jobId: params.jobId, lockToken, stage: REVISE_STAGE, error });
-    return { outcome: "out_of_scope_change", jobId: params.jobId, errorCode: error.code };
+    finalDraft = reconcileOutOfScopeChanges(targetDraft.payload, revisedDraft, surfaceResult.surface);
+
+    // Defensive re-check: reconcileOutOfScopeChanges mirrors findOutOfScopeChanges's own allow/deny
+    // logic field for field, so this should always come back empty. A non-empty result here means
+    // that mirroring itself failed to close every violation (e.g. `previous` — a known-valid stored
+    // draft — somehow still reads as out-of-scope against its own surface) — fail the job rather
+    // than silently ship a not-fully-reconciled draft. REVISER_OUT_OF_SCOPE_CHANGE stays wired for
+    // exactly this fallback even though the normal path no longer reaches it.
+    const remainingOutOfScopeChanges = findOutOfScopeChanges(targetDraft.payload, finalDraft, surfaceResult.surface);
+    if (remainingOutOfScopeChanges.length > 0) {
+      const error = toSafeErrorPayload(
+        `revised draft changed fields outside the blocking-issue-derived allowed surface, and forcing them back to the previous draft's values did not fully resolve it: ${remainingOutOfScopeChanges.join(", ")}`,
+        { code: "REVISER_OUT_OF_SCOPE_CHANGE", stage: REVISE_STAGE, retryable: true },
+      );
+      await recordStageRun(client, {
+        jobId: params.jobId, batchId: brief.batchId, stage: REVISE_STAGE, status: "failed",
+        attempt, startedAt, finishedAt: new Date().toISOString(), error,
+        output: { draftId: targetDraft.id, draftVersion: targetDraft.version, outOfScopeChanges, remainingOutOfScopeChanges },
+        provider: agentResult.provider, model: agentResult.model, usage: agentResult.usage,
+      });
+      await failJob(client, { jobId: params.jobId, lockToken, stage: REVISE_STAGE, error });
+      return { outcome: "out_of_scope_change", jobId: params.jobId, errorCode: error.code };
+    }
   }
 
-  const validation = await validateDraft(client, revisedDraft);
+  const validation = await validateDraft(client, finalDraft);
   const blockingValidationIssues = validation.issues.filter((issue) => issue.severity === "blocking");
 
   if (!validation.valid || blockingValidationIssues.length > 0) {
@@ -450,7 +463,7 @@ export async function runReviseStage(
 
   const insertResult = await client
     .from("recipe_drafts")
-    .insert(draftToInsertRow(params.jobId, nextVersion, revisedDraft, validation.normalizedIngredients))
+    .insert(draftToInsertRow(params.jobId, nextVersion, finalDraft, validation.normalizedIngredients))
     .select("id")
     .single();
 
@@ -480,6 +493,9 @@ export async function runReviseStage(
     output: {
       draftId, version: nextVersion, revisionCount: nextRevisionCount,
       resolvedIssueCodes: qaResult.blockingIssues.map((issue) => issue.code),
+      // Present only when the Reviser's own candidate touched something outside the blocking-issue
+      // surface and had it force-reverted — see the reconciliation above.
+      forcedRevertFields: outOfScopeChanges.length > 0 ? outOfScopeChanges : undefined,
     },
     provider: agentResult.provider, model: agentResult.model, usage: agentResult.usage,
   });

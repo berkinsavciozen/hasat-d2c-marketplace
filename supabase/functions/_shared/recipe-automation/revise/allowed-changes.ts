@@ -21,8 +21,19 @@
 //      changed).
 //   2. `findOutOfScopeChanges` — diffs the Reviser's candidate draft against the EXACT previous
 //      draft it was revising, field by field, and reports every change that falls outside the
-//      surface computed in step 1. `revise-stage.ts` rejects the candidate outright if this reports
-//      anything at all — no partial acceptance, no "fix the good parts and drop the rest".
+//      surface computed in step 1.
+//   3. `reconcileOutOfScopeChanges` — the mechanical fix for what `findOutOfScopeChanges` reports:
+//      rather than rejecting the whole candidate the moment anything is out of scope (the original
+//      Step 08A behavior — production data showed this made even a GOOD fix for the flagged issue
+//      get discarded whenever the same agent call also touched something QA never flagged, e.g.
+//      job 67567ad5-5ee7-4dd9-a60d-6546687d811e's `INGREDIENT_CROP_UNKNOWN` x5 on ingredients QA
+//      never named), every out-of-scope field/subtree is forced back to `previous`'s own value,
+//      server-side, independent of whatever the Reviser put there — the same "don't trust the
+//      model, override on the server" principle this codebase already applies to jobId/briefId/
+//      ownerId. `revise-stage.ts` runs `findOutOfScopeChanges` again against the reconciled result
+//      as a defensive check (see that call site) before treating it as safe to proceed — the error
+//      code `REVISER_OUT_OF_SCOPE_CHANGE` stays wired for that fallback even though the normal path
+//      no longer reaches it.
 //
 // Deliberately conservative, not exhaustive: a handful of structural cases this does NOT attempt to
 // reconcile (renumbering every step's stepNo after an ingredient-driven step removal; adding a
@@ -374,8 +385,10 @@ function diffSteps(
 
 /**
  * Returns every change in `candidate` (relative to `previous`) that falls outside `surface` — an
- * empty array means the candidate is fully in-scope. `revise-stage.ts` rejects the candidate
- * outright if this returns anything at all (see this module's header).
+ * empty array means the candidate is fully in-scope. Used both to decide whether
+ * `reconcileOutOfScopeChanges` below has anything to do, and, run a second time against ITS
+ * output, as the defensive check that the reconciliation actually closed every violation (see
+ * revise-stage.ts's call site).
  */
 export function findOutOfScopeChanges(
   previous: RecipeDraftPayload,
@@ -398,4 +411,125 @@ export function findOutOfScopeChanges(
   violations.push(...diffSteps(previous.steps, candidate.steps, surface));
 
   return violations;
+}
+
+// ---------------------------------------------------------------------------------------------
+// 3. Force-reverting out-of-scope changes back to `previous`'s own values
+// ---------------------------------------------------------------------------------------------
+//
+// Each `reconcile*` helper below mirrors its `diff*` counterpart's exact allow/deny logic field
+// for field — the two must never drift apart, since `findOutOfScopeChanges` re-run against this
+// module's output is what revise-stage.ts trusts to confirm nothing out-of-scope survived. Where
+// `diff*` records a violation string, `reconcile*` instead takes `previous`'s value for that exact
+// location; every in-scope (or already-unchanged) location keeps `candidate`'s value.
+
+/**
+ * Ingredients counterpart to `diffIngredients`. The two structural shapes that function
+ * recognizes as reconcilable (a same-length array with per-item/per-field permission checks, or
+ * an exactly-one-item removal at a permitted index) are reconstructed field-by-field /
+ * item-by-item; anything else — including a same-length array where a change fell outside
+ * `ingredientsWhole`/per-item permission in a way that isn't a clean field swap, or any
+ * unrecognized structural shape — falls back to `previous` in full for the whole array, since
+ * there is no safe finer-grained location to preserve once the shape itself is unrecognized.
+ */
+function reconcileIngredients(
+  prev: readonly RecipeIngredientDraft[],
+  cand: readonly RecipeIngredientDraft[],
+  surface: AllowedChangeSurface,
+): RecipeIngredientDraft[] {
+  if (deepEqual(prev, cand)) return [...cand];
+  if (surface.ingredientsWhole) return [...cand];
+
+  if (prev.length === cand.length) {
+    return prev.map((prevItem, i) => {
+      const candItem = cand[i];
+      if (deepEqual(prevItem, candItem)) return candItem;
+      if (surface.ingredientIndices.has(i)) return candItem;
+
+      const allowedFields = surface.ingredientItemFields.get(i);
+      const prevRec = prevItem as unknown as Record<string, unknown>;
+      const candRec = candItem as unknown as Record<string, unknown>;
+      const merged: Record<string, unknown> = { ...prevRec };
+      for (const key of MUTABLE_INGREDIENT_FIELDS) {
+        merged[key] = allowedFields?.has(key) ? candRec[key] : prevRec[key];
+      }
+      return merged as unknown as RecipeIngredientDraft;
+    });
+  }
+
+  if (cand.length === prev.length - 1) {
+    for (let removedIndex = 0; removedIndex < prev.length; removedIndex++) {
+      const reconstructed = [...prev.slice(0, removedIndex), ...prev.slice(removedIndex + 1)];
+      if (deepEqual(reconstructed, cand)) {
+        return surface.ingredientIndices.has(removedIndex) ? [...cand] : [...prev];
+      }
+    }
+  }
+
+  return [...prev];
+}
+
+/**
+ * Steps counterpart to `diffSteps`. `photoUrl` is force-reverted unconditionally on every item —
+ * never grantable, exactly mirroring `diffSteps`'s own unconditional check — even when `stepsWhole`
+ * permits every other field on that step. A length change falls back to `previous` in full unless
+ * `stepsWhole` was granted, matching `diffSteps` exactly.
+ */
+function reconcileSteps(
+  prev: readonly RecipeStepDraft[],
+  cand: readonly RecipeStepDraft[],
+  surface: AllowedChangeSurface,
+): RecipeStepDraft[] {
+  if (deepEqual(prev, cand)) return [...cand];
+
+  if (prev.length !== cand.length) {
+    return surface.stepsWhole ? [...cand] : [...prev];
+  }
+
+  return prev.map((prevItem, i) => {
+    const candItem = cand[i];
+    if (deepEqual(prevItem, candItem)) return candItem;
+
+    const stepNo = prevItem.stepNo;
+    const prevRec = prevItem as unknown as Record<string, unknown>;
+    const candRec = candItem as unknown as Record<string, unknown>;
+    const merged: Record<string, unknown> = { ...prevRec };
+    // Never grantable — see MUTABLE_STEP_FIELDS's own comment and diffSteps's identical check.
+    merged.photoUrl = prevRec.photoUrl;
+
+    const wholeItemAllowed = surface.stepsWhole || surface.stepStepNos.has(stepNo);
+    const allowedFields = surface.stepItemFields.get(stepNo);
+    for (const key of MUTABLE_STEP_FIELDS) {
+      merged[key] = (wholeItemAllowed || allowedFields?.has(key)) ? candRec[key] : prevRec[key];
+    }
+    return merged as unknown as RecipeStepDraft;
+  });
+}
+
+/**
+ * Builds a corrected draft from `candidate`: every location `findOutOfScopeChanges` would flag is
+ * forced back to `previous`'s own value; everything in-scope (or already unchanged) keeps
+ * `candidate`'s value. Callers should re-run `findOutOfScopeChanges` against this function's
+ * output as a defensive check — see this module's header and revise-stage.ts's call site.
+ */
+export function reconcileOutOfScopeChanges(
+  previous: RecipeDraftPayload,
+  candidate: RecipeDraftPayload,
+  surface: AllowedChangeSurface,
+): RecipeDraftPayload {
+  const reconciled: Record<string, unknown> = { ...candidate };
+
+  for (const field of IMMUTABLE_TOP_LEVEL_FIELDS) {
+    reconciled[field] = previous[field];
+  }
+
+  for (const field of MUTABLE_TOP_LEVEL_FIELDS) {
+    if (deepEqual(previous[field], candidate[field])) continue;
+    reconciled[field] = surface.topLevelFields.has(field) ? candidate[field] : previous[field];
+  }
+
+  reconciled.ingredients = reconcileIngredients(previous.ingredients, candidate.ingredients, surface);
+  reconciled.steps = reconcileSteps(previous.steps, candidate.steps, surface);
+
+  return reconciled as unknown as RecipeDraftPayload;
 }

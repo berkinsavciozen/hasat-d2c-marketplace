@@ -8,6 +8,7 @@ import {
   computeAllowedChangeSurface,
   findOutOfScopeChanges,
   parseIssueFieldPath,
+  reconcileOutOfScopeChanges,
 } from "./allowed-changes.ts";
 import type { RecipeDraftPayload, RecipeQAIssue } from "../types.ts";
 import { validKabakRecipeDraft } from "../fixtures/valid-kabak-recipe.ts";
@@ -241,4 +242,125 @@ Deno.test("findOutOfScopeChanges: no changes at all is always in scope, even wit
   const surface = surfaceFor([]);
   const candidate: RecipeDraftPayload = { ...validKabakRecipeDraft };
   assert.deepEqual(findOutOfScopeChanges(validKabakRecipeDraft, candidate, surface), []);
+});
+
+// ---------------------------------------------------------------------------------------------
+// reconcileOutOfScopeChanges
+// ---------------------------------------------------------------------------------------------
+//
+// Regression coverage for job 67567ad5-5ee7-4dd9-a60d-6546687d811e (Ayvalı Fırın Tavuk,
+// INGREDIENT_CROP_UNKNOWN x5): the Reviser correctly restated the flagged fix, but the SAME agent
+// call also "corrected" one or more ingredient `crop` fields QA never flagged at all — under the
+// old reject-the-whole-candidate behavior, the job died with REVISER_OUT_OF_SCOPE_CHANGE even
+// though it contained a good fix. These tests prove the candidate is no longer discarded wholesale.
+
+Deno.test("reconcileOutOfScopeChanges: a QA-unflagged ingredient's crop change is force-reverted, and the job can proceed", () => {
+  const surface = surfaceFor([issue("title")]);
+  const candidate: RecipeDraftPayload = {
+    ...validKabakRecipeDraft,
+    title: "Firinda Kabak Musakka (Guncellendi)",
+    // ingredients[1] ("kasar peyniri", crop: null) was never named by any blocking issue — the
+    // Reviser tried to assign it a crop value anyway, the exact shape of the real bug.
+    ingredients: validKabakRecipeDraft.ingredients.map((ing, i) =>
+      i === 1 ? { ...ing, crop: "tavuk", freeTextName: null } : ing
+    ),
+  };
+
+  // The un-reconciled candidate is correctly flagged as out of scope — confirms the test actually
+  // exercises the reject path this reconciliation replaces.
+  const violations = findOutOfScopeChanges(validKabakRecipeDraft, candidate, surface);
+  assert.ok(violations.some((v) => v.startsWith("ingredients[1]")));
+
+  const reconciled = reconcileOutOfScopeChanges(validKabakRecipeDraft, candidate, surface);
+
+  // The flagged, in-scope fix survives.
+  assert.equal(reconciled.title, "Firinda Kabak Musakka (Guncellendi)");
+  // The unflagged crop "correction" is forced back to the previous draft's own value — never the
+  // Reviser's — rather than the whole candidate being discarded.
+  assert.equal(reconciled.ingredients[1].crop, null);
+  assert.equal(reconciled.ingredients[1].freeTextName, "kasar peyniri");
+
+  // The job can now proceed: nothing outside the surface survives in the reconciled draft.
+  assert.deepEqual(findOutOfScopeChanges(validKabakRecipeDraft, reconciled, surface), []);
+});
+
+Deno.test("reconcileOutOfScopeChanges: a mixed candidate keeps its granted field fix and reverts its ungranted one on the SAME item", () => {
+  const surface = surfaceFor([issue("ingredients[0].quantity")]);
+  const candidate: RecipeDraftPayload = {
+    ...validKabakRecipeDraft,
+    ingredients: validKabakRecipeDraft.ingredients.map((ing, i) =>
+      i === 0 ? { ...ing, quantity: 2, unit: "kg" } : ing
+    ),
+  };
+
+  const violations = findOutOfScopeChanges(validKabakRecipeDraft, candidate, surface);
+  assert.ok(violations.includes("ingredients[0].unit"));
+  assert.ok(!violations.includes("ingredients[0].quantity"));
+
+  const reconciled = reconcileOutOfScopeChanges(validKabakRecipeDraft, candidate, surface);
+
+  // Granted field: the Reviser's new value is kept.
+  assert.equal(reconciled.ingredients[0].quantity, 2);
+  // Ungranted field on the very same item: forced back to the previous draft's value.
+  assert.equal(reconciled.ingredients[0].unit, "adet");
+  // Every other ingredient, and every other field on this one, is untouched.
+  assert.deepEqual(reconciled.ingredients[1], validKabakRecipeDraft.ingredients[1]);
+
+  assert.deepEqual(findOutOfScopeChanges(validKabakRecipeDraft, reconciled, surface), []);
+});
+
+Deno.test("reconcileOutOfScopeChanges: identity/server-owned fields are force-reverted even when nothing else is out of scope", () => {
+  const surface = surfaceFor([issue("title")]);
+  const candidate: RecipeDraftPayload = {
+    ...validKabakRecipeDraft,
+    title: "Yeni Baslik",
+    visibility: "public",
+    ownerId: "99999999-9999-4999-8999-999999999999",
+  };
+
+  const reconciled = reconcileOutOfScopeChanges(validKabakRecipeDraft, candidate, surface);
+
+  assert.equal(reconciled.title, "Yeni Baslik");
+  assert.equal(reconciled.visibility, validKabakRecipeDraft.visibility);
+  assert.equal(reconciled.ownerId, validKabakRecipeDraft.ownerId);
+  assert.deepEqual(findOutOfScopeChanges(validKabakRecipeDraft, reconciled, surface), []);
+});
+
+Deno.test("reconcileOutOfScopeChanges: an unrecognized structural change reverts the whole affected array", () => {
+  const surface = surfaceFor([issue("ingredients[0].quantity")]);
+  const candidate: RecipeDraftPayload = {
+    ...validKabakRecipeDraft,
+    ingredients: [
+      ...validKabakRecipeDraft.ingredients,
+      { crop: null, freeTextName: "tuz", quantity: 1, unit: "tatli kasigi", note: null, isKeyIngredient: false, ingredientClass: "platform_disi", sortOrder: 2 },
+    ],
+  };
+
+  const reconciled = reconcileOutOfScopeChanges(validKabakRecipeDraft, candidate, surface);
+
+  assert.deepEqual(reconciled.ingredients, validKabakRecipeDraft.ingredients);
+  assert.deepEqual(findOutOfScopeChanges(validKabakRecipeDraft, reconciled, surface), []);
+});
+
+Deno.test("reconcileOutOfScopeChanges: steps[N].photoUrl is force-reverted even when 'steps' is wholly granted", () => {
+  const surface = surfaceFor([issue("steps")]);
+  const candidate: RecipeDraftPayload = {
+    ...validKabakRecipeDraft,
+    steps: validKabakRecipeDraft.steps.map((s, i) =>
+      i === 0 ? { ...s, instruction: "Guncellenmis talimat.", photoUrl: "https://example.com/step1.jpg" } : s
+    ),
+  };
+
+  const reconciled = reconcileOutOfScopeChanges(validKabakRecipeDraft, candidate, surface);
+
+  assert.equal(reconciled.steps[0].instruction, "Guncellenmis talimat.");
+  assert.equal(reconciled.steps[0].photoUrl, null);
+  assert.deepEqual(findOutOfScopeChanges(validKabakRecipeDraft, reconciled, surface), []);
+});
+
+Deno.test("reconcileOutOfScopeChanges: no out-of-scope changes leaves the candidate untouched", () => {
+  const surface = surfaceFor([issue("title")]);
+  const candidate: RecipeDraftPayload = { ...validKabakRecipeDraft, title: "Yeni Baslik" };
+  const reconciled = reconcileOutOfScopeChanges(validKabakRecipeDraft, candidate, surface);
+  assert.deepEqual(reconciled, candidate);
 });
