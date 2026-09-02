@@ -14,16 +14,35 @@
 // `failJob()` finishes) — a different precondition shape entirely, so this module has its own
 // small CAS helper (`transitionJob`) rather than forcing an ill-fitting reuse.
 //
-// This module NEVER calls a `recipe-stage-*` Edge Function and NEVER writes to `recipe_drafts` /
-// `recipe_qa_results` / `recipe_assets` — only `recipe_generation_jobs` (the state machine) and
-// this pipeline's own new `recipe_admin_reviews` audit table. Requeuing a job (request_revision,
-// retry_stage) only makes it eligible for the NEXT time something dispatches to that stage's
-// function — this module does not perform that dispatch itself, matching the F2-S11 task brief's
-// "do not invoke live Edge Functions" constraint.
+// This module NEVER writes to `recipe_drafts` / `recipe_qa_results` / `recipe_assets` — only
+// `recipe_generation_jobs` (the state machine) and this pipeline's own `recipe_admin_reviews`
+// audit table. Requeuing a job into the AUTOMATED pipeline (request_revision -> revise/queued,
+// retry_stage -> <current stage>/queued) does NOT dispatch here — those stages are all covered by
+// `infra/sweep.ts`'s periodic reconciliation (every 5 minutes) even if this module never nudges
+// them, matching the F2-S11 task brief's original "do not invoke live Edge Functions" constraint.
+//
+// `approveJob()` is the one exception, added to close a real production gap (job
+// 451234c7-cdc0-4322-b201-9b4d62fe4cc9 approved 2026-09-02, never published): unlike every other
+// action here, approve moves a job to `status='approved'` while `stage` stays `awaiting_approval`
+// — and `sweep.ts` deliberately treats `awaiting_approval` as never a sweep candidate (see its own
+// header), so an approved-but-unpublished job had NO path to ever being redispatched, automatic or
+// periodic. `approveJob()` below fires the same best-effort `dispatchNextStage` call every other
+// stage-runner's successful advance already fires (see stage-dispatch.ts's own header) right after
+// its transition + audit insert succeed, targeting `recipe-stage-publish` — which itself performs
+// the one-time `awaiting_approval`+`approved` -> `publish`+`queued` transition on receipt (see
+// `publish/context.ts`'s `enterPublishStage`). `sweep.ts` also now redispatches any job still stuck
+// at `awaiting_approval`/`approved` as a fallback in case this best-effort call is dropped
+// (network blip, cold start) — the same "immediate nudge + periodic reconciliation net" shape this
+// codebase already uses everywhere else.
 import type { SupabaseClient } from "../infra/supabase-admin.ts";
 import { RecipeAutomationError } from "../infra/errors.ts";
+import { dispatchNextStage } from "../infra/stage-dispatch.ts";
 import type { RecipeJobStage, RecipeJobStatus } from "../types.ts";
 import { approvalChecklistSchema, checklistToRow, partialChecklistSchema, type PartialChecklist } from "./checklist.ts";
+
+/** Target of the best-effort post-approve dispatch — see this module's header. Matches
+ * `infra/sweep.ts`'s own `STAGE_FUNCTION_NAMES.publish` value exactly. */
+const PUBLISH_FUNCTION_NAME = "recipe-stage-publish";
 
 /** Mirrors `recipe_generation_jobs.revision_count`'s own CHECK (0..2) — see revise-stage.ts's own
  * MAX_AUTOMATIC_REVISIONS for the automated-loop half of this same cap. An admin-requested
@@ -205,6 +224,17 @@ export async function approveJob(client: SupabaseClient, params: ApproveJobParam
     notes: params.notes ?? null,
     adminActor: params.adminActor ?? null,
   });
+
+  // Best-effort — awaited so the call actually fires before this Edge Function invocation ends,
+  // but its outcome never affects the approve response (dispatchNextStage never throws); see this
+  // module's header and stage-dispatch.ts's own contract. `sweep.ts` is the fallback if this is
+  // ever dropped.
+  const dispatchResult = await dispatchNextStage(client, {
+    jobId: updated.id,
+    functionName: PUBLISH_FUNCTION_NAME,
+    payload: { batchId: updated.batch_id },
+  });
+  void dispatchResult;
 
   return { ok: true, job: updated, reviewId };
 }

@@ -36,6 +36,17 @@ function seedAwaitingApprovalJob(client: FakeSupabaseClient, overrides: Record<s
   return { jobId, batchId };
 }
 
+function registerDispatchRpc(client: FakeSupabaseClient, calls: Array<{ jobId: string; functionName: string; batchId: unknown }>) {
+  client.onRpc("dispatch_recipe_stage", (args) => {
+    calls.push({
+      jobId: args._job_id as string,
+      functionName: args._function_name as string,
+      batchId: (args._payload as Record<string, unknown> | undefined)?.batchId,
+    });
+    return { data: null, error: null };
+  });
+}
+
 Deno.test("approveJob: succeeds with a complete checklist and records an audit row", async () => {
   const client = new FakeSupabaseClient();
   const { jobId } = seedAwaitingApprovalJob(client);
@@ -59,6 +70,46 @@ Deno.test("approveJob: succeeds with a complete checklist and records an audit r
   assert.equal(reviewRow.temperature_reviewed, true);
   assert.equal(reviewRow.images_reviewed, true);
   assert.equal(reviewRow.admin_actor, "berkin");
+});
+
+Deno.test("approveJob: dispatches recipe-stage-publish for the newly-approved job", async () => {
+  const client = new FakeSupabaseClient();
+  const { jobId, batchId } = seedAwaitingApprovalJob(client);
+  const calls: Array<{ jobId: string; functionName: string; batchId: unknown }> = [];
+  registerDispatchRpc(client, calls);
+  Deno.env.set("RECIPE_STAGE_DISPATCH_SECRET", "test-secret");
+
+  const result = await approveJob(asClient(client), {
+    jobId,
+    draftId: crypto.randomUUID(),
+    draftVersion: 1,
+    checklist: FULL_CHECKLIST,
+  });
+
+  assert.equal(result.ok, true);
+  assert.equal(calls.length, 1);
+  assert.equal(calls[0].jobId, jobId);
+  assert.equal(calls[0].functionName, "recipe-stage-publish");
+  assert.equal(calls[0].batchId, batchId);
+});
+
+Deno.test("approveJob: still succeeds even when the publish dispatch itself fails (best-effort)", async () => {
+  const client = new FakeSupabaseClient();
+  const { jobId } = seedAwaitingApprovalJob(client);
+  // No RECIPE_STAGE_DISPATCH_SECRET set and no rpc handler registered — dispatchNextStage must
+  // report a failure internally without ever throwing back into approveJob.
+  Deno.env.delete("RECIPE_STAGE_DISPATCH_SECRET");
+
+  const result = await approveJob(asClient(client), {
+    jobId,
+    draftId: crypto.randomUUID(),
+    draftVersion: 1,
+    checklist: FULL_CHECKLIST,
+  });
+
+  assert.equal(result.ok, true);
+  if (!result.ok) return;
+  assert.equal(result.job.status, "approved");
 });
 
 Deno.test("approveJob: mechanically refuses an incomplete checklist BEFORE touching job state", async () => {

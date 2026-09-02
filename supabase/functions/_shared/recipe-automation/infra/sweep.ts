@@ -13,15 +13,26 @@
 //      `claimJob()`'s own `CLAIMABLE_STATUSES` already includes 'running' specifically to recover
 //      this case (see job-lock.ts's comment on that constant), but again, nothing ever calls
 //      `claimJob()` a second time on its own.
+//   3. `stage = 'awaiting_approval'`, `status = 'approved'` — an admin approved the job
+//      (`admin/review-actions.ts`'s `approveJob()`) but the best-effort dispatch it fires
+//      immediately after was dropped (network blip, cold start, etc). Unlike categories 1 and 2,
+//      this status is otherwise invisible to this sweep's original two queries below — it is
+//      neither 'retryable' nor 'running' — so it needed its own candidate query. Found in
+//      production 2026-09-02 (job 451234c7-cdc0-4322-b201-9b4d62fe4cc9: approved, never
+//      published, no automated path back to `publish` at all before this).
 //
-// This module is the periodic nudge for both: find every job currently eligible under either
-// condition and re-dispatch its CURRENT stage via the exact same `redispatchStage` helper every
-// stage-runner's own successful-advance path already uses — its own doc comment anticipates
-// exactly this ("re-nudging an already-queued job... e.g. a reconciliation sweep"). This module
-// never claims or processes a job itself; it only asks the job's own stage-runner to try again,
-// exactly the way a fresh dispatch would. Redispatch is documented idempotent-safe to repeat, so a
-// job that gets swept twice (a slow stage-runner still finishing when the next sweep tick fires)
-// costs at most one extra no-op claim attempt on the stage-runner side, never double-processing.
+// This module is the periodic nudge for all three: find every job currently eligible under any
+// condition and re-dispatch it via the exact same `redispatchStage` helper every stage-runner's
+// own successful-advance path already uses — its own doc comment anticipates exactly this
+// ("re-nudging an already-queued job... e.g. a reconciliation sweep"). This module never claims or
+// processes a job itself; it only asks the job's own stage-runner to try again, exactly the way a
+// fresh dispatch would. Redispatch is documented idempotent-safe to repeat, so a job that gets
+// swept twice (a slow stage-runner still finishing when the next sweep tick fires) costs at most
+// one extra no-op claim attempt on the stage-runner side, never double-processing. For category 3
+// specifically, `recipe-stage-publish` itself performs the `awaiting_approval`+`approved` ->
+// `publish`+`queued` transition on receipt (`publish/context.ts`'s `enterPublishStage`), so
+// redispatching it while the job is still at stage='awaiting_approval' is exactly the right call —
+// there is no earlier "advance to publish" step this sweep needs to perform itself.
 import type { SupabaseClient } from "./supabase-admin.ts";
 import { redispatchStage } from "./stage-dispatch.ts";
 import { RecipeAutomationError } from "./errors.ts";
@@ -32,10 +43,11 @@ import type { RecipeJobStage } from "../types.ts";
 const SWEEP_BATCH_LIMIT = 50;
 
 /** Mirrors `dispatch_recipe_stage`'s own `_allowed_function_names` allow-list (f2s05 migration)
- * exactly — 'awaiting_approval' is excluded there for the same reason it's excluded here: it is a
- * human-review resting state, never something a stage-runner auto-advances out of, so a job
- * parked there is never a sweep candidate in the first place (nothing sets its status to
- * 'retryable' or leaves it 'running' while stage='awaiting_approval'). */
+ * exactly — 'awaiting_approval' is excluded here (used to look up a candidate's CURRENT stage for
+ * categories 1/2 above) for the same reason it always was: it is a human-review resting state, and
+ * neither 'retryable' nor 'running' is ever set while a job sits there. Category 3 (approved
+ * awaiting publish) below targets `recipe-stage-publish` directly instead of going through this
+ * map — see `PUBLISH_FUNCTION_NAME` and `fetchApprovedAwaitingPublishJobs`. */
 const STAGE_FUNCTION_NAMES: Partial<Record<RecipeJobStage, string>> = {
   plan: "recipe-stage-plan",
   write: "recipe-stage-write",
@@ -45,6 +57,11 @@ const STAGE_FUNCTION_NAMES: Partial<Record<RecipeJobStage, string>> = {
   finalize: "recipe-stage-finalize",
   publish: "recipe-stage-publish",
 };
+
+/** Matches `admin/review-actions.ts`'s own `PUBLISH_FUNCTION_NAME` — category 3's target is always
+ * `recipe-stage-publish`, regardless of the candidate's (still `awaiting_approval`) `stage` value,
+ * so it is not looked up through `STAGE_FUNCTION_NAMES` above. */
+const PUBLISH_FUNCTION_NAME = "recipe-stage-publish";
 
 interface SweepCandidateRow {
   id: string;
@@ -100,6 +117,29 @@ async function fetchStaleRunningJobs(client: SupabaseClient, nowIso: string): Pr
   return (data as SweepCandidateRow[] | null) ?? [];
 }
 
+/** `stage = 'awaiting_approval'`, `status = 'approved'` jobs — category 3, see this module's
+ * header. No time-based or lock-based filter (unlike the two queries above): there is no
+ * `next_attempt_at`/`locked_by` concept for this category at all, an approved job is either still
+ * unpublished or it isn't, so any row this finds is by definition due for a redispatch. */
+async function fetchApprovedAwaitingPublishJobs(client: SupabaseClient): Promise<SweepCandidateRow[]> {
+  const { data, error } = await client
+    .from("recipe_generation_jobs")
+    .select("id, stage, batch_id")
+    .eq("stage", "awaiting_approval")
+    .eq("status", "approved")
+    .limit(SWEEP_BATCH_LIMIT);
+
+  if (error) {
+    throw new RecipeAutomationError({
+      code: "RETRY_SWEEP_QUERY_FAILED",
+      message: "failed to query recipe_generation_jobs for approved-awaiting-publish jobs",
+      retryable: true,
+      details: { pgCode: (error as { code?: string }).code },
+    });
+  }
+  return (data as SweepCandidateRow[] | null) ?? [];
+}
+
 async function redispatchRows(
   client: SupabaseClient,
   rows: SweepCandidateRow[],
@@ -118,11 +158,27 @@ async function redispatchRows(
   return { redispatched, skipped };
 }
 
+/** Category 3's redispatch — always targets `recipe-stage-publish` directly (never looked up via
+ * `STAGE_FUNCTION_NAMES`, see that map's own comment), so every row found is redispatched, never
+ * skipped. */
+async function redispatchApprovedAwaitingPublishRows(
+  client: SupabaseClient,
+  rows: SweepCandidateRow[],
+): Promise<number> {
+  for (const row of rows) {
+    await redispatchStage(client, { jobId: row.id, functionName: PUBLISH_FUNCTION_NAME, payload: { batchId: row.batch_id } });
+  }
+  return rows.length;
+}
+
 export interface RetrySweepResult {
   /** Jobs found with status='retryable' and next_attempt_at due, redispatched. */
   retryableRedispatched: number;
   /** Jobs found with status='running' and an expired lock, redispatched. */
   staleLockRedispatched: number;
+  /** Jobs found at stage='awaiting_approval', status='approved', redispatched to
+   * recipe-stage-publish — category 3, see this module's header. */
+  approvedAwaitingPublishRedispatched: number;
   /** Candidate rows whose `stage` isn't in the allow-list above — skipped, never redispatched.
    * Should always be empty in practice (every non-terminal stage a job can sit at while
    * retryable/running is in the map); surfaced for observability rather than silently dropped. */
@@ -138,17 +194,20 @@ export interface RetrySweepResult {
 export async function runRetrySweep(client: SupabaseClient): Promise<RetrySweepResult> {
   const nowIso = new Date().toISOString();
 
-  const [dueRetryable, staleRunning] = await Promise.all([
+  const [dueRetryable, staleRunning, approvedAwaitingPublish] = await Promise.all([
     fetchDueRetryableJobs(client, nowIso),
     fetchStaleRunningJobs(client, nowIso),
+    fetchApprovedAwaitingPublishJobs(client),
   ]);
 
   const retryable = await redispatchRows(client, dueRetryable);
   const staleLocks = await redispatchRows(client, staleRunning);
+  const approvedAwaitingPublishRedispatched = await redispatchApprovedAwaitingPublishRows(client, approvedAwaitingPublish);
 
   return {
     retryableRedispatched: retryable.redispatched,
     staleLockRedispatched: staleLocks.redispatched,
+    approvedAwaitingPublishRedispatched,
     skippedUnknownStage: [...retryable.skipped, ...staleLocks.skipped],
   };
 }
