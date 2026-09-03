@@ -46,11 +46,25 @@ test("tour step changes retain separate skip and next or finish controls", () =>
 
 test("listing card has three sibling native actions without an interactive container", () => {
   const card = buyerDiscover.slice(buyerDiscover.indexOf("function ListingGroupCard"));
+  const articleTag = card.match(/<article[\s\S]*?>/)?.[0];
+  assert.ok(articleTag);
   assert.match(card, /<article/);
-  assert.doesNotMatch(card, /role="button"/);
+  assert.doesNotMatch(articleTag, /role="button"|onClick=|onKeyDown=/);
+  assert.doesNotMatch(articleTag, /cursor-pointer|cursor-not-allowed|hover:border-primary/);
   assert.match(card, /<Link to="\/s\/\$slug"/);
   assert.match(card, /<RepresentativeBadge \/>/);
   assert.match(card, /<button\s+type="button"\s+onClick=\{onOpen\}/);
+});
+
+test("available listing CTA has native pointer, hover, and keyboard focus feedback", () => {
+  const card = buyerDiscover.slice(buyerDiscover.indexOf("function ListingGroupCard"));
+  const primaryActionClass = card.match(
+    /<button\s+type="button"\s+onClick=\{onOpen\}[\s\S]*?className="([^"]+)"/,
+  )?.[1];
+  assert.ok(primaryActionClass);
+  assert.match(primaryActionClass, /cursor-pointer/);
+  assert.match(primaryActionClass, /hover:brightness-95/);
+  assert.match(primaryActionClass, /focus-visible:ring-2/);
 });
 
 test("sold-out listing primary action is truthfully disabled", () => {

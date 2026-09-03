@@ -337,7 +337,7 @@ function ListingGroupCard({ items, canonicalUnit, cropConfig, onOpen }: { items:
     : `${formatTRY(minP)}–${formatTRY(maxP)}/${first.unit}`;
   return (
     <article
-      className={`text-left rounded-2xl bg-card border overflow-hidden hover:border-primary transition ${soldOut ? "opacity-60 cursor-not-allowed" : "cursor-pointer"}`}
+      className={`text-left rounded-2xl bg-card border overflow-hidden ${soldOut ? "opacity-60" : ""}`}
     >
       <RepresentativePhoto
         src={photoUrl}
@@ -395,7 +395,7 @@ function ListingGroupCard({ items, canonicalUnit, cropConfig, onOpen }: { items:
                 ? `${formatCrop(first.crop)} ilanı tükendi`
                 : `${formatCrop(first.crop)} ${items.length > 1 ? "partilerini gör" : "ilanını aç"}`
             }
-            className="shrink-0 inline-flex items-center rounded-xl px-4 py-1.5 text-xs text-white min-h-[48px]"
+            className="shrink-0 inline-flex min-h-[48px] cursor-pointer items-center rounded-xl px-4 py-1.5 text-xs text-white hover:brightness-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:hover:brightness-100"
             style={{ background: soldOut ? "var(--hmuted)" : "var(--primary)" }}
           >
             {soldOut ? "Tükendi" : (items.length > 1 ? "Partileri Gör →" : "Teklif Ver →")}
