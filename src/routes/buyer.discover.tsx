@@ -336,12 +336,8 @@ function ListingGroupCard({ items, canonicalUnit, cropConfig, onOpen }: { items:
     ? `${formatTRY(minP)}/${first.unit}`
     : `${formatTRY(minP)}–${formatTRY(maxP)}/${first.unit}`;
   return (
-    <div
-      role="button"
-      tabIndex={0}
-      onClick={() => { if (!soldOut) onOpen(); }}
-      onKeyDown={(e) => { if (e.key === "Enter" && !soldOut) onOpen(); }}
-      className={`text-left rounded-2xl bg-card border overflow-hidden hover:border-primary transition ${soldOut ? "opacity-60 cursor-not-allowed" : "cursor-pointer"}`}
+    <article
+      className={`text-left rounded-2xl bg-card border overflow-hidden ${soldOut ? "opacity-60" : ""}`}
     >
       <RepresentativePhoto
         src={photoUrl}
@@ -371,7 +367,7 @@ function ListingGroupCard({ items, canonicalUnit, cropConfig, onOpen }: { items:
           <div className="font-serif text-base leading-tight line-clamp-2">{cropEmoji(first.crop)} {formatCrop(first.crop)}</div>
           <div className="text-[11px] opacity-80 truncate">
             {farmerSlug ? (
-              <Link to="/s/$slug" params={{ slug: farmerSlug }} onClick={(e) => e.stopPropagation()} className="underline hover:text-primary">
+              <Link to="/s/$slug" params={{ slug: farmerSlug }} className="underline hover:text-primary">
                 {first.farmerName}
               </Link>
             ) : first.farmerName}
@@ -390,15 +386,22 @@ function ListingGroupCard({ items, canonicalUnit, cropConfig, onOpen }: { items:
         </div>
         <div className="flex items-center justify-between gap-2">
           <CoverageBadge listingId={first.id} crop={first.crop} compact />
-          <span
-            className="shrink-0 inline-flex items-center rounded-xl px-4 py-1.5 text-xs text-white min-h-[48px]"
+          <button
+            type="button"
+            onClick={onOpen}
+            disabled={soldOut}
+            aria-label={
+              soldOut
+                ? `${formatCrop(first.crop)} ilanı tükendi`
+                : `${formatCrop(first.crop)} ${items.length > 1 ? "partilerini gör" : "ilanını aç"}`
+            }
+            className="shrink-0 inline-flex min-h-[48px] cursor-pointer items-center rounded-xl px-4 py-1.5 text-xs text-white hover:brightness-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:hover:brightness-100"
             style={{ background: soldOut ? "var(--hmuted)" : "var(--primary)" }}
           >
             {soldOut ? "Tükendi" : (items.length > 1 ? "Partileri Gör →" : "Teklif Ver →")}
-          </span>
+          </button>
         </div>
       </div>
-    </div>
+    </article>
   );
 }
-

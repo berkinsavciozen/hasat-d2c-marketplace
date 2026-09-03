@@ -45,11 +45,11 @@ function ChatInputBar() {
         type="button"
         onClick={() => openChat()}
         data-tour="chat-input"
-        className="flex min-h-[48px] flex-1 items-center gap-2 px-3 text-left text-sm text-hmuted"
+        className="flex min-h-[48px] min-w-0 flex-1 items-center gap-2 px-3 text-left text-sm text-hmuted"
         aria-label="Hasat AI'ye mesaj yaz"
       >
         <MessageCircle className="h-5 w-5 shrink-0" style={{ color: "var(--primary)" }} />
-        <span className="truncate">Hasadını yaz veya WhatsApp'tan gönder…</span>
+        <span className="min-w-0 flex-1 truncate">Hasadını yaz veya WhatsApp'tan gönder…</span>
       </button>
       <a
         href={waUrl}
@@ -190,7 +190,7 @@ function Home() {
         </div>
 
         {/* Quick actions */}
-        <div className="-mx-4 px-4 md:mx-0 md:px-0 flex gap-2 overflow-x-auto pb-1">
+        <div className="-mx-4 flex min-w-0 max-w-[calc(100%+2rem)] gap-2 overflow-x-auto px-4 pb-1 md:mx-0 md:max-w-full md:px-0">
           {quickActions.map((a) =>
             "to" in a && a.to ? (
               <Link
