@@ -12,7 +12,7 @@ unit-testable.
 |---|---|
 | `revise-stage.ts` | `runReviseStage()` — claim the job, resolve the current draft + the QA result that sent it here, enforce the two-automatic-revision cap, check idempotency, derive the allowed-change surface and reject an unlocatable blocking issue (Step 08A, see below), run the Reviser agent, reject a candidate that changed anything outside that surface (Step 08A), force-correct any invented not-in-`crop_config` crop slug (Step 08B, see below), validate its output (Zod + the Step 04 Postgres RPCs), store it as the NEXT draft version, record telemetry, and route back to `qa` with `revision_count` incremented atomically. |
 | `allowed-changes.ts` | Step 08A: `computeAllowedChangeSurface()` derives a deterministic, per-field/per-index mutation surface from `blockingIssues` alone; `findOutOfScopeChanges()` diffs the candidate draft against the exact previous one and reports every change outside that surface. See below. |
-| `crop-slug-guard.ts` | Step 08B: `sanitizeUnknownCropIngredients()` — force-corrects any ingredient `validate_recipe_crop_values` flags as `INGREDIENT_CROP_UNKNOWN` (an invented, not-in-`crop_config` slug) to `crop: null` + a humanized `freeTextName`, so an in-scope crop-match request the Reviser gets wrong doesn't sink the whole job. See below. |
+| `../crop-slug-guard.ts` | Step 08B: `sanitizeUnknownCropIngredients()` — force-corrects any ingredient `validate_recipe_crop_values` flags as `INGREDIENT_CROP_UNKNOWN` (an invented, not-in-`crop_config` slug) to `crop: null` + a humanized `freeTextName`, so an in-scope crop-match request the Reviser gets wrong doesn't sink the whole job. See below. Lives at the `recipe-automation/` root (not under `revise/`) — `../writer/write-stage.ts` imports the SAME implementation for its own Step 06B equivalent (see "Step 08B" below and `../writer/README.md`). |
 | `context.ts` | `loadLatestQaResult()`/`loadDraftByVersion()` — the reads this stage needs: the LATEST `recipe_qa_results` row for the job, and the EXACT `recipe_drafts` row at the version that result named (see this file's own module header for why "latest QA result", not "current highest draft version"). |
 | `revise-rules.ts` | Content-level constraints a JSON Schema can't express: fix only what `blockingIssues` flags, restate everything else byte-for-byte, never touch `jobId`/`briefId`/`sourceType`/`authorType`/`visibility`/`ownerId`/photo fields as part of a content revision. `allowed-changes.ts` is the mechanical check that this actually happened, not just an instruction the model is told. |
 | `system-prompt.ts` | Assembles the Reviser agent's system prompt from the revision rules + a short framing paragraph. |
@@ -79,7 +79,7 @@ when asked to crop-match an ingredient it has no real slug to reach for and inve
 (`retryable: false`), even though the requested change was entirely within QA's own granted
 scope.
 
-`crop-slug-guard.ts`'s `sanitizeUnknownCropIngredients()` is the same "don't trust the model,
+`../crop-slug-guard.ts`'s `sanitizeUnknownCropIngredients()` is the same "don't trust the model,
 override on the server" principle Step 08A and the `jobId`/`briefId` force-set already apply,
 one level later in the pipeline: `revise-stage.ts` runs `validateDraft()` once as usual; if any
 `INGREDIENT_CROP_UNKNOWN` issues come back, every ingredient they name is forced from
@@ -96,13 +96,21 @@ a fresh `INGREDIENT_INCONSISTENCY`, so nothing pretends the crop match actually 
 Considered and rejected: teaching the Reviser a real `crop_config` slug list (extending
 `context.ts` with a `../writer/context.ts`-style read plus a `revise-rules.ts` prompt change) —
 a more "root-cause" fix, but a heavier, prompt-surface change touching more files for a
-correctness guarantee the server-side override already provides without it. Note the identical
-gap is latent (never yet triggered) in the Writer too: `write-stage.ts` only ever calls
-`loadCropContext` for the brief's single `focusCrop` (`../writer/context.ts`), so if the Writer
-ever tried to crop-match a non-focus-crop ingredient on its own, it would have the exact same
-"no real slug to reach for" problem — and `write-stage.ts`'s own `WRITER_DRAFT_VALIDATION_FAILED`
-is `retryable: false` too, with no Step 08B-equivalent guard. Left as-is per this fix's scope
-(the write stage was not touched), documented here for visibility.
+correctness guarantee the server-side override already provides without it.
+
+**Update — the identical Writer-side gap is now closed too (Step 06B):** this section originally
+noted the identical gap was latent (never yet triggered) in the Writer as well — `write-stage.ts`
+only ever calls `loadCropContext` for the brief's single `focusCrop` (`../writer/context.ts`), so
+if the Writer ever tried to crop-match a non-focus-crop ingredient on its own, it would hit the
+exact same "no real slug to reach for" problem, and `write-stage.ts`'s own
+`WRITER_DRAFT_VALIDATION_FAILED` was `retryable: false` too, with no Step 08B-equivalent guard —
+and was left as-is at the time, purely to keep that PR's diff scoped to `revise/`. That gap is now
+closed preventively (before any real job ever hit it): `sanitizeUnknownCropIngredients()` moved out
+of `revise/` to `../crop-slug-guard.ts` (this directory's parent, `recipe-automation/` root) so
+`../writer/write-stage.ts` can import the exact same implementation for its own Step 06B — see
+`../writer/README.md`'s "Step 06B" section and `../README.md`. This module's logic and behavior are
+otherwise unchanged; only its import path moved (`./crop-slug-guard.ts` → `../crop-slug-guard.ts`
+from this stage's own files).
 
 ## Why "the Writer in constrained revision mode", not a new agent
 
@@ -181,12 +189,19 @@ deno test --allow-net --allow-env supabase/functions/_shared/recipe-automation/r
 ```
 
 `revise-stage.test.ts` uses `../infra/testing/fake-supabase-client.ts` plus a fake `AgentRunner` —
-no live model call, no live Supabase project. `allowed-changes.test.ts` and
-`crop-slug-guard.test.ts` are standalone by design — each only imports `../types.ts` (pure
-Zod-inferred types) and the shared fixtures, never `revise-stage.ts`/`../infra/agent-runner.ts` —
-so either has no Supabase/OpenAI dependency at all and can run on its own:
+no live model call, no live Supabase project. `allowed-changes.test.ts` is standalone by design —
+it only imports `../types.ts` (pure Zod-inferred types) and the shared fixtures, never
+`revise-stage.ts`/`../infra/agent-runner.ts` — so it has no Supabase/OpenAI dependency at all and
+can run on its own:
 
 ```sh
 deno test --allow-net --allow-env supabase/functions/_shared/recipe-automation/revise/allowed-changes.test.ts
-deno test --allow-net --allow-env supabase/functions/_shared/recipe-automation/revise/crop-slug-guard.test.ts
+```
+
+`../crop-slug-guard.ts`'s own test suite moved with it to the `recipe-automation/` root (shared
+with `../writer/`, see the "Step 08B" update above) — same standalone-by-design shape, just one
+level up:
+
+```sh
+deno test --allow-net --allow-env supabase/functions/_shared/recipe-automation/crop-slug-guard.test.ts
 ```

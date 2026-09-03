@@ -1,10 +1,10 @@
-// Deno.test suite for crop-slug-guard.ts. Standalone by design — like allowed-changes.test.ts, it
-// only imports ../types.ts and the shared fixtures, no Supabase/OpenAI dependency:
-//   deno test --allow-net --allow-env supabase/functions/_shared/recipe-automation/revise/crop-slug-guard.test.ts
+// Deno.test suite for crop-slug-guard.ts. Standalone by design — like revise/allowed-changes.test.ts,
+// it only imports ./types.ts and the shared fixtures, no Supabase/OpenAI dependency:
+//   deno test --allow-net --allow-env supabase/functions/_shared/recipe-automation/crop-slug-guard.test.ts
 import assert from "node:assert/strict";
 import { sanitizeUnknownCropIngredients } from "./crop-slug-guard.ts";
-import { validKabakRecipeDraft } from "../fixtures/valid-kabak-recipe.ts";
-import type { RecipeQAIssue } from "../types.ts";
+import { validKabakRecipeDraft } from "./fixtures/valid-kabak-recipe.ts";
+import type { RecipeQAIssue } from "./types.ts";
 
 function unknownCropIssue(index: number, crop: string): RecipeQAIssue {
   return {

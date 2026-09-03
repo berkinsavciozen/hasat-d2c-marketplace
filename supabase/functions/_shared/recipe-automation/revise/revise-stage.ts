@@ -31,7 +31,7 @@ import { validateDraft } from "../writer/validate-draft.ts";
 import { buildReviserSystemPrompt } from "./system-prompt.ts";
 import { loadDraftByVersion, loadLatestQaResult, type DraftAtVersion, type LatestQaResult } from "./context.ts";
 import { computeAllowedChangeSurface, findOutOfScopeChanges, reconcileOutOfScopeChanges } from "./allowed-changes.ts";
-import { sanitizeUnknownCropIngredients } from "./crop-slug-guard.ts";
+import { sanitizeUnknownCropIngredients } from "../crop-slug-guard.ts";
 
 const REVISE_STAGE = "revise" as const;
 const NEXT_STAGE = "qa" as const;
