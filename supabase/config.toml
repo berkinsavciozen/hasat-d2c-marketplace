@@ -17,3 +17,6 @@ verify_jwt = false
 
 [functions.recipe-stage-image]
 static_files = [ "./functions/_shared/recipe-automation/image/vendor/*" ]
+
+[functions.legacy-recipe-image-backfill]
+verify_jwt = false
