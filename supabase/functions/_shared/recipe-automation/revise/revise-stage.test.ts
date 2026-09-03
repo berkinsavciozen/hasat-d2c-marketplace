@@ -549,3 +549,127 @@ Deno.test("runReviseStage: a duplicate dispatch after a reconciled (force-revert
   const { data: draftsAtVersion2 } = await client.from("recipe_drafts").select("id").eq("job_id", jobId).eq("version", 2);
   assert.equal(draftsAtVersion2!.length, 1, "exactly one version=2 draft — the reconciled draft from the first call");
 });
+
+// ---------------------------------------------------------------------------------------------
+// Step 08B: an invented, not-in-crop_config crop slug on an in-scope ingredient change is
+// force-corrected server-side instead of sinking the job — see crop-slug-guard.ts's own module
+// header for the exact gap (job 67567ad5-5ee7-4dd9-a60d-6546687d811e, "Ayvalı Fırın Tavuk") and why
+// this is DIFFERENT from the Step 08A out-of-scope-change gap above: QA's blocking issue here
+// legitimately asks for an ingredients crop match (field "ingredients", granting `ingredientsWhole`
+// — see allowed-changes.ts), so the change itself is fully in-scope. The failure mode is the
+// Reviser inventing a slug `validate_recipe_crop_values` doesn't recognize, not touching anything
+// QA never flagged.
+// ---------------------------------------------------------------------------------------------
+
+/** Mirrors validate_recipe_crop_values's own shape (20260819150000_f2s04_recipe_validation_rpcs.sql)
+ * against an explicit allowlist, standing in for a live `crop_config` table in these unit tests. */
+function registerCropValidationRpc(client: FakeSupabaseClient, knownCrops: readonly string[]) {
+  client.onRpc("validate_recipe_crop_values", (args) => {
+    const draft = args.p_draft as { ingredients: Array<{ crop: string | null }> };
+    const issues = draft.ingredients
+      .map((ingredient, index) => ({ ingredient, index }))
+      .filter(({ ingredient }) => ingredient.crop !== null && !knownCrops.includes(ingredient.crop))
+      .map(({ ingredient, index }) => ({
+        code: "INGREDIENT_CROP_UNKNOWN",
+        field: `ingredients[${index}].crop`,
+        severity: "blocking",
+        message: `ingredient #${index} references unknown crop "${ingredient.crop}" (not in crop_config)`,
+        requiredChange: "crop_config icinde tanimli gecerli bir crop secin.",
+      }));
+    return { data: { valid: issues.length === 0, issues }, error: null };
+  });
+}
+
+/** The real job's own QA finding: an in-scope request to crop-match freeText ingredients, never
+ * naming any specific index — grants `ingredientsWhole`, exactly like
+ * `INGREDIENT_INCONSISTENCY`/field:"ingredients" in the production incident. */
+const qaIngredientCropMatchRequired: RecipeQAResult = {
+  ...validQAResultRevisionRequired,
+  blockingIssues: [
+    {
+      code: "INGREDIENT_INCONSISTENCY",
+      field: "ingredients",
+      severity: "blocking",
+      message: "Bazi malzemeler Hasat'in kendi urun veritabaninda crop ile referans verilmeliyken freeTextName olarak yazilmis.",
+      requiredChange: "Ilgili malzemeler icin crop_config'teki gercek crop adini kullanin.",
+    },
+  ],
+};
+
+Deno.test("runReviseStage: Reviser invents a crop slug not in crop_config for an in-scope ingredient match -> forced to crop:null/freeTextName, job still advances (does not go terminal failed)", async () => {
+  const client = new FakeSupabaseClient();
+  const jobId = seedReviseJob(client, { revision_count: 0 });
+  const draftId = seedDraftVersion(client, jobId, 1, validKabakRecipeDraft);
+  seedQaResult(client, { jobId, draftId, draftVersion: 1 }, qaIngredientCropMatchRequired);
+  registerHappyPathRpcs(client);
+  registerCropValidationRpc(client, ["kabak"]);
+
+  const { jobId: _j, briefId: _b, ...base } = validKabakRecipeDraft;
+  const candidate = {
+    ...base,
+    ingredients: [
+      base.ingredients[0], // "kabak" — already a real crop_config slug, untouched
+      { ...base.ingredients[1], crop: "kasar-peyniri-invented", freeTextName: null }, // invented, unknown slug
+    ],
+  };
+
+  const result = await runReviseStage(asClient(client), { jobId, agentRunner: fixedOutputAgentRunner(candidate) });
+
+  assert.equal(result.outcome, "revised", "an invented-but-in-scope crop slug must not sink the job as validation_failed");
+  assert.equal(result.draftVersion, 2);
+  assert.equal(result.revisionCount, 1);
+
+  const draftRow = client.getRow("recipe_drafts", result.draftId!)!;
+  const ingredients = draftRow.ingredients as Array<{ crop: string | null; freeTextName: string | null }>;
+  assert.equal(ingredients[0].crop, "kabak", "the valid, pre-existing crop assignment is untouched");
+  assert.equal(ingredients[1].crop, null, "the invented, not-in-crop_config slug is forced back to null");
+  assert.ok(ingredients[1].freeTextName, "a non-empty freeTextName fallback is set so the ingredient stays valid");
+
+  const job = client.getRow("recipe_generation_jobs", jobId)!;
+  assert.equal(job.stage, "qa", "the job advances to qa instead of dying at revise");
+  assert.equal(job.status, "queued");
+  assert.equal(job.revision_count, 1);
+  assert.equal(job.locked_by, null);
+});
+
+Deno.test("runReviseStage: mixed candidate — a correctly-assigned real crop slug is kept, an invented one on a different ingredient is corrected in the same pass", async () => {
+  const client = new FakeSupabaseClient();
+  const jobId = seedReviseJob(client, { revision_count: 0 });
+
+  const threeIngredientDraft = {
+    ...validKabakRecipeDraft,
+    ingredients: [
+      validKabakRecipeDraft.ingredients[0], // "kabak", crop already set
+      { crop: null, freeTextName: "sogan", quantity: 1, unit: "adet", note: null, isKeyIngredient: false, ingredientClass: "tarimsal" as const, sortOrder: 1 },
+      { crop: null, freeTextName: "zeytinyagi", quantity: 2, unit: "yemek kasigi", note: null, isKeyIngredient: false, ingredientClass: "tarimsal" as const, sortOrder: 2 },
+    ],
+  };
+  const draftId = seedDraftVersion(client, jobId, 1, threeIngredientDraft);
+  seedQaResult(client, { jobId, draftId, draftVersion: 1 }, qaIngredientCropMatchRequired);
+  registerHappyPathRpcs(client);
+  registerCropValidationRpc(client, ["kabak", "sogan"]); // "sogan" is real; the invented one isn't
+
+  const { jobId: _j, briefId: _b, ...base } = threeIngredientDraft;
+  const candidate = {
+    ...base,
+    ingredients: [
+      base.ingredients[0],
+      { ...base.ingredients[1], crop: "sogan", freeTextName: null }, // correct, real marketplace match
+      { ...base.ingredients[2], crop: "zeytinyagi-invented", freeTextName: null }, // invented slug
+    ],
+  };
+
+  const result = await runReviseStage(asClient(client), { jobId, agentRunner: fixedOutputAgentRunner(candidate) });
+
+  assert.equal(result.outcome, "revised");
+  const draftRow = client.getRow("recipe_drafts", result.draftId!)!;
+  const ingredients = draftRow.ingredients as Array<{ crop: string | null; freeTextName: string | null }>;
+  assert.equal(ingredients[1].crop, "sogan", "a real crop_config slug the Reviser correctly assigned is accepted, not reverted");
+  assert.equal(ingredients[1].freeTextName, null);
+  assert.equal(ingredients[2].crop, null, "the invented, unknown slug on the OTHER ingredient is corrected");
+  assert.ok(ingredients[2].freeTextName, "the corrected ingredient still satisfies crop/freeTextName presence");
+
+  const job = client.getRow("recipe_generation_jobs", jobId)!;
+  assert.equal(job.stage, "qa");
+  assert.equal(job.revision_count, 1);
+});

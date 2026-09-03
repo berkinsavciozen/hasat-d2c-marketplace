@@ -31,6 +31,7 @@ import { validateDraft } from "../writer/validate-draft.ts";
 import { buildReviserSystemPrompt } from "./system-prompt.ts";
 import { loadDraftByVersion, loadLatestQaResult, type DraftAtVersion, type LatestQaResult } from "./context.ts";
 import { computeAllowedChangeSurface, findOutOfScopeChanges, reconcileOutOfScopeChanges } from "./allowed-changes.ts";
+import { sanitizeUnknownCropIngredients } from "./crop-slug-guard.ts";
 
 const REVISE_STAGE = "revise" as const;
 const NEXT_STAGE = "qa" as const;
@@ -443,8 +444,24 @@ export async function runReviseStage(
     }
   }
 
-  const validation = await validateDraft(client, finalDraft);
-  const blockingValidationIssues = validation.issues.filter((issue) => issue.severity === "blocking");
+  let validation = await validateDraft(client, finalDraft);
+  let blockingValidationIssues = validation.issues.filter((issue) => issue.severity === "blocking");
+
+  // Step 08B: an invented, not-in-crop_config crop slug on an otherwise in-scope ingredient change
+  // (see crop-slug-guard.ts's own module header for the exact gap and the job — 67567ad5-5ee7-
+  // 4dd9-a60d-6546687d811e — that surfaced it) is force-corrected server-side rather than sinking
+  // the whole job. Never touches validate_recipe_crop_values' own logic — just reacts to what it
+  // already reported, then re-runs the full Postgres validation pass exactly once against the
+  // corrected draft, the same "override then re-validate" shape used everywhere else in this stage.
+  const unknownCropIssues = blockingValidationIssues.filter((issue) => issue.code === "INGREDIENT_CROP_UNKNOWN");
+  let sanitizedCropIndices: number[] = [];
+  if (unknownCropIssues.length > 0) {
+    const sanitized = sanitizeUnknownCropIngredients(finalDraft, unknownCropIssues);
+    finalDraft = sanitized.draft;
+    sanitizedCropIndices = sanitized.sanitizedIngredientIndices;
+    validation = await validateDraft(client, finalDraft);
+    blockingValidationIssues = validation.issues.filter((issue) => issue.severity === "blocking");
+  }
 
   if (!validation.valid || blockingValidationIssues.length > 0) {
     const error = toSafeErrorPayload(
@@ -454,7 +471,10 @@ export async function runReviseStage(
     await recordStageRun(client, {
       jobId: params.jobId, batchId: brief.batchId, stage: REVISE_STAGE, status: "failed",
       attempt, startedAt, finishedAt: new Date().toISOString(), error,
-      output: { draftId: targetDraft.id, draftVersion: targetDraft.version, issues: blockingValidationIssues },
+      output: {
+        draftId: targetDraft.id, draftVersion: targetDraft.version, issues: blockingValidationIssues,
+        forcedCropFallbackIndices: sanitizedCropIndices.length > 0 ? sanitizedCropIndices : undefined,
+      },
       provider: agentResult.provider, model: agentResult.model, usage: agentResult.usage,
     });
     await failJob(client, { jobId: params.jobId, lockToken, stage: REVISE_STAGE, error });
@@ -496,6 +516,9 @@ export async function runReviseStage(
       // Present only when the Reviser's own candidate touched something outside the blocking-issue
       // surface and had it force-reverted — see the reconciliation above.
       forcedRevertFields: outOfScopeChanges.length > 0 ? outOfScopeChanges : undefined,
+      // Present only when the Reviser invented a not-in-crop_config slug and it was force-corrected
+      // to crop:null/freeTextName — see crop-slug-guard.ts and the Step 08B block above.
+      forcedCropFallbackIndices: sanitizedCropIndices.length > 0 ? sanitizedCropIndices : undefined,
     },
     provider: agentResult.provider, model: agentResult.model, usage: agentResult.usage,
   });
