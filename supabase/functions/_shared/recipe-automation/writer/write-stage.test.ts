@@ -290,3 +290,89 @@ Deno.test("runWriteStage: a genuine (non-race) recipe_drafts insert failure -> f
   );
   assert.equal(failedRuns.length, 1, "a failed recipe_generation_stage_runs row must be written");
 });
+
+// ---------------------------------------------------------------------------------------------
+// Step 06B: an invented, not-in-crop_config crop slug is force-corrected server-side instead of
+// sinking the job — the write-stage equivalent of revise-stage.test.ts's Step 08B tests. See
+// ../crop-slug-guard.ts's own module header and ../README.md's "Step 06B" section: the Writer is
+// only ever given crop context for the brief's single `focusCrop` (registerHappyPathRpcs above
+// stubs `get_crop_context` for exactly that one crop, "kabak"), never the full `crop_config` slug
+// list, so an ingredient crop-matched outside that one focus crop has no real slug to reach for.
+// This was never observed live (Step 06B is a preventive fix, not a bug-report fix like Step 08B
+// was) — these tests only prove the guard works, not that a real job ever hit it.
+// ---------------------------------------------------------------------------------------------
+
+/** Mirrors validate_recipe_crop_values's own shape (20260819150000_f2s04_recipe_validation_rpcs.sql)
+ * against an explicit allowlist, standing in for a live `crop_config` table in these unit tests —
+ * same helper shape as revise-stage.test.ts's own registerCropValidationRpc. */
+function registerCropValidationRpc(client: FakeSupabaseClient, knownCrops: readonly string[]) {
+  client.onRpc("validate_recipe_crop_values", (args) => {
+    const draft = args.p_draft as { ingredients: Array<{ crop: string | null }> };
+    const issues = draft.ingredients
+      .map((ingredient, index) => ({ ingredient, index }))
+      .filter(({ ingredient }) => ingredient.crop !== null && !knownCrops.includes(ingredient.crop))
+      .map(({ ingredient, index }) => ({
+        code: "INGREDIENT_CROP_UNKNOWN",
+        field: `ingredients[${index}].crop`,
+        severity: "blocking",
+        message: `ingredient #${index} references unknown crop "${ingredient.crop}" (not in crop_config)`,
+        requiredChange: "crop_config icinde tanimli gecerli bir crop secin.",
+      }));
+    return { data: { valid: issues.length === 0, issues }, error: null };
+  });
+}
+
+Deno.test("runWriteStage: Writer invents a crop slug not in crop_config for a non-focus-crop ingredient -> forced to crop:null/freeTextName, job still stores and advances (does not go terminal failed)", async () => {
+  const client = new FakeSupabaseClient();
+  const jobId = seedWriteJob(client);
+  registerHappyPathRpcs(client);
+  registerCropValidationRpc(client, ["kabak"]); // only the focus crop is a real crop_config slug
+
+  const runner = fixtureAgentRunner({
+    ingredients: [
+      validKabakRecipeDraft.ingredients[0], // "kabak" — the brief's own focus crop, untouched
+      { crop: "sarimsak-invented", freeTextName: null, quantity: 2, unit: "dis", note: null, isKeyIngredient: false, ingredientClass: "tarimsal", sortOrder: 1 },
+    ],
+  });
+
+  const result = await runWriteStage(asClient(client), { jobId, agentRunner: runner });
+
+  assert.equal(result.outcome, "stored", "an invented-but-otherwise-valid crop slug must not sink the job as validation_failed");
+  assert.ok(result.draftId);
+
+  const draft = client.getRow("recipe_drafts", result.draftId!)!;
+  const ingredients = draft.ingredients as Array<{ crop: string | null; freeTextName: string | null }>;
+  assert.equal(ingredients[0].crop, "kabak", "the valid, in-context focus-crop assignment is untouched");
+  assert.equal(ingredients[1].crop, null, "the invented, not-in-crop_config slug is forced back to null");
+  assert.equal(ingredients[1].freeTextName, "sarimsak invented", "a humanized freeTextName fallback is set so the ingredient stays valid");
+
+  const job = client.getRow("recipe_generation_jobs", jobId)!;
+  assert.equal(job.stage, "qa", "the job advances to qa instead of dying at write");
+  assert.equal(job.status, "queued");
+  assert.equal(job.locked_by, null);
+});
+
+Deno.test("runWriteStage: mixed candidate — a correctly-assigned real crop slug is kept, an invented one on a different ingredient is corrected in the same pass", async () => {
+  const client = new FakeSupabaseClient();
+  const jobId = seedWriteJob(client);
+  registerHappyPathRpcs(client);
+  registerCropValidationRpc(client, ["kabak", "sogan"]);
+
+  const runner = fixtureAgentRunner({
+    ingredients: [
+      validKabakRecipeDraft.ingredients[0], // "kabak"
+      { crop: "sogan", freeTextName: null, quantity: 1, unit: "adet", note: null, isKeyIngredient: false, ingredientClass: "tarimsal", sortOrder: 1 },
+      { crop: "zeytinyagi-invented", freeTextName: null, quantity: 2, unit: "yemek kasigi", note: null, isKeyIngredient: false, ingredientClass: "tarimsal", sortOrder: 2 },
+    ],
+  });
+
+  const result = await runWriteStage(asClient(client), { jobId, agentRunner: runner });
+
+  assert.equal(result.outcome, "stored");
+  const draft = client.getRow("recipe_drafts", result.draftId!)!;
+  const ingredients = draft.ingredients as Array<{ crop: string | null; freeTextName: string | null }>;
+  assert.equal(ingredients[1].crop, "sogan", "a real crop_config slug is accepted, not reverted");
+  assert.equal(ingredients[1].freeTextName, null);
+  assert.equal(ingredients[2].crop, null, "the invented, unknown slug on the OTHER ingredient is corrected");
+  assert.equal(ingredients[2].freeTextName, "zeytinyagi invented");
+});

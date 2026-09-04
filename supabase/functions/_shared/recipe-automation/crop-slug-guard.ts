@@ -1,5 +1,7 @@
-// F2 Recipe Automation — Step 08B: server-side correction for an invented, not-in-crop_config crop
-// slug on the Reviser's output.
+// F2 Recipe Automation — Step 08B (+ its Step 06 equivalent): server-side correction for an
+// invented, not-in-crop_config crop slug on a content agent's output. Shared by both
+// `revise/revise-stage.ts` (the Reviser) and `writer/write-stage.ts` (the Writer) — see below for
+// why this lives at the `recipe-automation/` root rather than under either stage's own folder.
 //
 // The gap this closes — found on job 67567ad5-5ee7-4dd9-a60d-6546687d811e ("Ayvalı Fırın Tavuk"),
 // DIFFERENT from the Step 08A out-of-scope-change gap allowed-changes.ts closes: that job's QA
@@ -7,31 +9,40 @@
 // havuç, soğan, sarımsak, zeytinyağı — written as freeTextName when Hasat actually sells them as
 // marketplace crops), an entirely IN-SCOPE request (field "ingredients" grants `ingredientsWhole`
 // in allowed-changes.ts's surface — see that module — so nothing here is fighting Step 08A; this is
-// the SAME "let the model change this" grant, just followed badly). revise-rules.ts item 4 tells
-// the Reviser to use "the EXACT crop slug given in the context" for a marketplace-ingredient crop
-// match — but this stage's own context.ts (unlike ../writer/context.ts's `loadCropContext`) never
-// hands the Reviser ANY crop_config slug list at all (see context.ts's own module header: this
-// stage's input is deliberately NARROWER than the Writer's). Asked to crop-match an ingredient with
-// no real slug list to reach for, the Reviser invents one. `validate_recipe_crop_values` (correctly
-// — its own logic is not touched here) rejects it as INGREDIENT_CROP_UNKNOWN, and until this module
-// existed that sank the WHOLE job at revise-stage.ts's REVISER_DRAFT_VALIDATION_FAILED branch — a
-// permanent, terminal `failed`, even though the requested change was entirely within QA's own
-// granted scope and the OTHER four-fifths of the draft was fine.
+// the SAME "let the model change this" grant, just followed badly). revise-rules.ts item 4 (and
+// writer/editorial-rules.ts item 2, the same instruction for the Writer) tells the agent to use
+// "the EXACT crop slug given in the context" for a marketplace-ingredient crop match — but
+// revise/context.ts never hands the Reviser ANY crop_config slug list at all, and writer/context.ts
+// only ever calls `loadCropContext` for the brief's single `focusCrop`, never the full list either
+// (see each module's own header). Asked to crop-match an ingredient with no real slug list to reach
+// for, the agent invents one. `validate_recipe_crop_values` (correctly — its own logic is not
+// touched here) rejects it as INGREDIENT_CROP_UNKNOWN, and without this module that sinks the WHOLE
+// job at the calling stage's own `*_DRAFT_VALIDATION_FAILED` branch — a permanent, terminal
+// `failed`, even though the requested change (or, for the Writer, a draft that was otherwise fine)
+// was entirely within scope.
 //
 // Same "don't trust the model, override on the server" principle allowed-changes.ts already applies
-// to out-of-scope fields, and revise-stage.ts already applies to jobId/briefId: rather than teaching
-// the Reviser a full crop_config slug list (a heavier, prompt-surface change touching context.ts +
-// revise-rules.ts — the rejected alternative; see this stage's README) or rejecting the whole
-// candidate outright, every ingredient `validate_recipe_crop_values` flags as
+// to out-of-scope fields, and both stage-runners already apply to jobId/briefId: rather than
+// teaching the agent a full crop_config slug list (a heavier, prompt-surface change touching
+// context.ts + the rules file for whichever stage — the rejected alternative; see revise/README.md)
+// or rejecting the whole candidate outright, every ingredient `validate_recipe_crop_values` flags as
 // INGREDIENT_CROP_UNKNOWN is force-corrected server-side: `crop` reverts to `null` and
 // `freeTextName` is set to a readable form of the invented slug, satisfying the same `crop !== null
-// || freeTextName !== null` schema invariant every other ingredient already meets. QA can flag the
-// still-unmatched ingredient again next pass as a fresh INGREDIENT_INCONSISTENCY blocking issue —
-// this module does not pretend the crop match happened, it only stops an invented value from
-// killing the job outright. revise-stage.ts re-runs `validate_recipe_crop_values` (via
-// `validateDraft`) once against the corrected draft; that RPC's own logic decides what's valid, not
-// this module — it is never re-derived here, only reacted to.
-import type { RecipeDraftPayload, RecipeQAIssue } from "../types.ts";
+// || freeTextName !== null` schema invariant every other ingredient already meets. For the Reviser,
+// QA can flag the still-unmatched ingredient again next pass as a fresh INGREDIENT_INCONSISTENCY
+// blocking issue; for the Writer, the first QA pass does the same. This module does not pretend the
+// crop match happened, it only stops an invented value from killing the job outright. Each caller
+// re-runs `validate_recipe_crop_values` (via `validateDraft`) once against the corrected draft;
+// that RPC's own logic decides what's valid, not this module — it is never re-derived here, only
+// reacted to.
+//
+// Why shared, not duplicated: this module's own logic above ("that stays exactly one place,
+// `validate_recipe_crop_values`, per this file's own module header" — see
+// `sanitizeUnknownCropIngredients`'s docstring) already insists the crop_config validation logic
+// live in exactly one place; the same principle applies to this module itself once a second caller
+// needs it — one implementation both `writer/write-stage.ts` and `revise/revise-stage.ts` import,
+// not two copies that could drift.
+import type { RecipeDraftPayload, RecipeQAIssue } from "./types.ts";
 
 const INGREDIENT_CROP_FIELD_RE = /^ingredients\[(\d+)\]\.crop$/;
 
@@ -50,8 +61,9 @@ function humanizeInventedCropSlug(slug: string): string {
 export interface CropSlugSanitizeResult {
   draft: RecipeDraftPayload;
   /** Ingredient indices (into `draft.ingredients`) forced from `crop` to `freeTextName` — empty
-   * when none of `unknownCropIssues` named a locatable ingredient. Surfaced in revise-stage.ts's
-   * telemetry the same way `forcedRevertFields` already is (see that module's own output object). */
+   * when none of `unknownCropIssues` named a locatable ingredient. Surfaced in the calling stage's
+   * telemetry (revise-stage.ts's `forcedCropFallbackIndices`, mirroring `forcedRevertFields`; and
+   * write-stage.ts's own `forcedCropFallbackIndices`, its Step 06 equivalent). */
   sanitizedIngredientIndices: number[];
 }
 

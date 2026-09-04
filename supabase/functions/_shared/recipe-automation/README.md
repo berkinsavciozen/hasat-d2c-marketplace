@@ -13,6 +13,15 @@ validation RPCs (`supabase/migrations/20260819150000_f2s04_recipe_validation_rpc
 these contracts field-for-field; see `supabase/tests/f2_recipe_automation/` for their SQL test
 suite.
 
+**`crop-slug-guard.ts`** (this directory): `sanitizeUnknownCropIngredients()` — force-corrects any
+ingredient a content agent's draft has `validate_recipe_crop_values` flag as
+`INGREDIENT_CROP_UNKNOWN` (an invented, not-in-`crop_config` slug) to `crop: null` + a humanized
+`freeTextName`, so an otherwise in-scope crop-match the agent gets wrong doesn't sink the whole job.
+Lives at the `recipe-automation/` root, not under `writer/` or `revise/`, because both
+`writer/write-stage.ts` (Step 06B) and `revise/revise-stage.ts` (Step 08B) import the SAME
+implementation — see `revise/README.md`'s "Step 08B" section for the full gap this closes and why
+it was left shared rather than duplicated per stage.
+
 **Step 05 (Edge Function infrastructure):** `infra/` (this directory) holds the shared,
 content-agent-agnostic Edge Function plumbing every stage-runner imports — admin/dispatch
 auth, the service-role client, atomic job claim, compare-and-set stage transitions, next-stage

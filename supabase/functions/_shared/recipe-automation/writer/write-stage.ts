@@ -26,6 +26,7 @@ import type { RecipeDraftPayload } from "../types.ts";
 import { briefFromJobRow, loadCropContext, type WriteStageBrief } from "./context.ts";
 import { buildWriterSystemPrompt } from "./system-prompt.ts";
 import { validateDraft } from "./validate-draft.ts";
+import { sanitizeUnknownCropIngredients } from "../crop-slug-guard.ts";
 
 const WRITE_STAGE = "write" as const;
 const NEXT_STAGE = "qa" as const;
@@ -249,9 +250,28 @@ export async function runWriteStage(
     return { outcome: "invalid_output", jobId: params.jobId, errorCode: error.code };
   }
 
-  const draft = parsed.data;
-  const validation = await validateDraft(client, draft);
-  const blockingIssues = validation.issues.filter((issue) => issue.severity === "blocking");
+  let draft = parsed.data;
+  let validation = await validateDraft(client, draft);
+  let blockingIssues = validation.issues.filter((issue) => issue.severity === "blocking");
+
+  // Step 06B (the Writer's equivalent of revise/crop-slug-guard.ts's Step 08B — see that module's
+  // own header): the Writer is only ever given crop context for the brief's single `focusCrop`
+  // (`runWriterAgent` above), never the full `crop_config` slug list. If it ever crop-matches an
+  // ingredient outside that single focus crop, it has no real slug to reach for and can invent one,
+  // exactly like the Reviser could before Step 08B. `validate_recipe_crop_values` correctly rejects
+  // that as INGREDIENT_CROP_UNKNOWN; force-correct it server-side instead of letting a single
+  // invented slug sink the whole job at WRITER_DRAFT_VALIDATION_FAILED (retryable: false), then
+  // re-run the full Postgres validation pass exactly once against the corrected draft — the same
+  // "override then re-validate" shape revise-stage.ts uses.
+  const unknownCropIssues = blockingIssues.filter((issue) => issue.code === "INGREDIENT_CROP_UNKNOWN");
+  let sanitizedCropIndices: number[] = [];
+  if (unknownCropIssues.length > 0) {
+    const sanitized = sanitizeUnknownCropIngredients(draft, unknownCropIssues);
+    draft = sanitized.draft;
+    sanitizedCropIndices = sanitized.sanitizedIngredientIndices;
+    validation = await validateDraft(client, draft);
+    blockingIssues = validation.issues.filter((issue) => issue.severity === "blocking");
+  }
 
   if (!validation.valid || blockingIssues.length > 0) {
     const error = toSafeErrorPayload(
@@ -261,7 +281,10 @@ export async function runWriteStage(
     await recordStageRun(client, {
       jobId: params.jobId, batchId: brief.batchId, stage: WRITE_STAGE, status: "failed",
       attempt, startedAt, finishedAt: new Date().toISOString(), error,
-      output: { issues: blockingIssues },
+      output: {
+        issues: blockingIssues,
+        forcedCropFallbackIndices: sanitizedCropIndices.length > 0 ? sanitizedCropIndices : undefined,
+      },
       provider: agentResult.provider, model: agentResult.model, usage: agentResult.usage,
     });
     await failJob(client, { jobId: params.jobId, lockToken, stage: WRITE_STAGE, error });
@@ -308,7 +331,12 @@ export async function runWriteStage(
   await recordStageRun(client, {
     jobId: params.jobId, batchId: brief.batchId, stage: WRITE_STAGE, status: "completed",
     attempt, startedAt, finishedAt: new Date().toISOString(),
-    output: { draftId, version: 1, candidateSlug: validation.candidateSlug },
+    output: {
+      draftId, version: 1, candidateSlug: validation.candidateSlug,
+      // Present only when the Writer invented a not-in-crop_config slug and it was force-corrected
+      // to crop:null/freeTextName — see crop-slug-guard.ts and the Step 06B block above.
+      forcedCropFallbackIndices: sanitizedCropIndices.length > 0 ? sanitizedCropIndices : undefined,
+    },
     provider: agentResult.provider, model: agentResult.model, usage: agentResult.usage,
   });
 
