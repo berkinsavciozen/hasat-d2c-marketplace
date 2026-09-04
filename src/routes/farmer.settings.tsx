@@ -200,18 +200,6 @@ function Settings() {
     }
   };
 
-  const afterAccountDeleted = async () => {
-    markExpectedSignOut();
-    // scope:"local" kasıtlı — bkz. buyer.account.tsx'teki aynı gerekçe
-    // (banned_until='infinity' hesaba global signOut ağ bağımlılığı katar).
-    try {
-      await supabase.auth.signOut({ scope: "local" });
-    } catch {
-      /* oturum zaten hesap silme RPC'siyle geçersizleşti */
-    }
-    toast.success("Hesabın silindi");
-  };
-
   const [exporting, setExporting] = useState(false);
   const exportData = async () => {
     const {
@@ -609,11 +597,7 @@ function Settings() {
         </Section>
       </div>
 
-      <DeleteAccountModal
-        open={deleteOpen}
-        onOpenChange={setDeleteOpen}
-        onDeleted={afterAccountDeleted}
-      />
+      <DeleteAccountModal open={deleteOpen} onOpenChange={setDeleteOpen} />
 
       <Sheet open={!!editing} onOpenChange={(o) => !o && setEditing(null)}>
         <SheetContent side="bottom" className="rounded-t-2xl max-h-[92vh] overflow-y-auto">

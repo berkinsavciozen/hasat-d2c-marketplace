@@ -3,27 +3,44 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sh
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import { useDeleteAccount } from "@/lib/hasat/queries";
+import { completeAccountDeletion } from "@/lib/hasat/accountDeletion";
+import { supabase } from "@/integrations/supabase/client";
+import { useHasat } from "@/lib/hasat/store";
+import { useQueryClient } from "@tanstack/react-query";
+import { markExpectedSignOut } from "@/lib/hasat/sessionGuard";
 
 const CONFIRM_PHRASE = "HESABIMI SİL";
 
 export function DeleteAccountModal({
   open,
   onOpenChange,
-  onDeleted,
 }: {
   open: boolean;
   onOpenChange: (o: boolean) => void;
-  onDeleted: () => void;
 }) {
   const [confirmText, setConfirmText] = useState("");
   const deleteAccount = useDeleteAccount();
+  const reset = useHasat((s) => s.reset);
+  const queryClient = useQueryClient();
   const canConfirm = confirmText.trim().toLocaleUpperCase("tr-TR") === CONFIRM_PHRASE;
 
   const onConfirm = async () => {
     try {
-      await deleteAccount.mutateAsync();
+      await completeAccountDeletion({
+        deleteAccount: () => deleteAccount.mutateAsync(),
+        signOutLocally: async () => {
+          markExpectedSignOut();
+          const { error } = await supabase.auth.signOut({ scope: "local" });
+          if (error) throw error;
+        },
+        clearClientState: () => {
+          reset();
+          queryClient.clear();
+          toast.success("Hesabın silindi");
+        },
+        redirectToStart: () => window.location.replace("/"),
+      });
       onOpenChange(false);
-      onDeleted();
     } catch (e) {
       toast.error((e as Error).message || "Hesap silinemedi");
     }
