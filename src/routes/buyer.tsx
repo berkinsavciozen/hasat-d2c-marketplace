@@ -1,4 +1,4 @@
-import { createFileRoute, Link, Outlet, redirect, useRouterState } from "@tanstack/react-router";
+import { createFileRoute, Link, Outlet, useRouterState } from "@tanstack/react-router";
 import { useState } from "react";
 import {
   Search,
@@ -13,20 +13,14 @@ import {
 import { useRealtimeSync, useAuthUserId } from "@/lib/hasat/queries";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { BrandLogo } from "@/components/hasat/BrandLogo";
+import { requireActiveProfile } from "@/lib/hasat/protectedRouteGuard";
 
 export const Route = createFileRoute("/buyer")({
-  beforeLoad: ({ location }) => {
+  beforeLoad: async ({ location }) => {
     if (typeof window === "undefined") return;
     // Public exception: producer profile is viewable by guests (with limited CTAs).
     if (location.pathname.startsWith("/buyer/producer/")) return;
-    const raw = localStorage.getItem("hasat-store");
-    if (!raw) throw redirect({ to: "/" });
-    try {
-      const role = JSON.parse(raw)?.state?.user?.role;
-      if (role !== "buyer") throw redirect({ to: "/" });
-    } catch {
-      throw redirect({ to: "/" });
-    }
+    await requireActiveProfile("buyer");
   },
   component: BuyerShell,
 });

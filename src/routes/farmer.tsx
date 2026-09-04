@@ -1,11 +1,4 @@
-import {
-  createFileRoute,
-  Link,
-  Outlet,
-  redirect,
-  useRouterState,
-  useNavigate,
-} from "@tanstack/react-router";
+import { createFileRoute, Link, Outlet, useRouterState, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import {
   BarChart3,
@@ -38,18 +31,12 @@ import { BrandLogo } from "@/components/hasat/BrandLogo";
 
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { FarmerAIChat } from "@/components/hasat/ai-chat/FarmerAIChat";
+import { requireActiveProfile } from "@/lib/hasat/protectedRouteGuard";
 
 export const Route = createFileRoute("/farmer")({
-  beforeLoad: () => {
+  beforeLoad: async () => {
     if (typeof window === "undefined") return;
-    const raw = localStorage.getItem("hasat-store");
-    if (!raw) throw redirect({ to: "/" });
-    try {
-      const role = JSON.parse(raw)?.state?.user?.role;
-      if (role !== "farmer") throw redirect({ to: "/" });
-    } catch {
-      throw redirect({ to: "/" });
-    }
+    await requireActiveProfile("farmer");
   },
   component: FarmerShell,
 });

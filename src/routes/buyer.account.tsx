@@ -62,20 +62,6 @@ function Account() {
     }
   };
 
-  const afterAccountDeleted = async () => {
-    markExpectedSignOut();
-    // scope:"local" kasıtlı: hesap artık banned_until='infinity' — sunucuya
-    // global signOut isteği atmak gereksiz bir ağ bağımlılığı yaratır ve
-    // banlı hesapta reddedilme riski taşır (mobil sessionGuard.ts'teki aynı
-    // gerekçe).
-    try {
-      await supabase.auth.signOut({ scope: "local" });
-    } catch {
-      /* oturum zaten hesap silme RPC'siyle geçersizleşti */
-    }
-    toast.success("Hesabın silindi");
-  };
-
   const onAdd = async () => {
     if (!label.trim() || !address.trim() || !city.trim()) {
       toast.error("Etiket, adres ve şehir gerekli");
@@ -336,11 +322,7 @@ function Account() {
         </button>
       </div>
 
-      <DeleteAccountModal
-        open={deleteOpen}
-        onOpenChange={setDeleteOpen}
-        onDeleted={afterAccountDeleted}
-      />
+      <DeleteAccountModal open={deleteOpen} onOpenChange={setDeleteOpen} />
     </>
   );
 }
