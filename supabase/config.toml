@@ -20,3 +20,9 @@ static_files = [ "./functions/_shared/recipe-automation/image/vendor/*" ]
 
 [functions.legacy-recipe-image-backfill]
 verify_jwt = false
+
+[functions.extract-recipe]
+verify_jwt = true
+
+[functions.send-push]
+verify_jwt = true
