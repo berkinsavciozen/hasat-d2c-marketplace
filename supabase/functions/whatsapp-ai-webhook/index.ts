@@ -10,8 +10,10 @@ const AI_URL = "https://ai.gateway.lovable.dev/v1/chat/completions";
 const AI_MODEL = "google/gemini-3-flash-preview";
 
 const ERR_GENERIC = "Şu an bir sorun yaşıyoruz. Lütfen birkaç dakika sonra tekrar deneyin.";
-const ERR_NOT_REGISTERED = "Hasat uygulamasına kayıt olmak için: hasat.lovable.app";
-const ERR_LIMIT = "Bu ay mesaj limitine ulaştınız. Sınırsız AI sohbeti için Hasat Premium'a geçin: hasat.lovable.app/premium";
+// T1 Faz 1: PUBLIC_BASE_URL env var isn't set yet, so this falls back to the current production domain — flip day sets it, no code change needed.
+const PUBLIC_BASE_URL = (Deno.env.get("PUBLIC_BASE_URL") ?? "https://hasat.lovable.app").replace(/^https?:\/\//, "");
+const ERR_NOT_REGISTERED = `Hasat uygulamasına kayıt olmak için: ${PUBLIC_BASE_URL}`;
+const ERR_LIMIT = `Bu ay mesaj limitine ulaştınız. Sınırsız AI sohbeti için Hasat Premium'a geçin: ${PUBLIC_BASE_URL}/premium`;
 
 function xmlEscape(s: string): string {
   return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&apos;");
