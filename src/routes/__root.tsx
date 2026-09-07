@@ -179,7 +179,18 @@ function AuthBootstrap() {
         .maybeSingle();
       if (cancelled || !profile) return;
       const role = (profile.role === "buyer" ? "buyer" : "farmer") as "farmer" | "buyer";
+      // Always write the real Supabase id into the store before any
+      // onboarding-redirect early return — otherwise a user with no name
+      // yet (onboarding incomplete) is stuck with `setRole`'s placeholder
+      // id and every write flow relying on the store's `user.id` breaks.
       setRole(role);
+      updateUser({
+        id: session.user.id,
+        name: profile.name ?? "",
+        phone: profile.phone ?? "",
+        city: profile.city ?? "",
+        premium: !!profile.premium,
+      });
       if (!profile.name || profile.name.trim() === "") {
         const path = window.location.pathname;
         if (!path.startsWith("/login") && !path.startsWith("/onboarding")) {
@@ -187,13 +198,6 @@ function AuthBootstrap() {
         }
         return;
       }
-      updateUser({
-        id: session.user.id,
-        name: profile.name,
-        phone: profile.phone ?? "",
-        city: profile.city ?? "",
-        premium: !!profile.premium,
-      });
     })();
 
     // P23-M8-b — TEK temizlik noktası: `reset()` + query cache + yönlendirme

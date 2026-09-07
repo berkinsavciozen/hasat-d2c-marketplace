@@ -60,9 +60,14 @@ export const useHasat = create<Store>()(
       
       priceAlerts: [],
       setRole: (role) =>
-        set(() => ({
+        set((s) => ({
+          // Preserve any real user fields already in the store (id, name,
+          // phone, city, premium) — never stomp them with placeholder
+          // values. A brand-new session that hasn't loaded a profile yet
+          // still falls back to an empty id, but an existing real id
+          // (set via `updateUser`) survives every subsequent `setRole` call.
           user: role
-            ? { id: "u1", role, name: "", phone: "", city: "", premium: false }
+            ? { id: "", name: "", phone: "", city: "", premium: false, ...s.user, role }
             : null,
         })),
 
