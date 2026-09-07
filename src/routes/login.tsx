@@ -23,6 +23,13 @@ export const Route = createFileRoute("/login")({
   component: LoginPage,
 });
 
+// B-8 (Lansman Planı v2 r26, §1.3): production Twilio WhatsApp sender is not yet
+// approved (confirmed 2026-09-03) — sandbox mode "succeeds" but only delivers to
+// pre-registered numbers, leaving users stuck on the OTP screen with no error.
+// WhatsApp OTP is disabled until the sender is approved; flip this back to `true`
+// (and restore the channel toggle below + the ternary in sendOtp) once it is.
+const WHATSAPP_OTP_ENABLED = false;
+
 function translateAuthError(e: Error): string {
   const m = (e?.message || "").toLowerCase();
   if (
@@ -51,7 +58,7 @@ function LoginPage() {
   const updateUser = useHasat((s) => s.updateUser);
   const [step, setStep] = useState<"phone" | "otp">("phone");
   const [phone, setPhone] = useState("");
-  const [channel, setChannel] = useState<"wa" | "sms">("wa");
+  const [channel, setChannel] = useState<"wa" | "sms">("sms");
   const [otp, setOtp] = useState<string[]>(["", "", "", "", "", ""]);
   const [otpError, setOtpError] = useState<string | null>(null);
   const [phoneError, setPhoneError] = useState<string | null>(null);
@@ -134,7 +141,8 @@ function LoginPage() {
       const { error } = await supabase.auth.signInWithOtp({
         phone: "+90" + phoneDigits,
         options: {
-          channel: channel === "wa" ? "whatsapp" : "sms",
+          // WhatsApp OTP disabled (see WHATSAPP_OTP_ENABLED above) — always sms for now.
+          channel: "sms",
           data: { role },
         },
       });
@@ -267,48 +275,50 @@ function LoginPage() {
                 {phoneError}
               </p>
             )}
-            <div className="mt-5">
-              <div className="text-xs text-hwhite/60 mb-2">Kod nereye gelsin?</div>
-              <div className="grid grid-cols-2 gap-2">
-                <button
-                  type="button"
-                  onClick={() => setChannel("wa")}
-                  aria-pressed={channel === "wa"}
-                  className="rounded-xl px-3 py-3 text-sm min-h-[48px] inline-flex items-center justify-center gap-1.5 transition"
-                  style={{
-                    background:
-                      channel === "wa"
-                        ? "color-mix(in oklab, var(--primary) 22%, var(--dark))"
-                        : "rgba(255,255,255,0.05)",
-                    border:
-                      channel === "wa"
-                        ? "1px solid var(--primary)"
-                        : "1px solid rgba(255,255,255,0.1)",
-                  }}
-                >
-                  <MessageCircle className="w-4 h-4" style={{ color: "var(--whatsapp)" }} />{" "}
-                  WhatsApp
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setChannel("sms")}
-                  aria-pressed={channel === "sms"}
-                  className="rounded-xl px-3 py-3 text-sm min-h-[48px] inline-flex items-center justify-center gap-1.5 transition"
-                  style={{
-                    background:
-                      channel === "sms"
-                        ? "color-mix(in oklab, var(--primary) 22%, var(--dark))"
-                        : "rgba(255,255,255,0.05)",
-                    border:
-                      channel === "sms"
-                        ? "1px solid var(--primary)"
-                        : "1px solid rgba(255,255,255,0.1)",
-                  }}
-                >
-                  <MessageSquareText className="w-4 h-4 text-hwhite/70" /> SMS
-                </button>
+            {WHATSAPP_OTP_ENABLED && (
+              <div className="mt-5">
+                <div className="text-xs text-hwhite/60 mb-2">Kod nereye gelsin?</div>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setChannel("wa")}
+                    aria-pressed={channel === "wa"}
+                    className="rounded-xl px-3 py-3 text-sm min-h-[48px] inline-flex items-center justify-center gap-1.5 transition"
+                    style={{
+                      background:
+                        channel === "wa"
+                          ? "color-mix(in oklab, var(--primary) 22%, var(--dark))"
+                          : "rgba(255,255,255,0.05)",
+                      border:
+                        channel === "wa"
+                          ? "1px solid var(--primary)"
+                          : "1px solid rgba(255,255,255,0.1)",
+                    }}
+                  >
+                    <MessageCircle className="w-4 h-4" style={{ color: "var(--whatsapp)" }} />{" "}
+                    WhatsApp
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setChannel("sms")}
+                    aria-pressed={channel === "sms"}
+                    className="rounded-xl px-3 py-3 text-sm min-h-[48px] inline-flex items-center justify-center gap-1.5 transition"
+                    style={{
+                      background:
+                        channel === "sms"
+                          ? "color-mix(in oklab, var(--primary) 22%, var(--dark))"
+                          : "rgba(255,255,255,0.05)",
+                      border:
+                        channel === "sms"
+                          ? "1px solid var(--primary)"
+                          : "1px solid rgba(255,255,255,0.1)",
+                    }}
+                  >
+                    <MessageSquareText className="w-4 h-4 text-hwhite/70" /> SMS
+                  </button>
+                </div>
               </div>
-            </div>
+            )}
             <Button
               disabled={phoneDigits.length !== 10}
               loading={sending}
