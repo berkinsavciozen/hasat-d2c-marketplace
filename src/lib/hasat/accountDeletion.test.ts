@@ -68,3 +68,31 @@ test("failed deletion preserves the existing session and does not redirect", asy
 
   assert.deepEqual(calls, []);
 });
+
+for (const role of ["buyer", "farmer"]) {
+  test(`${role}: deletion preserves local sign-out → Zustand → React Query → hard redirect order`, async () => {
+    const calls: string[] = [];
+    await completeAccountDeletion({
+      deleteAccount: async () => {
+        calls.push("rpc-committed");
+      },
+      signOutLocally: async () => {
+        calls.push("local-sign-out");
+      },
+      clearClientState: () => {
+        calls.push("zustand-reset");
+        calls.push("query-clear");
+      },
+      redirectToStart: () => {
+        calls.push("hard-redirect");
+      },
+    });
+    assert.deepEqual(calls, [
+      "rpc-committed",
+      "local-sign-out",
+      "zustand-reset",
+      "query-clear",
+      "hard-redirect",
+    ]);
+  });
+}

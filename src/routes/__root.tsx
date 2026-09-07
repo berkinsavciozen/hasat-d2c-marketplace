@@ -12,7 +12,7 @@ import { toast } from "sonner";
 
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
-import { takeExpectedSignOut } from "@/lib/hasat/sessionGuard";
+import { markExpectedSignOut, takeExpectedSignOut } from "@/lib/hasat/sessionGuard";
 import { PUBLIC_BASE_URL } from "@/lib/hasat/constants";
 
 function NotFoundComponent() {
@@ -158,6 +158,8 @@ import { RoleSwitcher } from "@/components/hasat/RoleSwitcher";
 import { supabase } from "@/integrations/supabase/client";
 import { useHasat } from "@/lib/hasat/store";
 
+import { hasActiveProfile } from "@/lib/hasat/protectedRouteAccess";
+
 function AuthBootstrap() {
   const router = useRouter();
   const queryClient = useQueryClient();
@@ -177,7 +179,20 @@ function AuthBootstrap() {
         .select("*")
         .eq("id", session.user.id)
         .maybeSingle();
-      if (cancelled || !profile) return;
+      if (cancelled) return;
+      if (!hasActiveProfile(session.user.id, profile)) {
+        markExpectedSignOut();
+        try {
+          await supabase.auth.signOut({ scope: "local" });
+        } catch {
+          // Cleanup must complete even when the retained auth user cannot sign out.
+        }
+        reset();
+        queryClient.clear();
+        if (!cancelled) router.navigate({ to: "/" });
+        return;
+      }
+      if (!profile) return;
       const role = (profile.role === "buyer" ? "buyer" : "farmer") as "farmer" | "buyer";
       // Always write the real Supabase id into the store before any
       // onboarding-redirect early return — otherwise a user with no name
