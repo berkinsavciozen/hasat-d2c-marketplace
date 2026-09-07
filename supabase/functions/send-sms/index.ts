@@ -13,7 +13,6 @@ const CORS = {
 // function. If you add/remove an event in one, mirror the change in the other.
 const COL: Record<string, string> = {
   new_offer: "new_offer_sms",
-  price_alert: "price_alert_sms",
   harvest_time: "harvest_time_sms",
   offer_accepted: "offer_accepted_sms",
   payment_confirmed: "payment_confirmed_sms",
