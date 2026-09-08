@@ -1,3 +1,5 @@
+import type { RecipeFacts } from "./recipeFacts";
+import { RECIPE_FACT_COLUMNS, mapRecipeFacts } from "./recipeFacts";
 import { useEffect, useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -28,7 +30,7 @@ export interface RecipeListItem {
   availableCount: number | null;
 }
 
-export interface RecipeDetail {
+export interface RecipeDetail extends RecipeFacts {
   id: string;
   slug: string;
   title: string;
@@ -66,6 +68,8 @@ export interface RecipeIngredientRow {
 
 const RECIPE_LIST_COLUMNS =
   "id, slug, title, description, cover_photo_url, servings, prep_minutes, cook_minutes, rest_minutes, difficulty, cuisine, diet_tags, required_equipment";
+
+const RECIPE_DETAIL_COLUMNS = `${RECIPE_LIST_COLUMNS}, ${RECIPE_FACT_COLUMNS}` as const;
 
 /**
  * Recipe's own cover photo if it has one, else the crop photo of its first
@@ -174,7 +178,7 @@ export async function fetchRecipeBySlug(slug: string): Promise<{
 } | null> {
   const { data: recipeRow, error: recipeErr } = await supabase
     .from("recipes")
-    .select(RECIPE_LIST_COLUMNS)
+    .select(RECIPE_DETAIL_COLUMNS)
     .eq("slug", slug)
     .eq("visibility", "public")
     .eq("status", "published")
@@ -236,9 +240,9 @@ export async function fetchRecipeBySlug(slug: string): Promise<{
     }
   }
 
-  const [withCover] = await attachCoverFallback([recipeRow as any]);
+  const [withCover] = await attachCoverFallback([recipeRow]);
   return {
-    recipe: { ...(withCover as any), diet_tags: recipeRow.diet_tags ?? [] },
+    recipe: { ...withCover, ...mapRecipeFacts(recipeRow), diet_tags: recipeRow.diet_tags ?? [] },
     steps: (stepRows ?? []) as RecipeStepRow[],
     ingredients: (ingredientRows ?? []) as RecipeIngredientRow[],
     relatedRecipes,
