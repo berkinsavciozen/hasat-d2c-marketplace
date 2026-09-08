@@ -23,6 +23,12 @@ import {
 import { RepresentativePhoto, RepresentativeBadge } from "@/components/hasat/RepresentativePhoto";
 import { CropRequestModal } from "@/components/hasat/CropRequestModal";
 import { MobileNudge } from "@/components/hasat/MobileNudge";
+import { AllergenPanel, NutritionPanel } from "@/components/hasat/RecipeFactsPanels";
+import {
+  buildAllergenPresentation,
+  buildNutritionPresentation,
+  toNutritionInformation,
+} from "@/lib/hasat/recipeDetailPresentation";
 import {
   savePendingRecipeRequest,
   loadPendingRecipeRequest,
@@ -58,6 +64,7 @@ export const Route = createFileRoute("/tarifler/$slug")({
     const description =
       recipe.description ?? `${recipe.title} tarifi — Hasat'ın editoryal tarif koleksiyonundan.`;
     const canonical = `${PUBLIC_BASE_URL}/tarifler/${recipe.slug}`;
+    const nutrition = toNutritionInformation(buildNutritionPresentation(recipe));
     // totalTime = prep + cook + rest (schema.org has no separate "rest" field —
     // it folds into totalTime by definition; prepTime/cookTime stay pure, P23-M4-c).
     const totalMinutes = totalRecipeMinutes(recipe);
@@ -98,6 +105,7 @@ export const Route = createFileRoute("/tarifler/$slug")({
             ...(toIsoDuration(totalMinutes) ? { totalTime: toIsoDuration(totalMinutes) } : {}),
             ...(recipe.cuisine ? { recipeCuisine: recipe.cuisine } : {}),
             ...(recipe.diet_tags.length > 0 ? { keywords: recipe.diet_tags.join(", ") } : {}),
+            ...(nutrition ? { nutrition } : {}),
             recipeIngredient: ingredients.map(ingredientLabel).filter(Boolean),
             recipeInstructions: steps.map((s) => ({
               "@type": "HowToStep",
@@ -149,6 +157,8 @@ function RecipeDetailPage() {
   useLogRecipeView(recipe.id);
 
   const [servings, setServings] = useState(recipe.servings ?? 4);
+  const nutritionModel = useMemo(() => buildNutritionPresentation(recipe), [recipe]);
+  const allergenModel = useMemo(() => buildAllergenPresentation(recipe), [recipe]);
   const { data: availability = [], isLoading: availLoading } = useRecipeAvailability(recipe.id);
   const { data: shoppingList = [], isLoading: shopLoading } = useRecipeShoppingList(
     recipe.id,
@@ -304,43 +314,74 @@ function RecipeDetailPage() {
           )}
         </div>
 
-        <section className="space-y-3">
-          <div className="flex items-center justify-between">
-            <div>
-              <h2 className="text-xs font-medium uppercase tracking-wider text-hmuted">
-                Malzemeler
-              </h2>
-              {liveDataReady && (
-                <div className="mt-0.5 text-[11px] text-hmuted">
-                  {availability.length} malzemeden {availability.filter((a) => a.is_matched).length}
-                  'i Hasat'ta
-                </div>
-              )}
-            </div>
-            <div className="flex items-center gap-2">
+        <section className="space-y-3" aria-labelledby="servings-heading">
+          <h2
+            id="servings-heading"
+            className="text-xs font-medium uppercase tracking-wider text-hmuted"
+          >
+            Porsiyon
+          </h2>
+          <div className="flex items-center justify-between rounded-xl border bg-card p-3">
+            <span className="text-sm text-hmuted">Malzeme ve toplam besin miktarı</span>
+            <div
+              className="flex shrink-0 items-center gap-2"
+              role="group"
+              aria-label="Porsiyon sayısı"
+            >
               <button
                 type="button"
                 onClick={() => setServings((s) => Math.max(1, s - 1))}
-                className="grid h-8 w-8 place-items-center rounded-full border hover:bg-muted"
+                disabled={servings <= 1}
+                className="grid h-11 w-11 place-items-center rounded-full border transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-40 motion-reduce:transition-none"
                 aria-label="Porsiyonu azalt"
+                aria-controls="serving-count nutrition-values ingredients-list"
               >
                 <Minus className="h-3.5 w-3.5" />
               </button>
-              <span className="min-w-[5rem] text-center text-sm font-medium">
+              <span
+                id="serving-count"
+                className="min-w-[5rem] text-center text-sm font-medium tabular-nums"
+                aria-live="polite"
+                aria-atomic="true"
+              >
                 {servings} porsiyon
               </span>
               <button
                 type="button"
                 onClick={() => setServings((s) => s + 1)}
-                className="grid h-8 w-8 place-items-center rounded-full border hover:bg-muted"
+                className="grid h-11 w-11 place-items-center rounded-full border transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 motion-reduce:transition-none"
                 aria-label="Porsiyonu artır"
+                aria-controls="serving-count nutrition-values ingredients-list"
               >
                 <Plus className="h-3.5 w-3.5" />
               </button>
             </div>
           </div>
+        </section>
 
-          <div className="space-y-2">
+        <div id="nutrition-values">
+          <NutritionPanel model={nutritionModel} servings={servings} />
+        </div>
+
+        <AllergenPanel model={allergenModel} />
+
+        <section className="space-y-3" aria-labelledby="ingredients-heading">
+          <div>
+            <h2
+              id="ingredients-heading"
+              className="text-xs font-medium uppercase tracking-wider text-hmuted"
+            >
+              Malzemeler
+            </h2>
+            {liveDataReady && (
+              <div className="mt-0.5 text-[11px] text-hmuted">
+                {availability.length} malzemeden {availability.filter((a) => a.is_matched).length}
+                'i Hasat'ta
+              </div>
+            )}
+          </div>
+
+          <div id="ingredients-list" className="space-y-2">
             {ingredients.map((ing) => {
               const avail = availByIngredient.get(ing.id);
               const shop = shopByIngredient.get(ing.id);
@@ -380,7 +421,9 @@ function RecipeDetailPage() {
                     </div>
                     <div className="text-xs text-hmuted">
                       {(() => {
-                        const q = shop ? shop.scaled_quantity ?? shop.recipe_quantity : ing.quantity;
+                        const q = shop
+                          ? (shop.scaled_quantity ?? shop.recipe_quantity)
+                          : ing.quantity;
                         const unit = shop ? shop.recipe_unit : ing.unit;
                         return `${q != null ? formatQuantity(q, unit) : ""} ${unit ?? ""}`.trim();
                       })()}
@@ -411,7 +454,9 @@ function RecipeDetailPage() {
                           {shop?.min_order_canonical != null && shop?.canonical_unit && (
                             <>
                               {" "}
-                              · Min. sipariş {formatQuantity(shop.min_order_canonical, shop.canonical_unit)} {shop.canonical_unit}
+                              · Min. sipariş{" "}
+                              {formatQuantity(shop.min_order_canonical, shop.canonical_unit)}{" "}
+                              {shop.canonical_unit}
                             </>
                           )}
                           {avail && avail.active_listing_count > 0 && (
@@ -420,8 +465,11 @@ function RecipeDetailPage() {
                         </div>
                         {shop?.rounded_up_to_min_order && shop.canonical_unit && (
                           <div className="text-[11px] text-hmuted">
-                            Bu tarif için {formatQuantity(shop.needed_canonical, shop.canonical_unit)} {shop.canonical_unit} yeterli, ama
-                            minimum sipariş {formatQuantity(shop.purchase_canonical, shop.canonical_unit)} {shop.canonical_unit}
+                            Bu tarif için{" "}
+                            {formatQuantity(shop.needed_canonical, shop.canonical_unit)}{" "}
+                            {shop.canonical_unit} yeterli, ama minimum sipariş{" "}
+                            {formatQuantity(shop.purchase_canonical, shop.canonical_unit)}{" "}
+                            {shop.canonical_unit}
                             {shop.recipes_covered != null && (
                               <> — bu miktar ~{Math.round(shop.recipes_covered)} tarif yapar.</>
                             )}
