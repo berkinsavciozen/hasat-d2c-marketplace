@@ -4,7 +4,8 @@
 // Yeniden üretmek için:
 //   supabase gen types typescript --project-id efuqpiaavrzimvstpdpm > core/db/types.ts
 // ve üretim sonrası bu başlığı tekrar ekle.
-// Son üretim: 2026-08-18 (F3 migration round 2 — notif_prefs.price_alert_push/sms/whatsapp
+// T3/T4 recipes alanları: 2026-09-07 canlı MCP generated types çıktısıyla senkronlandı.
+// Önceki tam üretim: 2026-08-18 (F3 migration round 2 — notif_prefs.price_alert_push/sms/whatsapp
 // düşürüldü; offer_rejected_push/sms, order_preparing_push/sms, order_completed_push/sms
 // eklendi. Bkz. hasat-vault Build/Launch-Scope-Plan.md → F3.)
 
@@ -2354,6 +2355,9 @@ export type Database = {
       recipes: {
         Row: {
           allergen_labels: string[] | null
+          allergens_reviewed: boolean
+          allergens_reviewed_at: string | null
+          allergens_reviewed_by: string | null
           author_type: string
           calories: number | null
           carbs_g: number | null
@@ -2371,6 +2375,11 @@ export type Database = {
           id: string
           micronutrients: Json | null
           nutrition_calculated_at: string | null
+          nutrition_coverage_pct: number | null
+          nutrition_input_hash: string | null
+          nutrition_reference_version: string | null
+          nutrition_source: string | null
+          nutrition_warnings: string[]
           owner_id: string | null
           prep_minutes: number | null
           protein_g: number | null
@@ -2388,6 +2397,9 @@ export type Database = {
         }
         Insert: {
           allergen_labels?: string[] | null
+          allergens_reviewed?: boolean
+          allergens_reviewed_at?: string | null
+          allergens_reviewed_by?: string | null
           author_type?: string
           calories?: number | null
           carbs_g?: number | null
@@ -2405,6 +2417,11 @@ export type Database = {
           id?: string
           micronutrients?: Json | null
           nutrition_calculated_at?: string | null
+          nutrition_coverage_pct?: number | null
+          nutrition_input_hash?: string | null
+          nutrition_reference_version?: string | null
+          nutrition_source?: string | null
+          nutrition_warnings?: string[]
           owner_id?: string | null
           prep_minutes?: number | null
           protein_g?: number | null
@@ -2422,6 +2439,9 @@ export type Database = {
         }
         Update: {
           allergen_labels?: string[] | null
+          allergens_reviewed?: boolean
+          allergens_reviewed_at?: string | null
+          allergens_reviewed_by?: string | null
           author_type?: string
           calories?: number | null
           carbs_g?: number | null
@@ -2439,6 +2459,11 @@ export type Database = {
           id?: string
           micronutrients?: Json | null
           nutrition_calculated_at?: string | null
+          nutrition_coverage_pct?: number | null
+          nutrition_input_hash?: string | null
+          nutrition_reference_version?: string | null
+          nutrition_source?: string | null
+          nutrition_warnings?: string[]
           owner_id?: string | null
           prep_minutes?: number | null
           protein_g?: number | null

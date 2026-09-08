@@ -3080,6 +3080,9 @@ export type Database = {
       recipes: {
         Row: {
           allergen_labels: string[] | null
+          allergens_reviewed: boolean
+          allergens_reviewed_at: string | null
+          allergens_reviewed_by: string | null
           author_type: string
           calories: number | null
           carbs_g: number | null
@@ -3097,6 +3100,11 @@ export type Database = {
           id: string
           micronutrients: Json | null
           nutrition_calculated_at: string | null
+          nutrition_coverage_pct: number | null
+          nutrition_input_hash: string | null
+          nutrition_reference_version: string | null
+          nutrition_source: string | null
+          nutrition_warnings: string[]
           owner_id: string | null
           prep_minutes: number | null
           protein_g: number | null
@@ -3114,6 +3122,9 @@ export type Database = {
         }
         Insert: {
           allergen_labels?: string[] | null
+          allergens_reviewed?: boolean
+          allergens_reviewed_at?: string | null
+          allergens_reviewed_by?: string | null
           author_type?: string
           calories?: number | null
           carbs_g?: number | null
@@ -3131,6 +3142,11 @@ export type Database = {
           id?: string
           micronutrients?: Json | null
           nutrition_calculated_at?: string | null
+          nutrition_coverage_pct?: number | null
+          nutrition_input_hash?: string | null
+          nutrition_reference_version?: string | null
+          nutrition_source?: string | null
+          nutrition_warnings?: string[]
           owner_id?: string | null
           prep_minutes?: number | null
           protein_g?: number | null
@@ -3148,6 +3164,9 @@ export type Database = {
         }
         Update: {
           allergen_labels?: string[] | null
+          allergens_reviewed?: boolean
+          allergens_reviewed_at?: string | null
+          allergens_reviewed_by?: string | null
           author_type?: string
           calories?: number | null
           carbs_g?: number | null
@@ -3165,6 +3184,11 @@ export type Database = {
           id?: string
           micronutrients?: Json | null
           nutrition_calculated_at?: string | null
+          nutrition_coverage_pct?: number | null
+          nutrition_input_hash?: string | null
+          nutrition_reference_version?: string | null
+          nutrition_source?: string | null
+          nutrition_warnings?: string[]
           owner_id?: string | null
           prep_minutes?: number | null
           protein_g?: number | null
