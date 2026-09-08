@@ -1981,6 +1981,7 @@ export type Database = {
       }
       profiles: {
         Row: {
+          deleted_at: string | null
           bank_account_name: string | null
           buyer_type: Database["public"]["Enums"]["company_type"] | null
           city: string | null
@@ -1998,6 +1999,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          deleted_at?: string | null
           bank_account_name?: string | null
           buyer_type?: Database["public"]["Enums"]["company_type"] | null
           city?: string | null
@@ -2015,6 +2017,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          deleted_at?: string | null
           bank_account_name?: string | null
           buyer_type?: Database["public"]["Enums"]["company_type"] | null
           city?: string | null

@@ -1,7 +1,7 @@
 import { redirect } from "@tanstack/react-router";
 import { supabase } from "@/integrations/supabase/client";
 import { useHasat } from "@/lib/hasat/store";
-import { hasActiveRole, type ProtectedRole } from "@/lib/hasat/protectedRouteAccess";
+import { checkProtectedProfile, type ProtectedRole } from "@/lib/hasat/protectedRouteAccess";
 import { markExpectedSignOut } from "@/lib/hasat/sessionGuard";
 
 async function clearInvalidSession(): Promise<void> {
@@ -16,26 +16,22 @@ async function clearInvalidSession(): Promise<void> {
 }
 
 export async function requireActiveProfile(expectedRole: ProtectedRole): Promise<void> {
-  const { data: userData, error: userError } = await supabase.auth.getUser();
-  const user = userData.user;
-  if (userError || !user) {
-    await clearInvalidSession();
-    throw redirect({ to: "/" });
-  }
-
-  const { data: profile, error: profileError } = await supabase
-    .from("profiles")
-    .select("id, role")
-    .eq("id", user.id)
-    .maybeSingle();
-
-  if (profileError) {
-    useHasat.getState().reset();
-    throw redirect({ to: "/" });
-  }
-
-  if (!hasActiveRole(user.id, profile, expectedRole)) {
-    await clearInvalidSession();
-    throw redirect({ to: "/" });
-  }
+  const allowed = await checkProtectedProfile(expectedRole, {
+    getUserId: async () => {
+      const { data, error } = await supabase.auth.getUser();
+      if (error) throw error;
+      return data.user?.id ?? null;
+    },
+    readProfile: async (id) => {
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("id, role, deleted_at")
+        .eq("id", id)
+        .maybeSingle();
+      if (error) throw error;
+      return data;
+    },
+    clearInvalidSession,
+  });
+  if (!allowed) throw redirect({ to: "/" });
 }
