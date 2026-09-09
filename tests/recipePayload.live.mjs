@@ -15,6 +15,12 @@ globalThis.__recipeClient = createClient(url, key, {
 installRuntime();
 const api = await import("../src/lib/hasat/recipes.ts");
 const { getNutritionState, getReviewedAllergens } = await import("../src/lib/hasat/recipeFacts.ts");
+const list = await api.fetchRecipeList();
+assert.ok(list.length, "Need a public recipe for the list payload smoke test");
+for (const field of ["allergen_labels", "allergens_reviewed", "allergens_reviewed_at"])
+  assert.notEqual(list[0][field], undefined, field);
+assert.equal("allergens_reviewed_by" in list[0], false);
+assert.equal("calories" in list[0], false);
 const { data, error } = await globalThis.__recipeClient
   .from("recipes")
   .select("slug")
@@ -31,6 +37,7 @@ for (const field of Object.keys(unavailable))
 console.log(
   JSON.stringify({
     mode: "read-only anonymous actual detail query",
+    listFields: ["allergen_labels", "allergens_reviewed", "allergens_reviewed_at"],
     fields: Object.keys(unavailable).length,
     nutrition: getNutritionState(result.recipe),
     allergens: getReviewedAllergens(result.recipe).reviewState,
