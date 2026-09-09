@@ -48,22 +48,30 @@ export function mapRecipeFacts(row: Partial<RecipeFacts>): RecipeFacts {
   };
 }
 
-export const ALLERGEN_SLUGS = [
-  "gluten",
-  "laktoz",
-  "yumurta",
-  "findik-yerfistigi",
-  "soya",
-  "susam",
-  "deniz-urunu",
+export const ALLERGEN_OPTIONS = [
+  { slug: "gluten", label: "Gluten" },
+  { slug: "laktoz", label: "Laktoz" },
+  { slug: "yumurta", label: "Yumurta" },
+  { slug: "findik-yerfistigi", label: "Fındık / yer fıstığı" },
+  { slug: "soya", label: "Soya" },
+  { slug: "susam", label: "Susam" },
+  { slug: "deniz-urunu", label: "Deniz ürünü" },
 ] as const;
-export type AllergenSlug = (typeof ALLERGEN_SLUGS)[number];
+export type AllergenSlug = (typeof ALLERGEN_OPTIONS)[number]["slug"];
+export const ALLERGEN_SLUGS: readonly AllergenSlug[] = ALLERGEN_OPTIONS.map(({ slug }) => slug);
+export const ALLERGEN_LABELS: Record<AllergenSlug, string> = Object.fromEntries(
+  ALLERGEN_OPTIONS.map(({ slug, label }) => [slug, label]),
+) as Record<AllergenSlug, string>;
+export type AllergenReviewFields = Pick<
+  RecipeFacts,
+  "allergen_labels" | "allergens_reviewed" | "allergens_reviewed_at"
+>;
 export type ReviewedAllergens =
   | { reviewState: "unreviewed"; labels: null }
   | { reviewState: "reviewed_with_labels" | "reviewed_without_labels"; labels: AllergenSlug[] };
 
 /** Explicit public trust boundary. Raw candidate labels remain transport data only. */
-export function getReviewedAllergens(row: Partial<RecipeFacts>): ReviewedAllergens {
+export function getReviewedAllergens(row: Partial<AllergenReviewFields>): ReviewedAllergens {
   const labels = row.allergen_labels;
   if (
     row.allergens_reviewed !== true ||
@@ -80,6 +88,16 @@ export function getReviewedAllergens(row: Partial<RecipeFacts>): ReviewedAllerge
     reviewState: labels.length ? "reviewed_with_labels" : "reviewed_without_labels",
     labels: [...labels],
   };
+}
+
+/** Inactive keeps the list unchanged; active selection excludes every untrusted recipe. */
+export function matchesAllergenExclusion(
+  row: Partial<AllergenReviewFields>,
+  selected: readonly AllergenSlug[],
+): boolean {
+  if (selected.length === 0) return true;
+  const reviewed = getReviewedAllergens(row);
+  return reviewed.labels !== null && selected.every((slug) => !reviewed.labels.includes(slug));
 }
 
 export type NutritionState = "computed" | "partial" | "estimated" | "unavailable";

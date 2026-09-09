@@ -20,6 +20,9 @@ export interface RecipeListItem {
   cuisine: string | null;
   diet_tags: string[];
   required_equipment: string[];
+  allergen_labels: string[] | null;
+  allergens_reviewed: boolean;
+  allergens_reviewed_at: string | null;
   // computed client-side (P16-H fallback pattern, see Build/DB-Schema.md "Fotoğraf stratejisi")
   displayPhotoUrl: string | null;
   isRepresentativePhoto: boolean;
@@ -66,10 +69,11 @@ export interface RecipeIngredientRow {
   is_key_ingredient: boolean;
 }
 
-const RECIPE_LIST_COLUMNS =
+const RECIPE_BASE_COLUMNS =
   "id, slug, title, description, cover_photo_url, servings, prep_minutes, cook_minutes, rest_minutes, difficulty, cuisine, diet_tags, required_equipment";
+const RECIPE_LIST_COLUMNS = `${RECIPE_BASE_COLUMNS}, allergen_labels, allergens_reviewed, allergens_reviewed_at`;
 
-const RECIPE_DETAIL_COLUMNS = `${RECIPE_LIST_COLUMNS}, ${RECIPE_FACT_COLUMNS}` as const;
+const RECIPE_DETAIL_COLUMNS = `${RECIPE_BASE_COLUMNS}, ${RECIPE_FACT_COLUMNS}` as const;
 
 /**
  * Recipe's own cover photo if it has one, else the crop photo of its first
@@ -156,6 +160,9 @@ export async function fetchRecipeList(): Promise<RecipeListItem[]> {
       ...r,
       diet_tags: r.diet_tags ?? [],
       required_equipment: r.required_equipment ?? [],
+      allergen_labels: r.allergen_labels ?? null,
+      allergens_reviewed: r.allergens_reviewed === true,
+      allergens_reviewed_at: r.allergens_reviewed_at ?? null,
       coveragePct: cov?.coverage_pct ?? null,
       ingredientCount: cov?.ingredient_count ?? null,
       availableCount: cov?.available_count ?? null,
