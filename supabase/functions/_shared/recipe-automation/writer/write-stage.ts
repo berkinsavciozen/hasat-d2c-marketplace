@@ -58,15 +58,30 @@ export interface RunWriteStageResult {
 }
 
 /** "no photo" spellings observed across multiple live probe runs (F2 Step 06, P1 preflight — see
- * the completion report) for `coverPhotoUrl`/`steps[].photoUrl` when the model has no real photo to
- * link (always true for the Writer — image generation is a later pipeline stage; see
- * editorial-rules.ts item 8): an empty string, and the literal string `"null"` (not the JSON null
- * value) — OpenAI's Structured Outputs mode requires every property to be present as SOME string,
- * so the model substitutes one of these instead of the `null` the prompt asks for. Deliberately
- * narrow: anything else (a non-empty, non-URL string like "n/a" or garbled text) is a genuinely
- * malformed value and must still fail validation as before — only these two known-equivalent
- * "no photo" spellings are coerced. */
-const NO_PHOTO_PLACEHOLDER_VALUES = new Set(["", "null"]);
+ * the completion report; third spelling added 2026-09-09, see the F2 photo-placeholder root-cause
+ * probe below) for `coverPhotoUrl`/`steps[].photoUrl` when the model has no real photo to link
+ * (always true for the Writer — image generation is a later pipeline stage; see editorial-rules.ts
+ * item 8): an empty string, the literal string `"null"` (not the JSON null value), and the literal
+ * string `"photoUrl"` — the field's own key name. OpenAI's Structured Outputs mode requires every
+ * property to be present as SOME string, so the model substitutes one of these instead of the
+ * `null` the prompt asks for.
+ *
+ * `"photoUrl"` root-cause (2026-09-09, jobs 72b46d4d-bc0e-4a76-91d4-b2a343a825f7/
+ * ce09b38b-77ad-45d2-815b-2787daf904fb, both WRITER_OUTPUT_SCHEMA_INVALID on 2026-09-09): a
+ * temporary debug log in the safeParse-failure branch below, deployed live, captured the raw
+ * pre-normalization Writer output for a fresh reproduction on the same brief family (job
+ * dadc3719-5a03-426f-a188-456a7f1af237, "Elmalı Serinletici Smoothie") — `steps[].photoUrl` was the
+ * literal string `"photoUrl"` on all 5 steps, which fails `.url()` exactly like `""`/`"null"` did
+ * before this fix. The same pattern reproduced independently in the Reviser (job
+ * c3076955-051e-4f91-a7d4-f3319c6bea2f, REVISER_OUTPUT_SCHEMA_INVALID at the `revise` stage, which
+ * reuses `normalizeEmptyUrlFields` — see that function's own doc comment), confirming this is the
+ * same OpenAI Structured Outputs quirk, not a one-off. Deliberately narrow: anything else (a
+ * non-empty, non-URL string like "n/a" or garbled text, or a syntactically valid but fabricated URL
+ * like the same debug capture's own `coverPhotoUrl: "http://hasat.ai/_assets/cover-default.jpg"` —
+ * editorial-rules.ts item 10 explicitly forbids a made-up URL, and that value is NOT added here) is
+ * a genuinely malformed value and must still fail validation as before — only these three
+ * known-equivalent "no photo" spellings are coerced. */
+const NO_PHOTO_PLACEHOLDER_VALUES = new Set(["", "null", "photoUrl"]);
 
 /**
  * Normalizes the known "no photo" placeholder spellings (see `NO_PHOTO_PLACEHOLDER_VALUES` above)
