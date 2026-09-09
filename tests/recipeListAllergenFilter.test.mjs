@@ -79,6 +79,7 @@ test("reviewed-empty is included while every untrusted shape fails closed", () =
     { allergens_reviewed: false, allergen_labels: [], allergens_reviewed_at: null },
     { allergens_reviewed: false, allergen_labels: ["laktoz"], allergens_reviewed_at: null },
     { allergens_reviewed: true, allergen_labels: [], allergens_reviewed_at: null },
+    { allergens_reviewed: true, allergen_labels: [], allergens_reviewed_at: "2026-09-08" },
     {
       allergens_reviewed: true,
       allergen_labels: ["future-slug"],

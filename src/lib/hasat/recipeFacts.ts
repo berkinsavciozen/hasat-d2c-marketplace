@@ -70,12 +70,23 @@ export type ReviewedAllergens =
   | { reviewState: "unreviewed"; labels: null }
   | { reviewState: "reviewed_with_labels" | "reviewed_without_labels"; labels: AllergenSlug[] };
 
+const REVIEWED_AT_PATTERN =
+  /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,6})?(?:Z|[+-]\d{2}:\d{2})$/;
+
+function isValidReviewedAt(value: unknown): value is string {
+  return (
+    typeof value === "string" &&
+    REVIEWED_AT_PATTERN.test(value) &&
+    Number.isFinite(Date.parse(value))
+  );
+}
+
 /** Explicit public trust boundary. Raw candidate labels remain transport data only. */
 export function getReviewedAllergens(row: Partial<AllergenReviewFields>): ReviewedAllergens {
   const labels = row.allergen_labels;
   if (
     row.allergens_reviewed !== true ||
-    !row.allergens_reviewed_at ||
+    !isValidReviewedAt(row.allergens_reviewed_at) ||
     !Array.isArray(labels) ||
     !labels.every((label): label is AllergenSlug =>
       ALLERGEN_SLUGS.includes(label as AllergenSlug),
