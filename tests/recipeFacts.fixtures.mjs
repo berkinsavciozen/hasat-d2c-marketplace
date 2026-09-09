@@ -67,6 +67,21 @@ export const allergenFixtures = {
   },
   unreviewed: { ...unavailable, allergen_labels: ["gluten"] },
 };
+export const reviewedAtFixtures = {
+  valid: {
+    supabaseUtc: "2026-09-07T00:00:00Z",
+    explicitOffset: "2026-09-07T03:00:00.123456+03:00",
+  },
+  invalid: {
+    null: null,
+    undefined,
+    empty: "",
+    dateOnly: "2026-09-07",
+    missingTimezone: "2026-09-07T00:00:00",
+    malformedDate: "2026-13-07T00:00:00Z",
+    nonString: 1_789_000_000_000,
+  },
+};
 export function recipeRow(facts = unavailable) {
   return {
     id: "recipe-1",

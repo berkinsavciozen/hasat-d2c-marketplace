@@ -5,6 +5,7 @@ import { installRuntime } from "./recipeTestRuntime.mjs";
 import {
   nutritionFixtures,
   allergenFixtures,
+  reviewedAtFixtures,
   recipeRow,
   unavailable,
 } from "./recipeFacts.fixtures.mjs";
@@ -97,6 +98,28 @@ test("allergen review fails closed and never confuses null with reviewed empty",
     }).labels.length,
     7,
   );
+});
+test("allergen review requires a valid timezone-qualified ISO timestamp", () => {
+  for (const [name, allergens_reviewed_at] of Object.entries(reviewedAtFixtures.valid)) {
+    assert.equal(
+      getReviewedAllergens({
+        ...allergenFixtures.reviewed_with_labels,
+        allergens_reviewed_at,
+      }).reviewState,
+      "reviewed_with_labels",
+      name,
+    );
+  }
+  for (const [name, allergens_reviewed_at] of Object.entries(reviewedAtFixtures.invalid)) {
+    assert.deepEqual(
+      getReviewedAllergens({
+        ...allergenFixtures.reviewed_with_labels,
+        allergens_reviewed_at,
+      }),
+      { reviewState: "unreviewed", labels: null },
+      name,
+    );
+  }
 });
 test("nutrition rejects incomplete/invalid source, coverage, servings and macros", () => {
   const valid = { ...nutritionFixtures.computed, servings: 2 };
