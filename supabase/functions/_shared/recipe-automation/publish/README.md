@@ -92,6 +92,17 @@ common case.
   `write-stage.ts`/`finalize-stage.ts` already use, so a recipe's real slug and every earlier
   candidate-slug check in the pipeline are never able to silently drift apart.
 
+## F0-24: nutrition recalculated as a best-effort side effect of a genuine publish
+
+A successful, non-idempotent-replay publish (i.e. `outcome: "published"`, not
+`"already_published"`) also calls `../nutrition/recalc.ts`'s `invokeNutritionRecalc()` — the F0-24
+deterministic nutrition engine's (`calculate_recipe_nutrition`) first real lifecycle wiring (that
+migration's own header explicitly left this for a later dispatch). Never affects this stage's own
+`outcome`/HTTP status or the job's stage/status columns: a nutrition recalc failure is logged
+(`console.error`) and reported back in the result's `nutritionRecalc` field, but a publish that
+otherwise succeeded is never turned into a failure by it — see `nutrition/recalc.ts`'s own header
+for the full idempotency/race-safety/no-op contract this relies on.
+
 ## Running the tests
 
 ```sh
