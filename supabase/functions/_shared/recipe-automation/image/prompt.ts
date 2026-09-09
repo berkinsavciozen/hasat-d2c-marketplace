@@ -49,3 +49,26 @@ export function buildImagePrompt(draft: ImageStageDraft): string {
     "No text, no logos, no watermarks, no human hands or faces, no packaging labels.",
   ].filter((line): line is string => line !== null).join(" ");
 }
+
+/**
+ * [T4-CROP-PHOTO] One-off data-backfill task (2026-09-09, `crop_config.default_photo_url`
+ * gap-fill) — NOT part of the F2 Recipe Automation flow itself, but deliberately reuses this
+ * step's deterministic-template pattern (see `buildImagePrompt`'s header above) rather than an
+ * agent/LLM call: a crop's photo subject is already fully determined by its own name, so a
+ * content-generation hop would add cost, latency and another failure mode for a decision that
+ * needs none. Only a single 1:1 square variant is generated for a crop's default catalog photo
+ * (unlike a recipe cover photo's two `cropTargets`), so this builder has no ingredient-list or
+ * cuisine-note branching — the whole prompt is fixed style text plus the crop's display name.
+ *
+ * Same "no text/logo/watermark" discipline as `buildImagePrompt`, for the same reason: Turkish
+ * diacritics in model-rendered text are exactly the kind of artifact `frame-suspicion.ts`'s
+ * human-review flag exists to catch, not something to request in the first place.
+ */
+export function buildCropDefaultPhotoPrompt(_crop: string, displayName: string): string {
+  return [
+    `Professional agricultural product photography of raw, fresh ${displayName}, as harvested or as typically sold, on a simple neutral background.`,
+    "Overhead or 45-degree angle, natural daylight, shallow depth of field.",
+    "Square composition, the produce centered with even margin on all sides.",
+    "No text, no logos, no watermarks, no human hands or faces, no packaging or brand markings.",
+  ].join(" ");
+}
