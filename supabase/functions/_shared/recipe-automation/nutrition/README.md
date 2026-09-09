@@ -10,34 +10,36 @@ lifecycle points, rather than only from the one-time backfill migration and the 
 |---|---|
 | `recalc.ts` | `invokeNutritionRecalc()` — the best-effort entry point every lifecycle call site uses. `predictNutritionInputHash()` is its idempotency short-circuit, exported separately so it has its own direct test coverage. |
 
-## What is, and isn't, wired in this dispatch
+## What is, and isn't, wired
 
-Only **one** of the three lifecycle points the migration's header named is actually wired here:
+Of the three lifecycle points the calc-engine migration's header named:
 
 | Trigger | Wired? | Where |
 |---|---|---|
 | F2 publish (`recipe_drafts` → live `recipes`, `status → 'published'`) | **Yes** | `../publish/publish-stage.ts`, on a genuine (non-idempotent-replay) publish |
-| F7 post-edit save (owner/admin edits `recipe_ingredients`/`servings` on an existing recipe) | **No — no real write path exists in this repo** | see below |
+| F7 post-edit save (owner/admin edits `recipe_ingredients`/`servings` on an existing recipe) | **Yes, but not here — see below** | `../../../../migrations/20260909130000_f024t4b_recipe_nutrition_trigger_wiring.sql` |
 | T6 / F11 AI-customization clone (`cloned_from_recipe_id`) | **No — not implemented anywhere in this repo** | see below |
 
-### F7 — investigated, not wired, and why
+### F7 — wired, but as a DB trigger, not an Edge Function call site
 
-The vault's `Build/Launch-Scope-Plan.md` (F7 — "Defterime eklediğim kendi tariflerimi
-editleyebilmeliyim") describes F7 as a **mobile-only, v1.1 fast-follow** feature ("🤖 mobil,
-Defterim-only — web'de kişisel tarif içe aktarma zaten yok, M9'da kalıyor"), not a web/admin
-feature. Its one real write path found during this dispatch's investigation is
-`saveDraft()` in `hasat-mobile/src/lib/hasat/import.ts` — but that function writes to
-`recipes`/`recipe_ingredients`/`recipe_steps` **directly from the client**, RLS-gated to
-`owner_id = auth.uid()`, with no server-side/service-role call in between. There is no edge
-function or RPC in `hasat-d2c-marketplace` this dispatch could add a `calculate_recipe_nutrition`
-call to for F7, and this dispatch's scope explicitly excludes touching `hasat-mobile/**` (a
-separate repo's client/UI code, not this repo's backend).
+F7's one real write path is `saveDraft()` in `hasat-mobile/src/lib/hasat/import.ts` — but that
+function writes to `recipes`/`recipe_ingredients` **directly from the client**, RLS-gated to
+`owner_id = auth.uid()`, with no server-side/service-role hop in between. There is no Edge
+Function or RPC in this repo that F7's flow ever calls, so there is no call site in this directory
+(`recalc.ts`'s `invokeNutritionRecalc()`) to attach to for F7 — unlike F2, which already goes
+through `publish-stage.ts` as a service-role Edge Function call.
 
-Wiring F7 correctly would need either (a) a new edge function `saveDraft()` calls after its own
-writes succeed, or (b) a database trigger on `recipe_ingredients`/`recipes` — both are **new
-capability**, not "connect an existing call site to an existing engine", and (b) specifically would
-require a new migration this dispatch was told not to add without orchestrator approval. Flagged as
-a finding for a follow-up dispatch, not implemented here.
+F7 is wired instead by `20260909130000_f024t4b_recipe_nutrition_trigger_wiring.sql`: AFTER
+INSERT/UPDATE/DELETE statement-level triggers on `recipe_ingredients` (deduplicated per
+`recipe_id` via transition tables) and an AFTER UPDATE row-level trigger on `recipes.servings`
+(`WHEN (OLD.servings IS DISTINCT FROM NEW.servings)`), both calling `calculate_recipe_nutrition`
+through a `postgres`-owned `SECURITY DEFINER` bridge function — needed because F7's actual writer,
+`authenticated`, holds none of the privileges `calculate_recipe_nutrition`'s own body needs
+(EXECUTE on itself, SELECT on `crop_nutrition`, column-level UPDATE on `recipes.nutrition_*`) and
+none of those are (or should be) granted to it directly. See that migration's own header for the
+full discovery/privilege writeup, and `supabase/tests/f024t4b_recipe_nutrition_trigger/` for its
+test suite. This directory's own `recalc.ts` contract (below) is unchanged and untouched by that
+migration — it still only covers F2's Edge-Function-side call.
 
 ### T6 / F11 — investigated, not wired, and why
 
