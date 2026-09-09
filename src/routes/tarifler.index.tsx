@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
-import { Clock, Filter, AlarmClock, ChevronDown } from "lucide-react";
+import { Clock, Filter, AlarmClock, ChevronDown, X } from "lucide-react";
 import {
   fetchRecipeList,
   formatTotalMinutes,
@@ -17,6 +17,12 @@ import { PUBLIC_BASE_URL } from "@/lib/hasat/constants";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Command, CommandGroup, CommandItem, CommandList } from "@/components/ui/command";
 import { Checkbox } from "@/components/ui/checkbox";
+import {
+  ALLERGEN_LABELS,
+  ALLERGEN_OPTIONS,
+  matchesAllergenExclusion,
+  type AllergenSlug,
+} from "@/lib/hasat/recipeFacts";
 
 const TITLE = "Tarifler | Hasat";
 const DESCRIPTION =
@@ -66,11 +72,18 @@ function RecipeListPage() {
   const [diet, setDiet] = useState<string | null>(null);
   const [cuisine, setCuisine] = useState<string | null>(null);
   const [equipment, setEquipment] = useState<string[]>([]);
+  const [excludedAllergens, setExcludedAllergens] = useState<AllergenSlug[]>([]);
   const [onlyWithAvailableIngredient, setOnlyWithAvailableIngredient] = useState(false);
 
   const toggleEquipment = (slug: string) => {
     setEquipment((prev) =>
       prev.includes(slug) ? prev.filter((e) => e !== slug) : [...prev, slug],
+    );
+  };
+
+  const toggleAllergen = (slug: AllergenSlug) => {
+    setExcludedAllergens((prev) =>
+      prev.includes(slug) ? prev.filter((item) => item !== slug) : [...prev, slug],
     );
   };
 
@@ -89,6 +102,7 @@ function RecipeListPage() {
     if (diet && !r.diet_tags.includes(diet)) return false;
     if (equipment.length > 0 && !equipment.every((e) => r.required_equipment.includes(e)))
       return false;
+    if (!matchesAllergenExclusion(r, excludedAllergens)) return false;
     if (duration) {
       const bucket = DURATION_BUCKETS.find((b) => b.key === duration)!;
       const prevMax =
@@ -111,7 +125,10 @@ function RecipeListPage() {
         </Link>
         <div
           className="mt-3 inline-flex items-center rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide"
-          style={{ background: "color-mix(in oklab, var(--saffron) 30%, transparent)", color: "var(--saffron)" }}
+          style={{
+            background: "color-mix(in oklab, var(--saffron) 30%, transparent)",
+            color: "var(--saffron)",
+          }}
         >
           Editoryal
         </div>
@@ -218,7 +235,79 @@ function RecipeListPage() {
               </Command>
             </PopoverContent>
           </Popover>
+
+          <Popover>
+            <PopoverTrigger asChild>
+              <button
+                type="button"
+                className="inline-flex min-h-[44px] max-w-full items-center gap-1 rounded-full border bg-card px-3 py-1.5 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+              >
+                <span className="break-words">
+                  Şunları içermeyenler
+                  {excludedAllergens.length > 0 ? ` (${excludedAllergens.length})` : " (hepsi)"}
+                </span>
+                <ChevronDown className="h-3.5 w-3.5 shrink-0 opacity-60" aria-hidden="true" />
+              </button>
+            </PopoverTrigger>
+            <PopoverContent align="start" className="w-72 max-w-[calc(100vw-2rem)] p-0">
+              <div role="group" aria-labelledby="allergen-filter-heading" className="p-1">
+                <div
+                  id="allergen-filter-heading"
+                  className="px-2 py-1.5 text-xs font-medium text-muted-foreground"
+                >
+                  Alerjen veya hassasiyet
+                </div>
+                {ALLERGEN_OPTIONS.map(({ slug, label }) => {
+                  const active = excludedAllergens.includes(slug);
+                  const checkboxId = `allergen-filter-${slug}`;
+                  return (
+                    <label
+                      key={slug}
+                      htmlFor={checkboxId}
+                      className="flex min-h-[44px] cursor-pointer items-center gap-2 rounded-sm px-2 py-1.5 text-sm hover:bg-accent"
+                    >
+                      <Checkbox
+                        id={checkboxId}
+                        checked={active}
+                        onCheckedChange={() => toggleAllergen(slug)}
+                        aria-label={label}
+                        className="focus-visible:ring-2"
+                      />
+                      <span className="break-words">{label}</span>
+                    </label>
+                  );
+                })}
+              </div>
+            </PopoverContent>
+          </Popover>
         </div>
+
+        {excludedAllergens.length > 0 && (
+          <div
+            className="flex max-w-full flex-wrap items-center gap-2"
+            aria-label="Seçili alerjen filtreleri"
+          >
+            {excludedAllergens.map((slug) => (
+              <button
+                key={slug}
+                type="button"
+                onClick={() => toggleAllergen(slug)}
+                aria-label={`${ALLERGEN_LABELS[slug]} filtresini kaldır`}
+                className="inline-flex min-h-[44px] max-w-full items-center gap-1.5 rounded-full border bg-muted px-3 py-1.5 text-xs font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+              >
+                <span className="break-words">{ALLERGEN_LABELS[slug]}</span>
+                <X className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+              </button>
+            ))}
+            <button
+              type="button"
+              onClick={() => setExcludedAllergens([])}
+              className="min-h-[44px] rounded-full px-3 py-1.5 text-xs font-semibold underline underline-offset-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+            >
+              Tümünü temizle
+            </button>
+          </div>
+        )}
 
         {/* P23-M7-a: isim düzeltildi — bu filtre "tam alınabilir" değil, "en az bir
             malzemesi Hasat'ta" anlamına geliyor (gerçek isim, gerçek davranış).
@@ -233,15 +322,20 @@ function RecipeListPage() {
           Malzemesi Hasat'ta olan tarifler
         </label>
 
-        <MobileNudge text="Kitaptaki tarifi telefonla çekip defterine aktar — Hasat mobil uygulamasında" withInfoCta />
+        <MobileNudge
+          text="Kitaptaki tarifi telefonla çekip defterine aktar — Hasat mobil uygulamasında"
+          withInfoCta
+        />
 
         {filtered.length === 0 ? (
           <div className="rounded-2xl border border-dashed py-12 text-center text-hmuted">
-            {onlyWithAvailableIngredient
-              ? "Bu filtreyle eşleşen tarif yok — Hasat'taki arz henüz hiçbir malzemesini karşılamıyor."
-              : equipment.length > 0
-                ? "Bu ekipmanla eşleşen tarif yok."
-                : "Bu filtrelerle eşleşen tarif yok."}
+            {excludedAllergens.length > 0
+              ? "Bu seçimlerle eşleşen, alerjen bilgisi doğrulanmış tarif bulunamadı. Doğrulanmamış alerjen bilgisine sahip tarifler bu filtrede gösterilmez."
+              : onlyWithAvailableIngredient
+                ? "Bu filtreyle eşleşen tarif yok — Hasat'taki arz henüz hiçbir malzemesini karşılamıyor."
+                : equipment.length > 0
+                  ? "Bu ekipmanla eşleşen tarif yok."
+                  : "Bu filtrelerle eşleşen tarif yok."}
           </div>
         ) : (
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
