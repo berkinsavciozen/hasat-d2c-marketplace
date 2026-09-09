@@ -24,6 +24,7 @@ import { loadCurrentDraft, type CurrentDraft } from "../qa/context.ts";
 import { slugifyTitle } from "../writer/slug.ts";
 import { enterPublishStage, loadJobSummary, loadPublishedRecipeSummary } from "./context.ts";
 import { parsePublishRpcError } from "./rpc-error.ts";
+import { invokeNutritionRecalc, type NutritionRecalcOutcome } from "../nutrition/recalc.ts";
 
 const PUBLISH_STAGE = "publish" as const;
 
@@ -57,6 +58,10 @@ export interface RunPublishStageResult {
   slug?: string;
   claimReason?: string;
   errorCode?: string;
+  /** Best-effort F0-24 side effect of a genuine (non-idempotent-replay) publish — see
+   * ../nutrition/recalc.ts. Never affects `outcome`/HTTP status: a nutrition recalc failure never
+   * fails a publish that otherwise succeeded (dispatch requirement #4). */
+  nutritionRecalc?: NutritionRecalcOutcome;
 }
 
 interface FailParams {
@@ -212,6 +217,16 @@ export async function runPublishStage(
     },
   });
 
+  // F0-24 lifecycle wiring: only a genuine publish transition (not a repeated/idempotent-replay
+  // call for a job that had already produced a live recipe) should trigger a recalc — see
+  // ../nutrition/recalc.ts's own header. Awaited (not fire-and-forget): an Edge Function isolate
+  // can be torn down right after its response is sent, so an un-awaited side effect here could
+  // simply never run. invokeNutritionRecalc never throws, so this can never turn a successful
+  // publish into a failed one.
+  const nutritionRecalc = result.alreadyPublished
+    ? undefined
+    : (await invokeNutritionRecalc(client, result.recipeId)).outcome;
+
   return {
     outcome: result.alreadyPublished ? "already_published" : "published",
     jobId: params.jobId,
@@ -219,5 +234,6 @@ export async function runPublishStage(
     draftVersion: currentDraft.version,
     recipeId: result.recipeId,
     slug: result.slug,
+    nutritionRecalc,
   };
 }

@@ -187,8 +187,69 @@ Deno.test("runPublishStage: the RPC's own defensive already-published reply is p
     data: { ok: true, recipeId, slug: "firinda-kabak-dolmasi", alreadyPublished: true },
     error: null,
   }));
+  let nutritionCalls = 0;
+  client.onRpc("calculate_recipe_nutrition", () => {
+    nutritionCalls++;
+    return { data: null, error: null };
+  });
 
   const result = await runPublishStage(asClient(client), { jobId });
   assert.equal(result.outcome, "already_published");
   assert.equal(result.recipeId, recipeId);
+  // A repeated/idempotent-replay publish is not a real F2 publish transition — F0-24 lifecycle
+  // wiring (dispatch requirement: "F2 publish — status -> 'published' transition") must not fire.
+  assert.equal(result.nutritionRecalc, undefined);
+  assert.equal(nutritionCalls, 0);
+});
+
+Deno.test("runPublishStage: a genuine publish transition triggers the F0-24 nutrition recalc as a best-effort side effect", async () => {
+  const client = new FakeSupabaseClient();
+  const { jobId } = seedReadyJob(client);
+  seedDraft(client, jobId);
+  const recipeId = crypto.randomUUID();
+
+  client.onRpc("publish_recipe_draft", () => ({
+    data: { ok: true, recipeId, slug: "firinda-kabak-dolmasi", alreadyPublished: false },
+    error: null,
+  }));
+  // The publish RPC itself creates the live `recipes` row transactionally; the fake client has no
+  // trigger/transaction engine to do that for us, so this test seeds it directly to exercise
+  // invokeNutritionRecalc's own read the same way the real service-role client would see it
+  // immediately after a real publish_recipe_draft call commits.
+  client.seed("recipes", [{ id: recipeId, status: "published", servings: 4, nutrition_input_hash: null }]);
+  let nutritionCalls = 0;
+  const nutritionArgs: Record<string, unknown>[] = [];
+  client.onRpc("calculate_recipe_nutrition", (args) => {
+    nutritionCalls++;
+    nutritionArgs.push(args);
+    return { data: null, error: null };
+  });
+
+  const result = await runPublishStage(asClient(client), { jobId });
+  assert.equal(result.outcome, "published");
+  assert.equal(result.nutritionRecalc, "recalculated");
+  assert.equal(nutritionCalls, 1);
+  assert.equal(nutritionArgs[0].p_recipe_id, recipeId);
+});
+
+Deno.test("runPublishStage: a nutrition recalc failure never fails an otherwise-successful publish", async () => {
+  const client = new FakeSupabaseClient();
+  const { jobId } = seedReadyJob(client);
+  seedDraft(client, jobId);
+  const recipeId = crypto.randomUUID();
+
+  client.onRpc("publish_recipe_draft", () => ({
+    data: { ok: true, recipeId, slug: "firinda-kabak-dolmasi", alreadyPublished: false },
+    error: null,
+  }));
+  client.seed("recipes", [{ id: recipeId, status: "published", servings: 4, nutrition_input_hash: null }]);
+  client.onRpc("calculate_recipe_nutrition", () => ({
+    data: null,
+    error: { message: "crop_nutrition lookup failed", code: "XX000" },
+  }));
+
+  const result = await runPublishStage(asClient(client), { jobId });
+  assert.equal(result.outcome, "published"); // still a successful publish
+  assert.equal(result.recipeId, recipeId);
+  assert.equal(result.nutritionRecalc, "failed"); // visible, but never blocking
 });

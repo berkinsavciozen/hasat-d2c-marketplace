@@ -141,6 +141,13 @@ RPCs' `issues` arrays now emit); and `RecipePlanBatch` no longer carries a singu
 (one plan produces many briefs; `RecipeBrief.briefId` is the stable identity that survives into
 drafting/QA/revision history instead).
 
+**F0-24 lifecycle wiring (cross-cutting, not an F2 pipeline step):** `nutrition/` connects the F0-24
+deterministic nutrition engine (`calculate_recipe_nutrition`, a separate feature from this F2
+pipeline) to real service-role call sites — as of this dispatch, just `publish/publish-stage.ts`'s
+own genuine publish transition. See `nutrition/README.md` for the full contract and for why F7
+(post-edit save) and T6/F11 (AI-customization clone) — the migration's other two named trigger
+points — are investigated but not wired here.
+
 ## Running the tests
 
 This repo has no existing Edge Function test convention (see decision log §5), so this module
