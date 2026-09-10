@@ -26,3 +26,9 @@ verify_jwt = true
 
 [functions.send-push]
 verify_jwt = true
+
+[functions.mobile-handoff-issue]
+verify_jwt = true
+
+[functions.mobile-handoff-exchange]
+verify_jwt = false

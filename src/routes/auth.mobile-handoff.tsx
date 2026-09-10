@@ -3,14 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { BrandLogo } from "@/components/hasat/BrandLogo";
-
-// Same rule as /login's validateSearch: only same-origin relative paths,
-// never external URLs (`//host/...` is protocol-relative and would leave the site).
-function isSafeNextPath(next: unknown): next is string {
-  return typeof next === "string" && next.startsWith("/") && !next.startsWith("//");
-}
-
-const DEFAULT_NEXT = "/buyer/discover";
+import { parseHandoffFragment, resolveHandoffNext } from "./mobileHandoffAccess";
 
 export const Route = createFileRoute("/auth/mobile-handoff")({
   head: () => ({ meta: [{ title: "Giriş yapılıyor… — Hasat" }] }),
@@ -26,36 +19,46 @@ function MobileHandoffPage() {
     ran.current = true;
 
     (async () => {
-      // Tokens travel only in the URL fragment (never the query string): the
-      // fragment is never sent to the server or logged, so this is the only
-      // place we're willing to read them from.
-      const hash = window.location.hash.startsWith("#")
-        ? window.location.hash.slice(1)
-        : window.location.hash;
-      const params = new URLSearchParams(hash);
-      const access_token = params.get("access_token");
-      const refresh_token = params.get("refresh_token");
-      const next = params.get("next");
+      // T9: the fragment now carries only an opaque, single-use, 60s-lived nonce — never the real
+      // access_token/refresh_token (see mobileHandoffAccess.ts for why). Still read exclusively from
+      // the fragment, same as before: it's never sent to the server or logged.
+      const { nonce, next } = parseHandoffFragment(window.location.hash);
 
-      // Strip the fragment immediately so tokens never linger in the address
+      // Strip the fragment immediately so the nonce never lingers in the address
       // bar or browser history, regardless of what happens next.
       window.history.replaceState(null, "", window.location.pathname + window.location.search);
 
-      if (!access_token || !refresh_token) {
+      if (!nonce) {
         window.location.href = "/login";
         return;
       }
 
-      const { error } = await supabase.auth.setSession({ access_token, refresh_token });
+      const { data, error } = await supabase.functions.invoke<{
+        access_token?: string;
+        refresh_token?: string;
+        next_path?: string | null;
+      }>("mobile-handoff-exchange", { body: { nonce } });
 
-      if (error) {
+      if (error || !data?.access_token || !data?.refresh_token) {
         toast.error("Oturum süresi dolmuş, tekrar giriş yapman gerekiyor.");
         setFailed(true);
         window.location.href = "/login";
         return;
       }
 
-      window.location.href = isSafeNextPath(next) ? next : DEFAULT_NEXT;
+      const { error: sessionError } = await supabase.auth.setSession({
+        access_token: data.access_token,
+        refresh_token: data.refresh_token,
+      });
+
+      if (sessionError) {
+        toast.error("Oturum süresi dolmuş, tekrar giriş yapman gerekiyor.");
+        setFailed(true);
+        window.location.href = "/login";
+        return;
+      }
+
+      window.location.href = resolveHandoffNext(data.next_path, next);
     })();
   }, []);
 
