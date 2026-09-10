@@ -289,6 +289,14 @@ function RecipeDetailPage() {
           </div>
           <h1 className="mt-2 font-serif text-2xl md:text-3xl">{recipe.title}</h1>
           {recipe.description && <p className="mt-2 text-sm text-hmuted">{recipe.description}</p>}
+          {canDerive && (
+            <div className="mt-3 flex flex-wrap gap-2">
+              <Button type="button" size="sm" onClick={() => setCustomizeOpen(true)}>
+                <Sparkles /> AI ile özelleştir
+              </Button>
+              <CloneRecipeButton sourceRecipeId={recipe.id} />
+            </div>
+          )}
           <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-hmuted">
             {timeBreakdown && (
               <span className="inline-flex items-center gap-1">
