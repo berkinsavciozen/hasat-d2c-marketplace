@@ -34,6 +34,10 @@ import {
   loadPendingRecipeRequest,
   clearPendingRecipeRequest,
 } from "@/lib/hasat/recipe-intent";
+import { Button } from "@/components/ui/button";
+import { CloneRecipeButton } from "@/components/hasat/CloneRecipeButton";
+import { CustomizeRecipeSheet } from "@/components/hasat/CustomizeRecipeSheet";
+import { Sparkles } from "lucide-react";
 
 function ingredientLabel(i: RecipeIngredientRow): string {
   // Lowercase — this array reads as "1 bardak ceviz", not "1 bardak Ceviz"
