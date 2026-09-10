@@ -120,9 +120,17 @@ function RecipeListPage() {
         className="border-b px-4 py-6 md:px-8 md:py-10"
         style={{ background: "var(--primary)", color: "var(--hwhite)" }}
       >
-        <Link to="/" className="text-xs opacity-70 hover:opacity-100">
-          ← Hasat
-        </Link>
+        <div className="flex items-center justify-between">
+          <Link to="/" className="text-xs opacity-70 hover:opacity-100">
+            ← Hasat
+          </Link>
+          <Link
+            to="/tariflerim"
+            className="rounded-full border border-white/30 px-2.5 py-1 text-xs opacity-80 hover:opacity-100"
+          >
+            Tariflerim
+          </Link>
+        </div>
         <div
           className="mt-3 inline-flex items-center rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide"
           style={{
