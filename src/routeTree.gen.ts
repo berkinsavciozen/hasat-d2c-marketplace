@@ -18,7 +18,9 @@ import { Route as JoinRouteImport } from './routes/join'
 import { Route as FarmerRouteImport } from './routes/farmer'
 import { Route as BuyerRouteImport } from './routes/buyer'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as TariflerimIndexRouteImport } from './routes/tariflerim.index'
 import { Route as TariflerIndexRouteImport } from './routes/tarifler.index'
+import { Route as TariflerimRecipeIdRouteImport } from './routes/tariflerim.$recipeId'
 import { Route as TariflerSlugRouteImport } from './routes/tarifler.$slug'
 import { Route as SSlugRouteImport } from './routes/s.$slug'
 import { Route as OnboardingFarmerRouteImport } from './routes/onboarding.farmer'
@@ -120,9 +122,19 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const TariflerimIndexRoute = TariflerimIndexRouteImport.update({
+  id: '/tariflerim/',
+  path: '/tariflerim/',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const TariflerIndexRoute = TariflerIndexRouteImport.update({
   id: '/tarifler/',
   path: '/tarifler/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const TariflerimRecipeIdRoute = TariflerimRecipeIdRouteImport.update({
+  id: '/tariflerim/$recipeId',
+  path: '/tariflerim/$recipeId',
   getParentRoute: () => rootRouteImport,
 } as any)
 const TariflerSlugRoute = TariflerSlugRouteImport.update({
@@ -447,7 +459,9 @@ export interface FileRoutesByFullPath {
   '/onboarding/farmer': typeof OnboardingFarmerRoute
   '/s/$slug': typeof SSlugRoute
   '/tarifler/$slug': typeof TariflerSlugRoute
+  '/tariflerim/$recipeId': typeof TariflerimRecipeIdRoute
   '/tarifler/': typeof TariflerIndexRoute
+  '/tariflerim/': typeof TariflerimIndexRoute
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
   '/admin/recipes/$jobId': typeof AdminRecipesJobIdRoute
@@ -512,7 +526,9 @@ export interface FileRoutesByTo {
   '/onboarding/farmer': typeof OnboardingFarmerRoute
   '/s/$slug': typeof SSlugRoute
   '/tarifler/$slug': typeof TariflerSlugRoute
+  '/tariflerim/$recipeId': typeof TariflerimRecipeIdRoute
   '/tarifler': typeof TariflerIndexRoute
+  '/tariflerim': typeof TariflerimIndexRoute
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
   '/admin/recipes/$jobId': typeof AdminRecipesJobIdRoute
@@ -579,7 +595,9 @@ export interface FileRoutesById {
   '/onboarding/farmer': typeof OnboardingFarmerRoute
   '/s/$slug': typeof SSlugRoute
   '/tarifler/$slug': typeof TariflerSlugRoute
+  '/tariflerim/$recipeId': typeof TariflerimRecipeIdRoute
   '/tarifler/': typeof TariflerIndexRoute
+  '/tariflerim/': typeof TariflerimIndexRoute
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
   '/admin/recipes/$jobId': typeof AdminRecipesJobIdRoute
@@ -648,7 +666,9 @@ export interface FileRouteTypes {
     | '/onboarding/farmer'
     | '/s/$slug'
     | '/tarifler/$slug'
+    | '/tariflerim/$recipeId'
     | '/tarifler/'
+    | '/tariflerim/'
     | '/.lovable/oauth/consent'
     | '/.mcp/invoke-tool/$tool'
     | '/admin/recipes/$jobId'
@@ -713,7 +733,9 @@ export interface FileRouteTypes {
     | '/onboarding/farmer'
     | '/s/$slug'
     | '/tarifler/$slug'
+    | '/tariflerim/$recipeId'
     | '/tarifler'
+    | '/tariflerim'
     | '/.lovable/oauth/consent'
     | '/.mcp/invoke-tool/$tool'
     | '/admin/recipes/$jobId'
@@ -779,7 +801,9 @@ export interface FileRouteTypes {
     | '/onboarding/farmer'
     | '/s/$slug'
     | '/tarifler/$slug'
+    | '/tariflerim/$recipeId'
     | '/tarifler/'
+    | '/tariflerim/'
     | '/.lovable/oauth/consent'
     | '/.mcp/invoke-tool/$tool'
     | '/admin/recipes/$jobId'
@@ -828,7 +852,9 @@ export interface RootRouteChildren {
   OnboardingFarmerRoute: typeof OnboardingFarmerRoute
   SSlugRoute: typeof SSlugRoute
   TariflerSlugRoute: typeof TariflerSlugRoute
+  TariflerimRecipeIdRoute: typeof TariflerimRecipeIdRoute
   TariflerIndexRoute: typeof TariflerIndexRoute
+  TariflerimIndexRoute: typeof TariflerimIndexRoute
   DotlovableOauthConsentRoute: typeof DotlovableOauthConsentRoute
   Char91DotmcpChar93InvokeToolToolRoute: typeof Char91DotmcpChar93InvokeToolToolRoute
 }
@@ -898,11 +924,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/tariflerim/': {
+      id: '/tariflerim/'
+      path: '/tariflerim'
+      fullPath: '/tariflerim/'
+      preLoaderRoute: typeof TariflerimIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/tarifler/': {
       id: '/tarifler/'
       path: '/tarifler'
       fullPath: '/tarifler/'
       preLoaderRoute: typeof TariflerIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/tariflerim/$recipeId': {
+      id: '/tariflerim/$recipeId'
+      path: '/tariflerim/$recipeId'
+      fullPath: '/tariflerim/$recipeId'
+      preLoaderRoute: typeof TariflerimRecipeIdRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/tarifler/$slug': {
@@ -1466,7 +1506,9 @@ const rootRouteChildren: RootRouteChildren = {
   OnboardingFarmerRoute: OnboardingFarmerRoute,
   SSlugRoute: SSlugRoute,
   TariflerSlugRoute: TariflerSlugRoute,
+  TariflerimRecipeIdRoute: TariflerimRecipeIdRoute,
   TariflerIndexRoute: TariflerIndexRoute,
+  TariflerimIndexRoute: TariflerimIndexRoute,
   DotlovableOauthConsentRoute: DotlovableOauthConsentRoute,
   Char91DotmcpChar93InvokeToolToolRoute: Char91DotmcpChar93InvokeToolToolRoute,
 }

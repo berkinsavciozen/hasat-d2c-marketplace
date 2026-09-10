@@ -34,6 +34,10 @@ import {
   loadPendingRecipeRequest,
   clearPendingRecipeRequest,
 } from "@/lib/hasat/recipe-intent";
+import { Button } from "@/components/ui/button";
+import { CloneRecipeButton } from "@/components/hasat/CloneRecipeButton";
+import { CustomizeRecipeSheet } from "@/components/hasat/CustomizeRecipeSheet";
+import { Sparkles } from "lucide-react";
 
 function ingredientLabel(i: RecipeIngredientRow): string {
   // Lowercase — this array reads as "1 bardak ceviz", not "1 bardak Ceviz"
@@ -153,6 +157,11 @@ function RecipeDetailPage() {
   const loggedIn = useIsLoggedIn();
   const { data: myProfile } = useProfile();
   const isBuyer = loggedIn && myProfile?.role === "buyer";
+
+  // T6/F11 — kaynak tarif uygunluğu. Loader zaten public+published filtreliyor,
+  // geriye tek koşul kalıyor: tarif başka bir kullanıcının kendi taslağı olmasın.
+  const canDerive = loggedIn === true && recipe.author_type !== "kullanici";
+  const [customizeOpen, setCustomizeOpen] = useState(false);
 
   useLogRecipeView(recipe.id);
 
@@ -280,6 +289,14 @@ function RecipeDetailPage() {
           </div>
           <h1 className="mt-2 font-serif text-2xl md:text-3xl">{recipe.title}</h1>
           {recipe.description && <p className="mt-2 text-sm text-hmuted">{recipe.description}</p>}
+          {canDerive && (
+            <div className="mt-3 flex flex-wrap gap-2">
+              <Button type="button" size="sm" onClick={() => setCustomizeOpen(true)}>
+                <Sparkles /> AI ile özelleştir
+              </Button>
+              <CloneRecipeButton sourceRecipeId={recipe.id} />
+            </div>
+          )}
           <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-hmuted">
             {timeBreakdown && (
               <span className="inline-flex items-center gap-1">
@@ -615,7 +632,16 @@ function RecipeDetailPage() {
               onClose={() => setRequestIngredient(null)}
             />
           );
-        })()}
+         })()}
+
+      {canDerive && (
+        <CustomizeRecipeSheet
+          open={customizeOpen}
+          onOpenChange={setCustomizeOpen}
+          sourceRecipeId={recipe.id}
+          sourceTitle={recipe.title}
+        />
+      )}
     </div>
   );
 }
