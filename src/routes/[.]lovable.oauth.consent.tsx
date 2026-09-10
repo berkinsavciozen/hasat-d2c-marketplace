@@ -1,5 +1,6 @@
 import { createFileRoute, redirect } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
+import * as Sentry from "@sentry/tanstackstart-react";
 import { supabase } from "@/integrations/supabase/client";
 
 type OAuthApi = {
@@ -48,16 +49,21 @@ export const Route = createFileRoute("/.lovable/oauth/consent")({
     return data;
   },
   component: Consent,
-  errorComponent: ({ error }) => (
-    <main className="min-h-screen flex items-center justify-center p-6 text-center">
-      <div>
-        <h1 className="text-xl font-semibold mb-2">Bağlantı isteği yüklenemedi</h1>
-        <p className="text-sm text-muted-foreground">
-          {String((error as Error)?.message ?? error)}
-        </p>
-      </div>
-    </main>
-  ),
+  errorComponent: ({ error }) => {
+    useEffect(() => {
+      Sentry.captureException(error);
+    }, [error]);
+    return (
+      <main className="min-h-screen flex items-center justify-center p-6 text-center">
+        <div>
+          <h1 className="text-xl font-semibold mb-2">Bağlantı isteği yüklenemedi</h1>
+          <p className="text-sm text-muted-foreground">
+            {String((error as Error)?.message ?? error)}
+          </p>
+        </div>
+      </main>
+    );
+  },
 });
 
 function Consent() {
