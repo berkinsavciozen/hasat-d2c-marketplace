@@ -286,7 +286,9 @@ export function useCloneRecipe() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (sourceRecipeId: string): Promise<string> => {
-      const { data, error } = await supabase.rpc("rpc_clone_recipe", {
+      // `rpc_clone_recipe` canlıda mevcut ama paylaşılan core tip dosyasında yok
+      // (bu dispatch tip dosyalarına dokunmuyor) — repodaki `as any` desenine uygun cast.
+      const { data, error } = await (supabase.rpc as any)("rpc_clone_recipe", {
         p_source_recipe_id: sourceRecipeId,
       });
       if (error) throw error;
