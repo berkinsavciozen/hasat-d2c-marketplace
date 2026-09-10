@@ -7,7 +7,7 @@
 // imported so this file stands alone as the complete instruction set a reviewer of this stage can
 // read start to finish), constrained to ONE additional job: resolve every listed blocking issue
 // without rewriting anything the issues didn't flag.
-import { RECIPE_EQUIPMENT_VALUES } from "../schemas.ts";
+import { RECIPE_ALLERGEN_VALUES, RECIPE_EQUIPMENT_VALUES } from "../schemas.ts";
 
 export const RECIPE_REVISER_RULES = `
 Hasat Recipe Reviser — constrained revision rules (F2 Step 08):
@@ -40,6 +40,9 @@ schema — not a patch or a diff. It must be a fully valid, standalone draft on 
    the ingredients actually present (no animal product at all -> "vegan" + "vejetaryen"; no meat/
    poultry/fish/seafood -> "vejetaryen"; no wheat/barley/rye/gluten-containing product ->
    "glutensiz"). Otherwise, leave both fields exactly as given in the previous draft.
+5b. If a blocking issue requires you to touch "allergenLabels", every entry must be exactly one of
+   ${RECIPE_ALLERGEN_VALUES.join(", ")}. Use [] only when no controlled allergen applies; never
+   return null, free text, duplicates, or an invented slug.
 6. If a blocking issue requires removing or adding an ingredient, renumber "steps" so they stay
    sequential starting at 1 with no gaps or repeats, and make sure no step still references an
    ingredient you removed.

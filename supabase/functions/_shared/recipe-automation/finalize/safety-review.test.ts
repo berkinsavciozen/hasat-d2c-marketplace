@@ -8,7 +8,7 @@ function validSafetyReview(overrides: Partial<RecipeSafetyReview> = {}): RecipeS
   return {
     temperature: { flagged: false, notes: null },
     timing: { flagged: false, notes: null },
-    allergens: { flagged: true, notes: "Sut icerir.", detectedLabels: ["sut"] },
+    allergens: { flagged: true, notes: "Sut icerir.", detectedLabels: ["laktoz"] },
     requiresHumanReview: true,
     reviewedBy: null,
     reviewedAt: null,
@@ -21,10 +21,13 @@ Deno.test("validateSafetyReviewPresence: a fully-present safety review has no is
   assert.deepEqual(validateSafetyReviewPresence(validSafetyReview()), []);
 });
 
-Deno.test("validateSafetyReviewPresence: unreviewed-by-a-human is still fine (that gate is later, not this check)", () => {
-  // reviewedBy/reviewedAt/approved are all null here — this check must not require them.
-  assert.deepEqual(validateSafetyReviewPresence(validSafetyReview()), []);
-});
+Deno.test(
+  "validateSafetyReviewPresence: unreviewed-by-a-human is still fine (that gate is later, not this check)",
+  () => {
+    // reviewedBy/reviewedAt/approved are all null here — this check must not require them.
+    assert.deepEqual(validateSafetyReviewPresence(validSafetyReview()), []);
+  },
+);
 
 Deno.test("validateSafetyReviewPresence: a totally missing safety review is reported", () => {
   const issues = validateSafetyReviewPresence(null);
@@ -39,12 +42,15 @@ Deno.test("validateSafetyReviewPresence: a missing temperature finding is report
   assert.ok(issues.some((i) => i.code === "FINALIZE_SAFETY_TEMPERATURE_MISSING"));
 });
 
-Deno.test("validateSafetyReviewPresence: a malformed timing finding (no boolean flagged) is reported", () => {
-  const review = validSafetyReview();
-  const malformed = { ...review, timing: { notes: "eksik" } } as unknown as RecipeSafetyReview;
-  const issues = validateSafetyReviewPresence(malformed);
-  assert.ok(issues.some((i) => i.code === "FINALIZE_SAFETY_TIMING_MISSING"));
-});
+Deno.test(
+  "validateSafetyReviewPresence: a malformed timing finding (no boolean flagged) is reported",
+  () => {
+    const review = validSafetyReview();
+    const malformed = { ...review, timing: { notes: "eksik" } } as unknown as RecipeSafetyReview;
+    const issues = validateSafetyReviewPresence(malformed);
+    assert.ok(issues.some((i) => i.code === "FINALIZE_SAFETY_TIMING_MISSING"));
+  },
+);
 
 Deno.test("validateSafetyReviewPresence: a missing allergens finding is reported", () => {
   const review = validSafetyReview();

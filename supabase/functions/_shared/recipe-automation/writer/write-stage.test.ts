@@ -201,6 +201,25 @@ Deno.test("runWriteStage: structurally invalid agent output -> failJob, outcome 
   assert.equal(job.stage, "write");
 });
 
+Deno.test("runWriteStage: missing allergenLabels is invalid output, never implicit []", async () => {
+  const client = new FakeSupabaseClient();
+  const jobId = seedWriteJob(client);
+  registerHappyPathRpcs(client);
+  const { allergenLabels: _allergenLabels, ...withoutAllergenLabels } = validKabakRecipeDraft;
+  const runner: AgentRunner = {
+    run: async () => ({
+      output: withoutAllergenLabels,
+      provider: "openai", model: "test-model", usage: null, durationMs: 10,
+    }),
+  };
+
+  const result = await runWriteStage(asClient(client), { jobId, agentRunner: runner });
+
+  assert.equal(result.outcome, "invalid_output");
+  const { data: drafts } = await client.from("recipe_drafts");
+  assert.equal((drafts as unknown[]).length, 0);
+});
+
 Deno.test("runWriteStage: a blocking Postgres validation issue -> failJob, outcome validation_failed, no draft stored", async () => {
   const client = new FakeSupabaseClient();
   const jobId = seedWriteJob(client);

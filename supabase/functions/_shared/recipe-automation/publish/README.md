@@ -92,16 +92,15 @@ common case.
   `write-stage.ts`/`finalize-stage.ts` already use, so a recipe's real slug and every earlier
   candidate-slug check in the pipeline are never able to silently drift apart.
 
-## F0-24: nutrition recalculated as a best-effort side effect of a genuine publish
+## Allergen and nutrition facts are transactional publish gates
 
-A successful, non-idempotent-replay publish (i.e. `outcome: "published"`, not
-`"already_published"`) also calls `../nutrition/recalc.ts`'s `invokeNutritionRecalc()` — the F0-24
-deterministic nutrition engine's (`calculate_recipe_nutrition`) first real lifecycle wiring (that
-migration's own header explicitly left this for a later dispatch). Never affects this stage's own
-`outcome`/HTTP status or the job's stage/status columns: a nutrition recalc failure is logged
-(`console.error`) and reported back in the result's `nutritionRecalc` field, but a publish that
-otherwise succeeded is never turned into a failure by it — see `nutrition/recalc.ts`'s own header
-for the full idempotency/race-safety/no-op contract this relies on.
+`20260910073732_allergen_nutrition_publish_gate.sql` attaches to the terminal job update inside
+`publish_recipe_draft`'s transaction. It copies the exact human admin approval timestamp to the
+live recipe, requires a non-null duplicate-free controlled allergen array, invokes
+`calculate_recipe_nutrition`, and raises unless the result is `computed` with 100% coverage. Any
+failure therefore rolls back the recipe, ingredients, assets and job transition together. The
+TypeScript-side `invokeNutritionRecalc()` call remains only as an idempotent post-commit
+verification; it is not the safety boundary.
 
 ## Running the tests
 

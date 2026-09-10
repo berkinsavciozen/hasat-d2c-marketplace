@@ -9,8 +9,8 @@ comment for the full constraint list; the short version:
 - Never asserts a final decision — every row is a candidate + rationale + ambiguity note.
 - Two explicit, cited candidate sources only: deterministic Turkish keyword rules
   (`allergen-keywords.mjs`) and F2's `safetyReview.allergens.detectedLabels` (when reachable).
-- Only the 7 controlled taxonomy slugs ever go in `candidate_labels`; anything else (a different
-  tree-nut species, mustard, celery, ...) goes to `taxonomy_out_of_scope_notes` instead.
+- Only the controlled taxonomy slugs ever go in `candidate_labels`; anything else goes to
+  `taxonomy_out_of_scope_notes` instead.
 
 ## Run it
 

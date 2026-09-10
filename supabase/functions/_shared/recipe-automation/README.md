@@ -143,8 +143,9 @@ drafting/QA/revision history instead).
 
 **F0-24 lifecycle wiring (cross-cutting, not an F2 pipeline step):** `nutrition/` connects the F0-24
 deterministic nutrition engine (`calculate_recipe_nutrition`, a separate feature from this F2
-pipeline) to real service-role call sites — as of this dispatch, just `publish/publish-stage.ts`'s
-own genuine publish transition. See `nutrition/README.md` for the full contract and for why F7
+pipeline) to real lifecycle points. F2 publish is transactionally gated by
+`20260910073732_allergen_nutrition_publish_gate.sql`; `publish/publish-stage.ts` retains an
+idempotent post-commit verification. See `nutrition/README.md` for the full contract and for why F7
 (post-edit save) and T6/F11 (AI-customization clone) — the migration's other two named trigger
 points — are investigated but not wired here.
 

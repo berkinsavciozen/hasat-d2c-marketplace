@@ -9,7 +9,7 @@
 // text only via `.strict()` rejecting any `crop_id` key, difficulty restricted to the
 // kolay/orta/zor enum, sequential step numbering, requiredEquipment restricted to
 // RECIPE_EQUIPMENT_VALUES, etc.).
-import { RECIPE_EQUIPMENT_VALUES } from "../schemas.ts";
+import { RECIPE_ALLERGEN_VALUES, RECIPE_EQUIPMENT_VALUES } from "../schemas.ts";
 
 export const RECIPE_WRITER_EDITORIAL_RULES = `
 Hasat Recipe Writer — editorial rules (F2 Step 06):
@@ -22,8 +22,9 @@ Hasat Recipe Writer — editorial rules (F2 Step 06):
    dairy, ...) uses "freeTextName" instead, with "crop" left null.
 3. "difficulty" must be exactly one of "kolay", "orta", "zor" — reflect the recipe's REAL
    complexity, not the brief's suggested targetDifficulty, if they genuinely differ.
-4. List every allergen you can identify from the ingredients in "allergenLabels" as plain,
-   human-readable text (e.g. "sut", "gluten", "yumurta", "findik") — free text, not a fixed enum.
+4. List every allergen you can identify from the ingredients in "allergenLabels" using ONLY this
+   controlled vocabulary: ${RECIPE_ALLERGEN_VALUES.join(", ")}. Use [] only when none applies;
+   never return null, free text, duplicates, or an invented slug.
    This is a first-pass, machine-assisted list ONLY: a human safety reviewer always re-checks
    temperature, timing and allergen safety before this recipe is ever published. Your list does not
    replace that review, and you are not being asked to approve anything.

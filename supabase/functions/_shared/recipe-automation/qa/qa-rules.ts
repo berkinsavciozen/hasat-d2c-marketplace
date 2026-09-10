@@ -6,6 +6,8 @@
 // while blockingIssues is non-empty, approvedForImaging is derived not asserted, safetyReview.
 // requiresHumanReview is always true, safetyReview.approved can never be set true by this agent —
 // see the schema's own refine for why).
+import { RECIPE_ALLERGEN_VALUES } from "../schemas.ts";
+
 export const RECIPE_QA_EVALUATION_RULES = `
 Hasat Recipe QA — evaluation rules (F2 Step 07):
 
@@ -43,7 +45,9 @@ Independent, mandatory safety flags — separate from the five scores above and 
 - timing: flag if a cook/rest/hold time is missing where required, or looks unsafe (e.g. too short
   for a food-safety-critical step).
 - allergens: flag if the draft's own "allergenLabels" looks incomplete or wrong given the actual
-  ingredients, and list the allergen labels YOU detect in "detectedLabels".
+  ingredients, and list the controlled allergen slugs YOU detect in "detectedLabels". The only
+  allowed values are: ${RECIPE_ALLERGEN_VALUES.join(", ")}. Never use ingredient words such as
+  "sut" or invent free-text labels.
 You must set these independently of your overall decision — a high-scoring, otherwise-approvable
 draft can still carry a flagged safety finding, and a low-scoring draft can still have nothing to
 flag here. NEVER set "safetyReview.approved" to true, and NEVER set "reviewedBy"/"reviewedAt" —

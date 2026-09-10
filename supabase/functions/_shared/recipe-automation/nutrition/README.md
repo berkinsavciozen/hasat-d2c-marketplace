@@ -16,7 +16,7 @@ Of the three lifecycle points the calc-engine migration's header named:
 
 | Trigger | Wired? | Where |
 |---|---|---|
-| F2 publish (`recipe_drafts` → live `recipes`, `status → 'published'`) | **Yes** | `../publish/publish-stage.ts`, on a genuine (non-idempotent-replay) publish |
+| F2 publish (`recipe_drafts` → live `recipes`, `status → 'published'`) | **Yes, enforced** | `20260910073732_allergen_nutrition_publish_gate.sql`, inside the publish transaction; `../publish/publish-stage.ts` performs an idempotent post-commit verification |
 | F7 post-edit save (owner/admin edits `recipe_ingredients`/`servings` on an existing recipe) | **Yes, but not here — see below** | `../../../../migrations/20260909130000_f024t4b_recipe_nutrition_trigger_wiring.sql` |
 | T6 / F11 AI-customization clone (`cloned_from_recipe_id`) | **No — not implemented anywhere in this repo** | see below |
 
@@ -60,8 +60,9 @@ outcome ("kural #103 — dürüstçe belirt"). Nothing to wire; no blind hook wa
 2. **Race-safe, bounded** — detects an ingredient-set change that raced with the RPC call and
    recomputes exactly once more; never loops.
 3. **Safe no-op** for a deleted or unpublished recipe, checked before ever calling the RPC.
-4. **Never throws** — every failure is logged (`console.error`) and returned in the result, never
-   propagated to the caller's own publish/edit/clone flow.
+4. **Post-commit helper never throws** — every failure is logged and returned. F2's authoritative
+   publish gate is the database trigger in `20260910073732_allergen_nutrition_publish_gate.sql`,
+   which does raise and atomically rolls back an incomplete publish.
 5. **Never touches** `calculate_recipe_nutrition`'s own SQL body or grants — `anon`/`authenticated`
    stay revoked (see the PR description for the live `has_function_privilege` check).
 

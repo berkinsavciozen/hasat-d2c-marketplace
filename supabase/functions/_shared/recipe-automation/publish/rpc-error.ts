@@ -27,6 +27,12 @@ const OUTCOME_BY_CODE: Record<string, { outcome: RunPublishStageOutcome; retryab
   PUBLISH_MISSING_ASSETS: { outcome: "missing_assets", retryable: true },
   PUBLISH_VALIDATION_FAILED: { outcome: "postgres_validation_failed", retryable: false },
   PUBLISH_SLUG_ALREADY_USED: { outcome: "slug_already_used", retryable: false },
+  PUBLISH_ALLERGEN_REVIEW_MISSING: { outcome: "allergen_facts_incomplete", retryable: false },
+  PUBLISH_ALLERGEN_LABELS_MISSING: { outcome: "allergen_facts_incomplete", retryable: false },
+  PUBLISH_ALLERGEN_LABELS_INVALID: { outcome: "allergen_facts_incomplete", retryable: false },
+  PUBLISH_ALLERGEN_FACTS_INCOMPLETE: { outcome: "allergen_facts_incomplete", retryable: false },
+  PUBLISH_NUTRITION_INCOMPLETE: { outcome: "nutrition_incomplete", retryable: true },
+  PUBLISH_NUTRITION_FACTS_INCOMPLETE: { outcome: "nutrition_incomplete", retryable: true },
   PUBLISH_FINAL_VALIDATION_FAILED: { outcome: "final_validation_failed", retryable: false },
 };
 
@@ -35,19 +41,30 @@ const OUTCOME_BY_CODE: Record<string, { outcome: RunPublishStageOutcome; retryab
  * an unexpected constraint violation, a connection failure) falls back to a generic retryable
  * infra failure rather than throwing, matching `toSafeErrorPayload`'s "never throw" contract. */
 export function parsePublishRpcError(err: unknown): ParsedPublishRpcError {
-  const rawMessage = err && typeof err === "object" && "message" in err
-    ? String((err as { message: unknown }).message)
-    : String(err);
+  const rawMessage =
+    err && typeof err === "object" && "message" in err
+      ? String((err as { message: unknown }).message)
+      : String(err);
 
   const match = CODE_PATTERN.exec(rawMessage);
   if (match) {
     const [, code, rest] = match;
     const mapped = OUTCOME_BY_CODE[code];
     if (mapped) {
-      return { code, message: rest || rawMessage, outcome: mapped.outcome, retryable: mapped.retryable };
+      return {
+        code,
+        message: rest || rawMessage,
+        outcome: mapped.outcome,
+        retryable: mapped.retryable,
+      };
     }
     return { code, message: rest || rawMessage, outcome: "unexpected_error", retryable: true };
   }
 
-  return { code: "PUBLISH_RPC_UNEXPECTED_ERROR", message: rawMessage, outcome: "unexpected_error", retryable: true };
+  return {
+    code: "PUBLISH_RPC_UNEXPECTED_ERROR",
+    message: rawMessage,
+    outcome: "unexpected_error",
+    retryable: true,
+  };
 }
