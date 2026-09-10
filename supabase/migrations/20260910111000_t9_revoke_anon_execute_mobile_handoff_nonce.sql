@@ -1,0 +1,25 @@
+-- T9 backlog — close the same anon/authenticated EXECUTE gap this project has hit before.
+--
+-- Confirmed live this turn (right after 20260910110000_t9_mobile_handoff_nonces.sql applied): despite
+-- that migration's `revoke all on function ... from public`, `information_schema.role_routine_grants`
+-- still showed EXECUTE granted to `anon` AND `authenticated` on `rpc_consume_mobile_handoff_nonce`.
+-- Reason: Supabase/Postgres auto-grants EXECUTE on a newly created function directly to `anon` and
+-- `authenticated` (not via the `PUBLIC` pseudo-role) as part of this project's default privileges —
+-- `revoke ... from public` never touches those direct grants. This is the exact same class of gap
+-- already closed here before: `b1_revoke_dispatch_push_public_execute`,
+-- `b2_revoke_harvest_reminders_public_execute`, `f024b_revoke_nutrition_calc_public_execute`,
+-- `t6_backlog_revoke_anon_execute_ai_customize_and_validators`.
+--
+-- Not a full authorization bypass on its own — the RPC's own WHERE clause (`consumed_at IS NULL AND
+-- expires_at > now()`) still means a caller needs the actual 256-bit random nonce value to consume
+-- anything, and it only ever touches the one row matching it. But the design's stated intent
+-- (function comment: "yalnızca service_role'e GRANT edilmiş") is for this RPC to be reachable ONLY
+-- through the `mobile-handoff-exchange` edge function, not directly via PostgREST with the public
+-- anon key — direct anon/authenticated reachability skips any edge-function-level shaping and gives
+-- nonce brute-force attempts a second, unmonitored surface. Closing it now rather than leaving it as
+-- a known-but-unfixed finding.
+--
+-- Rollback: `grant execute on function public.rpc_consume_mobile_handoff_nonce(text) to anon,
+-- authenticated;` restores the pre-this-migration (over-permissive) state.
+
+revoke execute on function public.rpc_consume_mobile_handoff_nonce(text) from anon, authenticated;
