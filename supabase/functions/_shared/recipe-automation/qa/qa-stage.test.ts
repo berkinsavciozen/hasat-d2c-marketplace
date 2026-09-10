@@ -138,6 +138,18 @@ Deno.test("runQAStage: no recipe_drafts row for the job -> failJob, outcome no_c
   assert.equal(job.locked_by, null, "lock is released on failure");
 });
 
+Deno.test("runQAStage: null allergen_labels is rejected before QA", async () => {
+  const client = new FakeSupabaseClient();
+  const jobId = seedQaJob(client);
+  seedCurrentDraft(client, jobId, { allergen_labels: null });
+
+  await assert.rejects(
+    () => runQAStage(asClient(client), { jobId, agentRunner: throwingAgentRunner() }),
+    /missing or invalid controlled allergen labels/,
+  );
+  assert.equal(client.getRow("recipe_generation_jobs", jobId)!.locked_by, null);
+});
+
 Deno.test("runQAStage: deterministic Postgres validation failure -> failJob, no agent call, outcome deterministic_validation_failed", async () => {
   const client = new FakeSupabaseClient();
   const jobId = seedQaJob(client);

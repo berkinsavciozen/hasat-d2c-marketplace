@@ -95,7 +95,7 @@ function seedQaResult(
     safety_review: {
       temperature: { flagged: false, notes: null },
       timing: { flagged: false, notes: null },
-      allergens: { flagged: true, notes: "Sut icerir.", detectedLabels: ["sut"] },
+      allergens: { flagged: true, notes: "Sut icerir.", detectedLabels: ["laktoz"] },
       requiresHumanReview: true,
       reviewedBy: null,
       reviewedAt: null,
@@ -170,6 +170,18 @@ Deno.test("runFinalizeStage: no_current_draft when the job has no recipe_drafts 
 
   const result = await runFinalizeStage(asClient(client), { jobId });
   assert.equal(result.outcome, "no_current_draft");
+});
+
+Deno.test("runFinalizeStage: null allergen_labels is rejected before finalization", async () => {
+  const client = new FakeSupabaseClient();
+  const jobId = seedFinalizeJob(client);
+  seedDraft(client, jobId, 1, { allergen_labels: null });
+
+  await assert.rejects(
+    () => runFinalizeStage(asClient(client), { jobId }),
+    /missing or invalid controlled allergen labels/,
+  );
+  assert.equal(client.getRow("recipe_generation_jobs", jobId)!.locked_by, null);
 });
 
 Deno.test("runFinalizeStage: no_approved_qa_result when the latest QA result isn't approved", async () => {

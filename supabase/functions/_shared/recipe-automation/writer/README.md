@@ -30,10 +30,10 @@ logic that entrypoint delegates to, kept HTTP-free so it's directly unit-testabl
   just a prompt instruction.
 - **Difficulty only `kolay`/`orta`/`zor`**: `recipeDifficultySchema` (schemas.ts), same enforcement
   point as the live `recipes.difficulty` CHECK constraint.
-- **Allergen persistence matches the verified live `recipes.allergen_labels` definition; human
-  safety review remains mandatory**: `allergenLabels` is stored exactly as `recipes.allergen_labels`
-  is modeled (nullable `text[]`, no enum) — the Writer's list is explicitly framed in
-  `editorial-rules.ts` as first-pass only; nothing in this stage sets or implies
+- **Allergen persistence uses the controlled product taxonomy; human safety review remains
+  mandatory**: `allergenLabels` is a non-null, duplicate-free array of controlled slugs. The
+  Writer's list is explicitly framed in `editorial-rules.ts` as first-pass only; nothing in this
+  stage sets or implies
   `recipe_qa_results.safety_approved` (that requires a human `reviewedBy`/`reviewedAt`, enforced at
   the DB layer, and only becomes reachable at a later stage).
 - **No pipeline status in `recipes.status`**: this stage never touches the `recipes` table at all.

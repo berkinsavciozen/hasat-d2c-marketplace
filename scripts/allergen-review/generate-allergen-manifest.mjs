@@ -21,9 +21,8 @@
 //        b) F2's existing safetyReview.allergens.detectedLabels (recipe_qa_results, LLM-produced,
 //           already-unreviewed by design — see qa-rules.ts) when reachable, cited as-is and never
 //           treated as human-approved.
-//   4. Only the 7 controlled taxonomy slugs (gluten, laktoz, yumurta, findik-yerfistigi, soya,
-//      susam, deniz-urunu — imported from src/lib/hasat/recipeFacts.ts, the app's own source of
-//      truth) are ever placed in `candidate_labels`. Anything else goes to
+//   4. Only the controlled taxonomy slugs imported from src/lib/hasat/recipeFacts.ts are ever
+//      placed in `candidate_labels`. Anything else goes to
 //      `taxonomy_out_of_scope_notes` instead, verbatim, never invented into a made-up slug.
 //
 // Usage:
@@ -50,6 +49,7 @@ import {
   OUT_OF_SCOPE_KEYWORDS,
   AMBIGUOUS_KEYWORDS,
   matchKeywords,
+  shouldSuppressTaxonomyMatch,
 } from "./allergen-keywords.mjs";
 
 try {
@@ -117,30 +117,35 @@ function describeIngredient(row, cropNames, cropAliases) {
   if (row.crop) {
     const display = cropNames.get(row.crop) ?? row.crop;
     const aliases = cropAliases.get(row.crop) ?? [];
-    return { name: display, searchText: [display, row.crop, ...aliases].join(" "), source: "crop" };
+    return { name: display, searchText: [display, row.crop, ...aliases].join(" "), note: row.note ?? "", source: "crop" };
   }
   if (row.free_text_name) {
-    return { name: row.free_text_name, searchText: row.free_text_name, source: "free_text_name" };
+    return { name: row.free_text_name, searchText: row.free_text_name, note: row.note ?? "", source: "free_text_name" };
   }
-  return { name: "(adsız malzeme)", searchText: "", source: "missing" };
+  return { name: "(adsız malzeme)", searchText: "", note: row.note ?? "", source: "missing" };
 }
 
-function buildCandidates(ingredientDescriptions, ingredientNotes) {
+function buildCandidates(ingredientDescriptions) {
   const candidateHits = new Map(); // slug -> [{ ingredient, keyword }]
   const outOfScopeHits = new Map(); // category -> [{ ingredient, keyword }]
   const ambiguousHits = []; // { ingredient, keyword }
 
-  const searchable = [
-    ...ingredientDescriptions.map((d) => ({ label: d.name, text: d.searchText })),
-    ...ingredientNotes.map((n) => ({ label: `not: "${n}"`, text: n })),
-  ];
+  const searchable = ingredientDescriptions.flatMap((d) => {
+    const context = [d.searchText, d.note].filter(Boolean).join(" ");
+    return [
+      { label: d.name, text: d.searchText, context },
+      ...(d.note ? [{ label: `not: "${d.note}"`, text: d.note, context }] : []),
+    ];
+  });
 
-  for (const { label, text } of searchable) {
+  for (const { label, text, context } of searchable) {
     if (!text) continue;
     const folded = foldTurkish(text);
+    const foldedContext = foldTurkish(context);
 
     for (const [slug, keywords] of Object.entries(TAXONOMY_KEYWORDS)) {
       for (const keyword of matchKeywords(folded, keywords)) {
+        if (shouldSuppressTaxonomyMatch(slug, keyword, folded, foldedContext)) continue;
         if (!candidateHits.has(slug)) candidateHits.set(slug, []);
         candidateHits.get(slug).push({ ingredient: label, keyword });
       }
@@ -179,7 +184,7 @@ function formatOutOfScope(outOfScopeHits, f2OutOfScope) {
   for (const label of f2OutOfScope) {
     parts.push(
       `taksonomi dışı, insan kararına bırakıldı — F2 QA'nın (LLM, insan onaysız) tespit ettiği ` +
-        `"${label}" etiketi 7-slug taksonomisiyle eşleşmiyor`,
+        `"${label}" etiketi kontrollü taksonomiyle eşleşmiyor`,
     );
   }
   return parts.join("; ");
@@ -311,9 +316,7 @@ async function main() {
   const manifestRows = recipes.map((recipe) => {
     const recipeIngredients = ingredientsByRecipe.get(recipe.id) ?? [];
     const descriptions = recipeIngredients.map((i) => describeIngredient(i, cropNames, cropAliases));
-    const notes = recipeIngredients.map((i) => i.note).filter(Boolean);
-
-    const { candidateHits, outOfScopeHits, ambiguousHits } = buildCandidates(descriptions, notes);
+    const { candidateHits, outOfScopeHits, ambiguousHits } = buildCandidates(descriptions);
 
     const f2Result = f2ByRecipe.get(recipe.id);
     const f2Detected = f2Result?.safety_review?.allergens?.detectedLabels ?? [];

@@ -62,7 +62,7 @@ export const validKabakRecipeDraft: RecipeDraftPayload = {
   difficulty: "orta",
   cuisine: "turk",
   dietTags: ["vejetaryen"],
-  allergenLabels: ["sut"],
+  allergenLabels: ["laktoz"],
   requiredEquipment: ["firin"],
   sourceType: "manual",
   authorType: "hasat",
@@ -119,7 +119,7 @@ export const validQAResult: RecipeQAResult = {
   safetyReview: {
     temperature: { flagged: false, notes: null },
     timing: { flagged: false, notes: null },
-    allergens: { flagged: true, notes: "Sut icerir.", detectedLabels: ["sut"] },
+    allergens: { flagged: true, notes: "Sut icerir.", detectedLabels: ["laktoz"] },
     requiresHumanReview: true,
     reviewedBy: REVIEWER_ID,
     reviewedAt: "2026-08-19T10:00:00Z",

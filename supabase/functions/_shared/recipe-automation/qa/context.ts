@@ -7,6 +7,7 @@
 // could somehow influence.
 import type { SupabaseClient } from "../infra/supabase-admin.ts";
 import { RecipeAutomationError } from "../infra/errors.ts";
+import { recipeAllergenListSchema } from "../schemas.ts";
 import type {
   RecipeDraftPayload,
   RecipeIngredientDraft,
@@ -49,6 +50,15 @@ export async function loadCurrentDraft(client: SupabaseClient, jobId: string): P
   if (!data) return null;
 
   const row = data as Record<string, unknown>;
+  const allergenLabels = recipeAllergenListSchema.safeParse(row.allergen_labels);
+  if (!allergenLabels.success) {
+    throw new RecipeAutomationError({
+      code: "CURRENT_DRAFT_ALLERGEN_LABELS_INVALID",
+      message: "current recipe draft has missing or invalid controlled allergen labels",
+      stage: "qa",
+      retryable: false,
+    });
+  }
   return {
     id: String(row.id),
     version: Number(row.version),
@@ -69,7 +79,7 @@ export async function loadCurrentDraft(client: SupabaseClient, jobId: string): P
       difficulty: (row.difficulty as RecipeDraftPayload["difficulty"]) ?? null,
       cuisine: (row.cuisine as string | null) ?? null,
       dietTags: Array.isArray(row.diet_tags) ? (row.diet_tags as string[]) : [],
-      allergenLabels: (row.allergen_labels as string[] | null) ?? null,
+      allergenLabels: allergenLabels.data,
       requiredEquipment: (row.required_equipment as RecipeDraftPayload["requiredEquipment"]) ?? null,
       sourceType: row.source_type as RecipeDraftPayload["sourceType"],
       authorType: row.author_type as RecipeDraftPayload["authorType"],

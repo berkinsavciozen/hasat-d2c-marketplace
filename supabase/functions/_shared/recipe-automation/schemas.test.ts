@@ -66,6 +66,18 @@ Deno.test("RecipeDraftPayload: rejects missing steps", () => {
   assertFalse(result.success);
 });
 
+Deno.test("RecipeDraftPayload: allergen labels are required, controlled, non-null and unique", () => {
+  const { allergenLabels: _allergenLabels, ...missingAllergenLabels } = validKabakRecipeDraft;
+  assertFalse(recipeDraftPayloadSchema.safeParse(missingAllergenLabels).success, "missing field");
+
+  for (const allergenLabels of [null, "laktoz", ["sut"], ["laktoz", "laktoz"]]) {
+    const result = recipeDraftPayloadSchema.safeParse({ ...validKabakRecipeDraft, allergenLabels });
+    assertFalse(result.success, JSON.stringify(allergenLabels));
+  }
+
+  assert(recipeDraftPayloadSchema.safeParse({ ...validKabakRecipeDraft, allergenLabels: [] }).success);
+});
+
 Deno.test("RecipeDraftPayload: rejects steps with a gap in step_no", () => {
   const draft = {
     ...validKabakRecipeDraft,

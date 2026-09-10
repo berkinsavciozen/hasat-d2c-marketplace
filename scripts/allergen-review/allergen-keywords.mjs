@@ -9,9 +9,8 @@
 // matched as whole words/phrases (never a bare substring) to avoid false positives like "unlu"
 // matching "un".
 //
-// Every keyword list below maps to exactly one of the 7 controlled taxonomy slugs. Anything that
-// looks like an allergen but does not cleanly fit one of the 7 slugs (a different tree-nut species,
-// mustard, celery, sulphites, ...) is deliberately kept OUT of this file and instead listed in
+// Every keyword list below maps to exactly one controlled taxonomy slug. Anything that looks like
+// an allergen but does not cleanly fit the current vocabulary is deliberately kept OUT and listed in
 // `OUT_OF_SCOPE_KEYWORDS` below, which never produces a `candidate_labels` value — only a
 // `taxonomy_out_of_scope_notes` entry. This mirrors the precedent set by migration
 // 20260904190000_t3a2_allergen_labels_taxonomy_remap.sql, which explicitly refused to map "ceviz"
@@ -31,6 +30,9 @@ export const TAXONOMY_KEYWORDS = {
   ],
   yumurta: ["yumurta"],
   "findik-yerfistigi": ["findik", "yer fistigi", "fistik ezmesi", "yer fistigi ezmesi"],
+  "agac-kuruyemisi": [
+    "ceviz", "badem", "kaju", "antep fistigi", "cam fistigi", "makademya", "pekan",
+  ],
   soya: ["soya", "soya sosu", "soya fasulyesi", "tofu", "tempeh", "edamame", "misket soyasi"],
   susam: ["susam", "tahin", "susam yagi", "simit susami"],
   "deniz-urunu": [
@@ -38,21 +40,20 @@ export const TAXONOMY_KEYWORDS = {
     "karides", "midye", "ahtapot", "kalamar", "yengec", "istiridye", "alabalik",
     "palamut", "sardalya", "deniz urunu", "balik sosu", "balik yagi",
   ],
+  hardal: ["hardal"],
+  kereviz: ["kereviz"],
+  sulfit: ["sulfit", "kukurt dioksit", "sulfur dioksit"],
+  lupin: ["lupin"],
 };
 
 /**
- * Keywords that name a real, common allergen but have no home in the 7-slug taxonomy today.
+ * Keywords that name a real, common allergen but have no home in the controlled taxonomy today.
  * Matches here never populate `candidate_labels` — only `taxonomy_out_of_scope_notes`, per task
  * constraint #4 ("bu 7'nin dışında bir öneri üretme").
  */
 export const OUT_OF_SCOPE_KEYWORDS = {
-  "ağaç kuruyemişi (fındık/yer fıstığı dışı)": [
-    "ceviz", "badem", "kaju", "antep fistigi", "cam fistigi", "makademya", "pekan",
-  ],
-  hardal: ["hardal"],
-  kereviz: ["kereviz"],
-  "sülfit (kükürt dioksit)": ["sulfit", "kukurt dioksit", "sulfur dioksit"],
-  lupin: ["lupin"],
+  // Intentionally empty today. Keep this bucket for a newly discovered allergen term that has
+  // not yet been admitted to the controlled product taxonomy.
 };
 
 /**
@@ -63,6 +64,21 @@ export const OUT_OF_SCOPE_KEYWORDS = {
  * "cam fistigi") are unambiguous and are matched separately.
  */
 export const AMBIGUOUS_KEYWORDS = ["fistik"];
+
+/** Contextual exceptions that plain whole-word matching cannot safely express. */
+export function shouldSuppressTaxonomyMatch(slug, keyword, foldedText, foldedContext = foldedText) {
+  if (slug === "laktoz" && keyword === "sut") {
+    const plantMilk =
+      /(?:^|[^a-z])(?:bitkisel|badem|yulaf|soya|hindistan[^a-z]+cevizi)[^a-z]+sutu?(?:[^a-z]|$)/;
+    if (plantMilk.test(` ${foldedContext} `)) return true;
+  }
+  if (slug === "gluten" && keyword === "yulaf") {
+    const certifiedGlutenFree =
+      foldedContext.includes("glutensiz") && foldedContext.includes("sertifikali");
+    if (certifiedGlutenFree) return true;
+  }
+  return false;
+}
 
 function tokenize(foldedText) {
   return foldedText.split(/[^a-z]+/).filter(Boolean);

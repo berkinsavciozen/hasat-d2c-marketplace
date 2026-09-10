@@ -8,7 +8,7 @@ function validSafetyReview(overrides: Partial<RecipeSafetyReview> = {}): RecipeS
   return {
     temperature: { flagged: false, notes: null },
     timing: { flagged: false, notes: null },
-    allergens: { flagged: true, notes: "Sut icerir.", detectedLabels: ["sut"] },
+    allergens: { flagged: true, notes: "Sut icerir.", detectedLabels: ["laktoz"] },
     requiresHumanReview: true,
     reviewedBy: null,
     reviewedAt: null,

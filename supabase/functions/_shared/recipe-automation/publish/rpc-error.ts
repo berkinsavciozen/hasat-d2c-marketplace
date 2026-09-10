@@ -27,6 +27,12 @@ const OUTCOME_BY_CODE: Record<string, { outcome: RunPublishStageOutcome; retryab
   PUBLISH_MISSING_ASSETS: { outcome: "missing_assets", retryable: true },
   PUBLISH_VALIDATION_FAILED: { outcome: "postgres_validation_failed", retryable: false },
   PUBLISH_SLUG_ALREADY_USED: { outcome: "slug_already_used", retryable: false },
+  PUBLISH_ALLERGEN_REVIEW_MISSING: { outcome: "allergen_facts_incomplete", retryable: false },
+  PUBLISH_ALLERGEN_LABELS_MISSING: { outcome: "allergen_facts_incomplete", retryable: false },
+  PUBLISH_ALLERGEN_LABELS_INVALID: { outcome: "allergen_facts_incomplete", retryable: false },
+  PUBLISH_ALLERGEN_FACTS_INCOMPLETE: { outcome: "allergen_facts_incomplete", retryable: false },
+  PUBLISH_NUTRITION_INCOMPLETE: { outcome: "nutrition_incomplete", retryable: true },
+  PUBLISH_NUTRITION_FACTS_INCOMPLETE: { outcome: "nutrition_incomplete", retryable: true },
   PUBLISH_FINAL_VALIDATION_FAILED: { outcome: "final_validation_failed", retryable: false },
 };
 

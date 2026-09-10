@@ -109,7 +109,7 @@ test("one serving stays stable and N-serving totals only multiply per-serving va
   assert.equal(scaleNutrition({ ...model.perServing, fiberG: null }, 3).fiberG, null);
 });
 
-test("allergen presentation covers one/seven labels, reviewed-empty and unreviewed fail-closed", () => {
+test("allergen presentation covers one/all controlled labels, reviewed-empty and unreviewed fail-closed", () => {
   const one = buildAllergenPresentation({
     ...allergenFixtures.reviewed_with_labels,
     allergen_labels: ["gluten"],
@@ -120,19 +120,24 @@ test("allergen presentation covers one/seven labels, reviewed-empty and unreview
     message: "İşaretlenenler:",
   });
 
-  const seven = buildAllergenPresentation({
+  const controlled = buildAllergenPresentation({
     ...allergenFixtures.reviewed_with_labels,
     allergen_labels: [
       "gluten",
       "laktoz",
       "yumurta",
       "findik-yerfistigi",
+      "agac-kuruyemisi",
       "soya",
       "susam",
       "deniz-urunu",
+      "hardal",
+      "kereviz",
+      "sulfit",
+      "lupin",
     ],
   });
-  assert.deepEqual(seven.labels, CONTROLLED_ALLERGEN_LABELS);
+  assert.deepEqual(controlled.labels, CONTROLLED_ALLERGEN_LABELS);
   assert.deepEqual(buildAllergenPresentation(allergenFixtures.reviewed_without_labels), {
     state: "reviewed_without_labels",
     labels: [],

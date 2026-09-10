@@ -25,9 +25,9 @@
 //   placeholder for editorial/pipeline-authored content pending that decision.
 // - `recipes.source_type` CHECK: source_type = ANY (ARRAY['manual','text','photo','url']).
 // - `recipes.visibility` CHECK: visibility = ANY (ARRAY['public','private']).
-// - `recipes.allergen_labels` is `text[]`, nullable, NO CHECK constraint (confirmed live via
-//   pg_constraint) — modeled here as a plain nullable array of non-empty strings, not an enum.
-//   Do not add a value restriction here; the live column has none.
+// - `recipes.allergen_labels` is constrained by the T3 allergen contract and the later publish-
+//   hardening migration. Drafts use the same controlled vocabulary so invalid/free-text labels
+//   fail before a job can reach human review or publish.
 // - `recipe_ingredients.crop` is `text`, FK to `crop_config(crop)`. There is no `crop_id` column
 //   anywhere in this schema — `.strict()` below rejects any payload that includes one.
 // - `recipe_ingredients_name_present`: crop IS NOT NULL OR NULLIF(btrim(free_text_name),'') IS NOT NULL.
@@ -99,6 +99,28 @@ export const RECIPE_EQUIPMENT_VALUES = [
   "ozel-ekipman-gerekmiyor",
 ] as const;
 export const recipeEquipmentSchema = z.enum(RECIPE_EQUIPMENT_VALUES);
+
+/** Controlled allergen vocabulary, mirrored by `src/lib/hasat/recipeFacts.ts` and the DB CHECK. */
+export const RECIPE_ALLERGEN_VALUES = [
+  "gluten",
+  "laktoz",
+  "yumurta",
+  "findik-yerfistigi",
+  "agac-kuruyemisi",
+  "soya",
+  "susam",
+  "deniz-urunu",
+  "hardal",
+  "kereviz",
+  "sulfit",
+  "lupin",
+] as const;
+export const recipeAllergenSchema = z.enum(RECIPE_ALLERGEN_VALUES);
+export const recipeAllergenListSchema = z
+  .array(recipeAllergenSchema)
+  .refine((labels) => new Set(labels).size === labels.length, {
+    message: "allergenLabels must not contain duplicates",
+  });
 
 // ---------------------------------------------------------------------------
 // Pipeline job stage / status (deliberately separate from recipes.status)
@@ -321,8 +343,8 @@ export const recipeDraftPayloadSchema = z.object({
   difficulty: recipeDifficultySchema.nullable().default(null),
   cuisine: z.string().trim().min(1).nullable().default(null),
   dietTags: z.array(nonEmptyTrimmedString).default([]),
-  /** Models `recipes.allergen_labels` exactly: nullable text[], no enum restriction. */
-  allergenLabels: z.array(nonEmptyTrimmedString).nullable().default(null),
+  /** Required. Empty means explicitly assessed with no controlled allergen. */
+  allergenLabels: recipeAllergenListSchema,
   /** Restricted to `RECIPE_EQUIPMENT_VALUES` above — see that constant's doc comment. */
   requiredEquipment: z.array(recipeEquipmentSchema).nullable().default(null),
   sourceType: recipeSourceTypeSchema.default("manual"),
@@ -354,7 +376,7 @@ export const recipeSafetyReviewSchema = z.object({
   temperature: safetyFindingSchema,
   timing: safetyFindingSchema,
   allergens: safetyFindingSchema.extend({
-    detectedLabels: z.array(nonEmptyTrimmedString).default([]),
+    detectedLabels: recipeAllergenListSchema.default([]),
   }).strict(),
   /** Always true. A safety review can never be skipped or resolved by a score alone. */
   requiresHumanReview: z.literal(true),

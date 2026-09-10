@@ -10,7 +10,11 @@ Deno.test("parsePublishRpcError: maps a known PUBLISH_ code to its typed outcome
 });
 
 Deno.test("parsePublishRpcError: retryable codes are flagged retryable", () => {
-  for (const code of ["PUBLISH_LOCK_LOST", "PUBLISH_LOCK_LOST_AT_COMMIT", "PUBLISH_NO_DRAFT", "PUBLISH_MISSING_ASSETS"]) {
+  for (const code of [
+    "PUBLISH_LOCK_LOST", "PUBLISH_LOCK_LOST_AT_COMMIT", "PUBLISH_NO_DRAFT",
+    "PUBLISH_MISSING_ASSETS", "PUBLISH_NUTRITION_INCOMPLETE",
+    "PUBLISH_NUTRITION_FACTS_INCOMPLETE",
+  ]) {
     const parsed = parsePublishRpcError({ message: `${code}: some detail` });
     assert.equal(parsed.retryable, true, `expected ${code} to be retryable`);
   }
@@ -26,12 +30,27 @@ Deno.test("parsePublishRpcError: non-retryable content/state codes are flagged n
       "PUBLISH_SAFETY_CHECKLIST_INCOMPLETE",
       "PUBLISH_VALIDATION_FAILED",
       "PUBLISH_SLUG_ALREADY_USED",
+      "PUBLISH_ALLERGEN_REVIEW_MISSING",
+      "PUBLISH_ALLERGEN_LABELS_MISSING",
+      "PUBLISH_ALLERGEN_LABELS_INVALID",
+      "PUBLISH_ALLERGEN_FACTS_INCOMPLETE",
       "PUBLISH_FINAL_VALIDATION_FAILED",
     ]
   ) {
     const parsed = parsePublishRpcError({ message: `${code}: some detail` });
     assert.equal(parsed.retryable, false, `expected ${code} to be non-retryable`);
   }
+});
+
+Deno.test("parsePublishRpcError: fact gates map to explicit outcomes", () => {
+  assert.equal(
+    parsePublishRpcError({ message: "PUBLISH_ALLERGEN_LABELS_MISSING: detail" }).outcome,
+    "allergen_facts_incomplete",
+  );
+  assert.equal(
+    parsePublishRpcError({ message: "PUBLISH_NUTRITION_INCOMPLETE: detail" }).outcome,
+    "nutrition_incomplete",
+  );
 });
 
 Deno.test("parsePublishRpcError: an unrecognized CODE: message shape falls back to a retryable unexpected_error", () => {

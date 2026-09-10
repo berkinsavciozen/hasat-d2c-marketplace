@@ -44,6 +44,8 @@ export type RunPublishStageOutcome =
   | "postgres_validation_failed"
   | "slug_invalid"
   | "slug_already_used"
+  | "allergen_facts_incomplete"
+  | "nutrition_incomplete"
   | "final_validation_failed"
   | "lock_lost"
   | "unexpected_error"
@@ -58,9 +60,8 @@ export interface RunPublishStageResult {
   slug?: string;
   claimReason?: string;
   errorCode?: string;
-  /** Best-effort F0-24 side effect of a genuine (non-idempotent-replay) publish — see
-   * ../nutrition/recalc.ts. Never affects `outcome`/HTTP status: a nutrition recalc failure never
-   * fails a publish that otherwise succeeded (dispatch requirement #4). */
+  /** Post-commit idempotency verification. The authoritative computed/100 gate now runs inside
+   * the publish transaction via the allergen_nutrition_publish_gate migration. */
   nutritionRecalc?: NutritionRecalcOutcome;
 }
 

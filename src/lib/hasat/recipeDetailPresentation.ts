@@ -1,24 +1,14 @@
 import {
+  ALLERGEN_LABELS,
   ALLERGEN_SLUGS,
   getNutritionState,
   getReviewedAllergens,
-  type AllergenSlug,
   type RecipeFacts,
 } from "./recipeFacts";
 
 const TURKISH_NUMBER = new Intl.NumberFormat("tr-TR", {
   maximumFractionDigits: 1,
 });
-
-const ALLERGEN_LABELS: Record<AllergenSlug, string> = {
-  gluten: "Gluten",
-  laktoz: "Laktoz",
-  yumurta: "Yumurta",
-  "findik-yerfistigi": "Fındık / yer fıstığı",
-  soya: "Soya",
-  susam: "Susam",
-  "deniz-urunu": "Deniz ürünü",
-};
 
 export type NutritionValues = {
   caloriesKcal: number;

@@ -153,7 +153,10 @@ test("list payload selects only the three allergen fields and preserves null/fal
 test("controlled options and route source preserve clear, chip, empty-state and a11y contracts", async () => {
   assert.deepEqual(
     ALLERGEN_OPTIONS.map(({ slug }) => slug),
-    ["gluten", "laktoz", "yumurta", "findik-yerfistigi", "soya", "susam", "deniz-urunu"],
+    [
+      "gluten", "laktoz", "yumurta", "findik-yerfistigi", "agac-kuruyemisi", "soya",
+      "susam", "deniz-urunu", "hardal", "kereviz", "sulfit", "lupin",
+    ],
   );
   const route = await readFile(
     new URL("../src/routes/tarifler.index.tsx", import.meta.url),

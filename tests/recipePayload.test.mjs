@@ -96,7 +96,7 @@ test("allergen review fails closed and never confuses null with reviewed empty",
       ...allergenFixtures.reviewed_with_labels,
       allergen_labels: [...ALLERGEN_SLUGS],
     }).labels.length,
-    7,
+    ALLERGEN_SLUGS.length,
   );
 });
 test("allergen review requires a valid timezone-qualified ISO timestamp", () => {

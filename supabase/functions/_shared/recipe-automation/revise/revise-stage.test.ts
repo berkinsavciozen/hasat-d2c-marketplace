@@ -180,6 +180,21 @@ Deno.test("runReviseStage: QA result names a draft_version with no matching reci
   assert.equal(job.locked_by, null);
 });
 
+Deno.test("runReviseStage: null allergen_labels is rejected before revision", async () => {
+  const client = new FakeSupabaseClient();
+  const jobId = seedReviseJob(client);
+  const draftId = seedDraftVersion(client, jobId, 1, validKabakRecipeDraft, {
+    allergen_labels: null,
+  });
+  seedQaResult(client, { jobId, draftId, draftVersion: 1 }, validQAResultRevisionRequired);
+
+  await assert.rejects(
+    () => runReviseStage(asClient(client), { jobId, agentRunner: throwingAgentRunner() }),
+    /missing or invalid controlled allergen labels/,
+  );
+  assert.equal(client.getRow("recipe_generation_jobs", jobId)!.locked_by, null);
+});
+
 Deno.test("runReviseStage: QA decision on the current draft is not 'revision_required' -> failJob, outcome unexpected_qa_decision", async () => {
   const client = new FakeSupabaseClient();
   const jobId = seedReviseJob(client);

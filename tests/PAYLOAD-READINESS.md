@@ -24,7 +24,7 @@ C0 → C1 hazırlığı: generated recipe alanları, null-safe detail payload ve
 ## 4. Sözleşme davranışı
 - 16 alan detail select → mapper → RecipeDetail akışında taşınır; list select genişletilmez.
 - Eksik legacy alanlar null/false/[] olur; sayısal 0 korunur. Null allergen_labels, reviewed boş array değildir.
-- Ham aday etiketleri transport alanında kalır. `getReviewedAllergens` yalnız true review + tarih + geçerli benzersiz 7-slug taksonomisinde güvenilir etiket döndürür; aksi halde labels=null/unreviewed. Review-by opsiyoneldir ve audit alanları korunur.
+- Ham aday etiketleri transport alanında kalır. `getReviewedAllergens` yalnız true review + tarih + geçerli benzersiz kontrollü taksonomide güvenilir etiket döndürür; aksi halde labels=null/unreviewed. Review-by opsiyoneldir ve audit alanları korunur.
 - `getNutritionState`: computed/100, partial/(0,100), estimated/0; eksik/geçersiz makro, metadata veya servings unavailable. Lif ve micronutrients bağımsız null kalabilir; warnings kaybolmaz. Hesaplama/formatlama yapılmaz.
 
 ## 5. Kapsam dışı / korunan yüzeyler

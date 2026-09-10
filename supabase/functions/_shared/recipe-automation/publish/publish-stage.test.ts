@@ -44,7 +44,7 @@ function seedDraft(client: FakeSupabaseClient, jobId: string, overrides: Record<
     difficulty: "kolay",
     cuisine: null,
     diet_tags: [],
-    allergen_labels: null,
+    allergen_labels: [],
     required_equipment: null,
     source_type: "manual",
     author_type: "hasat",
