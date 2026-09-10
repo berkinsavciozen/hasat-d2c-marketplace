@@ -158,6 +158,11 @@ function RecipeDetailPage() {
   const { data: myProfile } = useProfile();
   const isBuyer = loggedIn && myProfile?.role === "buyer";
 
+  // T6/F11 — kaynak tarif uygunluğu. Loader zaten public+published filtreliyor,
+  // geriye tek koşul kalıyor: tarif başka bir kullanıcının kendi taslağı olmasın.
+  const canDerive = loggedIn === true && recipe.author_type !== "kullanici";
+  const [customizeOpen, setCustomizeOpen] = useState(false);
+
   useLogRecipeView(recipe.id);
 
   const [servings, setServings] = useState(recipe.servings ?? 4);
