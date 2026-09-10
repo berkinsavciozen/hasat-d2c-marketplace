@@ -48,9 +48,10 @@ async function normalizeCatastrophicSsrResponse(response: Response): Promise<Res
 // initializes and binds the SDK per-request via AsyncLocalStorage instead — see
 // @sentry/cloudflare's withSentry/instrumentFetch implementation.
 export default Sentry.withSentry(
-  (env: WorkerEnv) => ({
+  // Dev (Vite SSR) çağrılarında `env` undefined gelebiliyor — okumadan önce koru.
+  (env?: WorkerEnv) => ({
     dsn:
-      env.SENTRY_DSN ??
+      env?.SENTRY_DSN ??
       "https://655cfee3b27b38e98bed27e8e2cf660d@o4512061608558592.ingest.de.sentry.io/4512061624942672",
     dataCollection: {
       httpBodies: [], // minimum veri toplama kararı — istek gövdelerini raporlama
