@@ -7,8 +7,9 @@ import {
   MapPin,
   PackageCheck,
 } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
+import * as Sentry from "@sentry/tanstackstart-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
 import { LoadingDots } from "@/components/hasat/LoadingDots";
@@ -49,17 +50,22 @@ export const Route = createFileRoute("/buyer/product/$farmerId/$crop")({
     ],
   }),
   component: BuyerProduct,
-  errorComponent: ({ error, reset }) => (
-    <div className="p-8 text-center">
-      <div className="text-hred text-sm mb-4">Bir hata oluştu: {error.message}</div>
-      <button
-        onClick={reset}
-        className="rounded-md bg-primary px-4 py-2 text-sm text-primary-foreground"
-      >
-        Yeniden dene
-      </button>
-    </div>
-  ),
+  errorComponent: ({ error, reset }) => {
+    useEffect(() => {
+      Sentry.captureException(error);
+    }, [error]);
+    return (
+      <div className="p-8 text-center">
+        <div className="text-hred text-sm mb-4">Bir hata oluştu: {error.message}</div>
+        <button
+          onClick={reset}
+          className="rounded-md bg-primary px-4 py-2 text-sm text-primary-foreground"
+        >
+          Yeniden dene
+        </button>
+      </div>
+    );
+  },
   notFoundComponent: ProductNotFound,
 });
 
