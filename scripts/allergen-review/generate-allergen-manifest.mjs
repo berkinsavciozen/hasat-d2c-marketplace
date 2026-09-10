@@ -21,9 +21,8 @@
 //        b) F2's existing safetyReview.allergens.detectedLabels (recipe_qa_results, LLM-produced,
 //           already-unreviewed by design — see qa-rules.ts) when reachable, cited as-is and never
 //           treated as human-approved.
-//   4. Only the controlled taxonomy slugs (imported from src/lib/hasat/recipeFacts.ts, the app's
-//      own source of
-//      truth) are ever placed in `candidate_labels`. Anything else goes to
+//   4. Only the controlled taxonomy slugs imported from src/lib/hasat/recipeFacts.ts are ever
+//      placed in `candidate_labels`. Anything else goes to
 //      `taxonomy_out_of_scope_notes` instead, verbatim, never invented into a made-up slug.
 //
 // Usage:
@@ -91,10 +90,8 @@ async function fetchAllPages(client, table, columns, filters = (q) => q) {
   const rows = [];
   let from = 0;
   for (;;) {
-    const { data, error } = await filters(client.from(table).select(columns)).range(
-      from,
-      from + PAGE_SIZE - 1,
-    );
+    const { data, error } = await filters(client.from(table).select(columns))
+      .range(from, from + PAGE_SIZE - 1);
     if (error) throw new Error(`${table} query failed: ${error.message}`);
     rows.push(...data);
     if (data.length < PAGE_SIZE) break;
@@ -120,20 +117,10 @@ function describeIngredient(row, cropNames, cropAliases) {
   if (row.crop) {
     const display = cropNames.get(row.crop) ?? row.crop;
     const aliases = cropAliases.get(row.crop) ?? [];
-    return {
-      name: display,
-      searchText: [display, row.crop, ...aliases].join(" "),
-      note: row.note ?? "",
-      source: "crop",
-    };
+    return { name: display, searchText: [display, row.crop, ...aliases].join(" "), note: row.note ?? "", source: "crop" };
   }
   if (row.free_text_name) {
-    return {
-      name: row.free_text_name,
-      searchText: row.free_text_name,
-      note: row.note ?? "",
-      source: "free_text_name",
-    };
+    return { name: row.free_text_name, searchText: row.free_text_name, note: row.note ?? "", source: "free_text_name" };
   }
   return { name: "(adsız malzeme)", searchText: "", note: row.note ?? "", source: "missing" };
 }
@@ -215,9 +202,7 @@ function formatAmbiguity({ ambiguousHits, ingredientsEmpty, f2Available, f2Confl
     );
   }
   if (!f2Available) {
-    parts.push(
-      "F2 QA safetyReview.allergens.detectedLabels referansı bu çalıştırmada erişilemedi (SUPABASE_SERVICE_ROLE_KEY yok)",
-    );
+    parts.push("F2 QA safetyReview.allergens.detectedLabels referansı bu çalıştırmada erişilemedi (SUPABASE_SERVICE_ROLE_KEY yok)");
   }
   if (f2ConflictNote) {
     parts.push(f2ConflictNote);
@@ -238,17 +223,12 @@ function toCsv(headers, rows) {
 }
 
 function toMarkdown(headers, rows) {
-  const lines = [`| ${headers.join(" | ")} |`, `| ${headers.map(() => "---").join(" | ")} |`];
+  const lines = [
+    `| ${headers.join(" | ")} |`,
+    `| ${headers.map(() => "---").join(" | ")} |`,
+  ];
   for (const row of rows) {
-    lines.push(
-      `| ${headers
-        .map((h) =>
-          String(row[h] ?? "")
-            .replace(/\|/g, "\\|")
-            .replace(/\n/g, " "),
-        )
-        .join(" | ")} |`,
-    );
+    lines.push(`| ${headers.map((h) => String(row[h] ?? "").replace(/\|/g, "\\|").replace(/\n/g, " ")).join(" | ")} |`);
   }
   return lines.join("\n") + "\n";
 }
@@ -261,15 +241,11 @@ async function main() {
   if (!url || !anonKey) {
     throw new Error("Missing SUPABASE_URL / SUPABASE_PUBLISHABLE_KEY in the environment (.env).");
   }
-  const anonClient = createClient(url, anonKey, {
-    auth: { persistSession: false, autoRefreshToken: false },
-  });
+  const anonClient = createClient(url, anonKey, { auth: { persistSession: false, autoRefreshToken: false } });
 
   const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
   const f2Client = serviceRoleKey
-    ? createClient(url, serviceRoleKey, {
-        auth: { persistSession: false, autoRefreshToken: false },
-      })
+    ? createClient(url, serviceRoleKey, { auth: { persistSession: false, autoRefreshToken: false } })
     : null;
 
   process.stderr.write("Public + published tarifler okunuyor (salt-okunur)...\n");
@@ -315,9 +291,7 @@ async function main() {
 
   let f2ByRecipe = new Map();
   if (f2Client && recipeIds.length) {
-    process.stderr.write(
-      "F2 QA safetyReview.allergens.detectedLabels referansı okunuyor (service-role, salt-okunur)...\n",
-    );
+    process.stderr.write("F2 QA safetyReview.allergens.detectedLabels referansı okunuyor (service-role, salt-okunur)...\n");
     const { data, error } = await f2Client
       .from("recipe_qa_results")
       .select("recipe_id, safety_review, created_at")
@@ -325,9 +299,7 @@ async function main() {
       .not("recipe_id", "is", null)
       .order("created_at", { ascending: false });
     if (error) {
-      process.stderr.write(
-        `F2 QA referansı okunamadı (${error.message}) — bu çalıştırma F2 karşılaştırması olmadan devam ediyor.\n`,
-      );
+      process.stderr.write(`F2 QA referansı okunamadı (${error.message}) — bu çalıştırma F2 karşılaştırması olmadan devam ediyor.\n`);
     } else {
       for (const row of data) {
         if (!f2ByRecipe.has(row.recipe_id)) f2ByRecipe.set(row.recipe_id, row); // first = latest (desc order)
@@ -343,9 +315,7 @@ async function main() {
 
   const manifestRows = recipes.map((recipe) => {
     const recipeIngredients = ingredientsByRecipe.get(recipe.id) ?? [];
-    const descriptions = recipeIngredients.map((i) =>
-      describeIngredient(i, cropNames, cropAliases),
-    );
+    const descriptions = recipeIngredients.map((i) => describeIngredient(i, cropNames, cropAliases));
     const { candidateHits, outOfScopeHits, ambiguousHits } = buildCandidates(descriptions);
 
     const f2Result = f2ByRecipe.get(recipe.id);
@@ -359,18 +329,12 @@ async function main() {
       if (matchedSlug) {
         f2InScope.push(matchedSlug);
         if (!candidateHits.has(matchedSlug)) candidateHits.set(matchedSlug, []);
-        candidateHits
-          .get(matchedSlug)
-          .push({ ingredient: "F2 QA (LLM, insan onaysız)", keyword: raw });
+        candidateHits.get(matchedSlug).push({ ingredient: "F2 QA (LLM, insan onaysız)", keyword: raw });
       } else {
         f2OutOfScope.push(String(raw));
       }
     }
-    if (
-      f2Detected.length &&
-      candidateHits.size === 0 &&
-      f2OutOfScope.length === f2Detected.length
-    ) {
+    if (f2Detected.length && candidateHits.size === 0 && f2OutOfScope.length === f2Detected.length) {
       f2ConflictNote =
         `F2 QA "${f2OutOfScope.join(", ")}" tespit etti ama kural motoru malzeme listesinde ` +
         `hiçbir eşleşme bulamadı — çapraz kontrol edin`;
@@ -401,31 +365,22 @@ async function main() {
       ingredients_summary: ingredientsSummary,
       candidate_labels: [...candidateHits.keys()].sort().join("|") || "(aday yok)",
       candidate_rationale: formatRationale(candidateHits) || "(kural eşleşmesi yok)",
-      ambiguity_notes:
-        formatAmbiguity({
-          ambiguousHits,
-          ingredientsEmpty: recipeIngredients.length === 0,
-          f2Available: Boolean(f2Client),
-          f2ConflictNote,
-        }) || "(yok)",
+      ambiguity_notes: formatAmbiguity({
+        ambiguousHits,
+        ingredientsEmpty: recipeIngredients.length === 0,
+        f2Available: Boolean(f2Client),
+        f2ConflictNote,
+      }) || "(yok)",
       taxonomy_out_of_scope_notes: formatOutOfScope(outOfScopeHits, f2OutOfScope) || "(yok)",
     };
   });
 
   const headers = [
-    "recipe_id",
-    "slug",
-    "title",
-    "current_allergen_labels",
-    "current_reviewed_status",
-    "ingredients_summary",
-    "candidate_labels",
-    "candidate_rationale",
-    "ambiguity_notes",
+    "recipe_id", "slug", "title", "current_allergen_labels", "current_reviewed_status",
+    "ingredients_summary", "candidate_labels", "candidate_rationale", "ambiguity_notes",
     "taxonomy_out_of_scope_notes",
   ];
-  const output =
-    args.format === "md" ? toMarkdown(headers, manifestRows) : toCsv(headers, manifestRows);
+  const output = args.format === "md" ? toMarkdown(headers, manifestRows) : toCsv(headers, manifestRows);
 
   if (args.out) {
     writeFileSync(args.out, output, "utf8");

@@ -92,19 +92,9 @@ export const validKabakRecipeDraft: RecipeDraftPayload = {
     },
   ],
   steps: [
-    {
-      stepNo: 1,
-      instruction: "Kabaklari yikayip ince dilimleyin.",
-      photoUrl: null,
-      timerSeconds: null,
-    },
+    { stepNo: 1, instruction: "Kabaklari yikayip ince dilimleyin.", photoUrl: null, timerSeconds: null },
     { stepNo: 2, instruction: "Firini 200 derecede on isitin.", photoUrl: null, timerSeconds: 600 },
-    {
-      stepNo: 3,
-      instruction: "Malzemeleri tepside katman katman dizip 40 dakika pisirin.",
-      photoUrl: null,
-      timerSeconds: 2400,
-    },
+    { stepNo: 3, instruction: "Malzemeleri tepside katman katman dizip 40 dakika pisirin.", photoUrl: null, timerSeconds: 2400 },
   ],
 };
 
@@ -204,8 +194,7 @@ export const validQAResultManualReviewRequired: RecipeQAResult = {
       field: "title",
       severity: "blocking",
       message: "Bu baslik, katalogda halihazirda var olan bir tarifle neredeyse ayni.",
-      requiredChange:
-        "Bir editorun bu tarifin yayinlanip yayinlanmayacagina karar vermesi gerekiyor.",
+      requiredChange: "Bir editorun bu tarifin yayinlanip yayinlanmayacagina karar vermesi gerekiyor.",
     },
   ],
   safetyReview: {

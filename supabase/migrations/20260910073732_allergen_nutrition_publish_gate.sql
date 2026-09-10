@@ -141,6 +141,7 @@ set search_path = ''
 as $$
 declare
   v_recipe record;
+  v_has_publish_provenance boolean;
 begin
   select * into v_recipe from public.recipes where id = new.id;
   if not found or v_recipe.status <> 'published' then
@@ -164,6 +165,30 @@ begin
      or v_recipe.nutrition_input_hash is null
      or v_recipe.nutrition_reference_version is null then
     raise exception 'PUBLISH_NUTRITION_FACTS_INCOMPLETE: recipe % is not computed with 100%% coverage', new.id;
+  end if;
+
+  select exists (
+    select 1
+    from public.recipe_generation_jobs as j
+    join lateral (
+      select d.id, d.version
+      from public.recipe_drafts as d
+      where d.job_id = j.id
+      order by d.version desc
+      limit 1
+    ) as d on true
+    join public.recipe_admin_reviews as ar
+      on ar.job_id = j.id
+     and ar.draft_id = d.id
+     and ar.draft_version = d.version
+     and ar.action = 'approve'
+    where j.recipe_id = new.id
+      and j.stage = 'publish'
+      and j.status = 'completed'
+  ) into v_has_publish_provenance;
+
+  if not v_has_publish_provenance then
+    raise exception 'PUBLISH_PROVENANCE_MISSING: recipe % is not linked to an exact approved F2 publish job', new.id;
   end if;
 
   return null;

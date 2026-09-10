@@ -29,10 +29,7 @@ export interface CurrentDraft {
  * through `validateDraft` (../writer/validate-draft.ts, reused as-is — the Postgres structure/
  * crop/slug/coverage checks it runs are not Writer-specific) and the QA agent's own input.
  */
-export async function loadCurrentDraft(
-  client: SupabaseClient,
-  jobId: string,
-): Promise<CurrentDraft | null> {
+export async function loadCurrentDraft(client: SupabaseClient, jobId: string): Promise<CurrentDraft | null> {
   const { data, error } = await client
     .from("recipe_drafts")
     .select("*")
@@ -83,8 +80,7 @@ export async function loadCurrentDraft(
       cuisine: (row.cuisine as string | null) ?? null,
       dietTags: Array.isArray(row.diet_tags) ? (row.diet_tags as string[]) : [],
       allergenLabels: allergenLabels.data,
-      requiredEquipment:
-        (row.required_equipment as RecipeDraftPayload["requiredEquipment"]) ?? null,
+      requiredEquipment: (row.required_equipment as RecipeDraftPayload["requiredEquipment"]) ?? null,
       sourceType: row.source_type as RecipeDraftPayload["sourceType"],
       authorType: row.author_type as RecipeDraftPayload["authorType"],
       visibility: row.visibility as RecipeDraftPayload["visibility"],

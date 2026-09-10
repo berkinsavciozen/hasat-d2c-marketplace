@@ -25,7 +25,8 @@ for migration in \
   20260904180000_t3a_allergen_contract_schema.sql \
   20260904190000_t3a2_allergen_labels_taxonomy_remap.sql \
   20260909120000_f024_recipe_nutrition_calc_engine.sql \
-  20260909123000_f024b_revoke_nutrition_calc_public_execute.sql
+  20260909123000_f024b_revoke_nutrition_calc_public_execute.sql \
+  20260909130000_f024t4b_recipe_nutrition_trigger_wiring.sql
 do
   "${PSQL[@]}" -d "$DB_NAME" -f "$MIGRATIONS_DIR/$migration"
 done

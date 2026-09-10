@@ -46,15 +46,10 @@ export interface LatestQaResult {
  * which never routes here without storing a result first), handled by the caller the same way
  * `qa/qa-stage.ts` handles a missing current draft.
  */
-export async function loadLatestQaResult(
-  client: SupabaseClient,
-  jobId: string,
-): Promise<LatestQaResult | null> {
+export async function loadLatestQaResult(client: SupabaseClient, jobId: string): Promise<LatestQaResult | null> {
   const { data, error } = await client
     .from("recipe_qa_results")
-    .select(
-      "id, draft_id, draft_version, decision, blocking_issues, non_blocking_suggestions, safety_review",
-    )
+    .select("id, draft_id, draft_version, decision, blocking_issues, non_blocking_suggestions, safety_review")
     .eq("job_id", jobId)
     .order("checked_at", { ascending: false })
     .limit(1)
@@ -149,8 +144,7 @@ export async function loadDraftByVersion(
       cuisine: (row.cuisine as string | null) ?? null,
       dietTags: Array.isArray(row.diet_tags) ? (row.diet_tags as string[]) : [],
       allergenLabels: allergenLabels.data,
-      requiredEquipment:
-        (row.required_equipment as RecipeDraftPayload["requiredEquipment"]) ?? null,
+      requiredEquipment: (row.required_equipment as RecipeDraftPayload["requiredEquipment"]) ?? null,
       sourceType: row.source_type as RecipeDraftPayload["sourceType"],
       authorType: row.author_type as RecipeDraftPayload["authorType"],
       visibility: row.visibility as RecipeDraftPayload["visibility"],

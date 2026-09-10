@@ -46,7 +46,9 @@ Deno.test("RecipeDraftPayload: rejects English difficulty", () => {
 Deno.test("RecipeIngredientDraft: rejects crop_id field", () => {
   const draft = {
     ...validKabakRecipeDraft,
-    ingredients: [{ ...validKabakRecipeDraft.ingredients[0], crop_id: "some-uuid" }],
+    ingredients: [
+      { ...validKabakRecipeDraft.ingredients[0], crop_id: "some-uuid" },
+    ],
   };
   const result = recipeDraftPayloadSchema.safeParse(draft);
   assertFalse(result.success);
@@ -64,7 +66,7 @@ Deno.test("RecipeDraftPayload: rejects missing steps", () => {
   assertFalse(result.success);
 });
 
-Deno.test("RecipeDraftPayload: allergen labels are controlled, non-null and unique", () => {
+Deno.test("RecipeDraftPayload: allergen labels are required, controlled, non-null and unique", () => {
   const { allergenLabels: _allergenLabels, ...missingAllergenLabels } = validKabakRecipeDraft;
   assertFalse(recipeDraftPayloadSchema.safeParse(missingAllergenLabels).success, "missing field");
 
@@ -91,7 +93,9 @@ Deno.test("RecipeDraftPayload: rejects steps with a gap in step_no", () => {
 Deno.test("RecipeDraftPayload: rejects a step with invalid (zero) timer_seconds", () => {
   const draft = {
     ...validKabakRecipeDraft,
-    steps: [{ stepNo: 1, instruction: "Adim bir.", photoUrl: null, timerSeconds: 0 }],
+    steps: [
+      { stepNo: 1, instruction: "Adim bir.", photoUrl: null, timerSeconds: 0 },
+    ],
   };
   const result = recipeDraftPayloadSchema.safeParse(draft);
   assertFalse(result.success);
@@ -100,7 +104,9 @@ Deno.test("RecipeDraftPayload: rejects a step with invalid (zero) timer_seconds"
 Deno.test("RecipeIngredientDraft: rejects zero/negative quantity", () => {
   const draft = {
     ...validKabakRecipeDraft,
-    ingredients: [{ ...validKabakRecipeDraft.ingredients[0], quantity: 0 }],
+    ingredients: [
+      { ...validKabakRecipeDraft.ingredients[0], quantity: 0 },
+    ],
   };
   const result = recipeDraftPayloadSchema.safeParse(draft);
   assertFalse(result.success);
@@ -110,16 +116,7 @@ Deno.test("RecipeIngredientDraft: rejects an ingredient with neither crop nor fr
   const draft = {
     ...validKabakRecipeDraft,
     ingredients: [
-      {
-        crop: null,
-        freeTextName: null,
-        quantity: 1,
-        unit: "adet",
-        note: null,
-        isKeyIngredient: false,
-        ingredientClass: null,
-        sortOrder: 0,
-      },
+      { crop: null, freeTextName: null, quantity: 1, unit: "adet", note: null, isKeyIngredient: false, ingredientClass: null, sortOrder: 0 },
     ],
   };
   const result = recipeDraftPayloadSchema.safeParse(draft);
@@ -161,13 +158,10 @@ Deno.test("RecipeQAResult: valid revision_required result with a blocking issue 
   assert(result.success, JSON.stringify(result.success ? null : result.error.format()));
 });
 
-Deno.test(
-  "RecipeQAResult: decision:'approved' with a pending (not-yet-human-reviewed) safety review still parses — decision is independent of safetyReview.approved (Step 03B; DB parity with 01_assertions.sql test 5a)",
-  () => {
-    const result = recipeQAResultSchema.safeParse(validQAResultApprovedPendingSafetyReview);
-    assert(result.success, JSON.stringify(result.success ? null : result.error.format()));
-  },
-);
+Deno.test("RecipeQAResult: decision:'approved' with a pending (not-yet-human-reviewed) safety review still parses — decision is independent of safetyReview.approved (Step 03B; DB parity with 01_assertions.sql test 5a)", () => {
+  const result = recipeQAResultSchema.safeParse(validQAResultApprovedPendingSafetyReview);
+  assert(result.success, JSON.stringify(result.success ? null : result.error.format()));
+});
 
 Deno.test("RecipeQAResult: rejects safety review with requiresHumanReview:false", () => {
   const qa = {
@@ -181,12 +175,7 @@ Deno.test("RecipeQAResult: rejects safety review with requiresHumanReview:false"
 Deno.test("RecipeQAResult: rejects approved:true without a human reviewer", () => {
   const qa = {
     ...validQAResult,
-    safetyReview: {
-      ...validQAResult.safetyReview,
-      reviewedBy: null,
-      reviewedAt: null,
-      approved: true,
-    },
+    safetyReview: { ...validQAResult.safetyReview, reviewedBy: null, reviewedAt: null, approved: true },
   };
   const result = recipeQAResultSchema.safeParse(qa);
   assertFalse(result.success);
@@ -209,80 +198,56 @@ Deno.test("RecipeQAResult: rejects decision:'approved' while blockingIssues is n
   assertFalse(result.success);
 });
 
-Deno.test(
-  "RecipeQAResult: rejects approvedForImaging:true while blockingIssues is non-empty",
-  () => {
-    const qa = { ...validQAResultRevisionRequired, approvedForImaging: true };
-    const result = recipeQAResultSchema.safeParse(qa);
-    assertFalse(result.success);
-  },
-);
+Deno.test("RecipeQAResult: rejects approvedForImaging:true while blockingIssues is non-empty", () => {
+  const qa = { ...validQAResultRevisionRequired, approvedForImaging: true };
+  const result = recipeQAResultSchema.safeParse(qa);
+  assertFalse(result.success);
+});
 
-Deno.test(
-  "RecipeQAResult: rejects approvedForImaging:false when decision is 'approved' and there are no blocking issues",
-  () => {
-    const qa = { ...validQAResult, approvedForImaging: false };
-    const result = recipeQAResultSchema.safeParse(qa);
-    assertFalse(result.success);
-  },
-);
+Deno.test("RecipeQAResult: rejects approvedForImaging:false when decision is 'approved' and there are no blocking issues", () => {
+  const qa = { ...validQAResult, approvedForImaging: false };
+  const result = recipeQAResultSchema.safeParse(qa);
+  assertFalse(result.success);
+});
 
-Deno.test(
-  "RecipeQAResult: rejects a decision value outside approved|revision_required|manual_review_required",
-  () => {
-    const qa = { ...validQAResult, decision: "passed" };
-    const result = recipeQAResultSchema.safeParse(qa);
-    assertFalse(result.success);
-  },
-);
+Deno.test("RecipeQAResult: rejects a decision value outside approved|revision_required|manual_review_required", () => {
+  const qa = { ...validQAResult, decision: "passed" };
+  const result = recipeQAResultSchema.safeParse(qa);
+  assertFalse(result.success);
+});
 
-Deno.test(
-  "RecipeQAResult: manual_review_required with no blocking issues and approvedForImaging:false parses",
-  () => {
-    const qa = {
-      ...validQAResultRevisionRequired,
-      decision: "manual_review_required" as const,
-      blockingIssues: [],
-    };
-    const result = recipeQAResultSchema.safeParse(qa);
-    assert(result.success, JSON.stringify(result.success ? null : result.error.format()));
-  },
-);
+Deno.test("RecipeQAResult: manual_review_required with no blocking issues and approvedForImaging:false parses", () => {
+  const qa = { ...validQAResultRevisionRequired, decision: "manual_review_required" as const, blockingIssues: [] };
+  const result = recipeQAResultSchema.safeParse(qa);
+  assert(result.success, JSON.stringify(result.success ? null : result.error.format()));
+});
 
-Deno.test(
-  "RecipeQAResult: rejects manual_review_required with approvedForImaging:true even without blocking issues",
-  () => {
-    const qa = {
-      ...validQAResultRevisionRequired,
-      decision: "manual_review_required" as const,
-      blockingIssues: [],
-      approvedForImaging: true,
-    };
-    const result = recipeQAResultSchema.safeParse(qa);
-    assertFalse(result.success, "approvedForImaging must only be true when decision is 'approved'");
-  },
-);
+Deno.test("RecipeQAResult: rejects manual_review_required with approvedForImaging:true even without blocking issues", () => {
+  const qa = {
+    ...validQAResultRevisionRequired,
+    decision: "manual_review_required" as const,
+    blockingIssues: [],
+    approvedForImaging: true,
+  };
+  const result = recipeQAResultSchema.safeParse(qa);
+  assertFalse(result.success, "approvedForImaging must only be true when decision is 'approved'");
+});
 
-Deno.test(
-  "RecipeQAResult: rejects a blocking issue missing 'code' or 'requiredChange' key structure mismatch (extra keys)",
-  () => {
-    const qa = {
-      ...validQAResultRevisionRequired,
-      blockingIssues: [
-        { ...validQAResultRevisionRequired.blockingIssues[0], legacyExtraKey: "nope" },
-      ],
-    };
-    const result = recipeQAResultSchema.safeParse(qa);
-    assertFalse(result.success);
-  },
-);
+Deno.test("RecipeQAResult: rejects a blocking issue missing 'code' or 'requiredChange' key structure mismatch (extra keys)", () => {
+  const qa = {
+    ...validQAResultRevisionRequired,
+    blockingIssues: [
+      { ...validQAResultRevisionRequired.blockingIssues[0], legacyExtraKey: "nope" },
+    ],
+  };
+  const result = recipeQAResultSchema.safeParse(qa);
+  assertFalse(result.success);
+});
 
 Deno.test("RecipeQAResult: rejects a lowercase (non-SCREAMING_SNAKE_CASE) issue code", () => {
   const qa = {
     ...validQAResultRevisionRequired,
-    blockingIssues: [
-      { ...validQAResultRevisionRequired.blockingIssues[0], code: "unused_ingredient" },
-    ],
+    blockingIssues: [{ ...validQAResultRevisionRequired.blockingIssues[0], code: "unused_ingredient" }],
   };
   const result = recipeQAResultSchema.safeParse(qa);
   assertFalse(result.success);
@@ -292,13 +257,7 @@ Deno.test("RecipeQAResult: rejects a non-blocking suggestion with severity 'bloc
   const qa = {
     ...validQAResult,
     nonBlockingSuggestions: [
-      {
-        code: "STYLE_HINT",
-        field: "description",
-        severity: "blocking" as const,
-        message: "x",
-        requiredChange: null,
-      },
+      { code: "STYLE_HINT", field: "description", severity: "blocking" as const, message: "x", requiredChange: null },
     ],
   };
   const result = recipeQAResultSchema.safeParse(qa);
@@ -392,40 +351,24 @@ Deno.test("RecipeBrief: rejects a blank selectionReason", () => {
 // Pipeline stage/status vocabulary — RecipeAutomation.md §3, verbatim
 // ---------------------------------------------------------------------------
 
-Deno.test(
-  "RECIPE_JOB_STAGE_VALUES carries every canonical transition (plan/write/qa/revise/image/finalize/awaiting_approval/publish)",
-  () => {
-    assertEquals(
-      [...RECIPE_JOB_STAGE_VALUES].sort(),
-      ["awaiting_approval", "finalize", "image", "plan", "publish", "qa", "revise", "write"].sort(),
-    );
-  },
-);
+Deno.test("RECIPE_JOB_STAGE_VALUES carries every canonical transition (plan/write/qa/revise/image/finalize/awaiting_approval/publish)", () => {
+  assertEquals(
+    [...RECIPE_JOB_STAGE_VALUES].sort(),
+    ["awaiting_approval", "finalize", "image", "plan", "publish", "qa", "revise", "write"].sort(),
+  );
+});
 
 Deno.test("RECIPE_JOB_STATUS_VALUES matches RecipeAutomation.md §3 verbatim", () => {
   assertEquals(
     [...RECIPE_JOB_STATUS_VALUES].sort(),
-    [
-      "approved",
-      "awaiting_approval",
-      "cancelled",
-      "completed",
-      "failed",
-      "queued",
-      "rejected",
-      "retryable",
-      "running",
-    ].sort(),
+    ["approved", "awaiting_approval", "cancelled", "completed", "failed", "queued", "rejected", "retryable", "running"].sort(),
   );
 });
 
-Deno.test(
-  "RecipeAutomation batchId constant is a stable uuid used across brief/plan fixtures",
-  () => {
-    assertEquals(validBrief.batchId, BATCH_ID);
-    assertEquals(validPlanBatch.batchId, BATCH_ID);
-  },
-);
+Deno.test("RecipeAutomation batchId constant is a stable uuid used across brief/plan fixtures", () => {
+  assertEquals(validBrief.batchId, BATCH_ID);
+  assertEquals(validPlanBatch.batchId, BATCH_ID);
+});
 
 // ---------------------------------------------------------------------------
 // RecipeImageSpec
@@ -441,14 +384,11 @@ Deno.test("RecipeImageSpec: valid 2048x2048 spec parses", () => {
   assert(result.success, JSON.stringify(result.success ? null : result.error.format()));
 });
 
-Deno.test(
-  "RecipeImageSpec: does not hard-code 2048 — any positive square resolution is valid",
-  () => {
-    const spec = { ...validImageSpec1024, sourceWidthPx: 512, sourceHeightPx: 512 };
-    const result = recipeImageSpecSchema.safeParse(spec);
-    assert(result.success, JSON.stringify(result.success ? null : result.error.format()));
-  },
-);
+Deno.test("RecipeImageSpec: does not hard-code 2048 — any positive square resolution is valid", () => {
+  const spec = { ...validImageSpec1024, sourceWidthPx: 512, sourceHeightPx: 512 };
+  const result = recipeImageSpecSchema.safeParse(spec);
+  assert(result.success, JSON.stringify(result.success ? null : result.error.format()));
+});
 
 Deno.test("RecipeImageSpec: rejects an invalid crop target", () => {
   const spec = { ...validImageSpec1024, cropTargets: ["4:3"] };
@@ -492,22 +432,13 @@ Deno.test("RecipeImageSpec: stripMetadata cannot be set to false", () => {
   assertFalse(result.success);
 });
 
-Deno.test(
-  "RecipeImageSpec: webpEncoder defaults to null (unresolved) and accepts either candidate",
-  () => {
-    const parsedDefault = recipeImageSpecSchema.parse(validImageSpec1024);
-    assertEquals(parsedDefault.webpEncoder, null);
+Deno.test("RecipeImageSpec: webpEncoder defaults to null (unresolved) and accepts either candidate", () => {
+  const parsedDefault = recipeImageSpecSchema.parse(validImageSpec1024);
+  assertEquals(parsedDefault.webpEncoder, null);
 
-    const withEncoder = recipeImageSpecSchema.safeParse({
-      ...validImageSpec1024,
-      webpEncoder: "wasm-vips",
-    });
-    assert(withEncoder.success);
+  const withEncoder = recipeImageSpecSchema.safeParse({ ...validImageSpec1024, webpEncoder: "wasm-vips" });
+  assert(withEncoder.success);
 
-    const withBadEncoder = recipeImageSpecSchema.safeParse({
-      ...validImageSpec1024,
-      webpEncoder: "sharp",
-    });
-    assertFalse(withBadEncoder.success);
-  },
-);
+  const withBadEncoder = recipeImageSpecSchema.safeParse({ ...validImageSpec1024, webpEncoder: "sharp" });
+  assertFalse(withBadEncoder.success);
+});

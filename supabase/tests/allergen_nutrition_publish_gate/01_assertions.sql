@@ -152,6 +152,33 @@ begin
 end;
 $$;
 
+-- The complete 12-slug vocabulary is accepted by the real F2 publish path, not only by the
+-- validator helper.
+do $$
+declare
+  v_job_id uuid; v_draft_id uuid; v_batch_id uuid;
+  v_result jsonb; v_recipe_id uuid;
+  v_labels text[] := array[
+    'gluten', 'laktoz', 'yumurta', 'findik-yerfistigi', 'agac-kuruyemisi', 'soya',
+    'susam', 'deniz-urunu', 'hardal', 'kereviz', 'sulfit', 'lupin'
+  ];
+begin
+  select job_id, draft_id, batch_id into v_job_id, v_draft_id, v_batch_id
+  from pg_temp.seed_publish_job('Gate Full Taxonomy', 'gate-full-taxonomy-lock', v_labels);
+
+  v_result := public.publish_recipe_draft(
+    v_job_id,
+    'gate-full-taxonomy-lock',
+    'gate-full-taxonomy'
+  );
+  v_recipe_id := (v_result->>'recipeId')::uuid;
+  perform pg_temp.assert(
+    (select status = 'published' and allergen_labels = v_labels from public.recipes where id = v_recipe_id),
+    'full 12-slug assessment should publish unchanged'
+  );
+end;
+$$;
+
 -- Invalid labels must make the entire F2 publish statement roll back.
 do $$
 declare
@@ -191,6 +218,7 @@ begin
   perform pg_temp.assert(v_failed, 'null allergen publish should fail at publish gate');
   perform pg_temp.assert((select count(*) from public.recipes) = v_recipe_count, 'null allergen publish left a recipe row');
   perform pg_temp.assert((select recipe_id is null and status = 'running' from public.recipe_generation_jobs where id = v_job_id), 'null allergen publish changed the job');
+  perform pg_temp.assert((select bool_and(recipe_id is null) from public.recipe_assets where job_id = v_job_id), 'null allergen publish linked assets');
 end;
 $$;
 
@@ -220,13 +248,21 @@ do $$
 declare v_failed boolean := false;
 begin
   begin
-    insert into public.recipes (slug, title, servings, status, visibility, allergen_labels)
-    values ('direct-published-bypass', 'Direct Published Bypass', 4, 'published', 'public', '{}');
+    insert into public.recipes (
+      slug, title, servings, status, visibility, allergen_labels,
+      allergens_reviewed, allergens_reviewed_at,
+      calories, protein_g, carbs_g, fat_g, nutrition_source, nutrition_coverage_pct,
+      nutrition_calculated_at, nutrition_input_hash, nutrition_reference_version
+    ) values (
+      'direct-published-bypass', 'Direct Published Bypass', 4, 'published', 'public', '{}',
+      true, now(), 20, 1, 3, 0.2, 'computed', 100,
+      now(), 'forged-input-hash', 'forged-reference-version'
+    );
     set constraints recipes_insert_publish_facts_gate immediate;
   exception when others then
-    v_failed := sqlerrm like 'PUBLISH_ALLERGEN_FACTS_INCOMPLETE:%';
+    v_failed := sqlerrm like 'PUBLISH_PROVENANCE_MISSING:%';
   end;
-  perform pg_temp.assert(v_failed, 'direct published insert should fail');
+  perform pg_temp.assert(v_failed, 'fully populated direct published insert should fail');
   perform pg_temp.assert(not exists(select 1 from public.recipes where slug = 'direct-published-bypass'), 'direct published insert survived');
 end;
 $$;
@@ -234,16 +270,24 @@ $$;
 do $$
 declare v_id uuid; v_failed boolean := false;
 begin
-  insert into public.recipes (slug, title, servings, status, visibility, allergen_labels)
-  values ('direct-update-bypass', 'Direct Update Bypass', 4, 'draft', 'private', '{}')
+  insert into public.recipes (
+    slug, title, servings, status, visibility, allergen_labels,
+    allergens_reviewed, allergens_reviewed_at,
+    calories, protein_g, carbs_g, fat_g, nutrition_source, nutrition_coverage_pct,
+    nutrition_calculated_at, nutrition_input_hash, nutrition_reference_version
+  ) values (
+    'direct-update-bypass', 'Direct Update Bypass', 4, 'draft', 'private', '{}',
+    true, now(), 20, 1, 3, 0.2, 'computed', 100,
+    now(), 'forged-input-hash', 'forged-reference-version'
+  )
   returning id into v_id;
   begin
     update public.recipes set status = 'published' where id = v_id;
     set constraints recipes_status_publish_facts_gate immediate;
   exception when others then
-    v_failed := sqlerrm like 'PUBLISH_ALLERGEN_FACTS_INCOMPLETE:%';
+    v_failed := sqlerrm like 'PUBLISH_PROVENANCE_MISSING:%';
   end;
-  perform pg_temp.assert(v_failed, 'draft to published bypass should fail');
+  perform pg_temp.assert(v_failed, 'fully populated draft to published bypass should fail');
   perform pg_temp.assert((select status = 'draft' from public.recipes where id = v_id), 'failed update did not roll back to draft');
 end;
 $$;
@@ -256,5 +300,35 @@ select pg_temp.assert(
   and not has_function_privilege('authenticated', 'public.tg_require_published_recipe_facts()', 'execute'),
   'anon/authenticated unexpectedly have EXECUTE on internal trigger functions'
 );
+
+-- Prove the privilege state behaviorally as well: direct invocation must reach permission denial,
+-- never the trigger-only execution error that an EXECUTE-capable caller would receive.
+do $$
+declare
+  v_role text;
+  v_function text;
+  v_denied boolean;
+begin
+  foreach v_role in array array['anon', 'authenticated'] loop
+    foreach v_function in array array[
+      'public.tg_finalize_recipe_facts_on_publish_job',
+      'public.tg_require_published_recipe_facts'
+    ] loop
+      v_denied := false;
+      execute format('set local role %I', v_role);
+      begin
+        execute format('select %s()', v_function);
+      exception when insufficient_privilege then
+        v_denied := true;
+      end;
+      reset role;
+      perform pg_temp.assert(
+        v_denied,
+        format('%s directly executed %s()', v_role, v_function)
+      );
+    end loop;
+  end loop;
+end;
+$$;
 
 \echo 'Allergen + nutrition publish gate integration assertions: PASSED'

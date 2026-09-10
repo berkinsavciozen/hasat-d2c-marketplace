@@ -154,18 +154,8 @@ test("controlled options and route source preserve clear, chip, empty-state and 
   assert.deepEqual(
     ALLERGEN_OPTIONS.map(({ slug }) => slug),
     [
-      "gluten",
-      "laktoz",
-      "yumurta",
-      "findik-yerfistigi",
-      "agac-kuruyemisi",
-      "soya",
-      "susam",
-      "deniz-urunu",
-      "hardal",
-      "kereviz",
-      "sulfit",
-      "lupin",
+      "gluten", "laktoz", "yumurta", "findik-yerfistigi", "agac-kuruyemisi", "soya",
+      "susam", "deniz-urunu", "hardal", "kereviz", "sulfit", "lupin",
     ],
   );
   const route = await readFile(

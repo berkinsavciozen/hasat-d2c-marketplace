@@ -10,8 +10,7 @@
 // matching "un".
 //
 // Every keyword list below maps to exactly one controlled taxonomy slug. Anything that looks like
-// an allergen but does not cleanly fit the current vocabulary is deliberately kept OUT of this
-// object and instead listed in
+// an allergen but does not cleanly fit the current vocabulary is deliberately kept OUT and listed in
 // `OUT_OF_SCOPE_KEYWORDS` below, which never produces a `candidate_labels` value — only a
 // `taxonomy_out_of_scope_notes` entry. This mirrors the precedent set by migration
 // 20260904190000_t3a2_allergen_labels_taxonomy_remap.sql, which explicitly refused to map "ceviz"
@@ -21,75 +20,25 @@
 /** slug -> array of whole-word/phrase keywords (already ASCII-folded, lowercase). */
 export const TAXONOMY_KEYWORDS = {
   gluten: [
-    "bugday",
-    "un",
-    "ekmek",
-    "bulgur",
-    "irmik",
-    "makarna",
-    "sehriye",
-    "eriste",
-    "yulaf",
-    "arpa",
-    "cavdar",
-    "kuskus",
-    "tarhana",
-    "galeta",
-    "kraker",
-    "bisküvi",
-    "biskuvi",
-    "simit",
-    "lavas",
-    "yufka",
-    "pizza hamuru",
-    "hamur",
+    "bugday", "un", "ekmek", "bulgur", "irmik", "makarna", "sehriye", "eriste",
+    "yulaf", "arpa", "cavdar", "kuskus", "tarhana", "galeta", "kraker", "bisküvi",
+    "biskuvi", "simit", "lavas", "yufka", "pizza hamuru", "hamur",
   ],
   laktoz: [
-    "sut",
-    "peynir",
-    "yogurt",
-    "tereyagi",
-    "krema",
-    "kaymak",
-    "lor",
-    "kefir",
-    "dondurma",
-    "labne",
-    "kasar",
+    "sut", "peynir", "yogurt", "tereyagi", "krema",
+    "kaymak", "lor", "kefir", "dondurma", "labne", "kasar",
   ],
   yumurta: ["yumurta"],
   "findik-yerfistigi": ["findik", "yer fistigi", "fistik ezmesi", "yer fistigi ezmesi"],
   "agac-kuruyemisi": [
-    "ceviz",
-    "badem",
-    "kaju",
-    "antep fistigi",
-    "cam fistigi",
-    "makademya",
-    "pekan",
+    "ceviz", "badem", "kaju", "antep fistigi", "cam fistigi", "makademya", "pekan",
   ],
   soya: ["soya", "soya sosu", "soya fasulyesi", "tofu", "tempeh", "edamame", "misket soyasi"],
   susam: ["susam", "tahin", "susam yagi", "simit susami"],
   "deniz-urunu": [
-    "balik",
-    "somon",
-    "ton baligi",
-    "uskumru",
-    "hamsi",
-    "levrek",
-    "cupra",
-    "karides",
-    "midye",
-    "ahtapot",
-    "kalamar",
-    "yengec",
-    "istiridye",
-    "alabalik",
-    "palamut",
-    "sardalya",
-    "deniz urunu",
-    "balik sosu",
-    "balik yagi",
+    "balik", "somon", "ton baligi", "uskumru", "hamsi", "levrek", "cupra",
+    "karides", "midye", "ahtapot", "kalamar", "yengec", "istiridye", "alabalik",
+    "palamut", "sardalya", "deniz urunu", "balik sosu", "balik yagi",
   ],
   hardal: ["hardal"],
   kereviz: ["kereviz"],
@@ -103,8 +52,8 @@ export const TAXONOMY_KEYWORDS = {
  * constraint #4 ("bu 7'nin dışında bir öneri üretme").
  */
 export const OUT_OF_SCOPE_KEYWORDS = {
-  // Intentionally empty today. Keep this explicit bucket for a newly discovered allergen term
-  // that has not yet been admitted to the controlled product taxonomy.
+  // Intentionally empty today. Keep this bucket for a newly discovered allergen term that has
+  // not yet been admitted to the controlled product taxonomy.
 };
 
 /**
