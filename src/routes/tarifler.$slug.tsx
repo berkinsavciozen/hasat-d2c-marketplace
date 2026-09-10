@@ -632,7 +632,16 @@ function RecipeDetailPage() {
               onClose={() => setRequestIngredient(null)}
             />
           );
-        })()}
+         })()}
+
+      {canDerive && (
+        <CustomizeRecipeSheet
+          open={customizeOpen}
+          onOpenChange={setCustomizeOpen}
+          sourceRecipeId={recipe.id}
+          sourceTitle={recipe.title}
+        />
+      )}
     </div>
   );
 }
