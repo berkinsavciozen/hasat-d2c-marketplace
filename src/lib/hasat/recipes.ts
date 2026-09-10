@@ -48,6 +48,8 @@ export interface RecipeDetail extends RecipeFacts {
   diet_tags: string[];
   displayPhotoUrl: string | null;
   isRepresentativePhoto: boolean;
+  /** T6/F11 — "AI ile özelleştir" ve "Kendime kopyala" sadece author_type <> 'kullanici' için. */
+  author_type: string | null;
 }
 
 export interface RecipeStepRow {
@@ -73,7 +75,7 @@ const RECIPE_BASE_COLUMNS =
   "id, slug, title, description, cover_photo_url, servings, prep_minutes, cook_minutes, rest_minutes, difficulty, cuisine, diet_tags, required_equipment";
 const RECIPE_LIST_COLUMNS = `${RECIPE_BASE_COLUMNS}, allergen_labels, allergens_reviewed, allergens_reviewed_at`;
 
-const RECIPE_DETAIL_COLUMNS = `${RECIPE_BASE_COLUMNS}, ${RECIPE_FACT_COLUMNS}` as const;
+const RECIPE_DETAIL_COLUMNS = `${RECIPE_BASE_COLUMNS}, author_type, ${RECIPE_FACT_COLUMNS}` as const;
 
 /**
  * Recipe's own cover photo if it has one, else the crop photo of its first
