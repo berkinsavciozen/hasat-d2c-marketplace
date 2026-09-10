@@ -50,6 +50,79 @@ export type Database = {
         }
         Relationships: []
       }
+      ai_customize_requests: {
+        Row: {
+          created_at: string
+          created_recipe_id: string | null
+          idempotency_key: string
+          source_recipe_id: string
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          created_recipe_id?: string | null
+          idempotency_key: string
+          source_recipe_id: string
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          created_recipe_id?: string | null
+          idempotency_key?: string
+          source_recipe_id?: string
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_customize_requests_created_recipe_id_fkey"
+            columns: ["created_recipe_id"]
+            isOneToOne: false
+            referencedRelation: "recipes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_customize_requests_created_recipe_id_fkey"
+            columns: ["created_recipe_id"]
+            isOneToOne: false
+            referencedRelation: "v_kpi_recipe_funnel_by_recipe"
+            referencedColumns: ["recipe_id"]
+          },
+          {
+            foreignKeyName: "ai_customize_requests_created_recipe_id_fkey"
+            columns: ["created_recipe_id"]
+            isOneToOne: false
+            referencedRelation: "v_recipe_coverage"
+            referencedColumns: ["recipe_id"]
+          },
+          {
+            foreignKeyName: "ai_customize_requests_source_recipe_id_fkey"
+            columns: ["source_recipe_id"]
+            isOneToOne: false
+            referencedRelation: "recipes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_customize_requests_source_recipe_id_fkey"
+            columns: ["source_recipe_id"]
+            isOneToOne: false
+            referencedRelation: "v_kpi_recipe_funnel_by_recipe"
+            referencedColumns: ["recipe_id"]
+          },
+          {
+            foreignKeyName: "ai_customize_requests_source_recipe_id_fkey"
+            columns: ["source_recipe_id"]
+            isOneToOne: false
+            referencedRelation: "v_recipe_coverage"
+            referencedColumns: ["recipe_id"]
+          },
+        ]
+      }
       ai_usage_tracking: {
         Row: {
           message_count: number
@@ -424,6 +497,80 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "market_sources"
             referencedColumns: ["code"]
+          },
+        ]
+      }
+      crop_nutrition: {
+        Row: {
+          basis: string
+          calcium_mg: number | null
+          calories_kcal: number | null
+          carbs_g: number | null
+          created_at: string
+          crop: string
+          fat_g: number | null
+          fiber_g: number | null
+          iron_mg: number | null
+          notes: string | null
+          potassium_mg: number | null
+          protein_g: number | null
+          reference_source: string
+          reference_source_id: string | null
+          reference_version: string
+          sodium_mg: number | null
+          updated_at: string
+          vitamin_a_mcg_rae: number | null
+          vitamin_c_mg: number | null
+        }
+        Insert: {
+          basis?: string
+          calcium_mg?: number | null
+          calories_kcal?: number | null
+          carbs_g?: number | null
+          created_at?: string
+          crop: string
+          fat_g?: number | null
+          fiber_g?: number | null
+          iron_mg?: number | null
+          notes?: string | null
+          potassium_mg?: number | null
+          protein_g?: number | null
+          reference_source: string
+          reference_source_id?: string | null
+          reference_version: string
+          sodium_mg?: number | null
+          updated_at?: string
+          vitamin_a_mcg_rae?: number | null
+          vitamin_c_mg?: number | null
+        }
+        Update: {
+          basis?: string
+          calcium_mg?: number | null
+          calories_kcal?: number | null
+          carbs_g?: number | null
+          created_at?: string
+          crop?: string
+          fat_g?: number | null
+          fiber_g?: number | null
+          iron_mg?: number | null
+          notes?: string | null
+          potassium_mg?: number | null
+          protein_g?: number | null
+          reference_source?: string
+          reference_source_id?: string | null
+          reference_version?: string
+          sodium_mg?: number | null
+          updated_at?: string
+          vitamin_a_mcg_rae?: number | null
+          vitamin_c_mg?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "crop_nutrition_crop_fkey"
+            columns: ["crop"]
+            isOneToOne: true
+            referencedRelation: "crop_config"
+            referencedColumns: ["crop"]
           },
         ]
       }
@@ -1227,6 +1374,39 @@ export type Database = {
         }
         Relationships: []
       }
+      mobile_handoff_nonces: {
+        Row: {
+          access_token: string
+          consumed_at: string | null
+          created_at: string
+          expires_at: string
+          next_path: string | null
+          nonce: string
+          refresh_token: string
+          user_id: string
+        }
+        Insert: {
+          access_token: string
+          consumed_at?: string | null
+          created_at?: string
+          expires_at?: string
+          next_path?: string | null
+          nonce: string
+          refresh_token: string
+          user_id: string
+        }
+        Update: {
+          access_token?: string
+          consumed_at?: string | null
+          created_at?: string
+          expires_at?: string
+          next_path?: string | null
+          nonce?: string
+          refresh_token?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       notif_prefs: {
         Row: {
           crop_request_match_push: boolean
@@ -1981,11 +2161,11 @@ export type Database = {
       }
       profiles: {
         Row: {
-          deleted_at: string | null
           bank_account_name: string | null
           buyer_type: Database["public"]["Enums"]["company_type"] | null
           city: string | null
           created_at: string
+          deleted_at: string | null
           iban: string | null
           id: string
           name: string | null
@@ -1999,11 +2179,11 @@ export type Database = {
           updated_at: string
         }
         Insert: {
-          deleted_at?: string | null
           bank_account_name?: string | null
           buyer_type?: Database["public"]["Enums"]["company_type"] | null
           city?: string | null
           created_at?: string
+          deleted_at?: string | null
           iban?: string | null
           id: string
           name?: string | null
@@ -2017,11 +2197,11 @@ export type Database = {
           updated_at?: string
         }
         Update: {
-          deleted_at?: string | null
           bank_account_name?: string | null
           buyer_type?: Database["public"]["Enums"]["company_type"] | null
           city?: string | null
           created_at?: string
+          deleted_at?: string | null
           iban?: string | null
           id?: string
           name?: string | null
@@ -2365,14 +2545,20 @@ export type Database = {
           completed_at: string | null
           created_at: string
           diet_focus: string[]
+          diversity_report: Json | null
           error_summary: Json | null
+          fanned_out_at: string | null
           focus_crops: string[] | null
           id: string
           locale: string
           notes: string | null
+          plan_error: Json | null
           planned_at: string | null
           planner_model: string | null
           requested_by: string | null
+          review_status: string
+          reviewed_at: string | null
+          reviewed_by: string | null
           started_at: string | null
           status: string
           target_count: number
@@ -2382,14 +2568,20 @@ export type Database = {
           completed_at?: string | null
           created_at?: string
           diet_focus?: string[]
+          diversity_report?: Json | null
           error_summary?: Json | null
+          fanned_out_at?: string | null
           focus_crops?: string[] | null
           id?: string
           locale?: string
           notes?: string | null
+          plan_error?: Json | null
           planned_at?: string | null
           planner_model?: string | null
           requested_by?: string | null
+          review_status?: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
           started_at?: string | null
           status?: string
           target_count: number
@@ -2399,14 +2591,20 @@ export type Database = {
           completed_at?: string | null
           created_at?: string
           diet_focus?: string[]
+          diversity_report?: Json | null
           error_summary?: Json | null
+          fanned_out_at?: string | null
           focus_crops?: string[] | null
           id?: string
           locale?: string
           notes?: string | null
+          plan_error?: Json | null
           planned_at?: string | null
           planner_model?: string | null
           requested_by?: string | null
+          review_status?: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
           started_at?: string | null
           status?: string
           target_count?: number
@@ -2739,6 +2937,88 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "v_recipe_coverage"
             referencedColumns: ["recipe_id"]
+          },
+        ]
+      }
+      recipe_plan_briefs: {
+        Row: {
+          angle: string | null
+          audience: string
+          batch_id: string
+          brief_id: string
+          created_at: string
+          diet_tags: string[]
+          excluded: boolean
+          exclusion_reason: string | null
+          focus_crop: string
+          id: string
+          job_id: string | null
+          locale: string
+          meal_type: string | null
+          selection_reason: string
+          target_difficulty: string | null
+          updated_at: string
+          working_title: string
+        }
+        Insert: {
+          angle?: string | null
+          audience?: string
+          batch_id: string
+          brief_id: string
+          created_at?: string
+          diet_tags?: string[]
+          excluded?: boolean
+          exclusion_reason?: string | null
+          focus_crop: string
+          id?: string
+          job_id?: string | null
+          locale?: string
+          meal_type?: string | null
+          selection_reason: string
+          target_difficulty?: string | null
+          updated_at?: string
+          working_title: string
+        }
+        Update: {
+          angle?: string | null
+          audience?: string
+          batch_id?: string
+          brief_id?: string
+          created_at?: string
+          diet_tags?: string[]
+          excluded?: boolean
+          exclusion_reason?: string | null
+          focus_crop?: string
+          id?: string
+          job_id?: string | null
+          locale?: string
+          meal_type?: string | null
+          selection_reason?: string
+          target_difficulty?: string | null
+          updated_at?: string
+          working_title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "recipe_plan_briefs_batch_id_fkey"
+            columns: ["batch_id"]
+            isOneToOne: false
+            referencedRelation: "recipe_generation_batches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "recipe_plan_briefs_focus_crop_fkey"
+            columns: ["focus_crop"]
+            isOneToOne: false
+            referencedRelation: "crop_config"
+            referencedColumns: ["crop"]
+          },
+          {
+            foreignKeyName: "recipe_plan_briefs_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: true
+            referencedRelation: "recipe_generation_jobs"
+            referencedColumns: ["id"]
           },
         ]
       }
@@ -3867,6 +4147,10 @@ export type Database = {
       }
     }
     Functions: {
+      calculate_recipe_nutrition: {
+        Args: { p_recipe_id: string }
+        Returns: undefined
+      }
       can_send_ai_message: { Args: { _user_id: string }; Returns: boolean }
       check_and_record_mcp_call: { Args: never; Returns: boolean }
       create_draft_listings_for_parcel: {
@@ -3895,6 +4179,7 @@ export type Database = {
         Args: { _event: string; _message: string; _user_id: string }
         Returns: undefined
       }
+      fan_out_recipe_plan_batch: { Args: { _batch_id: string }; Returns: Json }
       find_recipe_duplicates: {
         Args: {
           p_crop?: string
@@ -3916,8 +4201,26 @@ export type Database = {
         Returns: number
       }
       fn_match_culinary_crop: { Args: { p_text: string }; Returns: string }
+      fn_recalc_recipe_nutrition_ids: {
+        Args: { p_recipe_ids: string[] }
+        Returns: undefined
+      }
       fn_recipe_canonical_unit: { Args: { p_unit: string }; Returns: string }
       fn_recipe_escape_regex: { Args: { p_text: string }; Returns: string }
+      fn_recipe_ingredient_grams: {
+        Args: { p_crop: string; p_quantity: number; p_unit: string }
+        Returns: number
+      }
+      get_active_listing_crops: {
+        Args: { p_limit?: number }
+        Returns: {
+          active_listing_count: number
+          crop: string
+          display_name: string
+          farmer_count: number
+          total_quantity: number
+        }[]
+      }
       get_buyer_rating_summary: {
         Args: { _buyer_id: string }
         Returns: {
@@ -3928,6 +4231,15 @@ export type Database = {
       get_crop_context: {
         Args: { p_crop: string; p_month?: number }
         Returns: Json
+      }
+      get_crop_demand_signal: {
+        Args: { p_days?: number; p_limit?: number }
+        Returns: {
+          crop: string
+          display_name: string
+          order_count: number
+          total_quantity: number
+        }[]
       }
       get_farmer_rating_summary: {
         Args: { _farmer_id: string }
@@ -3953,6 +4265,23 @@ export type Database = {
           display_name: string
           last_created_at: string
           recipe_count: number
+        }[]
+      }
+      get_recipe_engagement_signal: {
+        Args: { p_days?: number; p_limit?: number }
+        Returns: {
+          crop: string
+          display_name: string
+          recipe_count: number
+          save_count: number
+          view_count: number
+        }[]
+      }
+      get_recipe_plan_schedule: {
+        Args: never
+        Returns: {
+          active: boolean
+          schedule: string
         }[]
       }
       get_seasonal_crop_candidates: {
@@ -3983,10 +4312,44 @@ export type Database = {
         }[]
       }
       increment_ai_usage: { Args: { _user_id: string }; Returns: number }
+      is_valid_recipe_allergen_labels: {
+        Args: { labels: string[] }
+        Returns: boolean
+      }
+      is_valid_recipe_micronutrients_v1: { Args: { p: Json }; Returns: boolean }
       normalize_recipe_units: { Args: { p_ingredients: Json }; Returns: Json }
       publish_recipe_draft: {
         Args: { _job_id: string; _lock_token: string; _slug: string }
         Returns: Json
+      }
+      rpc_clone_recipe: {
+        Args: { p_source_recipe_id: string }
+        Returns: string
+      }
+      rpc_consume_mobile_handoff_nonce: {
+        Args: { p_nonce: string }
+        Returns: {
+          access_token: string
+          next_path: string
+          refresh_token: string
+          user_id: string
+        }[]
+      }
+      rpc_create_ai_customized_recipe: {
+        Args: {
+          p_cook_minutes: number
+          p_description: string
+          p_difficulty: string
+          p_idempotency_key: string
+          p_ingredients: Json
+          p_prep_minutes: number
+          p_rest_minutes: number
+          p_servings: number
+          p_source_recipe_id: string
+          p_steps: Json
+          p_title: string
+        }
+        Returns: string
       }
       rpc_create_offer: {
         Args: {
@@ -4095,12 +4458,20 @@ export type Database = {
         }[]
       }
       send_subscription_harvest_reminders: { Args: never; Returns: undefined }
+      set_recipe_plan_schedule: {
+        Args: { _active: boolean; _cron: string }
+        Returns: undefined
+      }
       validate_recipe_crop_values: { Args: { p_draft: Json }; Returns: Json }
       validate_recipe_ingredient_coverage: {
         Args: { p_draft: Json }
         Returns: Json
       }
       validate_recipe_plan: { Args: { p_plan: Json }; Returns: Json }
+      validate_recipe_plan_diversity: {
+        Args: { p_options?: Json; p_plan: Json }
+        Returns: Json
+      }
       validate_recipe_slug: {
         Args: { p_exclude_recipe_id?: string; p_slug: string }
         Returns: Json
@@ -4166,12 +4537,12 @@ export type Tables<
   DefaultSchemaTableNameOrOptions extends
     | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
         DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -4195,11 +4566,11 @@ export type TablesInsert<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -4220,11 +4591,11 @@ export type TablesUpdate<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -4245,11 +4616,11 @@ export type Enums<
   DefaultSchemaEnumNameOrOptions extends
     | keyof DefaultSchema["Enums"]
     | { schema: keyof DatabaseWithoutInternals },
-  EnumName extends DefaultSchemaEnumNameOrOptions extends {
+  EnumName extends (DefaultSchemaEnumNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaEnumNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -4262,11 +4633,11 @@ export type CompositeTypes<
   PublicCompositeTypeNameOrOptions extends
     | keyof DefaultSchema["CompositeTypes"]
     | { schema: keyof DatabaseWithoutInternals },
-  CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
+  CompositeTypeName extends (PublicCompositeTypeNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
-    : never = never,
+    : never) = never,
 > = PublicCompositeTypeNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
