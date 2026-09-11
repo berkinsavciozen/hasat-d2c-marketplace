@@ -25,7 +25,8 @@ export const RECIPE_PLANNER_RULES = `Planning rules (all are re-checked by deter
 7. Every brief MUST include a non-empty "selectionReason" explaining, briefly, why THIS crop/angle/audience/difficulty combination was chosen right now (seasonality, gap in recent coverage, editorial constraint, etc).
 8. Produce EXACTLY the requested "targetCount" number of briefs — not more, not fewer.
 9. Honor any editorial constraints given in the batch input ("focusCrops", "dietFocus", "notes") — if "focusCrops" is non-empty, every brief's focusCrop must come from that list (still subject to rule 1).
-10. Every brief's "workingTitle" must be unique within the plan.`;
+10. Every brief's "workingTitle" must be unique within the plan.
+11. Diversity is not just about focusCrop — it is also about CONCEPT. Do not propose multiple briefs in the same plan (or, per "recentRecipeMix"/"existingRecipeSample", recently produced) that are the same underlying recipe formula with a different headline crop swapped in (e.g. three "leafy greens + nuts + fruit salad, olive-oil dressing" briefs, or three "roasted vegetable oven bake" briefs, even with three different focusCrops). When you notice you are about to repeat a formula already used elsewhere in "existingRecipeSample" or earlier in THIS plan, change the angle (technique, format, meal role, or flavor logic) rather than only the crop, and say so explicitly in "selectionReason".`;
 
 export const RECIPE_MARKET_SIGNAL_RULES = `Real-world market signals (in addition to the seasonal calendar above):
 

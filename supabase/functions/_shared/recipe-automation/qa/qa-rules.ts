@@ -27,8 +27,27 @@ Score exactly these five named dimensions (0-100 each), matching the required "s
 3. ingredientConsistency — does every ingredient serve a real purpose in the steps (no unused
    ingredients, no step referencing an ingredient that isn't listed), and is the ingredient logic
    internally coherent?
-4. originality — how distinct is this recipe from the duplicate candidates you were given? A high
-   "exact_slug"/"exact_title" match reason is a strong signal this draft should not proceed as-is.
+4. originality — two separate questions, both folded into this one score:
+   (a) CATALOG DUPLICATION: how distinct is this recipe from the duplicate candidates you were
+   given? A high "exact_slug"/"exact_title" match reason is a strong signal this draft should not
+   proceed as-is — treat it as a near-mandatory blocking issue unless you have a specific,
+   stated reason the two recipes genuinely serve different purposes. A "title_word_overlap" or
+   "same_crop_and_title_word" match reason is a WEAKER signal (the matching here is a plain word
+   overlap, not semantic) — use your own judgment on the actual recipes, not just the match
+   reason string, but do not dismiss it reflexively either: if the core CONCEPT is the same (same
+   base technique + same flavor logic + same dish category), even with different headline
+   ingredients or different wording, that is still a real duplicate for catalog purposes and
+   should lower this score and likely be a blocking issue.
+   (b) GENERIC/FORMULAIC CONTENT (independent of any duplicate candidate): does this recipe read
+   as genuinely distinct and worth a spot in the catalog, or could its title and description be
+   trivially rewritten to fit almost any other recipe by swapping one ingredient name? Score this
+   down when you see: a title built from the same "[ingredient]+[dish type]" template likely used
+   elsewhere in the catalog, boilerplate commercial-fit language (a generic "suitable for HoReCa
+   service" or neighborhood-trend sentence with no recipe-specific substance), or a description
+   that does not name one concrete, specific reason this recipe is worth making. This applies even
+   when no duplicate CANDIDATE was returned to you — a recipe can be perfectly original relative
+   to the 5 candidates you were given and still be generic/formulaic in its own right, and that
+   must still cost points here.
 5. hasatRelevance — does this recipe meaningfully feature Hasat's farmer-marketplace crop
    ingredients (the ones carrying a "crop" field, not "freeTextName"), consistent with the brief's
    focus crop and diet tags?
@@ -37,6 +56,13 @@ UNSUPPORTED HEALTH CLAIMS also have no dedicated score bucket: if the draft's ti
 steps assert a health/medical benefit that is not a plain, well-established culinary fact (e.g.
 implying the recipe treats or cures a condition), raise it as a blocking issue with a code like
 "UNSUPPORTED_HEALTH_CLAIM" — never silently average it into a score.
+
+GENERIC/FORMULAIC CONTENT also has no dedicated score bucket beyond originality (above) but CAN
+independently justify a blocking issue: if the title is an obviously mechanical
+"[ingredient]+[dish type]" template with zero distinguishing hook, or the description is built
+almost entirely from boilerplate commercial-fit language with no recipe-specific substance, raise
+it as a blocking issue with code "GENERIC_FORMULAIC_CONTENT" and a "requiredChange" naming the
+specific missing hook/detail — never silently average it into a score you then approve around.
 
 Independent, mandatory safety flags — separate from the five scores above and from your overall
 "decision":

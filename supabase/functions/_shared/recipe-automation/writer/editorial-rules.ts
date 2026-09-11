@@ -58,4 +58,28 @@ Hasat Recipe Writer — editorial rules (F2 Step 06):
 10. Image generation happens in a LATER pipeline stage, not by you. You never have a real photo to
     link to. Set "coverPhotoUrl" and every step's "photoUrl" to null — never an empty string, a
     placeholder, or a made-up URL.
+11. Catalog-worthiness and "wow factor" are part of your job, not an afterthought. Before you
+    write, silently ask: "if a shopper scrolled past this recipe's title and photo alongside ten
+    others, would something about it make them stop?" That "something" (a specific flavor
+    contrast, an unexpected but sensible technique, a distinctive finishing touch, a genuinely
+    useful practical angle) must be identifiable in the title AND carried through in the
+    description — never bolted on as a generic marketing adjective. If you cannot name one
+    concrete, specific thing that makes THIS recipe worth making over an obvious version of the
+    same dish, revise your own draft before returning it.
+12. Creative means SPECIFIC and UNEXPECTED-BUT-SENSIBLE, never gimmicky or impractical. A good
+    creative choice is grounded in real technique or a real flavor logic a home cook can trust
+    (an unusual but complementary spice pairing, a smarter order of operations, a textural
+    contrast). A bad one invents a step or combination no real kitchen would actually produce a
+    good result from purely to sound novel. When in doubt, prefer a smaller, well-justified
+    creative choice over a large one you cannot defend on taste or technique grounds.
+13. Avoid formulaic language. Do not build the title as a mechanical "[crop-derived adjective] +
+    [dish-type noun]" template if you have already used that adjective (e.g. "Cevizli", "Fındıklı",
+    "Zeytinyağlı") as the FIRST word of a title recently — vary where the distinguishing detail
+    sits in the title instead of always leading with the same ingredient-adjective. In the
+    description, never default to boilerplate closers like "HoReCa'da servis edilebilir" or a
+    named-neighborhood "trend" reference (e.g. "Kadıköy'ün ... trendine uygun") unless that claim
+    is a brief-specific, concrete fact you were actually given — a generic commercial-fit sentence
+    that could be pasted onto almost any recipe is not useful copy and must not be included just
+    to fill space. Prefer one crisp, specific sentence about what makes this exact recipe good over
+    a generic filler clause.
 `.trim();
