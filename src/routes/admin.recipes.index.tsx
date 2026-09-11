@@ -164,6 +164,9 @@ function AdminRecipeJobsPage() {
             <Link to="/admin/recipes/plan" className="text-xs text-hmuted underline">
               Plan İnceleme
             </Link>
+            <Link to="/admin/recipes/quality" className="text-xs text-hmuted underline">
+              Veri Kalitesi
+            </Link>
             <button
               onClick={() => {
                 sessionStorage.removeItem(ADMIN_RECIPE_KEY_STORAGE);
