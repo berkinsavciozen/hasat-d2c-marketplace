@@ -71,6 +71,7 @@ import { Route as BuyerOfferListingIdRouteImport } from './routes/buyer.offer.$l
 import { Route as BuyerNegotiationOfferIdRouteImport } from './routes/buyer.negotiation.$offerId'
 import { Route as AdminRecipesPlanRouteImport } from './routes/admin.recipes.plan'
 import { Route as AdminRecipesJobIdRouteImport } from './routes/admin.recipes.$jobId'
+import { Route as AdminRecipesQualityRouteImport } from './routes/admin.recipes.quality'
 import { Route as Char91DotmcpChar93InvokeToolToolRouteImport } from './routes/[.mcp]/invoke-tool/$tool'
 import { Route as DotlovableOauthConsentRouteImport } from './routes/[.]lovable.oauth.consent'
 import { Route as AdminRecipesPlanIndexRouteImport } from './routes/admin.recipes.plan.index'
@@ -391,6 +392,11 @@ const AdminRecipesJobIdRoute = AdminRecipesJobIdRouteImport.update({
   path: '/$jobId',
   getParentRoute: () => AdminRecipesRoute,
 } as any)
+const AdminRecipesQualityRoute = AdminRecipesQualityRouteImport.update({
+  id: '/quality',
+  path: '/quality',
+  getParentRoute: () => AdminRecipesRoute,
+} as any)
 const Char91DotmcpChar93InvokeToolToolRoute =
   Char91DotmcpChar93InvokeToolToolRouteImport.update({
     id: '/.mcp/invoke-tool/$tool',
@@ -465,6 +471,7 @@ export interface FileRoutesByFullPath {
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
   '/admin/recipes/$jobId': typeof AdminRecipesJobIdRoute
+  '/admin/recipes/quality': typeof AdminRecipesQualityRoute
   '/admin/recipes/plan': typeof AdminRecipesPlanRouteWithChildren
   '/buyer/negotiation/$offerId': typeof BuyerNegotiationOfferIdRoute
   '/buyer/offer/$listingId': typeof BuyerOfferListingIdRoute
@@ -532,6 +539,7 @@ export interface FileRoutesByTo {
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
   '/admin/recipes/$jobId': typeof AdminRecipesJobIdRoute
+  '/admin/recipes/quality': typeof AdminRecipesQualityRoute
   '/buyer/negotiation/$offerId': typeof BuyerNegotiationOfferIdRoute
   '/buyer/offer/$listingId': typeof BuyerOfferListingIdRoute
   '/buyer/orders/$orderId': typeof BuyerOrdersOrderIdRoute
@@ -601,6 +609,7 @@ export interface FileRoutesById {
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
   '/admin/recipes/$jobId': typeof AdminRecipesJobIdRoute
+  '/admin/recipes/quality': typeof AdminRecipesQualityRoute
   '/admin/recipes/plan': typeof AdminRecipesPlanRouteWithChildren
   '/buyer/negotiation/$offerId': typeof BuyerNegotiationOfferIdRoute
   '/buyer/offer/$listingId': typeof BuyerOfferListingIdRoute
@@ -672,6 +681,7 @@ export interface FileRouteTypes {
     | '/.lovable/oauth/consent'
     | '/.mcp/invoke-tool/$tool'
     | '/admin/recipes/$jobId'
+    | '/admin/recipes/quality'
     | '/admin/recipes/plan'
     | '/buyer/negotiation/$offerId'
     | '/buyer/offer/$listingId'
@@ -739,6 +749,7 @@ export interface FileRouteTypes {
     | '/.lovable/oauth/consent'
     | '/.mcp/invoke-tool/$tool'
     | '/admin/recipes/$jobId'
+    | '/admin/recipes/quality'
     | '/buyer/negotiation/$offerId'
     | '/buyer/offer/$listingId'
     | '/buyer/orders/$orderId'
@@ -807,6 +818,7 @@ export interface FileRouteTypes {
     | '/.lovable/oauth/consent'
     | '/.mcp/invoke-tool/$tool'
     | '/admin/recipes/$jobId'
+    | '/admin/recipes/quality'
     | '/admin/recipes/plan'
     | '/buyer/negotiation/$offerId'
     | '/buyer/offer/$listingId'
@@ -1295,6 +1307,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminRecipesJobIdRouteImport
       parentRoute: typeof AdminRecipesRoute
     }
+    '/admin/recipes/quality': {
+      id: '/admin/recipes/quality'
+      path: '/quality'
+      fullPath: '/admin/recipes/quality'
+      preLoaderRoute: typeof AdminRecipesQualityRouteImport
+      parentRoute: typeof AdminRecipesRoute
+    }
     '/.mcp/invoke-tool/$tool': {
       id: '/.mcp/invoke-tool/$tool'
       path: '/.mcp/invoke-tool/$tool'
@@ -1469,12 +1488,14 @@ const AdminRecipesPlanRouteWithChildren =
 
 interface AdminRecipesRouteChildren {
   AdminRecipesJobIdRoute: typeof AdminRecipesJobIdRoute
+  AdminRecipesQualityRoute: typeof AdminRecipesQualityRoute
   AdminRecipesPlanRoute: typeof AdminRecipesPlanRouteWithChildren
   AdminRecipesIndexRoute: typeof AdminRecipesIndexRoute
 }
 
 const AdminRecipesRouteChildren: AdminRecipesRouteChildren = {
   AdminRecipesJobIdRoute: AdminRecipesJobIdRoute,
+  AdminRecipesQualityRoute: AdminRecipesQualityRoute,
   AdminRecipesPlanRoute: AdminRecipesPlanRouteWithChildren,
   AdminRecipesIndexRoute: AdminRecipesIndexRoute,
 }
