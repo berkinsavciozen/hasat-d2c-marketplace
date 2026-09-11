@@ -39,6 +39,11 @@ where crop='pul_biber' and reference_source='tuber' and reference_source_id='08.
 drop table public.ingredient_measure_reference;
 drop table public.ingredient_nutrition_alias;
 drop index public.recipe_ingredients_nutrition_food_key_idx;
+revoke insert (recipe_id,sort_order,crop,free_text_name,quantity,unit,note,is_key_ingredient,ingredient_class)
+  on public.recipe_ingredients from anon, authenticated;
+revoke update (sort_order,crop,free_text_name,quantity,unit,note,is_key_ingredient,ingredient_class)
+  on public.recipe_ingredients from anon, authenticated;
+grant insert, update on table public.recipe_ingredients to anon, authenticated;
 alter table public.recipe_ingredients
   drop constraint recipe_ingredients_nutrition_resolution_check,
   drop constraint recipe_ingredients_nutrition_exclusion_reason_check,

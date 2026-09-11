@@ -1,6 +1,24 @@
 -- MANUAL BACKFILL — do not place in the automatic migration chain.
 -- Run only after the migration and the rollback-only dry run have passed.
 \set ON_ERROR_STOP on
+
+-- A production commit is impossible until Berkin explicitly approves every decision listed in
+-- docs/T4_PRODUCTION_NUTRITION_DEBT_CLOSURE.md. Dry-run mode is deliberately exempt because it
+-- always rolls the transaction back.
+\if :{?T4_ROLLBACK}
+\else
+  \if :{?BERKIN_T4_NUTRITION_DECISIONS_APPROVED}
+    \if :BERKIN_T4_NUTRITION_DECISIONS_APPROVED
+    \else
+      \echo 'ERROR: Berkin approval gate is false; refusing T4 production backfill.'
+      do $$ begin raise exception 'Berkin approval gate is false; refusing T4 production backfill'; end $$;
+    \endif
+  \else
+    \echo 'ERROR: Berkin approval is required. Set BERKIN_T4_NUTRITION_DECISIONS_APPROVED=1 only after explicit approval.'
+    do $$ begin raise exception 'Berkin approval is required before T4 production backfill'; end $$;
+  \endif
+\endif
+
 begin;
 
 create temporary table t4_nutrition_corrections(

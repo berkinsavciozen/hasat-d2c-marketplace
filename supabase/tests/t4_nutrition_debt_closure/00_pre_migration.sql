@@ -1,6 +1,7 @@
 alter table public.recipes add column status text not null default 'draft';
 alter table public.recipes add column visibility text not null default 'private';
 alter table public.recipe_ingredients add column note text;
+alter table public.recipe_ingredients add column ingredient_class text;
 
 insert into public.crop_config(crop,display_name,default_unit) values
  ('pul_biber','Pul biber','kg'),('anason','Anason','kg'),('ayva','Ayva','kg'),

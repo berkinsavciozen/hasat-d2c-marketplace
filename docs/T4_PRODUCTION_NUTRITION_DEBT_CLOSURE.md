@@ -58,8 +58,69 @@ source or coverage is NULL.
 - A recipe micronutrient object is emitted only when every matched reference has all six requested
   micronutrients. Unknown values are never coalesced to zero.
 
-Product/portion decisions marked 2026-09-10-review-required are deliberately visible in the
-reference tables and audit manifest. They require reviewer approval before production application.
+## Mandatory Berkin approval gate
+
+None of the following decisions is marked as production-approved. They remain proposed values in
+the draft package. Before a committing backfill, Berkin must explicitly approve every individual
+item below. The backfill refuses to run in commit mode unless the operator then supplies
+`BERKIN_T4_NUTRITION_DECISIONS_APPROVED=1`; dry-run mode does not accept or imply approval.
+
+Recipe corrections/exclusions (one guarded ingredient row per item):
+
+| ID | Recipe / ingredient | Proposed decision |
+|---|---|---|
+| D01 | celtik-pilavi… / çeltik | Replace with 277.5 g dry long-grain white rice. |
+| D02 | celtik-pilavi… / “tavuk suyu veya su” | Choose 500 g water, not chicken stock. |
+| D03 | elmali-serinletici-smoothie… / plant milk | Choose 120 ml unsweetened refrigerated almond milk. |
+| D04 | findikli-mevsim-salatasi / mixed greens | Choose 100 g rocket. |
+| D05 | cevizli-kurabiye / crop wheat | Correct to 250 g all-purpose wheat flour. |
+| D06 | eksi-mayali-tam-bugday-ekmegi / crop wheat | Correct to 300 g whole-wheat flour. |
+| D07 | cevizli-kurabiye / vanilla | Choose 1 teaspoon vanilla extract. |
+| D08 | firinda-patlican-musakka / mince | Choose 300 g raw 80/20 ground beef. |
+| D09 | horeca…limonata / four squeezed lemons | Use 192 g lemon juice. |
+| D10 | ayvali-firin-tavuk… / tablespoon lemon | Use 15 g lemon juice. |
+| D11 | anasonlu…dondurma / mastic | Exclude as `trace_flavoring_unquantified`. |
+| D12 | horeca…limonata / unquantified serving ice | Exclude as `serving_only_unquantified`. |
+| D13 | findikli…firin-patates / unquantified salt | Exclude as `seasoning_to_taste_unquantified`. |
+| D14 | findikli…firin-patates / unquantified pepper | Exclude as `seasoning_to_taste_unquantified`. |
+
+Editorial portion/measure decisions (the parenthesized value is the stored reference ID):
+
+| ID | Proposed decision |
+|---|---|
+| D15 | Medium quince = 200 g each (`T4-ayva-medium`). |
+| D16 | Large potato = 300 g each (`T4-potato-large`). |
+| D17 | Mint handful = 6 g (`T4-mint-handful`). |
+| D18 | Salep level tablespoon = 8 g (`T4-salep-tablespoon`). |
+| D19 | Salt pinch = 0.36 g (`T4-salt-pinch`). |
+| D20 | Red pepper paste level tablespoon = 18 g (`T4-pepper-paste-tablespoon`). |
+| D21 | Pomegranate molasses tablespoon = 20 g (`T4-pomegranate-molasses-tablespoon`). |
+| D22 | Rocket bunch = 100 g (`T4-rocket-bunch`). |
+| D23 | Baking-powder packet = 10 g (`T4-baking-powder-packet`). |
+| D24 | Turkish water cup = 200 g for both `bardak` and `su_bardagi` spellings (`T4-turkish-water-cup`, `T4-turkish-water-cup-underscore`). |
+| D25 | Small ice piece = 15 g (`T4-small-ice-piece`). |
+| D26 | Lemon-juice dessertspoon = 10 g (`T4-dessertspoon`). |
+| D27 | Cucumber = 300 g each (`T4-cucumber-each`). |
+| D28 | Fresh rosemary sprig = 2 g (`T4-rosemary-sprig`). |
+| D29 | Full-fat yogurt Turkish water cup = 200 g (`T4-turkish-yogurt-cup`). |
+
+Global product-identity decisions used by exact aliases and not already covered above:
+
+| ID | Proposed decision |
+|---|---|
+| D30 | Generic milk in the affected recipe means full-fat pasteurized cow's milk. |
+| D31 | The specified chicken drumstick means raw meat plus skin. |
+| D32 | Generic honey means flower honey. |
+| D33 | Slivered almonds use the raw, unsalted almond record. |
+| D34 | Generic pomegranate molasses uses the TÜRKOMP Hatay record. |
+| D35 | Generic white cheese means full-fat white cheese. |
+| D36 | Generic butter means salted butter. |
+| D37 | Sourdough starter means a 100% hydration flour/water composite. |
+| D38 | Generic yogurt means plain full-fat yogurt. |
+
+This is the complete review-required set for this package: D01–D38. Source-record choices that
+merely identify an already-specific ingredient (for example granulated sugar or raw avocado) are
+source provenance, not additional product substitutions.
 
 ## Idempotency and rollback
 
@@ -84,6 +145,10 @@ rollback is intentionally a separate, review-required block.
 - F2 exact standard-food fixture computes: PASS.
 - F2 ambiguous-alternative fixture does not compute: PASS.
 - F2 unknown/unweighable ingredient caps coverage at 99.99: PASS.
+- Broad default function ACL fixture plus explicit function privilege assertions: PASS.
+- Authenticated F7 saveDraft INSERT/UPDATE, owner RLS boundary, and controlled-column denials for
+  authenticated/anon with service-role positive writes: PASS.
+- Commit-mode backfill without Berkin's approval variable is rejected before `BEGIN`: PASS.
 - Read-only live-data simulation: all 16 recipes, 0 unresolved ingredient rows after the proposed
   references/measures/corrections.
 
@@ -99,11 +164,11 @@ This package changes no Edge source. No Edge deploy is required.
 
 ## Production application order (not executed)
 
-1. Reviewer approves every review-required product/portion decision.
+1. Berkin explicitly approves every decision D01–D38 above.
 2. Take a database backup and record the 34-recipe pre-state.
 3. Apply 20260910120000_t4_production_nutrition_debt_closure.sql.
 4. Run t4_production_nutrition_debt_dry_run.sql; require 34/34 and rollback confirmation.
-5. Run the manual closure backfill without T4_ROLLBACK; require its in-transaction 34/34 assertion.
+5. Only after that approval, run the manual closure backfill without T4_ROLLBACK and with
+   `BERKIN_T4_NUTRITION_DECISIONS_APPROVED=1`; require its in-transaction 34/34 assertion.
 6. Re-run the read-only manifest, publish-gate fixtures and Supabase security/performance advisors.
 7. Do not deploy Edge Functions unless a new byte comparison later finds drift.
-

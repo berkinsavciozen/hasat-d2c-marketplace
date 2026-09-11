@@ -14,7 +14,12 @@ createdb "$DB_NAME"
 "${PSQL[@]}" -d "$DB_NAME" -f "$MIGRATIONS_DIR/20260909120000_f024_recipe_nutrition_calc_engine.sql"
 "${PSQL[@]}" -d "$DB_NAME" -f "$SCRIPT_DIR/00_pre_migration.sql"
 "${PSQL[@]}" -d "$DB_NAME" -f "$MIGRATIONS_DIR/20260910120000_t4_production_nutrition_debt_closure.sql"
-"${PSQL[@]}" -d "$DB_NAME" -f "$REPO_ROOT/supabase/backfills/t4_production_nutrition_debt_closure.sql"
+if "${PSQL[@]}" -d "$DB_NAME" -f "$REPO_ROOT/supabase/backfills/t4_production_nutrition_debt_closure.sql"; then
+  echo "T4 approval gate test failed: unapproved backfill unexpectedly succeeded" >&2
+  exit 1
+fi
+"${PSQL[@]}" -v BERKIN_T4_NUTRITION_DECISIONS_APPROVED=1 -d "$DB_NAME" \
+  -f "$REPO_ROOT/supabase/backfills/t4_production_nutrition_debt_closure.sql"
 "${PSQL[@]}" -d "$DB_NAME" -f "$SCRIPT_DIR/01_assertions.sql"
 echo "T4 nutrition debt closure PostgreSQL suite: PASSED"
 "${PSQL[@]}" -d "$DB_NAME" -f "$REPO_ROOT/supabase/rollbacks/20260910120000_t4_production_nutrition_debt_closure.sql"

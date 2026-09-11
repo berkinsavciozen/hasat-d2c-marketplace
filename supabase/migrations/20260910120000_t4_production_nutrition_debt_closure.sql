@@ -44,7 +44,7 @@ as $$
   select nullif(regexp_replace(replace(lower(btrim(coalesce(p_value, ''))), '_', ' '), '\s+', ' ', 'g'), '')
 $$;
 
-revoke all on function public.fn_nutrition_normalize_text(text) from public;
+revoke execute on function public.fn_nutrition_normalize_text(text) from public, anon, authenticated;
 grant execute on function public.fn_nutrition_normalize_text(text) to service_role;
 
 create table public.ingredient_nutrition_alias (
@@ -95,6 +95,15 @@ alter table public.recipe_ingredients
 
 create index recipe_ingredients_nutrition_food_key_idx
   on public.recipe_ingredients(nutrition_food_key) where nutrition_food_key is not null;
+
+-- The live project grants INSERT/UPDATE at table scope to anon/authenticated. ADD COLUMN would
+-- otherwise make both new server-controlled columns client-writable. Preserve SELECT/DELETE and
+-- F7 saveDraft, but narrow writes to the exact pre-existing mobile payload columns.
+revoke insert, update on table public.recipe_ingredients from anon, authenticated;
+grant insert (recipe_id,sort_order,crop,free_text_name,quantity,unit,note,is_key_ingredient,ingredient_class)
+  on public.recipe_ingredients to anon, authenticated;
+grant update (sort_order,crop,free_text_name,quantity,unit,note,is_key_ingredient,ingredient_class)
+  on public.recipe_ingredients to anon, authenticated;
 
 -- Macro values are copied from the identified per-100g records.  Sparse micronutrients remain
 -- NULL; calculate_recipe_nutrition below never turns an unknown micronutrient into zero.
@@ -273,7 +282,7 @@ as $$
   end
 $$;
 
-revoke all on function public.fn_nutrition_normalize_unit(text) from public;
+revoke execute on function public.fn_nutrition_normalize_unit(text) from public, anon, authenticated;
 grant execute on function public.fn_nutrition_normalize_unit(text) to service_role;
 
 create or replace function public.fn_recipe_ingredient_grams_v2(
@@ -325,14 +334,16 @@ begin
   return null;
 end $$;
 
-revoke all on function public.fn_recipe_ingredient_grams_v2(text,text,text,numeric,text) from public;
+revoke execute on function public.fn_recipe_ingredient_grams_v2(text,text,text,numeric,text)
+  from public, anon, authenticated;
 grant execute on function public.fn_recipe_ingredient_grams_v2(text,text,text,numeric,text) to service_role;
 
 create or replace function public.fn_recipe_ingredient_grams(p_crop text,p_quantity numeric,p_unit text)
 returns numeric language sql stable security invoker set search_path = ''
 as $$ select public.fn_recipe_ingredient_grams_v2(p_crop,null,null,p_quantity,p_unit) $$;
 
-revoke all on function public.fn_recipe_ingredient_grams(text,numeric,text) from public;
+revoke execute on function public.fn_recipe_ingredient_grams(text,numeric,text)
+  from public, anon, authenticated;
 grant execute on function public.fn_recipe_ingredient_grams(text,numeric,text) to service_role;
 
 create or replace function public.calculate_recipe_nutrition(p_recipe_id uuid)
@@ -416,7 +427,7 @@ begin
     nutrition_reference_version=v_ref_version,nutrition_warnings=v_warnings where id=p_recipe_id;
 end $$;
 
-revoke all on function public.calculate_recipe_nutrition(uuid) from public;
+revoke execute on function public.calculate_recipe_nutrition(uuid) from public, anon, authenticated;
 grant execute on function public.calculate_recipe_nutrition(uuid) to service_role;
 
 create table public.recipe_ingredient_nutrition_backfill_audit (
