@@ -345,6 +345,56 @@ Deno.test("runReviseStage: structurally invalid agent output -> failJob, outcome
   assert.equal(job.locked_by, null);
 });
 
+Deno.test("runReviseStage: reviser output with a never-before-seen coverPhotoUrl/photoUrl placeholder spelling never fails schema validation — the field is structurally absent from the model-facing schema, not whack-a-mole normalized", async () => {
+  // Regression coverage for job 0a047964-12ca-4972-9416-12111f8b8cd8 ("Elmalı Fındıklı Kahvaltı
+  // Bowl'u", REVISER_OUTPUT_SCHEMA_INVALID, 2026-09-10): the Reviser kept producing NEW "no photo"
+  // spellings that a fixed list of known placeholders (NO_PHOTO_PLACEHOLDER_VALUES, removed by this
+  // fix) could never have anticipated. This is a spelling that has never appeared anywhere in this
+  // codebase's own history or fixtures — proving the fix is structural (the field is excluded from
+  // the schema the Reviser is even asked to fill in, per write-stage.ts's PHOTO_FIELD_EXCLUDE_PATHS)
+  // rather than one more entry a future spelling could still slip past.
+  const client = new FakeSupabaseClient();
+  const jobId = seedReviseJob(client, { revision_count: 0 });
+  const draftId = seedDraftVersion(client, jobId, 1, validKabakRecipeDraft);
+  seedQaResult(client, { jobId, draftId, draftVersion: 1 }, validQAResultRevisionRequired);
+  registerHappyPathRpcs(client);
+
+  const candidate = {
+    ...validFixWithoutIds,
+    coverPhotoUrl: "gorsel-henuz-mevcut-degil-🖼️",
+    steps: validFixWithoutIds.steps.map((s) => ({ ...s, photoUrl: "NOT_A_REAL_PHOTO_YET" })),
+  };
+
+  const result = await runReviseStage(asClient(client), { jobId, agentRunner: fixedOutputAgentRunner(candidate) });
+
+  assert.equal(result.outcome, "revised", "an unrecognized placeholder spelling must never surface as REVISER_OUTPUT_SCHEMA_INVALID");
+  const draftRow = client.getRow("recipe_drafts", result.draftId!)!;
+  assert.equal(draftRow.cover_photo_url, validKabakRecipeDraft.coverPhotoUrl, "coverPhotoUrl is never trusted from agent output — always carried forward from the previous draft");
+  const steps = draftRow.steps as Array<{ photoUrl: unknown }>;
+  assert.ok(steps.every((s) => s.photoUrl === null), "steps[].photoUrl is never trusted from agent output either");
+});
+
+Deno.test("runReviseStage: the outputSchema handed to the agent runner excludes coverPhotoUrl/steps[].photoUrl entirely", async () => {
+  const client = new FakeSupabaseClient();
+  const jobId = seedReviseJob(client, { revision_count: 0 });
+  const draftId = seedDraftVersion(client, jobId, 1, validKabakRecipeDraft);
+  seedQaResult(client, { jobId, draftId, draftVersion: 1 }, validQAResultRevisionRequired);
+  registerHappyPathRpcs(client);
+
+  let capturedExcludeOutputFields: readonly string[] | undefined;
+  const runner: AgentRunner = {
+    run: async (request) => {
+      capturedExcludeOutputFields = request.excludeOutputFields;
+      const { jobId: _jobId, briefId: _briefId, ...rest } = validRevisedKabakRecipeDraft;
+      return { output: rest, provider: "openai", model: "test-revise-model", usage: null, durationMs: 1 };
+    },
+  };
+
+  const result = await runReviseStage(asClient(client), { jobId, agentRunner: runner });
+  assert.equal(result.outcome, "revised");
+  assert.deepEqual(capturedExcludeOutputFields, ["coverPhotoUrl", "steps[].photoUrl"]);
+});
+
 Deno.test("runReviseStage: a blocking Postgres validation issue on the revised draft -> failJob, outcome validation_failed, no draft stored", async () => {
   const client = new FakeSupabaseClient();
   const jobId = seedReviseJob(client, { revision_count: 0 });

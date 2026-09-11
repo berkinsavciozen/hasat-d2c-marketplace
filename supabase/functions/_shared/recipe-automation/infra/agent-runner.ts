@@ -44,6 +44,17 @@ export interface AgentRunRequest {
   model?: string;
   provider?: string;
   traceId?: string;
+  /** Maximum output tokens for the model's structured response. Passed through to the SDK as
+   * `modelSettings.maxTokens` (see `buildAgentConfig` below) — until this fix, this field was
+   * declared here but never actually wired into the SDK call, so every caller silently ran at
+   * whatever the model's own default output limit is. A full recipe draft (title + description +
+   * up to 60 ingredients + up to 60 steps) can exceed that default on a long recipe: three
+   * AGENT_RUNNER_SDK_CALL_FAILED jobs on 2026-09-09 (e.g. job
+   * ebefea4c-f829-46c6-89de-3ddcfd051746, "Safranlı Horeca Gurme Risotto") failed with
+   * "Unexpected end of JSON input" / "Expected ',' or '}' ... at position 43751" — the model's
+   * response text was cut off mid-object because it hit that default limit before finishing the
+   * JSON. Callers should set this explicitly and generously (writer/write-stage.ts and
+   * revise/revise-stage.ts both do). */
   maxOutputTokens?: number;
   /** Zod schema the structured output must satisfy — every real stage call in this pipeline has
    * one (recipeDraftPayloadSchema, recipeQAResultSchema, recipePlanBatchSchema, ...), passed as
@@ -52,6 +63,19 @@ export interface AgentRunRequest {
    * it; SdkAgentRunner does NOT default this to a permissive schema; the SDK itself defaults to
    * plain text output when no `outputType` is given. */
   outputSchema?: z.ZodType;
+  /** Dot/bracket paths (the SAME convention revise/allowed-changes.ts's `parseIssueFieldPath` uses
+   * for QA-issue fields, e.g. `"coverPhotoUrl"`, `"steps[].photoUrl"`) to remove ENTIRELY from the
+   * schema handed to the SDK as `outputType`, via `sanitizeForStructuredOutput`'s `excludePaths`
+   * parameter — the model never sees these keys and can never produce a value for them, at all.
+   * For fields the pipeline itself owns (never the model's to set — see write-stage.ts's
+   * `mergeImmutablePhotoFields`), this is strictly stronger than validating-then-overriding the
+   * model's value after the fact: a model can invent a brand-new "no value" spelling for a field it
+   * CAN see (that was the whole recurring REVISER_OUTPUT_SCHEMA_INVALID failure class this closes —
+   * see mergeImmutablePhotoFields's own doc comment), but it cannot invent any value at all for a
+   * field that was never part of the schema it was asked to fill in. The caller's own final
+   * `safeParse` still runs against the FULL, unmodified schema (unaffected by this option) — this
+   * only narrows what shape the provider API itself is told to target. */
+  excludeOutputFields?: readonly string[];
   /** Passed through to the SDK's `run()` as `maxTurns`. Defaults to 4 — enough for one tool call
    * plus the final structured response, matching the Step 01 spike's own budget. */
   maxTurns?: number;
@@ -88,6 +112,17 @@ const DEFAULT_PROVIDER = "openai";
  * (network errors, provider 5xx/timeouts, rate limits) defaults to retryable — the more common
  * case for a transient failure worth a stage retry. */
 const NON_RETRYABLE_FAILURE_PATTERN = /max.?turns|guardrail|schema|output.*type|zod/i;
+
+/** A JSON.parse failure because the model's response text was cut off mid-object — the exact
+ * symptom of the missing-maxOutputTokens bug this file's `AgentRunRequest.maxOutputTokens` docstring
+ * describes (three jobs 2026-09-09, "Unexpected end of JSON input" / "Expected ',' or '}' ... at
+ * position 43751"). Unlike a genuine schema/guardrail rejection, the SAME input has a real chance of
+ * completing under the now-wired token budget, or even on a plain retry — so this is checked BEFORE
+ * NON_RETRYABLE_FAILURE_PATTERN and overrides it (a JSON.parse SyntaxError's own message text can
+ * otherwise incidentally match that pattern's "schema" substring). Kept even after the
+ * maxOutputTokens fix: a sufficiently long draft can still exceed any fixed budget. */
+const TRUNCATED_JSON_OUTPUT_PATTERN =
+  /unexpected end of json input|unexpected (?:non-whitespace character|token)|expected (?:'|")?[,}\]]/i;
 
 /** Sums usage across every per-turn raw model response the SDK recorded. `result.rawResponses[]`
  * is where @openai/agents (0.x) exposes this — defensive about the exact shape since it isn't part
@@ -141,34 +176,53 @@ function extractTraceId(result: unknown): string | null {
  * correctness gate. This function only affects what shape the provider API itself is told to
  * target, so the model is still nudged toward the right structure without the call being rejected
  * outright by a JSON-Schema feature OpenAI's Structured Outputs doesn't support.
+ *
+ * `excludePaths` (default: none) additionally drops specific fields from the schema ENTIRELY,
+ * rather than just relaxing a check on them — using the SAME bracket-path convention
+ * revise/allowed-changes.ts's `parseIssueFieldPath` already uses for QA-issue fields: a bare key for
+ * a top-level field (`"coverPhotoUrl"`), `.` for a nested object field, and `[]` for "every element
+ * of this array" (`"steps[].photoUrl"`). See `AgentRunRequest.excludeOutputFields`'s own docstring
+ * for why this exists — pipeline-owned fields the model must never see or set at all, not just
+ * fields whose value needs a looser check.
  */
-export function sanitizeForStructuredOutput(schema: z.ZodTypeAny): z.ZodTypeAny {
+export function sanitizeForStructuredOutput(
+  schema: z.ZodTypeAny,
+  excludePaths: readonly string[] = [],
+): z.ZodTypeAny {
+  const excludeSet = new Set(excludePaths);
+  return sanitizeNode(schema, "", excludeSet);
+}
+
+function sanitizeNode(schema: z.ZodTypeAny, path: string, excludeSet: ReadonlySet<string>): z.ZodTypeAny {
   const def = (schema as unknown as { _def: Record<string, unknown> })._def;
   const typeName = def?.typeName as string | undefined;
 
   switch (typeName) {
     case "ZodEffects":
-      return sanitizeForStructuredOutput(def.schema as z.ZodTypeAny);
+      return sanitizeNode(def.schema as z.ZodTypeAny, path, excludeSet);
     case "ZodNullable":
-      return sanitizeForStructuredOutput(def.innerType as z.ZodTypeAny).nullable();
+      return sanitizeNode(def.innerType as z.ZodTypeAny, path, excludeSet).nullable();
     case "ZodOptional":
-      return sanitizeForStructuredOutput(def.innerType as z.ZodTypeAny).optional();
+      return sanitizeNode(def.innerType as z.ZodTypeAny, path, excludeSet).optional();
     case "ZodDefault": {
       const defaultValueFn = def.defaultValue as () => unknown;
-      return sanitizeForStructuredOutput(def.innerType as z.ZodTypeAny).default(defaultValueFn());
+      return sanitizeNode(def.innerType as z.ZodTypeAny, path, excludeSet).default(defaultValueFn());
     }
     case "ZodObject": {
       const shape = (schema as unknown as z.ZodObject<z.ZodRawShape>).shape;
       const newShape: z.ZodRawShape = {};
       for (const [key, value] of Object.entries(shape)) {
-        newShape[key] = sanitizeForStructuredOutput(value as z.ZodTypeAny);
+        const childPath = path ? `${path}.${key}` : key;
+        if (excludeSet.has(childPath)) continue;
+        newShape[key] = sanitizeNode(value as z.ZodTypeAny, childPath, excludeSet);
       }
       const rebuilt = z.object(newShape);
       return def.unknownKeys === "strict" ? rebuilt.strict() : rebuilt;
     }
     case "ZodArray": {
       const element = (schema as unknown as z.ZodArray<z.ZodTypeAny>).element;
-      let rebuilt = z.array(sanitizeForStructuredOutput(element));
+      const elementPath = `${path}[]`;
+      let rebuilt = z.array(sanitizeNode(element, elementPath, excludeSet));
       const minLength = def.minLength as { value: number } | null;
       const maxLength = def.maxLength as { value: number } | null;
       if (minLength) rebuilt = rebuilt.min(minLength.value);
@@ -194,24 +248,39 @@ export function sanitizeForStructuredOutput(schema: z.ZodTypeAny): z.ZodTypeAny 
   }
 }
 
+/**
+ * Pure construction of the config object passed to `new Agent(...)` — split out from `.run()` so
+ * tests can assert on the exact config (in particular `modelSettings.maxTokens`, which used to be
+ * silently dropped even though `AgentRunRequest.maxOutputTokens` was a defined field — see that
+ * field's own docstring for the 2026-09-09 root-cause writeup) without ever constructing a real
+ * `Agent` or making a network call. `modelSettings.maxTokens` is the SDK's actual parameter name for
+ * this (`@openai/agents-core`'s `ModelSettings.maxTokens`, verified against the pinned 0.3.9
+ * release) — NOT a top-level `maxOutputTokens`/`maxTokens` field on the Agent config itself.
+ */
+export function buildAgentConfig(request: AgentRunRequest): ConstructorParameters<typeof Agent>[0] {
+  // `Agent`'s `outputType` is typed against the SDK's own bundled zod import, which Deno's npm
+  // resolution instantiates as a nominally distinct package from this file's `npm:zod@3.25.76` —
+  // structurally identical (both are zod v3 ZodObject instances at runtime), but TypeScript
+  // treats them as unrelated types. The cast here is type-only; `sanitizeForStructuredOutput`
+  // still runs, and the SDK's own runtime `zodToJsonSchema` conversion works off the schema's
+  // actual shape, not this static type. Real correctness is enforced by the caller re-parsing
+  // the raw output against the full, original schema afterward (see that function's docstring).
+  const outputType = request.outputSchema
+    ? (sanitizeForStructuredOutput(request.outputSchema, request.excludeOutputFields ?? []) as unknown as
+      ConstructorParameters<typeof Agent>[0]["outputType"])
+    : undefined;
+  return {
+    name: request.agentName,
+    instructions: request.systemPrompt,
+    ...(request.model ? { model: request.model } : {}),
+    ...(outputType ? { outputType } : {}),
+    ...(request.maxOutputTokens ? { modelSettings: { maxTokens: request.maxOutputTokens } } : {}),
+  };
+}
+
 class SdkAgentRunner implements AgentRunner {
   async run(request: AgentRunRequest): Promise<AgentRunResult> {
-    // `Agent`'s `outputType` is typed against the SDK's own bundled zod import, which Deno's npm
-    // resolution instantiates as a nominally distinct package from this file's `npm:zod@3.25.76` —
-    // structurally identical (both are zod v3 ZodObject instances at runtime), but TypeScript
-    // treats them as unrelated types. The cast here is type-only; `sanitizeForStructuredOutput`
-    // still runs, and the SDK's own runtime `zodToJsonSchema` conversion works off the schema's
-    // actual shape, not this static type. Real correctness is enforced by the caller re-parsing
-    // the raw output against the full, original schema afterward (see the docstring above).
-    const outputType = request.outputSchema
-      ? (sanitizeForStructuredOutput(request.outputSchema) as unknown as ConstructorParameters<typeof Agent>[0]["outputType"])
-      : undefined;
-    const agent = new Agent({
-      name: request.agentName,
-      instructions: request.systemPrompt,
-      ...(request.model ? { model: request.model } : {}),
-      ...(outputType ? { outputType } : {}),
-    });
+    const agent = new Agent(buildAgentConfig(request));
 
     const inputText = typeof request.input === "string" ? request.input : JSON.stringify(request.input);
     const startedAt = Date.now();
@@ -225,10 +294,11 @@ class SdkAgentRunner implements AgentRunner {
       result = await runAgentSdk(agent, inputText, { maxTurns: request.maxTurns ?? 4 });
     } catch (e) {
       const message = e instanceof Error ? `${e.name}: ${e.message}` : String(e);
+      const retryable = TRUNCATED_JSON_OUTPUT_PATTERN.test(message) || !NON_RETRYABLE_FAILURE_PATTERN.test(message);
       throw new RecipeAutomationError({
         code: "AGENT_RUNNER_SDK_CALL_FAILED",
         message,
-        retryable: !NON_RETRYABLE_FAILURE_PATTERN.test(message),
+        retryable,
       });
     }
 

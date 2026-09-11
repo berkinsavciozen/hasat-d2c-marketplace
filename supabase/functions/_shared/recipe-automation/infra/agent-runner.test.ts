@@ -9,7 +9,7 @@
 // resolveAgentRuntimeMode() instead, which is pure and has no SDK/network dependency. The
 // deno-native path IS still exercised via .run() — it rejects synchronously, no network involved.
 import assert from "node:assert/strict";
-import { createAgentRunner, resolveAgentRuntimeMode, sanitizeForStructuredOutput } from "./agent-runner.ts";
+import { buildAgentConfig, createAgentRunner, resolveAgentRuntimeMode, sanitizeForStructuredOutput } from "./agent-runner.ts";
 import { RecipeAutomationError } from "./errors.ts";
 import { z } from "npm:zod@3.25.76";
 
@@ -119,6 +119,69 @@ Deno.test("sanitizeForStructuredOutput: a full recipeDraftPayloadSchema-shaped s
     steps: [{ stepNo: 1, photoUrl: "also-not-a-url" }],
   });
   assert.equal((parsed as { coverPhotoUrl: string }).coverPhotoUrl, "not-a-url");
+});
+
+// buildAgentConfig: pure, no network — proves AgentRunRequest.maxOutputTokens/excludeOutputFields
+// actually reach the SDK config object, without ever constructing a real Agent or SdkAgentRunner
+// (which would fire a live network request; see this file's header). Regression coverage for the
+// "declared but never wired" bug (AGENT_RUNNER_SDK_CALL_FAILED / "Unexpected end of JSON input" on
+// long drafts, 2026-09-09 — see maxOutputTokens's own docstring in agent-runner.ts).
+
+Deno.test("buildAgentConfig: maxOutputTokens is actually passed through to the SDK config as modelSettings.maxTokens", () => {
+  const config = buildAgentConfig({
+    agentName: "recipe-writer",
+    systemPrompt: "x",
+    input: {},
+    maxOutputTokens: 16000,
+  });
+  assert.equal((config as { modelSettings?: { maxTokens?: number } }).modelSettings?.maxTokens, 16000);
+});
+
+Deno.test("buildAgentConfig: modelSettings is omitted entirely when maxOutputTokens isn't set (no accidental maxTokens: undefined)", () => {
+  const config = buildAgentConfig({ agentName: "recipe-writer", systemPrompt: "x", input: {} });
+  assert.equal((config as { modelSettings?: unknown }).modelSettings, undefined);
+});
+
+Deno.test("buildAgentConfig: excludeOutputFields reaches the derived outputType schema — the excluded field is entirely absent, not just relaxed", () => {
+  const schema = z.object({
+    coverPhotoUrl: z.string().url().nullable().default(null),
+    title: z.string(),
+  }).strict();
+
+  const config = buildAgentConfig({
+    agentName: "recipe-writer",
+    systemPrompt: "x",
+    input: {},
+    outputSchema: schema,
+    excludeOutputFields: ["coverPhotoUrl"],
+  });
+
+  const outputType = (config as { outputType?: z.ZodObject<z.ZodRawShape> }).outputType!;
+  assert.ok(!("coverPhotoUrl" in outputType.shape), "coverPhotoUrl must be entirely absent from the derived outputType");
+  assert.ok("title" in outputType.shape, "unrelated fields are untouched");
+});
+
+Deno.test("sanitizeForStructuredOutput: excludePaths removes a top-level field and a nested array-element field entirely, leaving siblings untouched", () => {
+  const schema = z.object({
+    coverPhotoUrl: z.string().url().nullable().default(null),
+    steps: z.array(z.object({
+      stepNo: z.number().int().positive(),
+      photoUrl: z.string().url().nullable().default(null),
+    }).strict()).min(1).max(60),
+  }).strict();
+
+  const sanitized = sanitizeForStructuredOutput(schema, ["coverPhotoUrl", "steps[].photoUrl"]) as z.ZodObject<z.ZodRawShape>;
+  assert.ok(!("coverPhotoUrl" in sanitized.shape), "coverPhotoUrl must be entirely absent");
+
+  const stepElement = (sanitized.shape.steps as z.ZodArray<z.ZodObject<z.ZodRawShape>>).element;
+  assert.ok(!("photoUrl" in stepElement.shape), "steps[].photoUrl must be entirely absent");
+  assert.ok("stepNo" in stepElement.shape, "unrelated step fields are untouched");
+
+  // The rebuilt object schema is still .strict() — parsing an object that (correctly, per the
+  // exclusion) omits coverPhotoUrl/photoUrl succeeds; one that still includes them fails as an
+  // unrecognized key, proving the fields are gone, not just made optional.
+  assert.doesNotThrow(() => sanitized.parse({ steps: [{ stepNo: 1 }] }));
+  assert.throws(() => sanitized.parse({ steps: [{ stepNo: 1, photoUrl: null }] }));
 });
 
 Deno.test("createAgentRunner: callers only ever depend on the AgentRunner interface shape", () => {
