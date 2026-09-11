@@ -9,6 +9,11 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
+import {
+  DuplicateCheckButton,
+  ExistingCatalogPanel,
+  WowFactorChecklist,
+} from "@/components/hasat/admin/RecipeGuidancePanels";
 import { ADMIN_RECIPE_KEY_STORAGE } from "./admin.recipes";
 
 export const Route = createFileRoute("/admin/recipes/plan/$batchId")({
@@ -239,6 +244,7 @@ function diffForm(brief: PlanBriefItem, form: BriefForm): EditPlanBriefPatch {
 
 function BriefCard({
   brief,
+  adminKey,
   canMutate,
   isSaving,
   onSave,
@@ -246,6 +252,7 @@ function BriefCard({
   onInclude,
 }: {
   brief: PlanBriefItem;
+  adminKey: string;
   canMutate: boolean;
   isSaving: boolean;
   onSave: (briefId: string, patch: EditPlanBriefPatch) => void;
@@ -378,6 +385,13 @@ function BriefCard({
               onChange={(e) => setForm((f) => ({ ...f, selectionReason: e.target.value }))}
             />
           </label>
+        </div>
+      )}
+
+      {editing && (
+        <div className="space-y-3">
+          <ExistingCatalogPanel adminKey={adminKey} focusCrops={form.focusCrop ? [form.focusCrop] : []} />
+          <DuplicateCheckButton adminKey={adminKey} workingTitle={form.workingTitle} focusCrop={form.focusCrop} />
         </div>
       )}
 
@@ -665,12 +679,15 @@ function AdminRecipePlanBatchDetailPage() {
           </SectionCard>
         )}
 
+        <WowFactorChecklist />
+
         <SectionCard title="Briefler">
           <div className="space-y-3">
             {d.briefs.map((brief) => (
               <BriefCard
                 key={brief.id}
                 brief={brief}
+                adminKey={adminKey}
                 canMutate={canMutate}
                 isSaving={savingBriefId === brief.id && (editMutation.isPending || exclusionMutation.isPending)}
                 onSave={(briefId, patch) => {

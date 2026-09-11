@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
+import { ExistingCatalogPanel } from "@/components/hasat/admin/RecipeGuidancePanels";
 import { ADMIN_RECIPE_KEY_STORAGE } from "./admin.recipes";
 
 export const Route = createFileRoute("/admin/recipes/plan/")({
@@ -245,6 +246,8 @@ function CreateBatchCard({ adminKey, onCreated }: { adminKey: string; onCreated:
               placeholder="opsiyonel"
             />
           </label>
+
+          <ExistingCatalogPanel adminKey={adminKey} focusCrops={splitCsv(form.focusCrops) ?? []} />
 
           <Button type="submit" size="sm" disabled={!canSubmit || mutation.isPending}>
             {mutation.isPending ? "Oluşturuluyor…" : "Plan Oluştur"}

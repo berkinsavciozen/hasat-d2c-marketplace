@@ -129,6 +129,22 @@ for the full precondition-to-check mapping. SQL test suite:
 16 server (see `plan/README.md`'s own "Verified for real in this session" section); not applied to
 any shared/live Supabase environment.
 
+**Admin plan guidance (additive, no step number — pre-Writer human signal):** `admin/plan-guidance.ts`
+(entrypoint `../admin-recipe-guidance/index.ts`) gives the admin dashboard, at brief-authoring time,
+the SAME read-only signal the Planner/QA agents already had ahead of drafting, but surfaced for a
+human BEFORE any brief reaches the Writer: `mode=catalog` returns published recipes already on the
+platform for each selected `focusCrop` (`search_existing_recipes`, crop- and `published`-status-
+scoped — an additive parameterization of the same RPC `plan/context.ts`'s `loadExistingRecipeSample`
+already wraps) plus the Planner's own unfiltered `get_recent_recipe_mix` signal; `mode=duplicates`
+runs `find_recipe_duplicates` live against an admin's in-progress `workingTitle`/`focusCrop` edits —
+the same RPC the QA stage already calls, just moved earlier and on demand. No new table, no new RPC,
+no new write path; same `x-admin-key`/service-role auth convention as every other admin-recipe-*
+function. The admin plan-batch screens (`admin.recipes.plan.index.tsx`,
+`admin.recipes.plan.$batchId.tsx`) also carry a static, backend-free "Wow-Factor Kontrol Listesi" box
+— a human-readable summary of `writer/editorial-rules.ts`'s self-check/creative-realism/
+anti-formulaic-language rules, so a human editing a brief by hand edits it against the same standard
+the Writer is held to.
+
 **Step 03A (foundation reconciliation, PRs #40–#42):** the stage/status enums, `RecipeQAResult`,
 and `RecipePlanBatch` below were realigned to RecipeAutomation.md §3/§5.3's canonical
 state-machine and QA-routing contract. In particular: `RecipeJobStage`/`RecipeJobStatus` now use
