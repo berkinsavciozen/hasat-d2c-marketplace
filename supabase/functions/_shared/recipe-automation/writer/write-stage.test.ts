@@ -80,12 +80,13 @@ function throwingAgentRunner(): AgentRunner {
   };
 }
 
-Deno.test("runWriteStage: live-verified model quirk — placeholder photo URLs ('' and the literal string 'null') are normalized, not rejected", async () => {
-  // F2 Step 06 (P1 preflight probe evidence): across multiple real OpenAI Structured Outputs
-  // calls, the model reliably substitutes "" or the literal string "null" for
-  // coverPhotoUrl/steps[].photoUrl instead of JSON null (image generation is a later stage — the
-  // Writer never has a real photo). Proves write-stage.ts stores successfully for both observed
-  // spellings instead of treating this expected, harmless case as invalid_output.
+Deno.test("runWriteStage: coverPhotoUrl/steps[].photoUrl are pipeline-owned — always stored as null for a fresh draft, no matter what a (misbehaving) agent runner returns for them", async () => {
+  // Structural fix (see write-stage.ts's PHOTO_FIELD_EXCLUDE_PATHS doc comment for the full
+  // root-cause history): these fields are excluded from the model-facing schema entirely, so a real
+  // agent call can never even produce them. This test simulates a rogue/outdated AgentRunner
+  // implementation that still includes them anyway — proving mergeImmutablePhotoFields ignores
+  // whatever is there and always writes null for the Writer's first version, rather than relying on
+  // recognizing any particular "no photo" spelling (the old, whack-a-mole approach this replaces).
   const client = new FakeSupabaseClient();
   const jobId = seedWriteJob(client);
   registerHappyPathRpcs(client);
@@ -103,14 +104,41 @@ Deno.test("runWriteStage: live-verified model quirk — placeholder photo URLs (
   assert.ok(steps.every((s) => s.photoUrl === null));
 });
 
-Deno.test("runWriteStage: a genuinely malformed photoUrl (not a known placeholder) is still rejected", async () => {
+Deno.test("runWriteStage: even a syntactically malformed coverPhotoUrl from a (misbehaving) agent runner can never fail validation — the field is never trusted from agent output at all", async () => {
+  // Before this fix, a genuinely malformed (non-URL, non-placeholder) coverPhotoUrl correctly
+  // failed WRITER_OUTPUT_SCHEMA_INVALID, because the Writer's raw value — whatever it was — still
+  // reached recipeDraftPayloadSchema's .url() check. Now that coverPhotoUrl is excluded from the
+  // model-facing schema and always overridden with the pipeline's own value (null for a fresh
+  // draft), that value is no longer even inspected — this is the same DoD guarantee as the
+  // unrecognized-placeholder-spelling test in revise-stage.test.ts, exercised on the Writer side.
   const client = new FakeSupabaseClient();
   const jobId = seedWriteJob(client);
   registerHappyPathRpcs(client);
   const runner = fixtureAgentRunner({ coverPhotoUrl: "not a url at all" });
 
   const result = await runWriteStage(asClient(client), { jobId, agentRunner: runner });
-  assert.equal(result.outcome, "invalid_output");
+  assert.equal(result.outcome, "stored");
+  const draft = client.getRow("recipe_drafts", result.draftId!)!;
+  assert.equal(draft.cover_photo_url, null);
+});
+
+Deno.test("runWriteStage: the outputSchema handed to the agent runner excludes coverPhotoUrl/steps[].photoUrl entirely", async () => {
+  const client = new FakeSupabaseClient();
+  const jobId = seedWriteJob(client);
+  registerHappyPathRpcs(client);
+
+  let capturedExcludeOutputFields: readonly string[] | undefined;
+  const runner: AgentRunner = {
+    run: async (request) => {
+      capturedExcludeOutputFields = request.excludeOutputFields;
+      const { jobId: _jobId, briefId: _briefId, ...rest } = validKabakRecipeDraft;
+      return { output: rest, provider: "openai", model: "test-model", usage: null, durationMs: 1 };
+    },
+  };
+
+  const result = await runWriteStage(asClient(client), { jobId, agentRunner: runner });
+  assert.equal(result.outcome, "stored");
+  assert.deepEqual(capturedExcludeOutputFields, ["coverPhotoUrl", "steps[].photoUrl"]);
 });
 
 Deno.test("runWriteStage: not_claimed when the job isn't at the write stage", async () => {

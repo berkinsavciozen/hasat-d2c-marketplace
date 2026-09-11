@@ -33,6 +33,16 @@ const NEXT_STAGE = "qa" as const;
 const NEXT_STAGE_FUNCTION_NAME = "recipe-stage-qa";
 const WRITER_MODEL_ENV_VAR = "RECIPE_WRITER_MODEL";
 
+/** Generous upper bound for the Writer's structured-output token budget — see
+ * `AgentRunRequest.maxOutputTokens`'s own docstring for the root cause this closes
+ * (AGENT_RUNNER_SDK_CALL_FAILED / "Unexpected end of JSON input" on long drafts, 2026-09-09, the
+ * observed cutoff landing mid-object at ~43751 characters of JSON, job
+ * ebefea4c-f829-46c6-89de-3ddcfd051746). A full draft can have up to 60 ingredients and 60 steps;
+ * 16000 tokens leaves comfortable headroom over that observed cutoff for typical model tokenizers —
+ * revisit against real usage.outputTokens numbers from recipe_generation_stage_runs if a draft this
+ * size is still observed hitting the limit. */
+const WRITER_MAX_OUTPUT_TOKENS = 16000;
+
 export interface RunWriteStageParams {
   jobId: string;
   /** Injectable for tests — defaults to createAgentRunner() (the real SDK-backed runner). */
@@ -57,56 +67,89 @@ export interface RunWriteStageResult {
   errorCode?: string;
 }
 
-/** "no photo" spellings observed across multiple live probe runs (F2 Step 06, P1 preflight — see
- * the completion report; third spelling added 2026-09-09, see the F2 photo-placeholder root-cause
- * probe below) for `coverPhotoUrl`/`steps[].photoUrl` when the model has no real photo to link
- * (always true for the Writer — image generation is a later pipeline stage; see editorial-rules.ts
- * item 8): an empty string, the literal string `"null"` (not the JSON null value), and the literal
- * string `"photoUrl"` — the field's own key name. OpenAI's Structured Outputs mode requires every
- * property to be present as SOME string, so the model substitutes one of these instead of the
- * `null` the prompt asks for.
+/**
+ * Bracket paths (the same convention `../revise/allowed-changes.ts`'s `parseIssueFieldPath` uses for
+ * QA-issue fields) identifying `coverPhotoUrl`/`steps[].photoUrl` — fields the Writer/Reviser agents
+ * must NEVER see or produce a value for at all. Passed as `AgentRunRequest.excludeOutputFields` so
+ * `sanitizeForStructuredOutput` drops them entirely from the schema handed to the SDK as
+ * `outputType` (see that function's own doc comment).
  *
- * `"photoUrl"` root-cause (2026-09-09, jobs 72b46d4d-bc0e-4a76-91d4-b2a343a825f7/
- * ce09b38b-77ad-45d2-815b-2787daf904fb, both WRITER_OUTPUT_SCHEMA_INVALID on 2026-09-09): a
- * temporary debug log in the safeParse-failure branch below, deployed live, captured the raw
- * pre-normalization Writer output for a fresh reproduction on the same brief family (job
- * dadc3719-5a03-426f-a188-456a7f1af237, "Elmalı Serinletici Smoothie") — `steps[].photoUrl` was the
- * literal string `"photoUrl"` on all 5 steps, which fails `.url()` exactly like `""`/`"null"` did
- * before this fix. The same pattern reproduced independently in the Reviser (job
- * c3076955-051e-4f91-a7d4-f3319c6bea2f, REVISER_OUTPUT_SCHEMA_INVALID at the `revise` stage, which
- * reuses `normalizeEmptyUrlFields` — see that function's own doc comment), confirming this is the
- * same OpenAI Structured Outputs quirk, not a one-off. Deliberately narrow: anything else (a
- * non-empty, non-URL string like "n/a" or garbled text, or a syntactically valid but fabricated URL
- * like the same debug capture's own `coverPhotoUrl: "http://hasat.ai/_assets/cover-default.jpg"` —
- * editorial-rules.ts item 10 explicitly forbids a made-up URL, and that value is NOT added here) is
- * a genuinely malformed value and must still fail validation as before — only these three
- * known-equivalent "no photo" spellings are coerced. */
-const NO_PHOTO_PLACEHOLDER_VALUES = new Set(["", "null", "photoUrl"]);
+ * Root cause this replaces (F2 Step 06/08 P1 preflight, and the recurring
+ * WRITER_OUTPUT_SCHEMA_INVALID / REVISER_OUTPUT_SCHEMA_INVALID failures that followed):
+ * `coverPhotoUrl`/`steps[].photoUrl` are pipeline-owned — image generation happens in a LATER
+ * pipeline stage (editorial-rules.ts item 8, revise-rules.ts item 9), so the Writer/Reviser never
+ * have a real value to put here and are always instructed to emit `null`. But OpenAI's Structured
+ * Outputs mode requires every property to be present as SOME string when the schema has one, so
+ * across live runs the model kept substituting a NEW "no photo" spelling for null instead: an empty
+ * string, the literal string `"null"`, the literal string `"photoUrl"` (the field's own key name;
+ * jobs 72b46d4d-bc0e-4a76-91d4-b2a343a825f7/ce09b38b-77ad-45d2-815b-2787daf904fb,
+ * WRITER_OUTPUT_SCHEMA_INVALID, 2026-09-09) — and most recently a fourth, never-seen-before spelling
+ * on the Reviser (job 0a047964-12ca-4972-9416-12111f8b8cd8, "Elmalı Fındıklı Kahvaltı Bowl'u",
+ * REVISER_OUTPUT_SCHEMA_INVALID, 2026-09-10). Coercing each known spelling to `null` before
+ * validation (the previous fix, `normalizeEmptyUrlFields`/`NO_PHOTO_PLACEHOLDER_VALUES`) was
+ * structurally whack-a-mole: it could only ever catch spellings already observed, and
+ * `../revise/allowed-changes.ts` was ALSO unconditionally force-reverting both fields to the
+ * previous draft's own value regardless of what the Reviser produced (`IMMUTABLE_TOP_LEVEL_FIELDS`,
+ * `reconcileSteps`'s unconditional `merged.photoUrl = prevRec.photoUrl`) — meaning the Reviser could
+ * never make either field stick even when it DID produce a valid value. Excluding both fields from
+ * the model-facing schema entirely closes the whole failure class structurally: a model cannot
+ * invent a "no value" spelling for a field it was never asked to fill in, so no future spelling can
+ * ever reach `recipeDraftPayloadSchema`'s `.url()` check and fail it. */
+export const PHOTO_FIELD_EXCLUDE_PATHS = ["coverPhotoUrl", "steps[].photoUrl"] as const;
 
 /**
- * Normalizes the known "no photo" placeholder spellings (see `NO_PHOTO_PLACEHOLDER_VALUES` above)
- * to `null` BEFORE validation, so `recipeDraftPayloadSchema`'s `.url()` check (which correctly
- * rejects both — neither is a valid URL nor JSON `null`) doesn't reject semantically-valid "no
- * photo" output. Exported so `../revise/revise-stage.ts` (F2 Step 08) can reuse it as-is: the
+ * Fills in `coverPhotoUrl`/`steps[].photoUrl` on raw structured-output JSON that no longer contains
+ * these keys at all (they were excluded from the schema via `PHOTO_FIELD_EXCLUDE_PATHS` — see that
+ * constant's doc comment for why). `previous` is the exact prior draft version these values are
+ * carried forward from verbatim (`null` for the Writer's first version — there is no prior draft
+ * yet); steps are matched by their ORIGINAL `stepNo` (the same identity
+ * `../revise/allowed-changes.ts` uses), falling back to `null` for any step with no previous
+ * counterpart (a newly-added step, which can only happen when `revise-rules.ts`/`allowed-changes.ts`
+ * granted `stepsWhole`). Exported so `../revise/revise-stage.ts` (F2 Step 08) can reuse it as-is: the
  * Reviser agent produces the same `RecipeDraftPayload` shape and is subject to the identical
- * OpenAI Structured Outputs quirk — not Writer-specific. This is not a validation weakening: every other string still goes through
- * `.url()` unchanged and is rejected exactly as before if it isn't a real URL.
+ * structural constraint, not Writer-specific.
  */
-export function normalizeEmptyUrlFields(output: Record<string, unknown>): Record<string, unknown> {
-  const normalizeUrl = (value: unknown) =>
-    typeof value === "string" && NO_PHOTO_PLACEHOLDER_VALUES.has(value) ? null : value;
+export function mergeImmutablePhotoFields(
+  output: Record<string, unknown>,
+  previous: RecipeDraftPayload | null,
+): Record<string, unknown> {
+  const previousPhotoUrlByStepNo = new Map<number, string | null>();
+  for (const step of previous?.steps ?? []) {
+    previousPhotoUrlByStepNo.set(step.stepNo, step.photoUrl);
+  }
   const steps = Array.isArray(output.steps)
-    ? output.steps.map((step) =>
-      step && typeof step === "object"
-        ? { ...(step as Record<string, unknown>), photoUrl: normalizeUrl((step as Record<string, unknown>).photoUrl) }
-        : step
-    )
+    ? output.steps.map((step) => {
+      if (!step || typeof step !== "object") return step;
+      const stepRecord = step as Record<string, unknown>;
+      const stepNo = stepRecord.stepNo;
+      const photoUrl = typeof stepNo === "number" && previousPhotoUrlByStepNo.has(stepNo)
+        ? previousPhotoUrlByStepNo.get(stepNo)!
+        : null;
+      return { ...stepRecord, photoUrl };
+    })
     : output.steps;
   return {
     ...output,
-    coverPhotoUrl: normalizeUrl(output.coverPhotoUrl),
+    coverPhotoUrl: previous?.coverPhotoUrl ?? null,
     steps,
   };
+}
+
+/**
+ * Extracts ONLY `coverPhotoUrl`/`steps[].photoUrl` from a raw (pre-validation) agent output, for
+ * diagnostic use when `recipeDraftPayloadSchema.safeParse` fails — deliberately narrow (no other
+ * field, no PII) so it's safe to attach to `recipe_generation_stage_runs.output`/`.error` even
+ * though that raw output hasn't been validated yet. Transitional: now that
+ * `PHOTO_FIELD_EXCLUDE_PATHS` keeps these fields out of the model-facing schema entirely, a parse
+ * failure should never actually be caused by either of them again — this exists to make that
+ * verifiable from stored telemetry instead of assumed.
+ */
+export function extractPhotoDiagnostics(output: unknown): Record<string, unknown> {
+  const record = output && typeof output === "object" ? output as Record<string, unknown> : {};
+  const stepsPhotoUrls = Array.isArray(record.steps)
+    ? record.steps.map((step) => (step && typeof step === "object" ? (step as Record<string, unknown>).photoUrl : step))
+    : undefined;
+  return { coverPhotoUrl: record.coverPhotoUrl, stepsPhotoUrls };
 }
 
 function draftToInsertRow(jobId: string, draft: RecipeDraftPayload, normalizedIngredients: RecipeDraftPayload["ingredients"]) {
@@ -175,6 +218,8 @@ async function runWriterAgent(
     // back into Supabase/SQL or anything else.
     input: { jobId, brief, cropContext },
     outputSchema: recipeDraftPayloadSchema,
+    excludeOutputFields: PHOTO_FIELD_EXCLUDE_PATHS,
+    maxOutputTokens: WRITER_MAX_OUTPUT_TOKENS,
     model: Deno.env.get(WRITER_MODEL_ENV_VAR) || undefined,
   });
 }
@@ -245,7 +290,7 @@ export async function runWriteStage(
   }
 
   const parsed = recipeDraftPayloadSchema.safeParse({
-    ...normalizeEmptyUrlFields(agentResult.output as Record<string, unknown>),
+    ...mergeImmutablePhotoFields(agentResult.output as Record<string, unknown>, null),
     jobId: params.jobId,
     briefId: brief.briefId,
   });
@@ -259,6 +304,10 @@ export async function runWriteStage(
     await recordStageRun(client, {
       jobId: params.jobId, batchId: brief.batchId, stage: WRITE_STAGE, status: "failed",
       attempt, startedAt, finishedAt: new Date().toISOString(), error,
+      // Diagnostic only — see extractPhotoDiagnostics's own doc comment. Should never actually be
+      // implicated now that PHOTO_FIELD_EXCLUDE_PATHS keeps these fields out of the model-facing
+      // schema entirely.
+      output: extractPhotoDiagnostics(agentResult.output),
       provider: agentResult.provider, model: agentResult.model, usage: agentResult.usage,
     });
     await failJob(client, { jobId: params.jobId, lockToken, stage: WRITE_STAGE, error });

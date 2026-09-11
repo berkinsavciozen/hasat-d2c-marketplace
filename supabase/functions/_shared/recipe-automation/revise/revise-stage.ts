@@ -26,7 +26,7 @@ import { RecipeAutomationError, toSafeErrorPayload } from "../infra/errors.ts";
 import { recipeDraftPayloadSchema } from "../schemas.ts";
 import type { RecipeDraftPayload, RecipeQAIssue } from "../types.ts";
 import { briefFromJobRow, type WriteStageBrief } from "../writer/context.ts";
-import { normalizeEmptyUrlFields } from "../writer/write-stage.ts";
+import { extractPhotoDiagnostics, mergeImmutablePhotoFields, PHOTO_FIELD_EXCLUDE_PATHS } from "../writer/write-stage.ts";
 import { validateDraft } from "../writer/validate-draft.ts";
 import { buildReviserSystemPrompt } from "./system-prompt.ts";
 import { loadDraftByVersion, loadLatestQaResult, type DraftAtVersion, type LatestQaResult } from "./context.ts";
@@ -44,6 +44,13 @@ const REVISER_MODEL_ENV_VAR = "RECIPE_REVISE_MODEL";
  * re-derived from the DB constraint, so the business rule and its enforcement point are visible
  * together — the CHECK is the backstop, this is the actual routing decision. */
 const MAX_AUTOMATIC_REVISIONS = 2;
+
+/** Generous upper bound for the Reviser's structured-output token budget — same root cause and
+ * sizing rationale as writer/write-stage.ts's WRITER_MAX_OUTPUT_TOKENS (see
+ * `AgentRunRequest.maxOutputTokens`'s own docstring): the Reviser emits a complete
+ * `RecipeDraftPayload`, not a diff, so it is subject to the identical JSON-truncation risk on a long
+ * recipe. */
+const REVISER_MAX_OUTPUT_TOKENS = 16000;
 
 export interface RunReviseStageParams {
   jobId: string;
@@ -153,6 +160,8 @@ function runReviserAgent(
       maxAutomaticRevisions: MAX_AUTOMATIC_REVISIONS,
     },
     outputSchema: recipeDraftPayloadSchema,
+    excludeOutputFields: PHOTO_FIELD_EXCLUDE_PATHS,
+    maxOutputTokens: REVISER_MAX_OUTPUT_TOKENS,
     model: Deno.env.get(REVISER_MODEL_ENV_VAR) || undefined,
   });
 }
@@ -386,7 +395,7 @@ export async function runReviseStage(
   // pattern write-stage.ts/qa-stage.ts use: the agent's own output for jobId/briefId is never
   // trusted, even if it happened to (correctly) restate them per revise-rules.ts item 3.
   const parsed = recipeDraftPayloadSchema.safeParse({
-    ...normalizeEmptyUrlFields(agentResult.output as Record<string, unknown>),
+    ...mergeImmutablePhotoFields(agentResult.output as Record<string, unknown>, targetDraft.payload),
     jobId: params.jobId,
     briefId: brief.briefId,
   });
@@ -400,7 +409,13 @@ export async function runReviseStage(
     await recordStageRun(client, {
       jobId: params.jobId, batchId: brief.batchId, stage: REVISE_STAGE, status: "failed",
       attempt, startedAt, finishedAt: new Date().toISOString(), error,
-      output: { draftId: targetDraft.id, draftVersion: targetDraft.version },
+      // Diagnostic only — see extractPhotoDiagnostics's own doc comment. Should never actually be
+      // implicated now that PHOTO_FIELD_EXCLUDE_PATHS keeps these fields out of the model-facing
+      // schema entirely.
+      output: {
+        draftId: targetDraft.id, draftVersion: targetDraft.version,
+        ...extractPhotoDiagnostics(agentResult.output),
+      },
       provider: agentResult.provider, model: agentResult.model, usage: agentResult.usage,
     });
     await failJob(client, { jobId: params.jobId, lockToken, stage: REVISE_STAGE, error });
