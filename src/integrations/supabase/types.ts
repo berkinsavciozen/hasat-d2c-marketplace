@@ -83,6 +83,13 @@ export type Database = {
             foreignKeyName: "ai_customize_requests_created_recipe_id_fkey"
             columns: ["created_recipe_id"]
             isOneToOne: false
+            referencedRelation: "admin_recipe_quality_overview"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_customize_requests_created_recipe_id_fkey"
+            columns: ["created_recipe_id"]
+            isOneToOne: false
             referencedRelation: "recipes"
             referencedColumns: ["id"]
           },
@@ -99,6 +106,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "v_recipe_coverage"
             referencedColumns: ["recipe_id"]
+          },
+          {
+            foreignKeyName: "ai_customize_requests_source_recipe_id_fkey"
+            columns: ["source_recipe_id"]
+            isOneToOne: false
+            referencedRelation: "admin_recipe_quality_overview"
+            referencedColumns: ["id"]
           },
           {
             foreignKeyName: "ai_customize_requests_source_recipe_id_fkey"
@@ -1096,6 +1110,135 @@ export type Database = {
         }
         Relationships: []
       }
+      ingredient_measure_reference: {
+        Row: {
+          created_at: string
+          grams_per_unit: number
+          normalized_unit: string
+          notes: string | null
+          reference_source: string
+          reference_source_id: string
+          reference_url: string
+          reference_version: string
+          target_key: string
+          target_kind: string
+        }
+        Insert: {
+          created_at?: string
+          grams_per_unit: number
+          normalized_unit: string
+          notes?: string | null
+          reference_source: string
+          reference_source_id: string
+          reference_url: string
+          reference_version: string
+          target_key: string
+          target_kind: string
+        }
+        Update: {
+          created_at?: string
+          grams_per_unit?: number
+          normalized_unit?: string
+          notes?: string | null
+          reference_source?: string
+          reference_source_id?: string
+          reference_url?: string
+          reference_version?: string
+          target_key?: string
+          target_kind?: string
+        }
+        Relationships: []
+      }
+      ingredient_nutrition_alias: {
+        Row: {
+          created_at: string
+          normalized_alias: string
+          rationale: string
+          target_key: string
+          target_kind: string
+        }
+        Insert: {
+          created_at?: string
+          normalized_alias: string
+          rationale: string
+          target_key: string
+          target_kind: string
+        }
+        Update: {
+          created_at?: string
+          normalized_alias?: string
+          rationale?: string
+          target_key?: string
+          target_kind?: string
+        }
+        Relationships: []
+      }
+      ingredient_nutrition_reference: {
+        Row: {
+          calcium_mg: number | null
+          calories_kcal: number
+          carbs_g: number
+          created_at: string
+          display_name: string
+          fat_g: number
+          fiber_g: number
+          food_key: string
+          iron_mg: number | null
+          notes: string | null
+          potassium_mg: number | null
+          protein_g: number
+          reference_source: string
+          reference_source_id: string
+          reference_url: string
+          reference_version: string
+          sodium_mg: number | null
+          vitamin_a_mcg_rae: number | null
+          vitamin_c_mg: number | null
+        }
+        Insert: {
+          calcium_mg?: number | null
+          calories_kcal: number
+          carbs_g: number
+          created_at?: string
+          display_name: string
+          fat_g: number
+          fiber_g: number
+          food_key: string
+          iron_mg?: number | null
+          notes?: string | null
+          potassium_mg?: number | null
+          protein_g: number
+          reference_source: string
+          reference_source_id: string
+          reference_url: string
+          reference_version: string
+          sodium_mg?: number | null
+          vitamin_a_mcg_rae?: number | null
+          vitamin_c_mg?: number | null
+        }
+        Update: {
+          calcium_mg?: number | null
+          calories_kcal?: number
+          carbs_g?: number
+          created_at?: string
+          display_name?: string
+          fat_g?: number
+          fiber_g?: number
+          food_key?: string
+          iron_mg?: number | null
+          notes?: string | null
+          potassium_mg?: number | null
+          protein_g?: number
+          reference_source?: string
+          reference_source_id?: string
+          reference_url?: string
+          reference_version?: string
+          sodium_mg?: number | null
+          vitamin_a_mcg_rae?: number | null
+          vitamin_c_mg?: number | null
+        }
+        Relationships: []
+      }
       journal_entry_types: {
         Row: {
           created_at: string
@@ -1771,6 +1914,13 @@ export type Database = {
             foreignKeyName: "offers_source_recipe_id_fkey"
             columns: ["source_recipe_id"]
             isOneToOne: false
+            referencedRelation: "admin_recipe_quality_overview"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "offers_source_recipe_id_fkey"
+            columns: ["source_recipe_id"]
+            isOneToOne: false
             referencedRelation: "recipes"
             referencedColumns: ["id"]
           },
@@ -2418,6 +2568,13 @@ export type Database = {
             foreignKeyName: "recipe_assets_recipe_id_fkey"
             columns: ["recipe_id"]
             isOneToOne: false
+            referencedRelation: "admin_recipe_quality_overview"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "recipe_assets_recipe_id_fkey"
+            columns: ["recipe_id"]
+            isOneToOne: false
             referencedRelation: "recipes"
             referencedColumns: ["id"]
           },
@@ -2743,6 +2900,13 @@ export type Database = {
             foreignKeyName: "recipe_generation_jobs_recipe_id_fkey"
             columns: ["recipe_id"]
             isOneToOne: true
+            referencedRelation: "admin_recipe_quality_overview"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "recipe_generation_jobs_recipe_id_fkey"
+            columns: ["recipe_id"]
+            isOneToOne: true
             referencedRelation: "recipes"
             referencedColumns: ["id"]
           },
@@ -2850,6 +3014,13 @@ export type Database = {
             foreignKeyName: "recipe_generation_stage_runs_recipe_id_fkey"
             columns: ["recipe_id"]
             isOneToOne: false
+            referencedRelation: "admin_recipe_quality_overview"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "recipe_generation_stage_runs_recipe_id_fkey"
+            columns: ["recipe_id"]
+            isOneToOne: false
             referencedRelation: "recipes"
             referencedColumns: ["id"]
           },
@@ -2869,6 +3040,39 @@ export type Database = {
           },
         ]
       }
+      recipe_ingredient_nutrition_backfill_audit: {
+        Row: {
+          after_row: Json
+          before_row: Json
+          created_at: string
+          id: number
+          ingredient_id: string
+          migration_key: string
+          rationale: string
+          recipe_id: string
+        }
+        Insert: {
+          after_row: Json
+          before_row: Json
+          created_at?: string
+          id?: never
+          ingredient_id: string
+          migration_key: string
+          rationale: string
+          recipe_id: string
+        }
+        Update: {
+          after_row?: Json
+          before_row?: Json
+          created_at?: string
+          id?: never
+          ingredient_id?: string
+          migration_key?: string
+          rationale?: string
+          recipe_id?: string
+        }
+        Relationships: []
+      }
       recipe_ingredients: {
         Row: {
           created_at: string
@@ -2878,6 +3082,8 @@ export type Database = {
           ingredient_class: string | null
           is_key_ingredient: boolean
           note: string | null
+          nutrition_exclusion_reason: string | null
+          nutrition_food_key: string | null
           quantity: number | null
           recipe_id: string
           sort_order: number
@@ -2891,6 +3097,8 @@ export type Database = {
           ingredient_class?: string | null
           is_key_ingredient?: boolean
           note?: string | null
+          nutrition_exclusion_reason?: string | null
+          nutrition_food_key?: string | null
           quantity?: number | null
           recipe_id: string
           sort_order?: number
@@ -2904,6 +3112,8 @@ export type Database = {
           ingredient_class?: string | null
           is_key_ingredient?: boolean
           note?: string | null
+          nutrition_exclusion_reason?: string | null
+          nutrition_food_key?: string | null
           quantity?: number | null
           recipe_id?: string
           sort_order?: number
@@ -2916,6 +3126,20 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "crop_config"
             referencedColumns: ["crop"]
+          },
+          {
+            foreignKeyName: "recipe_ingredients_nutrition_food_key_fkey"
+            columns: ["nutrition_food_key"]
+            isOneToOne: false
+            referencedRelation: "ingredient_nutrition_reference"
+            referencedColumns: ["food_key"]
+          },
+          {
+            foreignKeyName: "recipe_ingredients_recipe_id_fkey"
+            columns: ["recipe_id"]
+            isOneToOne: false
+            referencedRelation: "admin_recipe_quality_overview"
+            referencedColumns: ["id"]
           },
           {
             foreignKeyName: "recipe_ingredients_recipe_id_fkey"
@@ -3105,6 +3329,13 @@ export type Database = {
             foreignKeyName: "recipe_qa_results_recipe_id_fkey"
             columns: ["recipe_id"]
             isOneToOne: false
+            referencedRelation: "admin_recipe_quality_overview"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "recipe_qa_results_recipe_id_fkey"
+            columns: ["recipe_id"]
+            isOneToOne: false
             referencedRelation: "recipes"
             referencedColumns: ["id"]
           },
@@ -3169,6 +3400,13 @@ export type Database = {
             foreignKeyName: "recipe_rfq_links_recipe_id_fkey"
             columns: ["recipe_id"]
             isOneToOne: false
+            referencedRelation: "admin_recipe_quality_overview"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "recipe_rfq_links_recipe_id_fkey"
+            columns: ["recipe_id"]
+            isOneToOne: false
             referencedRelation: "recipes"
             referencedColumns: ["id"]
           },
@@ -3208,6 +3446,13 @@ export type Database = {
           user_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "recipe_saves_recipe_id_fkey"
+            columns: ["recipe_id"]
+            isOneToOne: false
+            referencedRelation: "admin_recipe_quality_overview"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "recipe_saves_recipe_id_fkey"
             columns: ["recipe_id"]
@@ -3278,6 +3523,13 @@ export type Database = {
             foreignKeyName: "recipe_steps_recipe_id_fkey"
             columns: ["recipe_id"]
             isOneToOne: false
+            referencedRelation: "admin_recipe_quality_overview"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "recipe_steps_recipe_id_fkey"
+            columns: ["recipe_id"]
+            isOneToOne: false
             referencedRelation: "recipes"
             referencedColumns: ["id"]
           },
@@ -3320,6 +3572,13 @@ export type Database = {
           user_id?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "recipe_views_recipe_id_fkey"
+            columns: ["recipe_id"]
+            isOneToOne: false
+            referencedRelation: "admin_recipe_quality_overview"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "recipe_views_recipe_id_fkey"
             columns: ["recipe_id"]
@@ -3489,6 +3748,13 @@ export type Database = {
             foreignKeyName: "recipes_cloned_from_recipe_id_fkey"
             columns: ["cloned_from_recipe_id"]
             isOneToOne: false
+            referencedRelation: "admin_recipe_quality_overview"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "recipes_cloned_from_recipe_id_fkey"
+            columns: ["cloned_from_recipe_id"]
+            isOneToOne: false
             referencedRelation: "recipes"
             referencedColumns: ["id"]
           },
@@ -3650,6 +3916,63 @@ export type Database = {
       }
     }
     Views: {
+      admin_recipe_quality_overview: {
+        Row: {
+          allergen_labels: string[] | null
+          allergens_reviewed: boolean | null
+          allergens_reviewed_state: boolean | null
+          created_at: string | null
+          has_equipment: boolean | null
+          id: string | null
+          ingredient_count: number | null
+          nutrition_complete: boolean | null
+          nutrition_coverage_pct: number | null
+          nutrition_reference_version: string | null
+          nutrition_source: string | null
+          slug: string | null
+          status: string | null
+          title: string | null
+          unresolved_ingredient_count: number | null
+          visibility: string | null
+        }
+        Insert: {
+          allergen_labels?: string[] | null
+          allergens_reviewed?: boolean | null
+          allergens_reviewed_state?: never
+          created_at?: string | null
+          has_equipment?: never
+          id?: string | null
+          ingredient_count?: never
+          nutrition_complete?: never
+          nutrition_coverage_pct?: number | null
+          nutrition_reference_version?: string | null
+          nutrition_source?: string | null
+          slug?: string | null
+          status?: string | null
+          title?: string | null
+          unresolved_ingredient_count?: never
+          visibility?: string | null
+        }
+        Update: {
+          allergen_labels?: string[] | null
+          allergens_reviewed?: boolean | null
+          allergens_reviewed_state?: never
+          created_at?: string | null
+          has_equipment?: never
+          id?: string | null
+          ingredient_count?: never
+          nutrition_complete?: never
+          nutrition_coverage_pct?: number | null
+          nutrition_reference_version?: string | null
+          nutrition_source?: string | null
+          slug?: string | null
+          status?: string | null
+          title?: string | null
+          unresolved_ingredient_count?: never
+          visibility?: string | null
+        }
+        Relationships: []
+      }
       public_certifications: {
         Row: {
           created_at: string | null
@@ -4147,6 +4470,34 @@ export type Database = {
       }
     }
     Functions: {
+      admin_update_ingredient_nutrition: {
+        Args: {
+          p_crop: string
+          p_free_text_name: string
+          p_ingredient_id: string
+          p_nutrition_exclusion_reason: string
+          p_nutrition_food_key: string
+          p_quantity: number
+          p_unit: string
+        }
+        Returns: undefined
+      }
+      admin_update_recipe_allergens: {
+        Args: {
+          p_allergen_labels: string[]
+          p_recipe_id: string
+          p_reviewed: boolean
+        }
+        Returns: undefined
+      }
+      admin_update_recipe_facts: {
+        Args: {
+          p_diet_tags: string[]
+          p_recipe_id: string
+          p_required_equipment: string[]
+        }
+        Returns: undefined
+      }
       calculate_recipe_nutrition: {
         Args: { p_recipe_id: string }
         Returns: undefined
@@ -4201,6 +4552,11 @@ export type Database = {
         Returns: number
       }
       fn_match_culinary_crop: { Args: { p_text: string }; Returns: string }
+      fn_nutrition_normalize_text: {
+        Args: { p_value: string }
+        Returns: string
+      }
+      fn_nutrition_normalize_unit: { Args: { p_unit: string }; Returns: string }
       fn_recalc_recipe_nutrition_ids: {
         Args: { p_recipe_ids: string[] }
         Returns: undefined
@@ -4209,6 +4565,16 @@ export type Database = {
       fn_recipe_escape_regex: { Args: { p_text: string }; Returns: string }
       fn_recipe_ingredient_grams: {
         Args: { p_crop: string; p_quantity: number; p_unit: string }
+        Returns: number
+      }
+      fn_recipe_ingredient_grams_v2: {
+        Args: {
+          p_crop: string
+          p_food_key: string
+          p_free_text_name: string
+          p_quantity: number
+          p_unit: string
+        }
         Returns: number
       }
       get_active_listing_crops: {
@@ -4317,6 +4683,10 @@ export type Database = {
         Returns: boolean
       }
       is_valid_recipe_micronutrients_v1: { Args: { p: Json }; Returns: boolean }
+      is_valid_recipe_required_equipment: {
+        Args: { equipment: string[] }
+        Returns: boolean
+      }
       normalize_recipe_units: { Args: { p_ingredients: Json }; Returns: Json }
       publish_recipe_draft: {
         Args: { _job_id: string; _lock_token: string; _slug: string }
