@@ -69,9 +69,9 @@ import { Route as BuyerPayOfferIdRouteImport } from './routes/buyer.pay.$offerId
 import { Route as BuyerOrdersOrderIdRouteImport } from './routes/buyer.orders.$orderId'
 import { Route as BuyerOfferListingIdRouteImport } from './routes/buyer.offer.$listingId'
 import { Route as BuyerNegotiationOfferIdRouteImport } from './routes/buyer.negotiation.$offerId'
+import { Route as AdminRecipesQualityRouteImport } from './routes/admin.recipes.quality'
 import { Route as AdminRecipesPlanRouteImport } from './routes/admin.recipes.plan'
 import { Route as AdminRecipesJobIdRouteImport } from './routes/admin.recipes.$jobId'
-import { Route as AdminRecipesQualityRouteImport } from './routes/admin.recipes.quality'
 import { Route as Char91DotmcpChar93InvokeToolToolRouteImport } from './routes/[.mcp]/invoke-tool/$tool'
 import { Route as DotlovableOauthConsentRouteImport } from './routes/[.]lovable.oauth.consent'
 import { Route as AdminRecipesPlanIndexRouteImport } from './routes/admin.recipes.plan.index'
@@ -382,6 +382,11 @@ const BuyerNegotiationOfferIdRoute = BuyerNegotiationOfferIdRouteImport.update({
   path: '/negotiation/$offerId',
   getParentRoute: () => BuyerRoute,
 } as any)
+const AdminRecipesQualityRoute = AdminRecipesQualityRouteImport.update({
+  id: '/quality',
+  path: '/quality',
+  getParentRoute: () => AdminRecipesRoute,
+} as any)
 const AdminRecipesPlanRoute = AdminRecipesPlanRouteImport.update({
   id: '/plan',
   path: '/plan',
@@ -390,11 +395,6 @@ const AdminRecipesPlanRoute = AdminRecipesPlanRouteImport.update({
 const AdminRecipesJobIdRoute = AdminRecipesJobIdRouteImport.update({
   id: '/$jobId',
   path: '/$jobId',
-  getParentRoute: () => AdminRecipesRoute,
-} as any)
-const AdminRecipesQualityRoute = AdminRecipesQualityRouteImport.update({
-  id: '/quality',
-  path: '/quality',
   getParentRoute: () => AdminRecipesRoute,
 } as any)
 const Char91DotmcpChar93InvokeToolToolRoute =
@@ -471,8 +471,8 @@ export interface FileRoutesByFullPath {
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
   '/admin/recipes/$jobId': typeof AdminRecipesJobIdRoute
-  '/admin/recipes/quality': typeof AdminRecipesQualityRoute
   '/admin/recipes/plan': typeof AdminRecipesPlanRouteWithChildren
+  '/admin/recipes/quality': typeof AdminRecipesQualityRoute
   '/buyer/negotiation/$offerId': typeof BuyerNegotiationOfferIdRoute
   '/buyer/offer/$listingId': typeof BuyerOfferListingIdRoute
   '/buyer/orders/$orderId': typeof BuyerOrdersOrderIdRoute
@@ -609,8 +609,8 @@ export interface FileRoutesById {
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
   '/admin/recipes/$jobId': typeof AdminRecipesJobIdRoute
-  '/admin/recipes/quality': typeof AdminRecipesQualityRoute
   '/admin/recipes/plan': typeof AdminRecipesPlanRouteWithChildren
+  '/admin/recipes/quality': typeof AdminRecipesQualityRoute
   '/buyer/negotiation/$offerId': typeof BuyerNegotiationOfferIdRoute
   '/buyer/offer/$listingId': typeof BuyerOfferListingIdRoute
   '/buyer/orders/$orderId': typeof BuyerOrdersOrderIdRoute
@@ -681,8 +681,8 @@ export interface FileRouteTypes {
     | '/.lovable/oauth/consent'
     | '/.mcp/invoke-tool/$tool'
     | '/admin/recipes/$jobId'
-    | '/admin/recipes/quality'
     | '/admin/recipes/plan'
+    | '/admin/recipes/quality'
     | '/buyer/negotiation/$offerId'
     | '/buyer/offer/$listingId'
     | '/buyer/orders/$orderId'
@@ -818,8 +818,8 @@ export interface FileRouteTypes {
     | '/.lovable/oauth/consent'
     | '/.mcp/invoke-tool/$tool'
     | '/admin/recipes/$jobId'
-    | '/admin/recipes/quality'
     | '/admin/recipes/plan'
+    | '/admin/recipes/quality'
     | '/buyer/negotiation/$offerId'
     | '/buyer/offer/$listingId'
     | '/buyer/orders/$orderId'
@@ -1293,6 +1293,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof BuyerNegotiationOfferIdRouteImport
       parentRoute: typeof BuyerRoute
     }
+    '/admin/recipes/quality': {
+      id: '/admin/recipes/quality'
+      path: '/quality'
+      fullPath: '/admin/recipes/quality'
+      preLoaderRoute: typeof AdminRecipesQualityRouteImport
+      parentRoute: typeof AdminRecipesRoute
+    }
     '/admin/recipes/plan': {
       id: '/admin/recipes/plan'
       path: '/plan'
@@ -1305,13 +1312,6 @@ declare module '@tanstack/react-router' {
       path: '/$jobId'
       fullPath: '/admin/recipes/$jobId'
       preLoaderRoute: typeof AdminRecipesJobIdRouteImport
-      parentRoute: typeof AdminRecipesRoute
-    }
-    '/admin/recipes/quality': {
-      id: '/admin/recipes/quality'
-      path: '/quality'
-      fullPath: '/admin/recipes/quality'
-      preLoaderRoute: typeof AdminRecipesQualityRouteImport
       parentRoute: typeof AdminRecipesRoute
     }
     '/.mcp/invoke-tool/$tool': {
@@ -1488,15 +1488,15 @@ const AdminRecipesPlanRouteWithChildren =
 
 interface AdminRecipesRouteChildren {
   AdminRecipesJobIdRoute: typeof AdminRecipesJobIdRoute
-  AdminRecipesQualityRoute: typeof AdminRecipesQualityRoute
   AdminRecipesPlanRoute: typeof AdminRecipesPlanRouteWithChildren
+  AdminRecipesQualityRoute: typeof AdminRecipesQualityRoute
   AdminRecipesIndexRoute: typeof AdminRecipesIndexRoute
 }
 
 const AdminRecipesRouteChildren: AdminRecipesRouteChildren = {
   AdminRecipesJobIdRoute: AdminRecipesJobIdRoute,
-  AdminRecipesQualityRoute: AdminRecipesQualityRoute,
   AdminRecipesPlanRoute: AdminRecipesPlanRouteWithChildren,
+  AdminRecipesQualityRoute: AdminRecipesQualityRoute,
   AdminRecipesIndexRoute: AdminRecipesIndexRoute,
 }
 
