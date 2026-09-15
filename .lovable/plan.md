@@ -71,3 +71,21 @@ Current row counts in `price_history`:
 5. Add market sources for other halls/regions, expand `crop_market_sources` coverage past 29 crops, and make `useCropsWithPriceData()` include crops with market-source coverage.
 6. Constrain `source` with an enum/CHECK, retire `price_points` and `usePricePoints()`.
 7. Resolve `price_alerts`: implement evaluation + dispatch, or rename it to a watchlist in schema and UI.
+
+---
+
+## Bu adımları ben uygulayabilir miyim?
+
+Kendim uygulayabileceklerim (onay verirsen):
+
+- **2 — Migration drift**: canlı RPC tanımlarını birebir migration olarak repoya yazabilirim.
+- **4 — Şema genişletme**: min/max, kalite sınıfı, hacim, kaynak yayın tarihi, senkron zamanı alanları + RPC'lerin kaynak bazlı `last_updated` döndürmesi.
+- **5 — Kapsam**: yeni hal/bölge kaynakları ve ürün eşleşmeleri ekleyebilir, `useCropsWithPriceData()`'yı market kaynağı olan ürünleri de içerecek şekilde düzeltebilirim (ham fiyat verisini ben üretemem; ingestion gerekir).
+- **6 — `source` kısıtı + `price_points`/`usePricePoints()` emekliye ayırma.**
+- **7 — `price_alerts`**: ya gerçek değerlendirme + bildirim akışını kurarım, ya da izleme listesi olarak yeniden adlandırırım.
+- **3'ün bir yarısı**: HKS gerçek değilse `has_official_price_source` bayraklarını temizleyip "Resmi Hal Fiyatı" kartını kaldırabilirim.
+
+Tek başıma tamamlayamayacaklarım:
+
+- **1 — `sync-izmir-hal-prices`**: canlıda çalışan bu fonksiyonun kaynak kodunu indirme imkânım yok. Kodu bana verirsen repoya alır, loglama ve sağlık kontrolünü eklerim; yoksa aynı işi yapan yeni bir senkron servisi sıfırdan yazmam gerekir (veri kaynağının adresi/erişim şekli sizden gelmeli).
+- **3'ün diğer yarısı — gerçek HKS entegrasyonu**: resmi kaynağın erişim yöntemi ve varsa kimlik bilgileri olmadan yapılamaz.
