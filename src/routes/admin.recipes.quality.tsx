@@ -123,10 +123,14 @@ function AdminRecipeQualityPage() {
     setKey("");
   };
 
-  const invoke = async (path: string, options: { method: string; body?: unknown }) => {
+  type InvokeMethod = "GET" | "POST" | "PATCH" | "PUT" | "DELETE";
+  type InvokeBody = Record<string, unknown>;
+
+  const invoke = async (path: string, options: { method: InvokeMethod; body?: InvokeBody }) => {
+    if (!submittedKey) throw new Error("Oturum yok");
     const { data, error } = await supabase.functions.invoke(`admin-recipe-quality${path}`, {
       method: options.method,
-      headers: { "x-admin-key": submittedKey!, "content-type": "application/json" },
+      headers: { "x-admin-key": submittedKey, "content-type": "application/json" },
       body: options.body,
     });
     if (error) throw error;
@@ -338,7 +342,13 @@ function RecipeQualityDetailPanel({
   recipeId: string;
   detail: QualityDetail | undefined;
   isLoading: boolean;
-  invoke: (path: string, options: { method: string; body?: unknown }) => Promise<unknown>;
+  invoke: (
+    path: string,
+    options: {
+      method: "GET" | "POST" | "PATCH" | "PUT" | "DELETE";
+      body?: Record<string, unknown>;
+    },
+  ) => Promise<unknown>;
   onSaved: () => void;
   onClose: () => void;
 }) {

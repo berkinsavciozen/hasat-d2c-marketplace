@@ -3,7 +3,7 @@ import { createClient } from "@supabase/supabase-js";
 import { z } from "zod";
 import type { Database } from "@/lib/core/db/types";
 
-const InterestType = z.enum(["danışmanlık", "ortaklık", "diğer"]);
+const ContactTopic = z.enum(["farmer", "buyer", "partnership", "information", "other"]);
 
 const InputSchema = z.object({
   name: z.string().trim().min(1).max(100),
@@ -14,11 +14,27 @@ const InputSchema = z.object({
     .max(20)
     .regex(/^[0-9+\s()-]+$/),
   city: z.string().trim().max(80).optional().nullable(),
-  interest_type: InterestType,
+  topic: ContactTopic,
   note: z.string().trim().max(500).optional().nullable(),
 });
 
-export const submitIndoorInterest = createServerFn({ method: "POST" })
+const storedInterestType = {
+  farmer: "danışmanlık",
+  buyer: "danışmanlık",
+  partnership: "ortaklık",
+  information: "danışmanlık",
+  other: "diğer",
+} as const;
+
+const contactTopicLabel = {
+  farmer: "Çiftçiyim",
+  buyer: "Alıcıyım",
+  partnership: "İş birliği yapmak istiyorum",
+  information: "Platform hakkında bilgi almak istiyorum",
+  other: "Diğer",
+} as const;
+
+export const submitContactInquiry = createServerFn({ method: "POST" })
   .inputValidator((raw: unknown) => InputSchema.parse(raw))
   .handler(async ({ data }) => {
     const url = process.env.SUPABASE_URL;
@@ -33,12 +49,14 @@ export const submitIndoorInterest = createServerFn({ method: "POST" })
 
     const cleanPhone = data.phone.replace(/[^\d+]/g, "");
 
+    const topicLabel = contactTopicLabel[data.topic];
+    const storedNote = [`İletişim konusu: ${topicLabel}`, data.note].filter(Boolean).join("\n\n");
     const { error } = await client.from("indoor_interest_leads").insert({
       name: data.name,
       phone: cleanPhone,
       city: data.city ?? null,
-      interest_type: data.interest_type,
-      note: data.note ?? null,
+      interest_type: storedInterestType[data.topic],
+      note: storedNote,
     });
     if (error) {
       console.error("[indoor-interest] insert failed", error);
@@ -52,9 +70,9 @@ export const submitIndoorInterest = createServerFn({ method: "POST" })
       const msid = process.env.TWILIO_MESSAGING_SERVICE_SID;
       const to = process.env.BERKIN_NOTIFY_PHONE;
       if (sid && token && msid && to) {
-        const body = `🌱 Yeni indoor başvuru: ${data.name} / ${cleanPhone} / ${
+        const body = `Yeni Hasat iletişim mesajı: ${data.name} / ${cleanPhone} / ${
           data.city ?? "-"
-        } / ${data.interest_type}`;
+        } / ${topicLabel}`;
         const form = new URLSearchParams({
           To: to.startsWith("+") ? to : "+" + to,
           MessagingServiceSid: msid,
