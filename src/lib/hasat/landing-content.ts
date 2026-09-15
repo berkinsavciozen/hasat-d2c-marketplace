@@ -79,7 +79,7 @@ export const FARMER_FAQ = [
   },
   {
     q: "Ödeme ve komisyon nasıl çalışır?",
-    a: "Ödeme, anlaşılan sipariş tutarı üzerinden çiftçinin IBAN'ına yapılır. Platform komisyonu sabit %5'tir.",
+    a: "Ödeme, anlaşılan sipariş tutarı üzerinden doğrudan çiftçinin IBAN'ına yapılır. Kontrollü pilot süresince Hasat herhangi bir komisyon almaz.",
   },
   {
     q: "Alıcının teklif vermesi satın alma garantisi midir?",
