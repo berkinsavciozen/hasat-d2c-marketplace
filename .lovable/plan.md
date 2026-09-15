@@ -1,38 +1,40 @@
-# Fiyatlar (Hal + Hasat ortalama satış) — Uygulama Planı
+# Landing page — iki metin düzeltmesi
 
-## Özet
-Canlı sistemde fiyat veri katmanı: Hasat sipariş fiyatları (133 satır, 6 ürün, 10 çiftçi), İzmir Toptancı Hali dış kaynak fiyatları (694 satır, 27 ürün), resmi HKS kanalı ise hiç veri yok. Bu plan denetim bulgularını kapatırken landing sayfasındaki iki küçük polish önerisini de uyguluyor.
+Sadece `src/routes/index.tsx` içindeki iki metni değiştir; başka dosya, sayfa veya backend değişikliği yok.
 
-## Kullanıcı sorusu: "Bu plandaki her adımı eksiksiz sen uygulayabilir misin?"
+## 1. Hero — süreç gösterimi altındaki teknik uyarı metnini yumuşat
 
-**Çoğunu evet, iki alanı seninle beraber çözmemiz gerek:**
+**Dosya:** `src/routes/index.tsx`  
+**Konum:** `ProductFlow` içinde, `<p className="mt-3 text-[11px] ...">` etiketi.
 
-| # | Adım | Ben uygulayabilir miyim? | Not |
-|---|------|--------------------------|-----|
-| 1 | `sync-izmir-hal-prices` edge fonksiyonunun repo'ya alınması + loglama | **Kısmen** | Kaynak kodu canlıdan indirilemiyor. Bana kodu verirsen entegre ederim; veremezsen seninle aynı API/erişim bilgilerini kullanarak sıfırdan yazarız. |
-| 2 | Canlıdaki RPC'lerle migration drift'inin kapatılması | **Evet** | `get_price_history_summary` ve `get_price_history_series` canlı tanımlarını migration olarak yazarım. |
-| 3 | HKS kararı | **Evet/beraber** | Kodla `has_official_price_source` bayraklarını temizleyip kartı kaldırabilirim. Gerçek HKS entegrasyonu için resmi API/erişim yöntemi gerek. |
-| 4 | `price_history` şemasına min/max, kalite sınıfı, hacim, kaynak yayın tarihi eklenmesi; RPC'lerin kaynak bazlı `last_updated` döndürmesi | **Evet** | Şema ve kod değişiklikleri. Mevcut satırların yeni kolonlara nasıl doldurulacağını migration'da tanımlarız. |
-| 5 | Yeni hal/bölge kaynakları, ürün kapsamı genişletmesi, `useCropsWithPriceData` güncellemesi | **Kısmen** | Yeni market_sources/crop_market_sources satırlarını ve kodu ben yazarım ama ham veri ingestion'ı için #1 gerekir. |
-| 6 | `source` enum/CHECK, `price_points` emekliye ayırma | **Evet** | Hem DB hem query/UI temizliği. |
-| 7 | `price_alerts`: değerlendirme/dispatch veya watchlist'e çevirme | **Evet** | Aktif bildirim kanalı varsa (WhatsApp/SMS/push) buna göre seçeriz; şu anki watchlist davranışını koruyup sadece isimlendirme düzeltmesi yapabiliriz. |
+**Mevcut metin:**
+```
+Sayısal veri gösterilmez; kayıtlar yalnızca gerçek kaynak bağlandığında görünür.
+```
 
-## Bugün önerilen sıra
-1. Landing polish (2 küçük metin düzeltmesi).
-2. Canlı RPC'lerin migration drift'ini kapatmak.
-3. `has_official_price_source` bayraklarını ve "Resmi Hal Fiyatı" kartını gerçek veri yoksa gizlemek.
-4. `source` değerini enum/CHECK ile kısıtlamak ve `price_points`/`usePricePoints` temizliği.
+**Yeni metin:**
+```
+Fiyatlar ve satış bilgileri yalnızca kaynağı doğrulanmış gerçek verilerden gösterilir.
+```
 
-## Landing polish — uygulanacak değişiklikler
-- Hero'daki metin: "Sayısal veri gösterilmez; kayıtlar yalnızca gerçek kaynak bağlandığında görünür." → "Fiyatlar ve satış bilgileri yalnızca kaynağı doğrulanmış gerçek verilerden gösterilir."
-- "Tek merkez" / OperationsSection altı karttaki "Henüz veri bulunmuyor" mesajlarını tek ortak mesajla değiştir: "Kayıtlı teklifleriniz, siparişleriniz, teslimatlarınız ve ödemeleriniz burada tek ekranda görünür."
+## 2. "Tek merkez" bölümündeki altı adet boş durum mesajını tek ortak mesaja indirge
 
-## Plan kuralları / invariants
-- Hasat topluluk ortalaması ile resmi/market fiyatları asla tek sayıda birleştirmeyeceğiz.
-- 5 farklı çiftçi eşiği korunacak; rekabet hukuku kontrolüdür.
-- Ham `price_history` satırları kullanıcılara açılmayacak; tüm okumalar SECURITY DEFINER RPC üzerinden.
-- Uydurulmuş/hesaplanmış/tahmini fiyat, gelir, maliyet veya satış verisi gösterilmeyecek; veri yoksa açık "veri yok" durumu.
-- `crop_config.crop` (küçük harf slug) her zaman tek kaynak; `listings.crop` büyük/küçük harf duyarsız eşleşir.
+**Dosya:** `src/routes/index.tsx`  
+**Konum:** `OperationsSection` içinde, grid'deki 6 kartın her birinin altındaki `<p className="mt-1 text-xs text-muted-foreground">Henüz veri bulunmuyor</p>` satırları.
 
-## Onay beklentisi
-Onay verirsen build moduna geçip landing polish + migration drift + HKS bayrak temizliğini aynı turda uygularım. `sync-izmir-hal-prices` kaynağı için de yol haritası çıkarırım ama kodu yazmak için veri kaynağı bilgilerine ihtiyacım olacak.
+**Yapılacak değişiklik:**
+- Her kartın altındaki `Henüz veri bulunmuyor` satırını kaldır.
+- Grid'in üstüne veya altına tam genişlikte (`sm:col-span-2 lg:col-span-3` / `col-span-full`) tek bir açıklama ekle.
+
+**Yeni ortak mesaj:**
+```
+Kayıtlı teklifleriniz, siparişleriniz, teslimatlarınız ve ödemeleriniz burada tek ekranda görünür.
+```
+
+**Önerilen yerleşim:** Grid altına, `rounded-lg border bg-background/50 p-4 text-center text-sm text-muted-foreground` stilinde bir satır; 6 kart hâlâ etiket + ikon olarak kalır.
+
+## Doğrulama
+
+- `bunx tsgo --noEmit` ile tip kontrolü çalıştır.
+- Preview'da 320/375/390/430 px ve desktop genişliklerinde yatay kayma olmadığını gör.
+- "Tek merkez" bölümünde 6 karta hâlâ simge + başlık geldiğini, boşluk dengesinin bozulmadığını doğrula.
