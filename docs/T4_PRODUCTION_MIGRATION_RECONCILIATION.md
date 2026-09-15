@@ -61,7 +61,7 @@ risk mutating production a second time.
 Run:
 
 ```bash
-supabase/tests/t4_production_migration_reconciliation/run.sh
+bash supabase/tests/t4_production_migration_reconciliation/run.sh
 ```
 
 The suite replays the dependency chain and all three recovered files on a fresh PostgreSQL 17
