@@ -293,7 +293,7 @@ function ProductFlow() {
             </li>
           ))}
         </ol>
-        <p className="mt-3 text-[11px] leading-relaxed text-hwhite/50">Sayısal veri gösterilmez; kayıtlar yalnızca gerçek kaynak bağlandığında görünür.</p>
+        <p className="mt-3 text-[11px] leading-relaxed text-hwhite/50">Fiyatlar ve satış bilgileri yalnızca kaynağı doğrulanmış gerçek verilerden gösterilir.</p>
       </div>
     </div>
   );
@@ -474,7 +474,7 @@ function TraceabilitySection() {
 function OperationsSection() {
   const groups = [["Yeni teklifler", Handshake], ["Kabul edilmiş teklifler", BadgeCheck], ["Düzenli alımlar", Clock3], ["Kesinleşmiş siparişler", PackageCheck], ["Yaklaşan teslimatlar", Store], ["Bekleyen ödemeler", WalletCards]] as const;
   return (
-    <section className="px-4 py-20 md:px-8 md:py-28"><div className="mx-auto max-w-7xl"><SectionHeading eyebrow="Tek merkez" title="Farklı tüccarlar, dağınık konuşmalar ve defterler yerine tek ekran." body="Teklif, sipariş, teslimat ve ödeme durumlarını yalnızca sisteme kaydedilmiş gerçek durumlarıyla takip et." /><div className="mt-12 grid gap-4 rounded-xl border bg-card p-4 sm:grid-cols-2 lg:grid-cols-3 sm:p-6">{groups.map(([label, Icon]) => <div key={label} className="flex min-h-24 items-center gap-3 rounded-lg border bg-background p-4"><span className="grid h-10 w-10 place-items-center rounded-lg bg-accent text-primary"><Icon /></span><div><p className="text-sm font-semibold">{label}</p><p className="mt-1 text-xs text-muted-foreground">Henüz veri bulunmuyor</p></div></div>)}</div></div></section>
+    <section className="px-4 py-20 md:px-8 md:py-28"><div className="mx-auto max-w-7xl"><SectionHeading eyebrow="Tek merkez" title="Farklı tüccarlar, dağınık konuşmalar ve defterler yerine tek ekran." body="Teklif, sipariş, teslimat ve ödeme durumlarını yalnızca sisteme kaydedilmiş gerçek durumlarıyla takip et." /><div className="mt-12 grid gap-4 rounded-xl border bg-card p-4 sm:grid-cols-2 lg:grid-cols-3 sm:p-6">{groups.map(([label, Icon]) => <div key={label} className="flex min-h-24 items-center gap-3 rounded-lg border bg-background p-4"><span className="grid h-10 w-10 place-items-center rounded-lg bg-accent text-primary"><Icon /></span><div><p className="text-sm font-semibold">{label}</p></div></div>)}<div className="col-span-full rounded-lg border border-dashed bg-background/50 p-4 text-center text-sm text-muted-foreground">Kayıtlı teklifleriniz, siparişleriniz, teslimatlarınız ve ödemeleriniz burada tek ekranda görünür.</div></div></div></section>
   );
 }
 
