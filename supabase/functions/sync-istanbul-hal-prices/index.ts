@@ -10,9 +10,14 @@ const TARIM_URL = "https://tarim.ibb.istanbul/inc/halfiyatlari/gunluk_fiyatlar.a
 // tUsr/tPas/tVal are not Hasat secrets: they are the fixed client-side query
 // params the department's own public hal-fiyatlari.html page sends on every
 // request (visible to anyone via view-source, no session or login involved).
-// Set as Supabase function secrets (TARIM_TUSR / TARIM_TPAS / TARIM_TVAL) —
-// not hardcoded here — so they aren't duplicated in source control; see the
-// deployed function for the current values, sourced from tarim.ibb.istanbul.
+// Read from Supabase function secrets rather than hardcoded here so they
+// aren't duplicated in source control. The currently deployed production
+// version of this function has these values set (either as secrets or
+// inline) and is verified working — before redeploying this exact file
+// from git, run `supabase secrets set TARIM_TUSR=... TARIM_TPAS=...
+// TARIM_TVAL=...` with the values from view-source on the department's
+// public page (search for "gunluk_fiyatlar.asp"), or the sync will run
+// with empty query params and silently return zero matching rows.
 const TARIM_AUTH = {
   tUsr: Deno.env.get("TARIM_TUSR") ?? "",
   tPas: Deno.env.get("TARIM_TPAS") ?? "",
