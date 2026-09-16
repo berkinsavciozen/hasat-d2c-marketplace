@@ -59,6 +59,17 @@ type JobDetail = {
   revisionHistory: Array<{ id: string; version: number; title: string; createdAt: string; qaResult: { decision: string; overallScore: number; blockingIssueCount: number } | null }>;
   stageRuns: Array<{ stage: string; status: string; attempt: number; startedAt: string; finishedAt: string | null; error: { code: string; message: string } | null }>;
   reviewHistory: Array<{ id: string; action: string; notes: string | null; adminActor: string | null; createdAt: string; fromStage: string; toStage: string; toStatus: string }>;
+  nutritionPreview: {
+    coveragePct: number;
+    source: "computed" | "partial" | "unavailable";
+    calories: number | null;
+    proteinG: number | null;
+    carbsG: number | null;
+    fatG: number | null;
+    fiberG: number | null;
+    unresolved: Array<{ sortOrder: number; name: string; reason: string }>;
+    computedAt: string;
+  } | null;
 };
 
 type Checklist = {
@@ -142,6 +153,7 @@ function AdminRecipeJobDetailPage() {
           wrong_state: "İş beklenmeyen bir durumda — sayfa güncel olmayabilir",
           revision_limit_reached: "Revizyon sınırına (2) ulaşıldı",
           checklist_incomplete: "Kontrol listesi eksik — tüm maddeler onaylanmalı",
+          nutrition_incomplete: "Besin değerleri tam değil — aşağıdaki 'Besin Değerleri' panelinden eksik malzemeleri kontrol edin",
         };
         toast.error(reasonLabel[data.reason ?? ""] ?? "İşlem başarısız");
         return;

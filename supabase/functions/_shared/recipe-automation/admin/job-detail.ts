@@ -57,6 +57,24 @@ export interface FullQaResult {
   checkedAt: string;
 }
 
+export interface DraftNutritionPreviewUnresolvedItem {
+  sortOrder: number;
+  name: string;
+  reason: string;
+}
+
+export interface DraftNutritionPreview {
+  coveragePct: number;
+  source: "computed" | "partial" | "unavailable";
+  calories: number | null;
+  proteinG: number | null;
+  carbsG: number | null;
+  fatG: number | null;
+  fiberG: number | null;
+  unresolved: DraftNutritionPreviewUnresolvedItem[];
+  computedAt: string;
+}
+
 export interface RecipeAssetView {
   id: string;
   assetType: "source" | "hero" | "square" | "step";
@@ -119,6 +137,7 @@ export interface JobDetail {
   revisionHistory: DraftVersionSummary[];
   stageRuns: StageRunSummary[];
   reviewHistory: AdminReviewHistoryEntry[];
+  nutritionPreview: DraftNutritionPreview | null;
 }
 
 /**

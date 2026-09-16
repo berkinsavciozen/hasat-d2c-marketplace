@@ -62,11 +62,17 @@ export type ReviewActionFailureReason =
   | "not_found"
   | "wrong_state"
   | "revision_limit_reached"
-  | "checklist_incomplete";
+  | "checklist_incomplete"
+  | "nutrition_incomplete";
+
+export interface NutritionPreviewSummary {
+  coveragePct: number;
+  unresolved: Array<{ sortOrder: number; name: string; reason: string }>;
+}
 
 export type ReviewActionResult =
   | { ok: true; job: JobRow; reviewId: string }
-  | { ok: false; reason: ReviewActionFailureReason; job?: JobRow };
+  | { ok: false; reason: ReviewActionFailureReason; job?: JobRow; nutritionPreview?: NutritionPreviewSummary };
 
 interface TransitionParams {
   jobId: string;
