@@ -62,11 +62,17 @@ export type ReviewActionFailureReason =
   | "not_found"
   | "wrong_state"
   | "revision_limit_reached"
-  | "checklist_incomplete";
+  | "checklist_incomplete"
+  | "nutrition_incomplete";
+
+export interface NutritionPreviewSummary {
+  coveragePct: number;
+  unresolved: Array<{ sortOrder: number; name: string; reason: string }>;
+}
 
 export type ReviewActionResult =
   | { ok: true; job: JobRow; reviewId: string }
-  | { ok: false; reason: ReviewActionFailureReason; job?: JobRow };
+  | { ok: false; reason: ReviewActionFailureReason; job?: JobRow; nutritionPreview?: NutritionPreviewSummary };
 
 interface TransitionParams {
   jobId: string;
@@ -192,6 +198,36 @@ export async function approveJob(client: SupabaseClient, params: ApproveJobParam
   if (!parsedChecklist.success) {
     const job = await loadJobState(client, params.jobId);
     return { ok: false, reason: "checklist_incomplete", job: job ?? undefined };
+  }
+
+  // Erken besin-kapsama kontrolü (2026-09-16 düzeltmesi) — job status='approved' yapılmadan VE
+  // publish hiç dispatch edilmeden ÖNCE kontrol edilir, böylece eksik bir taslak asla
+  // publish_recipe_draft'ın opak transaction-rollback hata moduna girmez.
+  const { data: previewRaw, error: previewError } = await client.rpc("refresh_draft_nutrition_preview", {
+    p_job_id: params.jobId,
+  });
+  if (previewError) {
+    throw new RecipeAutomationError({
+      code: "ADMIN_REVIEW_NUTRITION_PREVIEW_FAILED",
+      message: "failed to compute draft nutrition preview before approval",
+      retryable: true,
+      details: { pgCode: (previewError as { code?: string }).code },
+    });
+  }
+  const preview = previewRaw as {
+    coverage_pct: number;
+    unresolved: Array<{ sortOrder: number; name: string; reason: string }>;
+  } | null;
+  if (!preview || Number(preview.coverage_pct) < 100) {
+    const job = await loadJobState(client, params.jobId);
+    return {
+      ok: false,
+      reason: "nutrition_incomplete",
+      job: job ?? undefined,
+      nutritionPreview: preview
+        ? { coveragePct: Number(preview.coverage_pct), unresolved: preview.unresolved ?? [] }
+        : { coveragePct: 0, unresolved: [] },
+    };
   }
 
   const fromStage: RecipeJobStage = "awaiting_approval";

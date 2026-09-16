@@ -2609,6 +2609,8 @@ export type Database = {
           id: string
           ingredients: Json
           job_id: string
+          nutrition_preview: Json | null
+          nutrition_preview_computed_at: string | null
           owner_id: string | null
           prep_minutes: number | null
           required_equipment: string[] | null
@@ -2635,6 +2637,8 @@ export type Database = {
           id?: string
           ingredients: Json
           job_id: string
+          nutrition_preview?: Json | null
+          nutrition_preview_computed_at?: string | null
           owner_id?: string | null
           prep_minutes?: number | null
           required_equipment?: string[] | null
@@ -2661,6 +2665,8 @@ export type Database = {
           id?: string
           ingredients?: Json
           job_id?: string
+          nutrition_preview?: Json | null
+          nutrition_preview_computed_at?: string | null
           owner_id?: string | null
           prep_minutes?: number | null
           required_equipment?: string[] | null
@@ -4690,6 +4696,10 @@ export type Database = {
       normalize_recipe_units: { Args: { p_ingredients: Json }; Returns: Json }
       publish_recipe_draft: {
         Args: { _job_id: string; _lock_token: string; _slug: string }
+        Returns: Json
+      }
+      refresh_draft_nutrition_preview: {
+        Args: { p_job_id: string }
         Returns: Json
       }
       rpc_clone_recipe: {

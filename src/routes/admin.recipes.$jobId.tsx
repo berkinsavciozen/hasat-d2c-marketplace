@@ -59,6 +59,17 @@ type JobDetail = {
   revisionHistory: Array<{ id: string; version: number; title: string; createdAt: string; qaResult: { decision: string; overallScore: number; blockingIssueCount: number } | null }>;
   stageRuns: Array<{ stage: string; status: string; attempt: number; startedAt: string; finishedAt: string | null; error: { code: string; message: string } | null }>;
   reviewHistory: Array<{ id: string; action: string; notes: string | null; adminActor: string | null; createdAt: string; fromStage: string; toStage: string; toStatus: string }>;
+  nutritionPreview: {
+    coveragePct: number;
+    source: "computed" | "partial" | "unavailable";
+    calories: number | null;
+    proteinG: number | null;
+    carbsG: number | null;
+    fatG: number | null;
+    fiberG: number | null;
+    unresolved: Array<{ sortOrder: number; name: string; reason: string }>;
+    computedAt: string;
+  } | null;
 };
 
 type Checklist = {
@@ -142,6 +153,7 @@ function AdminRecipeJobDetailPage() {
           wrong_state: "İş beklenmeyen bir durumda — sayfa güncel olmayabilir",
           revision_limit_reached: "Revizyon sınırına (2) ulaşıldı",
           checklist_incomplete: "Kontrol listesi eksik — tüm maddeler onaylanmalı",
+          nutrition_incomplete: "Besin değerleri tam değil — aşağıdaki 'Besin Değerleri' panelinden eksik malzemeleri kontrol edin",
         };
         toast.error(reasonLabel[data.reason ?? ""] ?? "İşlem başarısız");
         return;
@@ -356,6 +368,50 @@ function AdminRecipeJobDetailPage() {
             </table>
           )}
         </SectionCard>
+
+        {d.nutritionPreview && (
+          <SectionCard title="Besin Değerleri (önizleme)">
+            <div className="space-y-2 text-sm">
+              <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-hmuted">
+                <span>Kapsama: %{d.nutritionPreview.coveragePct}</span>
+                <span>
+                  Durum:{" "}
+                  {d.nutritionPreview.source === "computed"
+                    ? "Tam"
+                    : d.nutritionPreview.source === "partial"
+                      ? "Kısmi"
+                      : "Hesaplanamadı"}
+                </span>
+              </div>
+              {d.nutritionPreview.calories != null && (
+                <div className="flex flex-wrap gap-x-4 gap-y-1">
+                  <span>{d.nutritionPreview.calories} kcal</span>
+                  <span>{d.nutritionPreview.proteinG}g protein</span>
+                  <span>{d.nutritionPreview.carbsG}g karbonhidrat</span>
+                  <span>{d.nutritionPreview.fatG}g yağ</span>
+                </div>
+              )}
+              {d.nutritionPreview.unresolved.length > 0 && (
+                <div className="rounded-lg border border-[color:var(--hred)] bg-[color-mix(in_oklab,var(--hred)_8%,transparent)] p-3">
+                  <div className="font-medium text-[color:var(--hred)] text-xs mb-1">
+                    Eşleşmeyen malzemeler (onaydan önce çözülmeli):
+                  </div>
+                  <ul className="text-xs space-y-0.5">
+                    {d.nutritionPreview.unresolved.map((u) => (
+                      <li key={u.sortOrder}>
+                        {u.name} —{" "}
+                        {u.reason === "nutrition_reference_missing" ? "besin referansı eksik" : "miktar/birim çözülemedi"}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+              <p className="text-xs text-hmuted">
+                Bu önizleme taslak üzerinden hesaplanır; yayın anında gerçek veriyle yeniden doğrulanır.
+              </p>
+            </div>
+          </SectionCard>
+        )}
 
         <SectionCard title="Onay Kontrol Listesi">
           <div className="space-y-3">

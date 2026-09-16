@@ -41,6 +41,7 @@ const FAILURE_STATUS: Record<ReviewActionFailureReason, number> = {
   wrong_state: 409,
   revision_limit_reached: 422,
   checklist_incomplete: 400,
+  nutrition_incomplete: 422,
 };
 
 function statusFor(result: ReviewActionResult): number {
