@@ -2658,16 +2658,9 @@ export function useCreateCropRequest() {
           .maybeSingle();
         const canonical: string = cfg?.crop ?? cfg?.display_name ?? cropName;
 
-        // Katalog boşluğu sinyali: alıcının aradığı ürün crop_config'te hiç yoksa Berkin'e anında haber ver.
-        // Not alanı da mesaja dahil edilir (kısaltılmış) — form topluyor ama önceden SMS'e hiç yansımıyordu.
-        if (!cfg) {
-          const noteSnippet = input.note?.trim()
-            ? ` · Not: ${input.note.trim().slice(0, 80)}${input.note.trim().length > 80 ? "..." : ""}`
-            : "";
-          (supabase as any).functions.invoke("notify-admin", {
-            body: { message: `🛒 Katalogda olmayan ürün talebi: "${cropName}"${noteSnippet} (buyer)` },
-          }).catch((e: unknown) => console.warn("notify-admin (catalog gap) failed", e));
-        }
+        // Katalog boşluğu admin uyarısı istemciden gönderilmez. RLS-korumalı crop_requests
+        // INSERT'inin DB trigger'ı katalog eşleşmesini yeniden doğrular, bounded bir outbox event'i
+        // üretir ve server-only imzalı notify-admin çağrısını yapar.
 
         const farmerIds = new Set<string>();
         const { data: listingRows } = await (supabase as any)
