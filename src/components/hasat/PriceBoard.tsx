@@ -128,57 +128,33 @@ function cropHref(role: BoardRole) {
   return role === "farmer" ? "/farmer/prices/$crop" : "/buyer/prices/$crop";
 }
 
-function MobileRow({ row, role }: { row: PriceBoardRow; role: BoardRole }) {
-  const primary = primarySource(row);
-  const others = secondarySources(row, primary);
-  return (
-    <div className="flex items-center gap-1 border-b last:border-b-0">
-      <WatchStar crop={row.crop} />
-      <Link
-        to={cropHref(role)}
-        params={{ crop: encodeURIComponent(row.crop) }}
-        className="min-w-0 flex-1 py-2.5 pr-2 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-      >
-        <div className="flex items-baseline justify-between gap-2">
-          <span className="truncate text-sm font-medium">{row.displayName}</span>
-          <PriceCell source={primary} unit={row.unit} />
-        </div>
-        <div className="mt-0.5 flex items-baseline justify-between gap-2">
-          <span className="truncate text-[10px] uppercase tracking-wide text-hmuted">
-            {primary ? primary.label : row.hasat.insufficient ? "Hasat: yetersiz veri" : "Veri yok"}
-          </span>
-          {others.length > 0 && (
-            <span className="flex min-w-0 shrink items-center gap-2 overflow-hidden text-[10px] text-hmuted">
-              {others.slice(0, 2).map((s) => (
-                <span key={s.key} className="whitespace-nowrap">
-                  {s.label.replace(" Toptancı Hali", "")}{" "}
-                  <span className="font-mono tabular-nums text-foreground">
-                    {formatTRY(s.price!)}
-                  </span>
-                </span>
-              ))}
-            </span>
-          )}
-        </div>
-      </Link>
-    </div>
-  );
+type BoardColumn = { key: string; label: string; lastDate: string | null };
+
+function shortLabel(label: string) {
+  return label
+    .replace(" Toptancı Hali", "")
+    .replace(" Toptancı Hâli", "")
+    .replace(" Hali", "")
+    .trim();
 }
 
-function columnsFor(rows: PriceBoardRow[]) {
-  const cols: { key: string; label: string }[] = [{ key: "hasat", label: "Hasat" }];
-  const seen = new Set<string>(["hasat"]);
+function columnsFor(rows: PriceBoardRow[]): BoardColumn[] {
+  const cols: BoardColumn[] = [{ key: "hasat", label: "Hasat", lastDate: null }];
+  const index = new Map<string, BoardColumn>([["hasat", cols[0]]]);
+  const track = (key: string, label: string, lastDate: string | null) => {
+    const existing = index.get(key);
+    if (!existing) {
+      const col = { key, label, lastDate };
+      index.set(key, col);
+      cols.push(col);
+      return;
+    }
+    if (lastDate && (!existing.lastDate || lastDate > existing.lastDate)) existing.lastDate = lastDate;
+  };
   for (const r of rows) {
-    for (const m of r.markets) {
-      if (!seen.has(m.key)) {
-        seen.add(m.key);
-        cols.push({ key: m.key, label: m.label.replace(" Toptancı Hali", " Hali") });
-      }
-    }
-    if (r.official && !seen.has("official")) {
-      seen.add("official");
-      cols.push({ key: "official", label: "Resmi" });
-    }
+    track("hasat", "Hasat", r.hasat?.lastDate ?? null);
+    for (const m of r.markets) track(m.key, shortLabel(m.label), m.lastDate ?? null);
+    if (r.official) track("official", "Resmi", r.official.lastDate ?? null);
   }
   return cols;
 }
@@ -189,57 +165,64 @@ function sourceByKey(row: PriceBoardRow, key: string): PriceBoardSource | null {
   return row.markets.find((m) => m.key === key) ?? null;
 }
 
+function formatShortDate(d: string | null) {
+  if (!d) return null;
+  const dt = new Date(d);
+  if (Number.isNaN(dt.getTime())) return null;
+  return dt.toLocaleDateString("tr-TR", { day: "2-digit", month: "short" });
+}
+
 export function PriceBoard({ rows, role }: { rows: PriceBoardRow[]; role: BoardRole }) {
   if (rows.length === 0) return null;
   const cols = columnsFor(rows);
 
   return (
-    <div className="overflow-hidden rounded-2xl border bg-card">
-      {/* Mobil: kompakt liste */}
-      <div className="md:hidden">
-        {rows.map((r) => (
-          <MobileRow key={r.crop} row={r} role={role} />
-        ))}
-      </div>
-
-      {/* Masaüstü: kaynak kolonlu tablo */}
-      <div className="hidden overflow-x-auto md:block">
-        <table className="w-full min-w-[640px] text-left">
-          <thead>
-            <tr className="border-b text-[11px] uppercase tracking-wide text-hmuted">
-              <th className="px-3 py-2 font-medium">Ürün</th>
-              {cols.map((c) => (
-                <th key={c.key} className="px-3 py-2 font-medium">
-                  {c.label}
+    <div className="-mx-1 overflow-x-auto">
+      <table className="w-full min-w-[420px] border-collapse text-left">
+        <thead>
+          <tr className="text-[10px] uppercase tracking-wide text-hmuted">
+            <th
+              scope="col"
+              className="sticky left-0 z-10 bg-background px-2 py-2 text-left font-medium"
+            >
+              Ürün
+            </th>
+            {cols.map((c) => {
+              const d = formatShortDate(c.lastDate);
+              return (
+                <th key={c.key} scope="col" className="px-2 py-2 text-right font-medium">
+                  <span className="block whitespace-nowrap">{c.label}</span>
+                  {d && <span className="block text-[9px] font-normal normal-case">{d}</span>}
                 </th>
+              );
+            })}
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((r) => (
+            <tr key={r.crop} className="border-t border-border/70 hover:bg-muted/40">
+              <td className="sticky left-0 z-10 bg-background py-2 pl-0 pr-2">
+                <div className="flex min-w-0 items-center gap-0.5">
+                  <WatchStar crop={r.crop} />
+                  <Link
+                    to={cropHref(role)}
+                    params={{ crop: encodeURIComponent(r.crop) }}
+                    className="truncate text-sm font-medium hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                  >
+                    {r.displayName}
+                  </Link>
+                </div>
+              </td>
+              {cols.map((c) => (
+                <td key={c.key} className="px-2 py-2 text-right align-middle">
+                  <PriceCell source={sourceByKey(r, c.key)} unit={r.unit} />
+                </td>
               ))}
             </tr>
-          </thead>
-          <tbody>
-            {rows.map((r) => (
-              <tr key={r.crop} className="border-b last:border-b-0 hover:bg-muted/40">
-                <td className="px-1 py-1.5">
-                  <div className="flex items-center gap-1">
-                    <WatchStar crop={r.crop} />
-                    <Link
-                      to={cropHref(role)}
-                      params={{ crop: encodeURIComponent(r.crop) }}
-                      className="truncate text-sm font-medium hover:underline"
-                    >
-                      {r.displayName}
-                    </Link>
-                  </div>
-                </td>
-                {cols.map((c) => (
-                  <td key={c.key} className="px-3 py-1.5">
-                    <PriceCell source={sourceByKey(r, c.key)} unit={r.unit} />
-                  </td>
-                ))}
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+          ))}
+        </tbody>
+      </table>
     </div>
   );
 }
+
