@@ -421,3 +421,38 @@ async function loadReviewHistory(client: SupabaseClient, jobId: string): Promise
     createdAt: String(row.created_at),
   }));
 }
+
+async function loadNutritionPreview(client: SupabaseClient, jobId: string): Promise<DraftNutritionPreview | null> {
+  const { data, error } = await client.rpc("refresh_draft_nutrition_preview", { p_job_id: jobId });
+  if (error) {
+    throw new RecipeAutomationError({
+      code: "ADMIN_JOB_DETAIL_NUTRITION_PREVIEW_FAILED",
+      message: "failed to compute draft nutrition preview",
+      retryable: true,
+      details: { pgCode: (error as { code?: string }).code },
+    });
+  }
+  if (!data) return null;
+  const raw = data as {
+    coverage_pct: number;
+    source: string;
+    calories: number | null;
+    protein_g: number | null;
+    carbs_g: number | null;
+    fat_g: number | null;
+    fiber_g: number | null;
+    unresolved: Array<{ sortOrder: number; name: string; reason: string }>;
+    computed_at: string;
+  };
+  return {
+    coveragePct: Number(raw.coverage_pct),
+    source: raw.source as DraftNutritionPreview["source"],
+    calories: raw.calories,
+    proteinG: raw.protein_g,
+    carbsG: raw.carbs_g,
+    fatG: raw.fat_g,
+    fiberG: raw.fiber_g,
+    unresolved: Array.isArray(raw.unresolved) ? raw.unresolved : [],
+    computedAt: String(raw.computed_at),
+  };
+}
