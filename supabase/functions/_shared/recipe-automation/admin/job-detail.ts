@@ -202,12 +202,13 @@ export async function loadJobDetail(
   const currentDraft = await loadCurrentDraft(client, jobId);
   const validation = currentDraft ? await validateDraft(client, currentDraft.payload) : null;
 
-  const [latestQaResult, images, revisionHistory, stageRuns, reviewHistory] = await Promise.all([
+  const [latestQaResult, images, revisionHistory, stageRuns, reviewHistory, nutritionPreview] = await Promise.all([
     loadLatestFullQaResult(client, jobId),
     currentDraft ? loadAssets(client, jobId, currentDraft.id, resolvePublicUrl) : Promise.resolve([]),
     loadRevisionHistory(client, jobId),
     loadStageRuns(client, jobId),
     loadReviewHistory(client, jobId),
+    currentDraft ? loadNutritionPreview(client, jobId) : Promise.resolve(null),
   ]);
 
   return {
@@ -219,6 +220,7 @@ export async function loadJobDetail(
     revisionHistory,
     stageRuns,
     reviewHistory,
+    nutritionPreview,
   };
 }
 
