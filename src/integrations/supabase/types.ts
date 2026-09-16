@@ -4634,6 +4634,10 @@ export type Database = {
         Args: { offer_row: Database["public"]["Tables"]["offers"]["Row"] }
         Returns: string
       }
+      get_price_board: {
+        Args: { p_crops?: string[]; p_days?: number }
+        Returns: Json
+      }
       get_price_history_series: {
         Args: { p_crop: string; p_weeks?: number }
         Returns: Json
