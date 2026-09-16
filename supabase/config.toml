@@ -3,6 +3,13 @@ project_id = "efuqpiaavrzimvstpdpm"
 [functions.send-sms]
 verify_jwt = true
 
+# Server-to-server only. The platform JWT gate is intentionally disabled because the database
+# signs the raw body with NOTIFY_ADMIN_INGRESS_SECRET; notify-admin verifies that HMAC and a
+# five-minute timestamp before any database claim or Twilio call. Browser/mobile callers do not
+# possess this secret and receive 401/403 from the handler.
+[functions.notify-admin]
+verify_jwt = false
+
 [functions.whatsapp-ai-webhook]
 verify_jwt = false
 
