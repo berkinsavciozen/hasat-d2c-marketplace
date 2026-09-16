@@ -43,3 +43,13 @@ Telefon görünümünde her satırda sadece "öne çıkan tek kaynağın" fiyat�
 - Değişecek dosyalar: `src/components/hasat/PriceBoard.tsx` (tek tablo yapısına yeniden yazım, sticky ilk sütun, hücre içi trend), gerekiyorsa `src/components/hasat/PricesPageBody.tsx` (başlık/açıklama satırı).
 - `get_price_board` RPC'si zaten kaynak başına `price`, `prev_price`, `change_pct`, `points`, `last_date` döndürüyor; yeni migration gerekmiyor. Sütun kümesi satırlardaki kaynaklardan dinamik üretilmeye devam eder.
 - Erişilebilirlik: gerçek `<table>` semantiği, ok işaretleri için metin karşılığı; 320 px'te taşma yok (yatay kaydırma tablonun kendi içinde).
+
+## Referans görsel (kullanıcı eki)
+
+Ekteki borsa uygulaması listesi referans alınır, kendi paletimizle:
+
+- Sade satırlar, ince ayırıcı çizgiler, kart gölgesi/çerçeve gürültüsü yok.
+- Sol sütun: favori ikonu + ürün adı; sağa hizalı fiyat sütunları; yüzde değişim yeşil/kırmızı.
+- Başlık satırı küçük, büyük harf, soluk renk ("Ürün", "Hasat", "İzmir", "İstanbul").
+- Renkler Hasat paletinden: artış `--sage` yeşil, azalış `--hred` kırmızı, fiyat metni ana metin rengi; koyu tema kopyalanmaz.
+- Fonksiyonel değişiklik yok: aynı veriler, aynı kurallar, aynı bağlantılar.
