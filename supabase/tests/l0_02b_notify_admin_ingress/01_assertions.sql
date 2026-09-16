@@ -148,7 +148,8 @@ begin
 end;
 $$;
 
--- Measurable global gate: at most five claims in a rolling minute.
+-- Deterministic single-session contract for the global gate. 02_concurrency.sh separately proves
+-- that the same five-claim limit holds across simultaneous transactions on different event rows.
 do $$
 declare
   _id uuid;
