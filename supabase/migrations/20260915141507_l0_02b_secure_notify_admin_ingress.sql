@@ -62,7 +62,17 @@ as $function$
 declare
   _event private.admin_sms_outbox%rowtype;
   _recent_attempts integer;
+  _rate_gate_lock_class constant integer := 12125002;
+  _rate_gate_lock_object constant integer := 1;
 begin
+  -- Every claim path takes the same transaction-scoped global gate before any event row lock.
+  -- This makes the rolling count + claim update atomic across different event IDs, while the
+  -- single lock order (global gate -> event row) avoids cross-event deadlocks.
+  perform pg_catalog.pg_advisory_xact_lock(
+    _rate_gate_lock_class,
+    _rate_gate_lock_object
+  );
+
   select *
     into _event
     from private.admin_sms_outbox
