@@ -116,7 +116,13 @@ function cropHref(role: BoardRole) {
   return role === "farmer" ? "/farmer/prices/$crop" : "/buyer/prices/$crop";
 }
 
-type BoardColumn = { key: string; label: string; lastDate: string | null };
+type BoardColumn = {
+  key: string;
+  label: string;
+  lastDate: string | null;
+  filled: number;
+  trends: number;
+};
 
 function shortLabel(label: string) {
   return label
@@ -126,26 +132,30 @@ function shortLabel(label: string) {
     .trim();
 }
 
+/** Sütunlar veri zenginliğine göre sıralanır: en dolu kaynak önce görünür. */
 function columnsFor(rows: PriceBoardRow[]): BoardColumn[] {
-  const cols: BoardColumn[] = [{ key: "hasat", label: "Hasat", lastDate: null }];
-  const index = new Map<string, BoardColumn>([["hasat", cols[0]]]);
-  const track = (key: string, label: string, lastDate: string | null) => {
-    const existing = index.get(key);
-    if (!existing) {
-      const col = { key, label, lastDate };
+  const index = new Map<string, BoardColumn>();
+  const track = (key: string, label: string, src: PriceBoardSource | null | undefined) => {
+    let col = index.get(key);
+    if (!col) {
+      col = { key, label, lastDate: null, filled: 0, trends: 0 };
       index.set(key, col);
-      cols.push(col);
-      return;
     }
-    if (lastDate && (!existing.lastDate || lastDate > existing.lastDate)) existing.lastDate = lastDate;
+    if (!src) return;
+    if (src.price != null) col.filled += 1;
+    if (src.changePct != null) col.trends += 1;
+    if (src.lastDate && (!col.lastDate || src.lastDate > col.lastDate)) col.lastDate = src.lastDate;
   };
   for (const r of rows) {
-    track("hasat", "Hasat", r.hasat?.lastDate ?? null);
-    for (const m of r.markets) track(m.key, shortLabel(m.label), m.lastDate ?? null);
-    if (r.official) track("official", "Resmi", r.official.lastDate ?? null);
+    track("hasat", "Hasat", r.hasat);
+    for (const m of r.markets) track(m.key, shortLabel(m.label), m);
+    if (r.official) track("official", "Resmi", r.official);
   }
-  return cols;
+  return [...index.values()].sort(
+    (a, b) => b.trends - a.trends || b.filled - a.filled || a.label.localeCompare(b.label, "tr"),
+  );
 }
+
 
 function sourceByKey(row: PriceBoardRow, key: string): PriceBoardSource | null {
   if (key === "hasat") return row.hasat;
