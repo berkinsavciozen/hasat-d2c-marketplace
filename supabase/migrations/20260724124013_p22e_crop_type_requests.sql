@@ -39,12 +39,11 @@ as $function$
 declare
   _farmer_name text;
   _url text := 'https://efuqpiaavrzimvstpdpm.supabase.co/functions/v1/notify-admin';
-  _anon text := 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVmdXFwaWFhdnJ6aW12c3RwZHBtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA5MDE4NzgsImV4cCI6MjA5NjQ3Nzg3OH0.YQ459pxmKISJYfuzbA7edlIywHl11-62znbb-iIw8Pg';
 begin
   select name into _farmer_name from public.profiles where id = new.requested_by;
   perform net.http_post(
     url := _url,
-    headers := jsonb_build_object('Content-Type', 'application/json', 'Authorization', 'Bearer ' || _anon),
+    headers := jsonb_build_object('Content-Type', 'application/json'),
     body := jsonb_build_object('message', format('🌾 Yeni ürün türü talebi: %s — %s', new.crop_name, coalesce(_farmer_name, 'bir çiftçi')))
   );
   return new;
