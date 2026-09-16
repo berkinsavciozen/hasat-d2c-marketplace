@@ -21,4 +21,7 @@ echo "==> Applying L0-02B migration"
 echo "==> Running assertions"
 "${PSQL[@]}" -d "$DB_NAME" -f "$SCRIPT_DIR/01_assertions.sql"
 
+echo "==> Running multi-session concurrency regression"
+bash "$SCRIPT_DIR/02_concurrency.sh" "$DB_NAME"
+
 echo "==> L0-02B notify-admin SQL contract suite: PASSED"
