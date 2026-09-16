@@ -2593,6 +2593,85 @@ export function usePriceHistorySeries(crop: string | null | undefined, weeks = 1
   });
 }
 
+// ---- price board (borsa tarzı kompakt tablo) ----
+//
+// `get_price_board(p_days, p_crops)` SECURITY DEFINER RPC'si tüm ürünleri tek
+// çağrıda döndürür: kaynak başına (Hasat gerçekleşen satışlar / resmi kaynak /
+// toptancı halleri) seçilen penceredeki ortalama, bir önceki penceredeki
+// ortalama ve yüzde değişim. Hasat segmenti 5 farklı üretici eşiğinin altında
+// ise fiyat NULL döner (`insufficient: true`) — sayı hiçbir koşulda sızmaz.
+// Trend yüzdesi yalnızca RPC'den gelir, istemcide hesaplanmaz.
+export type PriceBoardSourceKind = "hasat" | "official" | "market";
+
+export interface PriceBoardSource {
+  key: string;
+  kind: PriceBoardSourceKind;
+  label: string;
+  region: string | null;
+  price: number | null;
+  prevPrice: number | null;
+  changePct: number | null;
+  points: number;
+  lastDate: string | null;
+  insufficient: boolean;
+  farmerCount?: number;
+}
+
+export interface PriceBoardRow {
+  crop: string;
+  displayName: string;
+  unit: string | null;
+  windowType: string | null;
+  hasat: PriceBoardSource;
+  official: PriceBoardSource | null;
+  markets: PriceBoardSource[];
+  hasAnyData: boolean;
+}
+
+function mapBoardSource(raw: any, kind: PriceBoardSourceKind): PriceBoardSource {
+  return {
+    key: String(raw?.key ?? kind),
+    kind,
+    label: String(raw?.label ?? "Kaynak"),
+    region: raw?.region == null ? null : String(raw.region),
+    price: raw?.price == null ? null : Number(raw.price),
+    prevPrice: raw?.prev_price == null ? null : Number(raw.prev_price),
+    changePct: raw?.change_pct == null ? null : Number(raw.change_pct),
+    points: Number(raw?.points ?? 0),
+    lastDate: raw?.last_date == null ? null : String(raw.last_date),
+    insufficient: !!raw?.insufficient,
+    farmerCount: raw?.farmer_count == null ? undefined : Number(raw.farmer_count),
+  };
+}
+
+export function usePriceBoard(days: number) {
+  return useQuery({
+    queryKey: ["priceBoard", days],
+    staleTime: 5 * 60 * 1000,
+    queryFn: async (): Promise<PriceBoardRow[]> => {
+      const { data, error } = await supabase.rpc("get_price_board" as any, {
+        p_days: days,
+      } as any);
+      if (error) throw error;
+      const rows = Array.isArray(data) ? data : [];
+      return rows.map((r: any) => ({
+        crop: String(r?.crop ?? ""),
+        displayName: String(r?.display_name ?? r?.crop ?? ""),
+        unit: r?.unit == null ? null : String(r.unit),
+        windowType: r?.window_type == null ? null : String(r.window_type),
+        hasat: mapBoardSource(r?.hasat ?? {}, "hasat"),
+        official: r?.official ? mapBoardSource(r.official, "official") : null,
+        markets: Array.isArray(r?.markets)
+          ? r.markets.map((m: any) => mapBoardSource(m, "market"))
+          : [],
+        hasAnyData: !!r?.has_any_data,
+      })).filter((r: PriceBoardRow) => r.crop.length > 0);
+    },
+  });
+}
+
+
+
 
 export interface CreateCropRequestInput {
   cropName: string;
