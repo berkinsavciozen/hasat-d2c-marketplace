@@ -12,20 +12,8 @@ import { formatTRY } from "@/lib/hasat/format";
 
 export type BoardRole = "farmer" | "buyer";
 
-/** Satırda öne çıkarılacak kaynak: önce Hasat, yoksa ilk hal, yoksa resmi. */
-export function primarySource(row: PriceBoardRow): PriceBoardSource | null {
-  if (row.hasat.price != null) return row.hasat;
-  const market = row.markets.find((m) => m.price != null);
-  if (market) return market;
-  if (row.official?.price != null) return row.official;
-  return null;
-}
 
-function secondarySources(row: PriceBoardRow, primary: PriceBoardSource | null): PriceBoardSource[] {
-  const all: PriceBoardSource[] = [...row.markets];
-  if (row.official) all.push(row.official);
-  return all.filter((s) => s.price != null && s.key !== primary?.key);
-}
+
 
 function TrendBadge({ source }: { source: PriceBoardSource }) {
   const changePct = source.changePct;
