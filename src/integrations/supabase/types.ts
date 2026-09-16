@@ -4510,6 +4510,15 @@ export type Database = {
       }
       can_send_ai_message: { Args: { _user_id: string }; Returns: boolean }
       check_and_record_mcp_call: { Args: never; Returns: boolean }
+      claim_admin_sms_event: { Args: { p_event_id: string }; Returns: Json }
+      complete_admin_sms_event: {
+        Args: {
+          p_event_id: string
+          p_outcome: string
+          p_provider_message_id?: string
+        }
+        Returns: boolean
+      }
       create_draft_listings_for_parcel: {
         Args: { _crops: string[]; _farmer_id: string; _parcel_id: string }
         Returns: undefined
