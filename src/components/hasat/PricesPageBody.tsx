@@ -168,10 +168,10 @@ export function PricesPageBody({ role }: { role: BoardRole }) {
           "{q}" için sonuç yok.
         </div>
       ) : (
-        <div className="space-y-3">
+        <div className="space-y-4">
           {f1.length > 0 && (
-            <section className="space-y-1.5">
-              <h3 className="sticky top-0 z-10 bg-background/90 py-1 text-[11px] font-semibold uppercase tracking-wide text-hmuted backdrop-blur">
+            <section className="space-y-1">
+              <h3 className="sticky top-0 z-20 bg-background/95 py-1 text-[11px] font-semibold uppercase tracking-wide text-hmuted backdrop-blur">
                 {role === "farmer" ? "Ürünlerin" : "İlgilendiğin Ürünler"}
               </h3>
               <PriceBoard rows={f1} role={role} />
@@ -179,8 +179,8 @@ export function PricesPageBody({ role }: { role: BoardRole }) {
           )}
 
           {f2.length > 0 && (
-            <section className="space-y-1.5">
-              <h3 className="sticky top-0 z-10 bg-background/90 py-1 text-[11px] font-semibold uppercase tracking-wide text-hmuted backdrop-blur">
+            <section className="space-y-1">
+              <h3 className="sticky top-0 z-20 bg-background/95 py-1 text-[11px] font-semibold uppercase tracking-wide text-hmuted backdrop-blur">
                 Favoriler
               </h3>
               <PriceBoard rows={f2} role={role} />
@@ -194,7 +194,7 @@ export function PricesPageBody({ role }: { role: BoardRole }) {
               value={allOpen}
               onValueChange={(v) => setAllOpen(v || undefined)}
             >
-              <AccordionItem value="all" className="rounded-2xl border bg-card px-3">
+              <AccordionItem value="all" className="border-t border-border/70">
                 <AccordionTrigger className="min-h-[48px] text-sm font-medium hover:no-underline">
                   Tüm Piyasa{" "}
                   <span className="ml-2 text-[11px] font-normal text-hmuted">({f3.length})</span>
@@ -205,7 +205,12 @@ export function PricesPageBody({ role }: { role: BoardRole }) {
               </AccordionItem>
             </Accordion>
           )}
+
+          <p className="text-[10px] text-hmuted">
+            Yüzde değişim, seçilen dönemin bir önceki eş dönemine göre hesaplanır.
+          </p>
         </div>
+
       )}
     </div>
   );
