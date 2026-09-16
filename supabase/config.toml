@@ -39,3 +39,6 @@ verify_jwt = true
 
 [functions.mobile-handoff-exchange]
 verify_jwt = false
+
+[functions.sync-istanbul-hal-prices]
+verify_jwt = false
