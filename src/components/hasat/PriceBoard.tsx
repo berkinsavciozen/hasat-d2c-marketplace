@@ -27,21 +27,30 @@ function secondarySources(row: PriceBoardRow, primary: PriceBoardSource | null):
   return all.filter((s) => s.price != null && s.key !== primary?.key);
 }
 
-function TrendBadge({ changePct }: { changePct: number | null }) {
+function TrendBadge({ source }: { source: PriceBoardSource }) {
+  const changePct = source.changePct;
   if (changePct == null) {
-    return <span className="text-[11px] text-hmuted">—</span>;
+    return (
+      <span
+        className="block text-[10px] text-hmuted"
+        title="Karşılaştırma için önceki döneme ait veri yok"
+      >
+        yeni kaynak
+      </span>
+    );
   }
   const up = changePct > 0;
   const flat = changePct === 0;
-  const color = flat ? "var(--hmuted)" : up ? "var(--teal)" : "var(--destructive)";
+  const color = flat ? "var(--hmuted)" : up ? "var(--sage)" : "var(--hred)";
   const Icon = up ? ArrowUp : ArrowDown;
   return (
     <span
-      className="inline-flex items-center gap-0.5 font-mono text-[11px] font-medium tabular-nums"
+      className="inline-flex items-center justify-end gap-0.5 font-mono text-[11px] font-semibold tabular-nums"
       style={{ color }}
     >
-      {!flat && <Icon className="h-3 w-3" aria-hidden />}
-      %{Math.abs(changePct).toLocaleString("tr-TR", { maximumFractionDigits: 1 })}
+      {!flat && <Icon className="h-3 w-3 shrink-0" aria-hidden />}
+      <span className="sr-only">{up ? "artış" : flat ? "değişim yok" : "azalış"}</span>%
+      {Math.abs(changePct).toLocaleString("tr-TR", { maximumFractionDigits: 1 })}
     </span>
   );
 }
@@ -51,16 +60,19 @@ function PriceCell({ source, unit }: { source: PriceBoardSource | null | undefin
     if (source?.kind === "hasat" && source.insufficient) {
       return <span className="text-[11px] text-hmuted">yetersiz veri</span>;
     }
-    return <span className="text-[11px] text-hmuted">—</span>;
+    return <span className="text-[13px] text-hmuted">—</span>;
   }
   return (
-    <span className="inline-flex items-baseline gap-1.5 whitespace-nowrap">
-      <span className="font-mono text-sm font-semibold tabular-nums">{formatTRY(source.price)}</span>
-      <span className="text-[10px] text-hmuted">/{unit ?? "kg"}</span>
-      <TrendBadge changePct={source.changePct} />
+    <span className="block">
+      <span className="block whitespace-nowrap font-mono text-sm font-semibold tabular-nums">
+        {formatTRY(source.price)}
+        <span className="ml-0.5 text-[10px] font-normal text-hmuted">/{unit ?? "kg"}</span>
+      </span>
+      <TrendBadge source={source} />
     </span>
   );
 }
+
 
 export function WatchStar({ crop, size = "sm" }: { crop: string; size?: "sm" | "md" }) {
   const { data: alerts = [] } = usePriceAlerts();
