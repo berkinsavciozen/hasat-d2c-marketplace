@@ -1,18 +1,15 @@
 import { useEffect, useMemo, useState } from "react";
-import { Link } from "@tanstack/react-router";
 import {
-  usePriceHistorySummary,
-  useCropsWithPriceData,
+  usePriceBoard,
   usePriceAlerts,
-  useCreatePriceAlert,
-  useTogglePriceAlert,
   useFarmerListings,
   useBuyerOrders,
+  type PriceBoardRow,
 } from "@/lib/hasat/queries";
 import { LoadingDots } from "@/components/hasat/LoadingDots";
-import { formatCrop, priceWithUnit } from "@/lib/hasat/format";
-import { Info, Search, Star } from "lucide-react";
-import { toast } from "sonner";
+import { PriceBoard, type BoardRole } from "@/components/hasat/PriceBoard";
+import { Info, Search } from "lucide-react";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Accordion,
   AccordionContent,
@@ -20,11 +17,15 @@ import {
   AccordionTrigger,
 } from "@/components/ui/accordion";
 
-type Role = "farmer" | "buyer";
+const RANGES = [
+  { key: "7", label: "7 Gün" },
+  { key: "30", label: "30 Gün" },
+  { key: "90", label: "90 Gün" },
+] as const;
 
-const TIER1_LIMIT = 4;
+const RANGE_STORAGE_KEY = "hasat.prices.range";
 
-function useOwnCrops(role: Role): string[] {
+function useOwnCrops(role: BoardRole): Set<string> {
   const isFarmer = role === "farmer";
   const isBuyer = role === "buyer";
   const { data: listings = [] } = useFarmerListings();
@@ -32,105 +33,134 @@ function useOwnCrops(role: Role): string[] {
   return useMemo(() => {
     const set = new Set<string>();
     if (isFarmer) {
-      for (const l of listings) if (l?.crop) set.add(String(l.crop));
+      for (const l of listings) if (l?.crop) set.add(String(l.crop).toLowerCase());
     }
     if (isBuyer) {
-      for (const o of orders.slice(0, 20)) if (o?.crop) set.add(String(o.crop));
+      for (const o of orders.slice(0, 20)) if (o?.crop) set.add(String(o.crop).toLowerCase());
     }
-    return Array.from(set);
+    return set;
   }, [isFarmer, isBuyer, listings, orders]);
 }
 
-function dedupeByLower(list: string[]): string[] {
-  const seen = new Set<string>();
-  const out: string[] = [];
-  for (const c of list) {
-    const k = c.toLowerCase();
-    if (seen.has(k)) continue;
-    seen.add(k);
-    out.push(c);
-  }
-  return out;
-}
-
-function subtractLower(all: string[], remove: Set<string>): string[] {
-  return all.filter((c) => !remove.has(c.toLowerCase()));
-}
-
-export function PricesPageBody({ role }: { role: Role }) {
-  const { data: allCrops = [], isLoading } = useCropsWithPriceData();
-  const { data: alerts = [] } = usePriceAlerts();
-  const ownCrops = useOwnCrops(role);
+export function PricesPageBody({ role }: { role: BoardRole }) {
+  const [range, setRange] = useState<string>("30");
   const [q, setQ] = useState("");
   const [allOpen, setAllOpen] = useState<string | undefined>(undefined);
 
-  const watched = useMemo(() => {
-    const active = alerts.filter((a) => a.active).map((a) => a.crop);
-    const inactive = alerts.filter((a) => !a.active).map((a) => a.crop);
-    return dedupeByLower([...active, ...inactive]);
-  }, [alerts]);
+  useEffect(() => {
+    try {
+      const saved = window.localStorage.getItem(RANGE_STORAGE_KEY);
+      if (saved && RANGES.some((r) => r.key === saved)) setRange(saved);
+    } catch {
+      /* storage yoksa varsayılan 30 gün */
+    }
+  }, []);
 
-  const filterNeedle = (list: string[]) => {
+  const onRangeChange = (v: string) => {
+    if (!v) return;
+    setRange(v);
+    try {
+      window.localStorage.setItem(RANGE_STORAGE_KEY, v);
+    } catch {
+      /* yoksay */
+    }
+  };
+
+  const { data: board = [], isLoading } = usePriceBoard(Number(range));
+  const { data: alerts = [] } = usePriceAlerts();
+  const ownCrops = useOwnCrops(role);
+
+  const watched = useMemo(
+    () => new Set(alerts.map((a) => a.crop.toLowerCase())),
+    [alerts],
+  );
+
+  const matches = (r: PriceBoardRow) => {
     const needle = q.trim().toLocaleLowerCase("tr-TR");
-    if (!needle) return list;
-    return list.filter(
-      (c) =>
-        formatCrop(c).toLocaleLowerCase("tr-TR").includes(needle) ||
-        c.toLowerCase().includes(needle),
+    if (!needle) return true;
+    return (
+      r.displayName.toLocaleLowerCase("tr-TR").includes(needle) ||
+      r.crop.toLocaleLowerCase("tr-TR").includes(needle)
     );
   };
 
-  const tier1All = filterNeedle(dedupeByLower(ownCrops));
   const searching = q.trim().length > 0;
-  const tier1 = searching ? tier1All : tier1All.slice(0, TIER1_LIMIT);
-  const tier1Hidden = searching ? 0 : Math.max(0, tier1All.length - TIER1_LIMIT);
-  const usedLower = new Set(tier1All.map((c) => c.toLowerCase()));
-  const tier2 = filterNeedle(subtractLower(watched, usedLower));
-  tier2.forEach((c) => usedLower.add(c.toLowerCase()));
-  const tier3 = filterNeedle(subtractLower(allCrops, usedLower));
+
+  const { tier1, tier2, tier3 } = useMemo(() => {
+    const t1: PriceBoardRow[] = [];
+    const t2: PriceBoardRow[] = [];
+    const t3: PriceBoardRow[] = [];
+    for (const r of board) {
+      const key = r.crop.toLowerCase();
+      if (ownCrops.has(key)) t1.push(r);
+      else if (watched.has(key)) t2.push(r);
+      else if (r.hasAnyData) t3.push(r);
+    }
+    return { tier1: t1, tier2: t2, tier3: t3 };
+  }, [board, ownCrops, watched]);
+
+  const f1 = tier1.filter(matches);
+  const f2 = tier2.filter(matches);
+  const f3 = tier3.filter(matches);
+  const totalMatches = f1.length + f2.length + f3.length;
 
   useEffect(() => {
     if (searching) setAllOpen("all");
   }, [searching]);
 
-  const totalMatches = tier1.length + tier2.length + tier3.length;
+  const empty = board.every((r) => !r.hasAnyData) && tier1.length === 0;
 
   return (
-    <div className="space-y-5 px-4 py-5 pb-32 md:px-8 md:pb-5">
-      <div className="flex gap-3 rounded-2xl border border-teal/20 bg-teal/10 p-4 text-xs text-muted-foreground">
-        <Info className="h-3.5 w-3.5 mt-0.5 shrink-0" />
-        <div>
-          Fiyatlar, platformda tamamlanan siparişlerden anonim olarak üretilir. Rekabet hukuku
-          gereği bireysel kayıtlar gösterilmez; yalnızca ortalama ve piyasa aralığı yer alır. En az
-          5 farklı üreticiden veri gelmediği ürünler için Hasat değerlendirmesi yapılmaz. Resmi
-          kaynak (Hal Kayıt Sistemi) ve toptancı hali verileri, mevcut olduğunda ayrı satırlarda
-          gösterilir ve topluluk verisiyle karıştırılmaz.
-        </div>
-      </div>
+    <div className="space-y-4 px-4 py-4 pb-32 md:px-8 md:pb-5">
+      <Accordion type="single" collapsible>
+        <AccordionItem value="info" className="rounded-2xl border border-teal/20 bg-teal/10 px-4">
+          <AccordionTrigger className="min-h-[44px] py-2 text-left text-[11px] text-muted-foreground hover:no-underline">
+            <span className="inline-flex items-center gap-2">
+              <Info className="h-3.5 w-3.5 shrink-0" />
+              Fiyatlar nasıl hesaplanıyor?
+            </span>
+          </AccordionTrigger>
+          <AccordionContent className="pb-3 text-xs text-muted-foreground">
+            Hasat sütunu, platformda tamamlanan siparişlerden anonim olarak üretilir. Rekabet
+            hukuku gereği bireysel kayıtlar gösterilmez; en az 5 farklı üreticiden veri gelmeyen
+            ürünlerde sayı yerine "yetersiz veri" yazar. Toptancı hali ve resmi kaynak fiyatları
+            ayrı sütunlarda gösterilir, topluluk verisiyle birleştirilmez. Yüzde değişim, seçilen
+            aralığın bir önceki eş dönemine göre hesaplanır.
+          </AccordionContent>
+        </AccordionItem>
+      </Accordion>
 
-      {allCrops.length > 0 && (
-        <div className="relative">
-          <Search className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-hmuted" />
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+        <Tabs value={range} onValueChange={onRangeChange} className="sm:w-auto">
+          <TabsList className="w-full sm:w-auto">
+            {RANGES.map((r) => (
+              <TabsTrigger key={r.key} value={r.key} className="min-h-[40px] flex-1 text-xs">
+                {r.label}
+              </TabsTrigger>
+            ))}
+          </TabsList>
+        </Tabs>
+        <div className="relative flex-1">
+          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-hmuted" />
           <input
             value={q}
             onChange={(e) => setQ(e.target.value)}
             placeholder="Ürün ara…"
-            className="min-h-[48px] w-full rounded-xl border bg-card py-3 pl-9 pr-3 text-sm outline-none focus:border-primary focus-visible:ring-2 focus-visible:ring-primary"
+            className="min-h-[44px] w-full rounded-xl border bg-card py-2 pl-9 pr-3 text-sm outline-none focus:border-primary focus-visible:ring-2 focus-visible:ring-primary"
           />
         </div>
-      )}
+      </div>
 
       {isLoading ? (
         <div className="py-12">
           <LoadingDots />
         </div>
-      ) : allCrops.length === 0 ? (
+      ) : empty ? (
         <div className="rounded-2xl border border-dashed bg-card py-12 text-center">
           <Info className="mx-auto mb-3 h-9 w-9 text-primary" />
           <div className="mb-1 font-medium">Henüz fiyat verisi yok</div>
           <div className="text-xs text-hmuted">
-            Platformda aktif ürün ve tamamlanmış sipariş biriktikçe piyasa aralıkları burada
-            görünecek.
+            Platformda tamamlanan sipariş ve hal verisi biriktikçe fiyatlar burada görünecek.
           </div>
         </div>
       ) : searching && totalMatches === 0 ? (
@@ -138,189 +168,45 @@ export function PricesPageBody({ role }: { role: Role }) {
           "{q}" için sonuç yok.
         </div>
       ) : (
-        <>
-          {tier1.length > 0 && (
-            <section className="space-y-2">
-              <h3 className="text-[11px] font-semibold uppercase tracking-wide text-hmuted">
+        <div className="space-y-3">
+          {f1.length > 0 && (
+            <section className="space-y-1.5">
+              <h3 className="sticky top-0 z-10 bg-background/90 py-1 text-[11px] font-semibold uppercase tracking-wide text-hmuted backdrop-blur">
                 {role === "farmer" ? "Ürünlerin" : "İlgilendiğin Ürünler"}
               </h3>
-              <div className="space-y-2">
-                {tier1.map((c) => (
-                  <PriceSummaryCard key={c} crop={c} role={role} />
-                ))}
-              </div>
-              {tier1Hidden > 0 && (
-                <button
-                  type="button"
-                  onClick={() => setAllOpen("all")}
-                  className="min-h-[44px] text-[11px] text-primary underline underline-offset-2"
-                >
-                  +{tier1Hidden} tane daha — Tüm Piyasa'da gör
-                </button>
-              )}
+              <PriceBoard rows={f1} role={role} />
             </section>
           )}
 
-          {tier2.length > 0 && (
-            <section className="space-y-2">
-              <h3 className="text-[11px] font-semibold uppercase tracking-wide text-hmuted">
-                İzleme Listesi
+          {f2.length > 0 && (
+            <section className="space-y-1.5">
+              <h3 className="sticky top-0 z-10 bg-background/90 py-1 text-[11px] font-semibold uppercase tracking-wide text-hmuted backdrop-blur">
+                Favoriler
               </h3>
-              <div className="space-y-2">
-                {tier2.map((c) => (
-                  <PriceSummaryCard key={c} crop={c} role={role} />
-                ))}
-              </div>
+              <PriceBoard rows={f2} role={role} />
             </section>
           )}
 
-          {tier3.length > 0 && (
+          {f3.length > 0 && (
             <Accordion
               type="single"
               collapsible
               value={allOpen}
               onValueChange={(v) => setAllOpen(v || undefined)}
             >
-              <AccordionItem value="all" className="rounded-2xl border bg-card px-4">
+              <AccordionItem value="all" className="rounded-2xl border bg-card px-3">
                 <AccordionTrigger className="min-h-[48px] text-sm font-medium hover:no-underline">
                   Tüm Piyasa{" "}
-                  <span className="ml-2 text-[11px] font-normal text-hmuted">({tier3.length})</span>
+                  <span className="ml-2 text-[11px] font-normal text-hmuted">({f3.length})</span>
                 </AccordionTrigger>
-                <AccordionContent className="pb-3">
-                  <div className="space-y-2 pt-1">
-                    {tier3.map((c) => (
-                      <PriceSummaryCard key={c} crop={c} role={role} />
-                    ))}
-                  </div>
+                <AccordionContent className="px-0 pb-3">
+                  <PriceBoard rows={f3} role={role} />
                 </AccordionContent>
               </AccordionItem>
             </Accordion>
           )}
-        </>
+        </div>
       )}
     </div>
-  );
-}
-
-function WatchStar({ crop }: { crop: string }) {
-  const { data: alerts = [] } = usePriceAlerts();
-  const createAlert = useCreatePriceAlert();
-  const toggleAlert = useTogglePriceAlert();
-  const existing = alerts.find((a) => a.crop.toLowerCase() === crop.toLowerCase());
-  const active = !!existing?.active;
-  const busy = createAlert.isPending || toggleAlert.isPending;
-
-  const onClick = async (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    try {
-      if (!existing) {
-        await createAlert.mutateAsync({
-          crop,
-          target: 0,
-          condition: "above",
-          channels: { whatsapp: false, push: true, sms: false },
-        });
-        toast.success("İzleme listesine eklendi");
-      } else {
-        await toggleAlert.mutateAsync({ id: existing.id, active: !active });
-        toast.success(active ? "İzleme durduruldu" : "İzleme yeniden başlatıldı");
-      }
-    } catch (err: any) {
-      toast.error(err?.message ?? "İşlem başarısız");
-    }
-  };
-
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      disabled={busy}
-      aria-label={active ? "İzlemeyi kaldır" : "İzlemeye ekle"}
-      className="grid h-12 w-12 place-items-center rounded-full hover:bg-muted disabled:opacity-50"
-    >
-      <Star
-        className="h-5 w-5"
-        style={{
-          color: active ? "var(--primary)" : "var(--hmuted)",
-          fill: active ? "var(--primary)" : "transparent",
-        }}
-      />
-    </button>
-  );
-}
-
-type SourceChip = { label: string; price: string | null; muted?: boolean };
-
-function PriceSummaryCard({ crop, role }: { crop: string; role: Role }) {
-  const { data: summary, isLoading } = usePriceHistorySummary(crop);
-
-  const to = role === "farmer" ? "/farmer/prices/$crop" : "/buyer/prices/$crop";
-  const params = { crop: encodeURIComponent(crop) };
-
-  const chips: SourceChip[] = [];
-  if (summary) {
-    const unit = summary.unit;
-    const h = summary.hasat;
-    if (h && !h.insufficientData && h.avgPrice != null) {
-      chips.push({ label: "Hasat", price: priceWithUnit(h.avgPrice, unit) });
-    } else {
-      chips.push({ label: "Hasat", price: "yetersiz veri", muted: true });
-    }
-    if (summary.official && summary.official.avgPrice != null) {
-      chips.push({
-        label: summary.official.officialSourceName || "Resmi",
-        price: priceWithUnit(summary.official.avgPrice, unit),
-      });
-    }
-    for (const s of summary.marketSources ?? []) {
-      if (s.avgPrice != null) {
-        chips.push({ label: s.displayName, price: priceWithUnit(s.avgPrice, unit) });
-      }
-    }
-  }
-
-  const hasAnyPrice = chips.some((c) => !c.muted);
-
-  return (
-    <Link
-      to={to}
-      params={params}
-      className="block min-h-[48px] rounded-2xl border bg-card p-3 transition-colors hover:border-primary/40 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-    >
-      <div className="flex items-start justify-between gap-2">
-        <div className="min-w-0 flex-1">
-          <div className="break-words font-medium">{formatCrop(crop)}</div>
-          {isLoading ? (
-            <div className="mt-1.5 text-[11px] text-hmuted">Yükleniyor…</div>
-          ) : chips.length === 0 || !summary ? (
-            <div className="mt-1.5 text-[11px] text-hmuted">Fiyat verisi yok</div>
-          ) : (
-            <div className="mt-1.5 flex flex-wrap gap-1.5">
-              {!hasAnyPrice && chips.length === 1 && chips[0].muted ? (
-                <span className="rounded-full border border-dashed px-2 py-1 text-[11px] text-hmuted">
-                  {chips[0].label}: {chips[0].price}
-                </span>
-              ) : (
-                chips.map((c, i) => (
-                  <span
-                    key={`${c.label}-${i}`}
-                    className={
-                      c.muted
-                        ? "inline-flex items-center gap-1 rounded-full border border-dashed px-2 py-1 text-[11px] text-hmuted"
-                        : "inline-flex items-center gap-1 rounded-full border px-2 py-1 text-[11px]"
-                    }
-                  >
-                    <span className="text-hmuted">{c.label}</span>
-                    <span className={c.muted ? "" : "font-mono font-medium"}>{c.price}</span>
-                  </span>
-                ))
-              )}
-            </div>
-          )}
-        </div>
-        <WatchStar crop={crop} />
-      </div>
-    </Link>
   );
 }
