@@ -22,6 +22,7 @@ import { Route as TariflerimIndexRouteImport } from './routes/tariflerim.index'
 import { Route as TariflerIndexRouteImport } from './routes/tarifler.index'
 import { Route as TariflerimRecipeIdRouteImport } from './routes/tariflerim.$recipeId'
 import { Route as TariflerSlugRouteImport } from './routes/tarifler.$slug'
+import { Route as TarifPaylasimTokenRouteImport } from './routes/tarif-paylasim.$token'
 import { Route as SSlugRouteImport } from './routes/s.$slug'
 import { Route as OnboardingFarmerRouteImport } from './routes/onboarding.farmer'
 import { Route as OnboardingBuyerRouteImport } from './routes/onboarding.buyer'
@@ -141,6 +142,11 @@ const TariflerimRecipeIdRoute = TariflerimRecipeIdRouteImport.update({
 const TariflerSlugRoute = TariflerSlugRouteImport.update({
   id: '/tarifler/$slug',
   path: '/tarifler/$slug',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const TarifPaylasimTokenRoute = TarifPaylasimTokenRouteImport.update({
+  id: '/tarif-paylasim/$token',
+  path: '/tarif-paylasim/$token',
   getParentRoute: () => rootRouteImport,
 } as any)
 const SSlugRoute = SSlugRouteImport.update({
@@ -464,6 +470,7 @@ export interface FileRoutesByFullPath {
   '/onboarding/buyer': typeof OnboardingBuyerRoute
   '/onboarding/farmer': typeof OnboardingFarmerRoute
   '/s/$slug': typeof SSlugRoute
+  '/tarif-paylasim/$token': typeof TarifPaylasimTokenRoute
   '/tarifler/$slug': typeof TariflerSlugRoute
   '/tariflerim/$recipeId': typeof TariflerimRecipeIdRoute
   '/tarifler/': typeof TariflerIndexRoute
@@ -532,6 +539,7 @@ export interface FileRoutesByTo {
   '/onboarding/buyer': typeof OnboardingBuyerRoute
   '/onboarding/farmer': typeof OnboardingFarmerRoute
   '/s/$slug': typeof SSlugRoute
+  '/tarif-paylasim/$token': typeof TarifPaylasimTokenRoute
   '/tarifler/$slug': typeof TariflerSlugRoute
   '/tariflerim/$recipeId': typeof TariflerimRecipeIdRoute
   '/tarifler': typeof TariflerIndexRoute
@@ -602,6 +610,7 @@ export interface FileRoutesById {
   '/onboarding/buyer': typeof OnboardingBuyerRoute
   '/onboarding/farmer': typeof OnboardingFarmerRoute
   '/s/$slug': typeof SSlugRoute
+  '/tarif-paylasim/$token': typeof TarifPaylasimTokenRoute
   '/tarifler/$slug': typeof TariflerSlugRoute
   '/tariflerim/$recipeId': typeof TariflerimRecipeIdRoute
   '/tarifler/': typeof TariflerIndexRoute
@@ -674,6 +683,7 @@ export interface FileRouteTypes {
     | '/onboarding/buyer'
     | '/onboarding/farmer'
     | '/s/$slug'
+    | '/tarif-paylasim/$token'
     | '/tarifler/$slug'
     | '/tariflerim/$recipeId'
     | '/tarifler/'
@@ -742,6 +752,7 @@ export interface FileRouteTypes {
     | '/onboarding/buyer'
     | '/onboarding/farmer'
     | '/s/$slug'
+    | '/tarif-paylasim/$token'
     | '/tarifler/$slug'
     | '/tariflerim/$recipeId'
     | '/tarifler'
@@ -811,6 +822,7 @@ export interface FileRouteTypes {
     | '/onboarding/buyer'
     | '/onboarding/farmer'
     | '/s/$slug'
+    | '/tarif-paylasim/$token'
     | '/tarifler/$slug'
     | '/tariflerim/$recipeId'
     | '/tarifler/'
@@ -863,6 +875,7 @@ export interface RootRouteChildren {
   OnboardingBuyerRoute: typeof OnboardingBuyerRoute
   OnboardingFarmerRoute: typeof OnboardingFarmerRoute
   SSlugRoute: typeof SSlugRoute
+  TarifPaylasimTokenRoute: typeof TarifPaylasimTokenRoute
   TariflerSlugRoute: typeof TariflerSlugRoute
   TariflerimRecipeIdRoute: typeof TariflerimRecipeIdRoute
   TariflerIndexRoute: typeof TariflerIndexRoute
@@ -962,6 +975,13 @@ declare module '@tanstack/react-router' {
       path: '/tarifler/$slug'
       fullPath: '/tarifler/$slug'
       preLoaderRoute: typeof TariflerSlugRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/tarif-paylasim/$token': {
+      id: '/tarif-paylasim/$token'
+      path: '/tarif-paylasim/$token'
+      fullPath: '/tarif-paylasim/$token'
+      preLoaderRoute: typeof TarifPaylasimTokenRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/s/$slug': {
@@ -1526,6 +1546,7 @@ const rootRouteChildren: RootRouteChildren = {
   OnboardingBuyerRoute: OnboardingBuyerRoute,
   OnboardingFarmerRoute: OnboardingFarmerRoute,
   SSlugRoute: SSlugRoute,
+  TarifPaylasimTokenRoute: TarifPaylasimTokenRoute,
   TariflerSlugRoute: TariflerSlugRoute,
   TariflerimRecipeIdRoute: TariflerimRecipeIdRoute,
   TariflerIndexRoute: TariflerIndexRoute,
