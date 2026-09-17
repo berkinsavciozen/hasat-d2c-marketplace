@@ -2382,6 +2382,7 @@ export type Database = {
           nutrition_warnings: string[]
           owner_id: string | null
           prep_minutes: number | null
+          private_edit_version: number
           protein_g: number | null
           required_equipment: string[] | null
           rest_minutes: number | null
@@ -2424,6 +2425,7 @@ export type Database = {
           nutrition_warnings?: string[]
           owner_id?: string | null
           prep_minutes?: number | null
+          private_edit_version?: number
           protein_g?: number | null
           required_equipment?: string[] | null
           rest_minutes?: number | null
@@ -2466,6 +2468,7 @@ export type Database = {
           nutrition_warnings?: string[]
           owner_id?: string | null
           prep_minutes?: number | null
+          private_edit_version?: number
           protein_g?: number | null
           required_equipment?: string[] | null
           rest_minutes?: number | null
@@ -3198,6 +3201,28 @@ export type Database = {
         }[]
       }
       increment_ai_usage: { Args: { _user_id: string }; Returns: number }
+      rpc_clone_recipe: {
+        Args: { p_operation_key: string; p_source_recipe_id: string }
+        Returns: Json
+      }
+      rpc_create_private_recipe: {
+        Args: {
+          p_operation_key: string
+          p_operation_type: string
+          p_payload: Json
+          p_input_hash?: string | null
+          p_source_recipe_id?: string | null
+        }
+        Returns: Json
+      }
+      rpc_get_private_recipe_operation: {
+        Args: {
+          p_operation_key: string
+          p_operation_type: string
+          p_input_hash: string
+        }
+        Returns: Json
+      }
       rpc_create_offer: {
         Args: {
           p_delivery?: string
@@ -3287,6 +3312,15 @@ export type Database = {
       rpc_register_device_token: {
         Args: { p_platform: string; p_token: string }
         Returns: string
+      }
+      rpc_update_private_recipe: {
+        Args: {
+          p_expected_version: number
+          p_operation_key: string
+          p_payload: Json
+          p_recipe_id: string
+        }
+        Returns: Json
       }
       send_subscription_harvest_reminders: { Args: never; Returns: undefined }
     }

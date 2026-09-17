@@ -7,8 +7,10 @@
  * mevcut `owner_id = auth.uid()` RLS politikalarıyla çalışır.
  */
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuthUserId } from "@/lib/hasat/queries";
+import { createRetryOperationKeyStore } from "@/lib/hasat/retryOperationKey";
 
 export interface DraftIngredient {
   crop: string | null;
@@ -120,6 +122,7 @@ export function useMyRecipeDrafts() {
 
 export interface MyRecipeDetail extends RecipeDraft {
   id: string;
+  version: number;
   clonedFromRecipeId: string | null;
   clonedFromSlug: string | null;
   clonedFromTitle: string | null;
@@ -135,7 +138,7 @@ export function useMyRecipeDraft(recipeId: string | undefined) {
       const { data: recipe, error } = await supabase
         .from("recipes")
         .select(
-          "id, title, description, servings, prep_minutes, cook_minutes, rest_minutes, difficulty, cloned_from_recipe_id, owner_id, share_token",
+          "id, title, description, servings, prep_minutes, cook_minutes, rest_minutes, difficulty, cloned_from_recipe_id, owner_id, private_edit_version, share_token",
         )
         .eq("id", recipeId!)
         .maybeSingle();
@@ -171,6 +174,7 @@ export function useMyRecipeDraft(recipeId: string | undefined) {
 
       return {
         id: recipe.id,
+        version: recipe.private_edit_version,
         title: recipe.title,
         description: recipe.description,
         servings: recipe.servings,
@@ -208,60 +212,50 @@ export function useMyRecipeDraft(recipeId: string | undefined) {
  */
 export function useUpdateMyRecipeDraft(recipeId: string) {
   const qc = useQueryClient();
+  const userId = useAuthUserId();
+  const operationKeys = useRef(createRetryOperationKeyStore());
   return useMutation({
     mutationFn: async (draft: RecipeDraft) => {
       const clean = cleanDraft(draft);
-      const { error: upErr } = await supabase
-        .from("recipes")
-        .update({
-          title: clean.title,
-          description: clean.description,
-          servings: clean.servings,
-          prep_minutes: clean.prepMinutes,
-          cook_minutes: clean.cookMinutes,
-          rest_minutes: clean.restMinutes,
-          difficulty: clean.difficulty,
-        })
-        .eq("id", recipeId);
-      if (upErr) throw upErr;
-
-      const { error: delIngErr } = await supabase
-        .from("recipe_ingredients")
-        .delete()
-        .eq("recipe_id", recipeId);
-      if (delIngErr) throw delIngErr;
-      const { error: delStepErr } = await supabase
-        .from("recipe_steps")
-        .delete()
-        .eq("recipe_id", recipeId);
-      if (delStepErr) throw delStepErr;
-
-      if (clean.ingredients.length > 0) {
-        const { error } = await supabase.from("recipe_ingredients").insert(
-          clean.ingredients.map((i) => ({
-            recipe_id: recipeId,
-            crop: i.crop?.trim() ? i.crop.trim() : null,
-            free_text_name: i.freeTextName?.trim() ? i.freeTextName.trim() : null,
-            quantity: i.quantity,
-            unit: i.unit?.trim() ? i.unit.trim() : null,
-            note: i.note?.trim() ? i.note.trim() : null,
-            is_key_ingredient: i.isKeyIngredient,
-            sort_order: i.sortOrder,
-          })),
-        );
-        if (error) throw error;
-      }
-      if (clean.steps.length > 0) {
-        const { error } = await supabase.from("recipe_steps").insert(
-          clean.steps.map((s) => ({
-            recipe_id: recipeId,
-            step_no: s.stepNo,
-            instruction: s.instruction.trim(),
-            timer_seconds: s.timerSeconds,
-          })),
-        );
-        if (error) throw error;
-      }
+      const loaded = qc.getQueryData<MyRecipeDetail | null>(["myRecipeDraft", recipeId, userId]);
+      if (!loaded) throw new Error("private_recipe_version_missing");
+      const payload = {
+        title: clean.title,
+        description: clean.description,
+        servings: clean.servings,
+        prep_minutes: clean.prepMinutes,
+        cook_minutes: clean.cookMinutes,
+        rest_minutes: clean.restMinutes,
+        difficulty: clean.difficulty,
+        ingredients: clean.ingredients.map((i) => ({
+          crop: i.crop?.trim() ? i.crop.trim() : null,
+          free_text_name: i.freeTextName?.trim() ? i.freeTextName.trim() : null,
+          quantity: i.quantity,
+          unit: i.unit?.trim() ? i.unit.trim() : null,
+          note: i.note?.trim() ? i.note.trim() : null,
+          is_key_ingredient: i.isKeyIngredient,
+        })),
+        steps: clean.steps.map((s) => ({
+          instruction: s.instruction.trim(),
+          timer_seconds: s.timerSeconds,
+        })),
+      };
+      const operationIdentity = JSON.stringify({
+        recipeId,
+        expectedVersion: loaded.version,
+        payload,
+      });
+      const operationKey = operationKeys.current.acquire(operationIdentity);
+      const { data, error } = await supabase.rpc("rpc_update_private_recipe", {
+        p_operation_key: operationKey,
+        p_recipe_id: recipeId,
+        p_expected_version: loaded.version,
+        p_payload: payload,
+      });
+      if (error) throw error;
+      if (!data || typeof data !== "object" || !("recipe_id" in data))
+        throw new Error("update_failed");
+      operationKeys.current.succeed(operationIdentity, operationKey);
       return recipeId;
     },
     onSuccess: () => {
@@ -283,19 +277,23 @@ export function useDeleteMyRecipeDraft() {
   });
 }
 
-/** F11 — AI'sız birebir kopya. Backend'de idempotency YOK, çift tık UI'de engellenir. */
+/** F11 — AI'sız birebir kopya. Aynı source retry'ı key'i korur; başarı veya farklı source key'i döndürür. */
 export function useCloneRecipe() {
   const qc = useQueryClient();
+  const operationKeys = useRef(createRetryOperationKeyStore());
   return useMutation({
     mutationFn: async (sourceRecipeId: string): Promise<string> => {
-      // `rpc_clone_recipe` canlıda mevcut ama paylaşılan core tip dosyasında yok
-      // (bu dispatch tip dosyalarına dokunmuyor) — repodaki `as any` desenine uygun cast.
-      const { data, error } = await (supabase.rpc as any)("rpc_clone_recipe", {
+      const operationIdentity = `clone:${sourceRecipeId}`;
+      const operationKey = operationKeys.current.acquire(operationIdentity);
+      const { data, error } = await supabase.rpc("rpc_clone_recipe", {
         p_source_recipe_id: sourceRecipeId,
+        p_operation_key: operationKey,
       });
       if (error) throw error;
-      if (!data) throw new Error("clone_failed");
-      return data as string;
+      if (!data || typeof data !== "object" || !("recipe_id" in data))
+        throw new Error("clone_failed");
+      operationKeys.current.succeed(operationIdentity, operationKey);
+      return String(data.recipe_id);
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["myRecipeDrafts"] }),
   });

@@ -236,7 +236,7 @@ Yalnızca şu şemada JSON döndür, başka hiçbir metin yazma:
 }`;
 
 async function callValidator(
-  serviceClient: ReturnType<typeof createClient>,
+  serviceClient: any,
   fn: string,
   draft: unknown,
 ): Promise<{ valid: boolean; issues: unknown[] }> {
@@ -245,10 +245,11 @@ async function callValidator(
     console.error(`[customize-recipe] validator ${fn} failed`, error);
     return { valid: false, issues: [{ code: "VALIDATOR_CALL_FAILED", field: fn, severity: "blocking", message: error.message }] };
   }
-  return { valid: data?.valid === true, issues: Array.isArray(data?.issues) ? data.issues : [] };
+  const result = data as any;
+  return { valid: result?.valid === true, issues: Array.isArray(result?.issues) ? result.issues : [] };
 }
 
-async function handlePropose(req: Request, userId: string, userClient: ReturnType<typeof createClient>, serviceClient: ReturnType<typeof createClient>, body: any) {
+async function handlePropose(req: Request, userId: string, userClient: any, serviceClient: any, body: any) {
   const sourceRecipeId = body.source_recipe_id;
   const instruction = str(body.instruction, MAX_INSTRUCTION_CHARS);
   const idempotencyKey = body.idempotency_key;
@@ -279,8 +280,8 @@ async function handlePropose(req: Request, userId: string, userClient: ReturnTyp
     return json({ error: "source_read_failed" }, 500);
   }
   if (!source) return json({ error: "source_not_found" }, 404);
-  if (source.visibility !== "public" || source.author_type === "kullanici") {
-    return json({ error: "source_not_eligible", detail: "Kaynak tarif public ve author_type != kullanici olmalı." }, 403);
+  if (source.visibility !== "public" || source.status !== "published" || source.author_type === "kullanici") {
+    return json({ error: "source_not_eligible", detail: "Kaynak tarif public+published ve author_type != kullanici olmalı." }, 403);
   }
 
   const [{ data: sourceIngredients, error: siErr }, { data: sourceSteps, error: ssErr }] = await Promise.all([
@@ -308,7 +309,7 @@ async function handlePropose(req: Request, userId: string, userClient: ReturnTyp
   // Faz A audit/idempotency row — safe to call twice for the same key (network retry of Faz A itself).
   const { error: reqErr } = await userClient
     .from("ai_customize_requests")
-    .upsert({ idempotency_key: idempotencyKey, user_id: userId, source_recipe_id: sourceRecipeId, status: "pending" }, { onConflict: "idempotency_key", ignoreDuplicates: true });
+    .upsert({ idempotency_key: idempotencyKey, user_id: userId, source_recipe_id: sourceRecipeId, status: "pending" }, { onConflict: "user_id,idempotency_key", ignoreDuplicates: true });
   if (reqErr) {
     console.error("[customize-recipe] ai_customize_requests insert failed", reqErr);
     return json({ error: "request_log_failed" }, 500);
@@ -399,7 +400,7 @@ async function handlePropose(req: Request, userId: string, userClient: ReturnTyp
   }, valid ? 200 : 422);
 }
 
-async function handleSave(req: Request, userId: string, userClient: ReturnType<typeof createClient>, body: any) {
+async function handleSave(req: Request, userId: string, userClient: any, body: any) {
   const idempotencyKey = body.idempotency_key;
   const sourceRecipeId = body.source_recipe_id;
   if (!isUuid(idempotencyKey)) return json({ error: "invalid_idempotency_key" }, 400);

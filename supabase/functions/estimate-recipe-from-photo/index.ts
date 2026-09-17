@@ -32,6 +32,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 
 const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY")!;
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
+const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!;
 const SERVICE_ROLE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const AI_URL = "https://ai.gateway.lovable.dev/v1/chat/completions";
 const AI_MODEL = "google/gemini-3-flash-preview";
@@ -72,23 +73,6 @@ function userIdFromAuth(req: Request): string | null {
   } catch {
     return null;
   }
-}
-
-// Türkçe karakterleri sadeleştirerek URL-güvenli slug. Private tarifte SEO amacı yok,
-// ama recipes.slug NOT NULL + UNIQUE — çakışmayı rastgele son ek engelliyor.
-function slugify(title: string): string {
-  const map: Record<string, string> = {
-    "ç": "c", "ğ": "g", "ı": "i", "ö": "o", "ş": "s", "ü": "u",
-    "Ç": "c", "Ğ": "g", "İ": "i", "I": "i", "Ö": "o", "Ş": "s", "Ü": "u",
-  };
-  const base = title
-    .split("").map((ch) => map[ch] ?? ch).join("")
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "")
-    .slice(0, 60);
-  const rand = crypto.randomUUID().replace(/-/g, "").slice(0, 6);
-  return `${base || "tarif"}-${rand}`;
 }
 
 const SYSTEM_PROMPT = `Sen bir yemek fotoğrafından tarif TAHMİN eden bir asistansın. Sana verilen
@@ -175,6 +159,15 @@ function ingredientClass(v: unknown): "tarimsal" | "platform_disi" | null {
   return null;
 }
 
+function isUuid(v: unknown): v is string {
+  return typeof v === "string" && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(v);
+}
+
+async function sha256(value: string): Promise<string> {
+  const bytes = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(value));
+  return [...new Uint8Array(bytes)].map((b) => b.toString(16).padStart(2, "0")).join("");
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { status: 204, headers: cors });
   if (req.method !== "POST") return json({ error: "method_not_allowed" }, 405);
@@ -186,6 +179,7 @@ Deno.serve(async (req) => {
     image_base64?: string;
     image_mime?: string;
     recipe_name?: string;
+    operation_key?: string;
   };
   try {
     body = await req.json();
@@ -194,6 +188,10 @@ Deno.serve(async (req) => {
   }
 
   const recipeName = str(body.recipe_name, MAX_RECIPE_NAME_CHARS);
+  if (body.operation_key !== undefined && !isUuid(body.operation_key)) {
+    return json({ error: "invalid_operation_key" }, 400);
+  }
+  const operationKey = body.operation_key ?? crypto.randomUUID();
   const raw = (body.image_base64 ?? "").trim();
   if (!raw) return json({ error: "image_required" }, 400);
   const b64 = raw.startsWith("data:") ? raw.slice(raw.indexOf(",") + 1) : raw;
@@ -208,6 +206,45 @@ Deno.serve(async (req) => {
   const sb = createClient(SUPABASE_URL, SERVICE_ROLE, {
     auth: { persistSession: false, autoRefreshToken: false },
   });
+  const authHeader = req.headers.get("authorization") ?? req.headers.get("Authorization") ?? "";
+  const userClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+    auth: { persistSession: false, autoRefreshToken: false },
+    global: { headers: { Authorization: authHeader } },
+  });
+  const requestHash = await sha256(JSON.stringify({
+    image_base64: body.image_base64 ?? null,
+    image_mime: body.image_mime ?? null,
+    recipe_name: recipeName,
+  }));
+  const { data: existing, error: preflightError } = await userClient.rpc("rpc_get_private_recipe_operation", {
+    p_operation_key: operationKey,
+    p_operation_type: "create_photo_estimate",
+    p_input_hash: requestHash,
+  });
+  if (preflightError) {
+    const conflict = preflightError.message?.includes("idempotency_conflict");
+    return json({ error: conflict ? "idempotency_conflict" : "operation_check_failed" }, conflict ? 409 : 500);
+  }
+  if (existing?.recipe_id) {
+    const recipeId = existing.recipe_id as string;
+    const [{ data: saved }, { count: ingredientCount }, { count: stepCount }, { count: cropLinkedCount }] = await Promise.all([
+      sb.from("recipes").select("title, extraction_confidence").eq("id", recipeId).single(),
+      sb.from("recipe_ingredients").select("id", { count: "exact", head: true }).eq("recipe_id", recipeId),
+      sb.from("recipe_steps").select("id", { count: "exact", head: true }).eq("recipe_id", recipeId),
+      sb.from("recipe_ingredients").select("id", { count: "exact", head: true }).eq("recipe_id", recipeId).not("crop", "is", null),
+    ]);
+    return json({
+      recipe: { id: recipeId, slug: `private-${recipeId.replaceAll("-", "")}`, title: saved?.title,
+        visibility: "private", status: "draft", source_type: "photo_estimate", author_type: "kullanici",
+        extraction_confidence: saved?.extraction_confidence, version: existing.version },
+      operation_key: operationKey,
+      ingredient_count: ingredientCount ?? 0,
+      step_count: stepCount ?? 0,
+      crop_linked_count: cropLinkedCount ?? 0,
+      uncertain_notes: [],
+      disclaimer: DISCLAIMER,
+    });
+  }
 
   // ── Kota: mevcut ai_usage_tracking altyapısı, extract-recipe ile AYNI bucket ──────────────────
   const { data: canSend, error: canErr } = await sb.rpc("can_send_ai_message", { _user_id: userId });
@@ -290,40 +327,17 @@ görmediğin hiçbir malzemeyi bu isimden yola çıkarak UYDURMA — yine de gö
     : [];
   const uncertainNotes = strArray(parsed.uncertain_notes);
 
-  // ── Kayıt. visibility/status/owner_id/source_type/author_type SUNUCUDA belirlenir. ─────────────
-  // allergen_labels/allergens_reviewed/nutrition_* kolonlarına HİÇ dokunulmaz — DB default'ları
-  // (unreviewed) geçerli kalır (dosya başlığı notu).
-  const { data: recipe, error: recErr } = await sb
-    .from("recipes")
-    .insert({
-      slug: slugify(title),
-      title,
-      description: str(parsed.description, 4000),
-      servings: posInt(parsed.servings),
-      prep_minutes: nonNegInt(parsed.prep_minutes),
-      cook_minutes: nonNegInt(parsed.cook_minutes),
-      difficulty,
-      cuisine: str(parsed.cuisine, 80),
-      diet_tags: dietTags,
-      status: "draft",
-      visibility: "private",              // <- sunucu tarafında zorunlu
-      source_type: "photo_estimate",      // <- T7a: extract-recipe'in 'photo'undan (OCR) FARKLI
-      owner_id: userId,                   // <- JWT'den, body'den değil
-      author_type: "kullanici",
-      extraction_confidence: clampConfidence(parsed.extraction_confidence),
-    })
-    .select("id, slug, visibility, status, source_type, author_type, extraction_confidence")
-    .single();
-
-  if (recErr || !recipe) {
-    console.error("[estimate-recipe-from-photo] recipe insert failed", recErr);
-    return json({ error: "insert_failed" }, 500);
-  }
-
-  const ingredientRows = rawIngredients
-    .map((ing: any, i: number) => ({
-      recipe_id: recipe.id,
-      sort_order: i + 1,
+  const recipePayload = {
+    title,
+    description: str(parsed.description, 4000),
+    servings: posInt(parsed.servings),
+    prep_minutes: nonNegInt(parsed.prep_minutes),
+    cook_minutes: nonNegInt(parsed.cook_minutes),
+    difficulty,
+    cuisine: str(parsed.cuisine, 80),
+    diet_tags: dietTags,
+    extraction_confidence: clampConfidence(parsed.extraction_confidence),
+    ingredients: rawIngredients.map((ing: any) => ({
       // crop null insert edilir: trg_recipe_ingredients_auto_match_crop (BEFORE INSERT) deterministik
       // eşleşmeyi kendisi dener — bu fonksiyon kendi başına eşleştirme YAPMAZ (extract-recipe ile aynı).
       crop: null as string | null,
@@ -336,62 +350,54 @@ görmediğin hiçbir malzemeyi bu isimden yola çıkarak UYDURMA — yine de gö
       note: str(ing?.note, 400),
       is_key_ingredient: ing?.is_key_ingredient === true,
       ingredient_class: ingredientClass(ing?.is_agricultural),
-    }))
-    .filter((r: any) => r.free_text_name);
-
-  const stepRows = rawSteps
-    .map((s: any, i: number) => ({
-      recipe_id: recipe.id,
-      step_no: posInt(s?.step_no) ?? i + 1,
+    })).filter((r: any) => r.free_text_name),
+    steps: rawSteps.map((s: any) => ({
       instruction: str(s?.instruction, 4000),
       timer_seconds: posInt(s?.timer_seconds),
-    }))
-    .filter((r: any) => r.instruction)
-    .map((r: any, i: number) => ({ ...r, step_no: i + 1 }));
+    })).filter((r: any) => r.instruction),
+  };
 
-  if (ingredientRows.length > 0) {
-    const { error } = await sb.from("recipe_ingredients").insert(ingredientRows);
-    if (error) {
-      console.error("[estimate-recipe-from-photo] ingredients insert failed", error);
-      await sb.from("recipes").delete().eq("id", recipe.id);
-      return json({ error: "insert_failed" }, 500);
-    }
+  const { data: writeResult, error: recErr } = await userClient.rpc("rpc_create_private_recipe", {
+    p_operation_key: operationKey,
+    p_operation_type: "create_photo_estimate",
+    p_payload: recipePayload,
+    p_input_hash: requestHash,
+  });
+  if (recErr || !writeResult?.recipe_id) {
+    console.error("[estimate-recipe-from-photo] atomic recipe RPC failed", recErr);
+    const code = recErr?.message?.includes("idempotency_conflict") ? "idempotency_conflict" : "insert_failed";
+    return json({ error: code }, code === "idempotency_conflict" ? 409 : 500);
   }
-  if (stepRows.length > 0) {
-    const { error } = await sb.from("recipe_steps").insert(stepRows);
-    if (error) {
-      console.error("[estimate-recipe-from-photo] steps insert failed", error);
-      await sb.from("recipes").delete().eq("id", recipe.id);
-      return json({ error: "insert_failed" }, 500);
-    }
-  }
+  const recipeId = writeResult.recipe_id as string;
 
   const { error: incErr } = await sb.rpc("increment_ai_usage", { _user_id: userId });
   if (incErr) console.error("[estimate-recipe-from-photo] increment_ai_usage failed", incErr);
 
   let cropLinkedCount = 0;
-  if (ingredientRows.length > 0) {
+  if (recipePayload.ingredients.length > 0) {
     const { count } = await sb
       .from("recipe_ingredients")
       .select("id", { count: "exact", head: true })
-      .eq("recipe_id", recipe.id)
+      .eq("recipe_id", recipeId)
       .not("crop", "is", null);
     cropLinkedCount = count ?? 0;
   }
 
   return json({
     recipe: {
-      id: recipe.id,
-      slug: recipe.slug,
+      id: recipeId,
+      slug: `private-${recipeId.replaceAll("-", "")}`,
       title,
-      visibility: recipe.visibility,
-      status: recipe.status,
-      source_type: recipe.source_type,
-      author_type: recipe.author_type,
-      extraction_confidence: recipe.extraction_confidence,
+      visibility: "private",
+      status: "draft",
+      source_type: "photo_estimate",
+      author_type: "kullanici",
+      extraction_confidence: recipePayload.extraction_confidence,
+      version: writeResult.version,
     },
-    ingredient_count: ingredientRows.length,
-    step_count: stepRows.length,
+    operation_key: operationKey,
+    ingredient_count: recipePayload.ingredients.length,
+    step_count: recipePayload.steps.length,
     crop_linked_count: cropLinkedCount,
     uncertain_notes: uncertainNotes,
     // Sunucuda sabitlenmiş, modele bağlı olmayan uyarı — UI bunu göstermek ZORUNDA.
