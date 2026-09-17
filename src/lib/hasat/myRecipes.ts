@@ -123,6 +123,7 @@ export interface MyRecipeDetail extends RecipeDraft {
   clonedFromRecipeId: string | null;
   clonedFromSlug: string | null;
   clonedFromTitle: string | null;
+  shareToken: string | null;
 }
 
 export function useMyRecipeDraft(recipeId: string | undefined) {
@@ -134,7 +135,7 @@ export function useMyRecipeDraft(recipeId: string | undefined) {
       const { data: recipe, error } = await supabase
         .from("recipes")
         .select(
-          "id, title, description, servings, prep_minutes, cook_minutes, rest_minutes, difficulty, cloned_from_recipe_id, owner_id",
+          "id, title, description, servings, prep_minutes, cook_minutes, rest_minutes, difficulty, cloned_from_recipe_id, owner_id, share_token",
         )
         .eq("id", recipeId!)
         .maybeSingle();
@@ -180,6 +181,7 @@ export function useMyRecipeDraft(recipeId: string | undefined) {
         clonedFromRecipeId: recipe.cloned_from_recipe_id,
         clonedFromSlug,
         clonedFromTitle,
+        shareToken: recipe.share_token,
         ingredients: (ings ?? []).map((r, i) => ({
           crop: r.crop,
           freeTextName: r.free_text_name,
