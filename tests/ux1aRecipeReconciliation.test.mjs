@@ -85,7 +85,11 @@ test("clone migration is invoker-only, private-draft, independent, and intention
   );
   assert.match(migration, /insert into public\.recipe_ingredients/);
   assert.match(migration, /insert into public\.recipe_steps/);
-  assert.doesNotMatch(migration, /on conflict|idempotenc/i);
+  assert.match(
+    migration,
+    /create or replace function public\.rpc_clone_recipe\(p_source_recipe_id uuid\)/,
+  );
+  assert.doesNotMatch(migration, /on conflict|p_idempotency|idempotency_key/i);
   assert.doesNotMatch(migration, /create trigger|update public\.recipes\s+set/s);
   assert.match(migration, /revoke all on function public\.rpc_clone_recipe\(uuid\) from public/);
   assert.match(migration, /grant execute on function public\.rpc_clone_recipe\(uuid\) to authenticated/);
