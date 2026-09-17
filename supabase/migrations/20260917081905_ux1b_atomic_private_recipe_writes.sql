@@ -3,8 +3,10 @@
 -- Rollout order:
 --   1. Apply this migration.
 --   2. Deploy extract-recipe, estimate-recipe-from-photo and customize-recipe.
---   3. Deploy web/mobile clients that send operation keys and expected versions.
+--   3. Deploy the web adapter that sends operation keys and expected versions.
 -- The old one-argument rpc_clone_recipe(uuid) remains as a compatibility adapter.
+-- The mobile private-edit adapter is outside this backend + web PR and remains non-transactional
+-- until a separate, visible mobile adapter PR adopts these RPCs.
 -- Production is not changed by committing this file.
 --
 -- Rollback (repository/runbook only): deploy the previous clients/Edge Functions first, then drop
@@ -89,11 +91,16 @@ alter table public.ai_customize_requests drop constraint ai_customize_requests_p
 alter table public.ai_customize_requests
   add primary key (user_id, idempotency_key);
 
-create table public.private_recipe_operations (
+create schema if not exists private;
+revoke all on schema private from public, anon;
+grant usage on schema private to authenticated;
+
+create table private.private_recipe_operations (
   owner_id uuid not null references auth.users(id) on delete cascade,
   operation_type text not null,
   operation_key uuid not null,
-  request_hash text not null,
+  input_hash text,
+  payload_hash text,
   result jsonb,
   created_at timestamptz not null default now(),
   completed_at timestamptz,
@@ -109,6 +116,12 @@ create table public.private_recipe_operations (
       'clone'::text
     ])
   ),
+  constraint private_recipe_operations_input_hash_check check (
+    input_hash is null or input_hash ~ '^[0-9a-f]{64}$'
+  ),
+  constraint private_recipe_operations_payload_hash_check check (
+    payload_hash is null or payload_hash ~ '^[0-9a-f]{64}$'
+  ),
   constraint private_recipe_operations_result_shape_check check (
     result is null or (
       jsonb_typeof(result) = 'object'
@@ -118,30 +131,14 @@ create table public.private_recipe_operations (
   )
 );
 
-comment on table public.private_recipe_operations is
-  'UX-1B idempotency ledger. Scope is owner + operation type + operation key; the canonical request hash rejects key reuse with different input.';
+comment on table private.private_recipe_operations is
+  'UX-1B non-exposed idempotency ledger. input_hash binds Edge preflight input; payload_hash is always derived server-side from canonical payload identity.';
 
-alter table public.private_recipe_operations enable row level security;
-
-create policy "private recipe operations own select"
-  on public.private_recipe_operations for select to authenticated
-  using (owner_id = (select auth.uid()));
-
-create policy "private recipe operations own insert"
-  on public.private_recipe_operations for insert to authenticated
-  with check (owner_id = (select auth.uid()));
-
-create policy "private recipe operations own update"
-  on public.private_recipe_operations for update to authenticated
-  using (owner_id = (select auth.uid()))
-  with check (owner_id = (select auth.uid()));
-
-revoke all on table public.private_recipe_operations from public, anon;
-grant select, insert, update on table public.private_recipe_operations to authenticated;
-
-create schema if not exists private;
-revoke all on schema private from public, anon;
-grant usage on schema private to authenticated;
+alter table private.private_recipe_operations enable row level security;
+create policy "private recipe operations deny direct authenticated access"
+  on private.private_recipe_operations as restrictive for all to authenticated
+  using (false) with check (false);
+revoke all on table private.private_recipe_operations from public, anon, authenticated;
 
 create or replace function private.validate_private_recipe_payload(p_payload jsonb)
 returns void
@@ -247,6 +244,7 @@ begin
        or (jsonb_typeof(v_item->'quantity') = 'number' and (v_item->>'quantity')::numeric <= 0)
        or (v_item ? 'unit' and jsonb_typeof(v_item->'unit') not in ('string', 'null'))
        or (v_item ? 'note' and jsonb_typeof(v_item->'note') not in ('string', 'null'))
+       or (v_item ? 'is_key_ingredient' and jsonb_typeof(v_item->'is_key_ingredient') not in ('boolean', 'null'))
        or (v_item ? 'ingredient_class' and jsonb_typeof(v_item->'ingredient_class') not in ('string', 'null'))
        or (nullif(v_item->>'ingredient_class', '') is not null and v_item->>'ingredient_class' not in ('tarimsal', 'platform_disi')) then
       raise exception using errcode = '22023', message = 'private_recipe_invalid_ingredient';
@@ -269,12 +267,162 @@ $$;
 revoke all on function private.validate_private_recipe_payload(jsonb) from public, anon;
 grant execute on function private.validate_private_recipe_payload(jsonb) to authenticated;
 
+create or replace function private.canonical_private_recipe_payload(p_payload jsonb)
+returns jsonb
+language sql
+immutable
+security invoker
+set search_path = ''
+as $$
+  select jsonb_build_object(
+    'title', btrim(p_payload->>'title'),
+    'description', nullif(btrim(p_payload->>'description'), ''),
+    'servings', (p_payload->>'servings')::integer,
+    'prep_minutes', (p_payload->>'prep_minutes')::integer,
+    'cook_minutes', (p_payload->>'cook_minutes')::integer,
+    'rest_minutes', (p_payload->>'rest_minutes')::integer,
+    'difficulty', nullif(p_payload->>'difficulty', ''),
+    'cuisine', nullif(btrim(p_payload->>'cuisine'), ''),
+    'diet_tags', coalesce((
+      select jsonb_agg(value order by ord)
+      from jsonb_array_elements(coalesce(p_payload->'diet_tags', '[]'::jsonb)) with ordinality as t(value, ord)
+    ), '[]'::jsonb),
+    'extraction_confidence', (p_payload->>'extraction_confidence')::numeric,
+    'ingredients', coalesce((
+      select jsonb_agg(jsonb_build_object(
+        'crop', nullif(btrim(elem->>'crop'), ''),
+        'free_text_name', nullif(btrim(elem->>'free_text_name'), ''),
+        'quantity', (elem->>'quantity')::numeric,
+        'unit', nullif(btrim(elem->>'unit'), ''),
+        'note', nullif(btrim(elem->>'note'), ''),
+        'is_key_ingredient', coalesce((elem->>'is_key_ingredient')::boolean, false),
+        'ingredient_class', nullif(elem->>'ingredient_class', '')
+      ) order by ord)
+      from jsonb_array_elements(coalesce(p_payload->'ingredients', '[]'::jsonb)) with ordinality as t(elem, ord)
+    ), '[]'::jsonb),
+    'steps', coalesce((
+      select jsonb_agg(jsonb_build_object(
+        'instruction', btrim(elem->>'instruction'),
+        'timer_seconds', (elem->>'timer_seconds')::integer
+      ) order by ord)
+      from jsonb_array_elements(coalesce(p_payload->'steps', '[]'::jsonb)) with ordinality as t(elem, ord)
+    ), '[]'::jsonb)
+  )
+$$;
+
+revoke all on function private.canonical_private_recipe_payload(jsonb) from public, anon;
+grant execute on function private.canonical_private_recipe_payload(jsonb) to authenticated;
+
+-- These two non-exposed helpers are the only authenticated path to the ledger. They are
+-- SECURITY DEFINER solely so public SECURITY INVOKER RPCs can atomically claim/complete an
+-- operation without granting the caller any table privilege. Every access derives the owner from
+-- auth.uid(); callers cannot supply an owner id.
+create or replace function private.claim_private_recipe_operation(
+  p_operation_key uuid,
+  p_operation_type text,
+  p_input_hash text,
+  p_payload_hash text
+)
+returns jsonb
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  v_owner uuid := auth.uid();
+  v_op private.private_recipe_operations%rowtype;
+begin
+  if v_owner is null then
+    raise exception using errcode = '42501', message = 'authentication_required';
+  end if;
+  if p_operation_key is null
+     or p_operation_type not in (
+       'create_manual','create_text','create_photo','create_photo_estimate',
+       'create_ai_customize','update','clone'
+     )
+     or (p_input_hash is null and p_payload_hash is null)
+     or (p_input_hash is not null and p_input_hash !~ '^[0-9a-f]{64}$')
+     or (p_payload_hash is not null and p_payload_hash !~ '^[0-9a-f]{64}$') then
+    raise exception using errcode = '22023', message = 'invalid_operation_identity';
+  end if;
+
+  insert into private.private_recipe_operations(
+    owner_id, operation_type, operation_key, input_hash, payload_hash
+  ) values (
+    v_owner, p_operation_type, p_operation_key, p_input_hash, p_payload_hash
+  ) on conflict do nothing;
+
+  select * into v_op
+  from private.private_recipe_operations
+  where owner_id = v_owner and operation_type = p_operation_type and operation_key = p_operation_key
+  for update;
+
+  if (v_op.input_hash is not null and p_input_hash is not null and v_op.input_hash <> p_input_hash)
+     or (v_op.payload_hash is not null and p_payload_hash is not null and v_op.payload_hash <> p_payload_hash) then
+    raise exception using errcode = '22023', message = 'private_recipe_idempotency_conflict';
+  end if;
+
+  update private.private_recipe_operations
+  set input_hash = coalesce(input_hash, p_input_hash),
+      payload_hash = coalesce(payload_hash, p_payload_hash)
+  where owner_id = v_owner and operation_type = p_operation_type and operation_key = p_operation_key;
+
+  return v_op.result;
+end;
+$$;
+
+create or replace function private.complete_private_recipe_operation(
+  p_operation_key uuid,
+  p_operation_type text,
+  p_payload_hash text,
+  p_result jsonb
+)
+returns jsonb
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  v_owner uuid := auth.uid();
+  v_op private.private_recipe_operations%rowtype;
+begin
+  if v_owner is null then
+    raise exception using errcode = '42501', message = 'authentication_required';
+  end if;
+  if p_operation_key is null or p_payload_hash !~ '^[0-9a-f]{64}$'
+     or jsonb_typeof(p_result) <> 'object' or not (p_result ? 'recipe_id' and p_result ? 'version') then
+    raise exception using errcode = '22023', message = 'invalid_operation_completion';
+  end if;
+
+  select * into v_op
+  from private.private_recipe_operations
+  where owner_id = v_owner and operation_type = p_operation_type and operation_key = p_operation_key
+  for update;
+  if v_op.owner_id is null or v_op.payload_hash is distinct from p_payload_hash then
+    raise exception using errcode = '22023', message = 'private_recipe_idempotency_conflict';
+  end if;
+  if v_op.result is not null and v_op.result <> p_result then
+    raise exception using errcode = '22023', message = 'private_recipe_idempotency_conflict';
+  end if;
+
+  update private.private_recipe_operations
+  set result = p_result, completed_at = coalesce(completed_at, now())
+  where owner_id = v_owner and operation_type = p_operation_type and operation_key = p_operation_key;
+  return p_result;
+end;
+$$;
+
+revoke all on function private.claim_private_recipe_operation(uuid, text, text, text) from public, anon, authenticated;
+revoke all on function private.complete_private_recipe_operation(uuid, text, text, jsonb) from public, anon, authenticated;
+grant execute on function private.claim_private_recipe_operation(uuid, text, text, text) to authenticated;
+grant execute on function private.complete_private_recipe_operation(uuid, text, text, jsonb) to authenticated;
+
 create or replace function public.rpc_create_private_recipe(
   p_operation_key uuid,
   p_operation_type text,
   p_payload jsonb,
   p_source_recipe_id uuid default null,
-  p_request_hash text default null
+  p_input_hash text default null
 )
 returns jsonb
 language plpgsql
@@ -284,7 +432,8 @@ as $$
 declare
   v_owner uuid := auth.uid();
   v_hash text;
-  v_op public.private_recipe_operations%rowtype;
+  v_payload jsonb;
+  v_existing jsonb;
   v_recipe_id uuid := gen_random_uuid();
   v_source_type text;
   v_result jsonb;
@@ -318,27 +467,16 @@ begin
   end if;
 
   perform private.validate_private_recipe_payload(p_payload);
-  if p_request_hash is not null and p_request_hash !~ '^[0-9a-f]{64}$' then
-    raise exception using errcode = '22023', message = 'invalid_request_hash';
-  end if;
-  v_hash := coalesce(
-    p_request_hash,
-    md5(jsonb_build_object('payload', p_payload, 'source_recipe_id', p_source_recipe_id)::text)
+  v_payload := private.canonical_private_recipe_payload(p_payload);
+  v_hash := encode(sha256(convert_to(jsonb_build_object(
+    'operation_type', p_operation_type,
+    'payload', v_payload,
+    'source_recipe_id', p_source_recipe_id
+  )::text, 'UTF8')), 'hex');
+  v_existing := private.claim_private_recipe_operation(
+    p_operation_key, p_operation_type, p_input_hash, v_hash
   );
-
-  insert into public.private_recipe_operations(owner_id, operation_type, operation_key, request_hash)
-  values (v_owner, p_operation_type, p_operation_key, v_hash)
-  on conflict do nothing;
-
-  select * into v_op from public.private_recipe_operations
-  where owner_id = v_owner and operation_type = p_operation_type and operation_key = p_operation_key
-  for update;
-  if v_op.request_hash <> v_hash then
-    raise exception using errcode = '22023', message = 'private_recipe_idempotency_conflict';
-  end if;
-  if v_op.result is not null then
-    return v_op.result;
-  end if;
+  if v_existing is not null then return v_existing; end if;
 
   insert into public.recipes (
     id, slug, title, description, servings, prep_minutes, cook_minutes, rest_minutes,
@@ -347,16 +485,16 @@ begin
   ) values (
     v_recipe_id,
     'private-' || replace(v_recipe_id::text, '-', ''),
-    btrim(p_payload->>'title'),
-    nullif(btrim(p_payload->>'description'), ''),
-    (p_payload->>'servings')::integer,
-    (p_payload->>'prep_minutes')::integer,
-    (p_payload->>'cook_minutes')::integer,
-    (p_payload->>'rest_minutes')::integer,
-    nullif(p_payload->>'difficulty', ''),
-    nullif(btrim(p_payload->>'cuisine'), ''),
-    coalesce(array(select jsonb_array_elements_text(coalesce(p_payload->'diet_tags', '[]'::jsonb))), '{}'::text[]),
-    (p_payload->>'extraction_confidence')::numeric,
+    v_payload->>'title',
+    v_payload->>'description',
+    (v_payload->>'servings')::integer,
+    (v_payload->>'prep_minutes')::integer,
+    (v_payload->>'cook_minutes')::integer,
+    (v_payload->>'rest_minutes')::integer,
+    v_payload->>'difficulty',
+    v_payload->>'cuisine',
+    coalesce(array(select jsonb_array_elements_text(v_payload->'diet_tags')), '{}'::text[]),
+    (v_payload->>'extraction_confidence')::numeric,
     'draft', 'private', v_source_type, v_owner, 'kullanici', p_source_recipe_id, 1
   );
 
@@ -367,23 +505,23 @@ begin
          nullif(btrim(elem->>'free_text_name'), ''), (elem->>'quantity')::numeric,
          nullif(btrim(elem->>'unit'), ''), nullif(btrim(elem->>'note'), ''),
          coalesce((elem->>'is_key_ingredient')::boolean, false), nullif(elem->>'ingredient_class', '')
-  from jsonb_array_elements(coalesce(p_payload->'ingredients', '[]'::jsonb)) with ordinality as t(elem, ord);
+  from jsonb_array_elements(v_payload->'ingredients') with ordinality as t(elem, ord);
 
   insert into public.recipe_steps(recipe_id, step_no, instruction, timer_seconds)
   select v_recipe_id, ord::integer, btrim(elem->>'instruction'), (elem->>'timer_seconds')::integer
-  from jsonb_array_elements(coalesce(p_payload->'steps', '[]'::jsonb)) with ordinality as t(elem, ord);
+  from jsonb_array_elements(v_payload->'steps') with ordinality as t(elem, ord);
 
   v_result := jsonb_build_object('recipe_id', v_recipe_id, 'version', 1);
-  update public.private_recipe_operations set result = v_result, completed_at = now()
-  where owner_id = v_owner and operation_type = p_operation_type and operation_key = p_operation_key;
-  return v_result;
+  return private.complete_private_recipe_operation(
+    p_operation_key, p_operation_type, v_hash, v_result
+  );
 end;
 $$;
 
 create or replace function public.rpc_get_private_recipe_operation(
   p_operation_key uuid,
   p_operation_type text,
-  p_request_hash text
+  p_input_hash text
 )
 returns jsonb
 language plpgsql
@@ -392,25 +530,17 @@ set search_path = ''
 as $$
 declare
   v_owner uuid := auth.uid();
-  v_op public.private_recipe_operations%rowtype;
 begin
   if v_owner is null then
     raise exception using errcode = '42501', message = 'authentication_required';
   end if;
   if p_operation_key is null or p_operation_type not in ('create_text','create_photo','create_photo_estimate')
-     or p_request_hash !~ '^[0-9a-f]{64}$' then
+     or p_input_hash !~ '^[0-9a-f]{64}$' then
     raise exception using errcode = '22023', message = 'invalid_operation_identity';
   end if;
-  insert into public.private_recipe_operations(owner_id, operation_type, operation_key, request_hash)
-  values (v_owner, p_operation_type, p_operation_key, p_request_hash)
-  on conflict do nothing;
-  select * into v_op from public.private_recipe_operations
-  where owner_id=v_owner and operation_type=p_operation_type and operation_key=p_operation_key
-  for update;
-  if v_op.request_hash <> p_request_hash then
-    raise exception using errcode = '22023', message = 'private_recipe_idempotency_conflict';
-  end if;
-  return v_op.result;
+  return private.claim_private_recipe_operation(
+    p_operation_key, p_operation_type, p_input_hash, null
+  );
 end;
 $$;
 
@@ -428,7 +558,8 @@ as $$
 declare
   v_owner uuid := auth.uid();
   v_hash text;
-  v_op public.private_recipe_operations%rowtype;
+  v_payload jsonb;
+  v_existing jsonb;
   v_result jsonb;
   v_version bigint;
 begin
@@ -439,31 +570,25 @@ begin
     raise exception using errcode = '22023', message = 'invalid_update_identity';
   end if;
   perform private.validate_private_recipe_payload(p_payload);
-  v_hash := md5(jsonb_build_object(
-    'recipe_id', p_recipe_id, 'expected_version', p_expected_version, 'payload', p_payload
-  )::text);
-
-  insert into public.private_recipe_operations(owner_id, operation_type, operation_key, request_hash)
-  values (v_owner, 'update', p_operation_key, v_hash)
-  on conflict do nothing;
-  select * into v_op from public.private_recipe_operations
-  where owner_id = v_owner and operation_type = 'update' and operation_key = p_operation_key
-  for update;
-  if v_op.request_hash <> v_hash then
-    raise exception using errcode = '22023', message = 'private_recipe_idempotency_conflict';
-  end if;
-  if v_op.result is not null then
-    return v_op.result;
-  end if;
+  v_payload := private.canonical_private_recipe_payload(p_payload);
+  v_hash := encode(sha256(convert_to(jsonb_build_object(
+    'recipe_id', p_recipe_id,
+    'expected_version', p_expected_version,
+    'payload', v_payload
+  )::text, 'UTF8')), 'hex');
+  v_existing := private.claim_private_recipe_operation(
+    p_operation_key, 'update', null, v_hash
+  );
+  if v_existing is not null then return v_existing; end if;
 
   update public.recipes
-  set title = btrim(p_payload->>'title'),
-      description = nullif(btrim(p_payload->>'description'), ''),
-      servings = (p_payload->>'servings')::integer,
-      prep_minutes = (p_payload->>'prep_minutes')::integer,
-      cook_minutes = (p_payload->>'cook_minutes')::integer,
-      rest_minutes = (p_payload->>'rest_minutes')::integer,
-      difficulty = nullif(p_payload->>'difficulty', ''),
+  set title = v_payload->>'title',
+      description = v_payload->>'description',
+      servings = (v_payload->>'servings')::integer,
+      prep_minutes = (v_payload->>'prep_minutes')::integer,
+      cook_minutes = (v_payload->>'cook_minutes')::integer,
+      rest_minutes = (v_payload->>'rest_minutes')::integer,
+      difficulty = v_payload->>'difficulty',
       private_edit_version = private_edit_version + 1,
       updated_at = now()
   where id = p_recipe_id
@@ -494,15 +619,15 @@ begin
          nullif(btrim(elem->>'free_text_name'), ''), (elem->>'quantity')::numeric,
          nullif(btrim(elem->>'unit'), ''), nullif(btrim(elem->>'note'), ''),
          coalesce((elem->>'is_key_ingredient')::boolean, false), nullif(elem->>'ingredient_class', '')
-  from jsonb_array_elements(coalesce(p_payload->'ingredients', '[]'::jsonb)) with ordinality as t(elem, ord);
+  from jsonb_array_elements(v_payload->'ingredients') with ordinality as t(elem, ord);
   insert into public.recipe_steps(recipe_id, step_no, instruction, timer_seconds)
   select p_recipe_id, ord::integer, btrim(elem->>'instruction'), (elem->>'timer_seconds')::integer
-  from jsonb_array_elements(coalesce(p_payload->'steps', '[]'::jsonb)) with ordinality as t(elem, ord);
+  from jsonb_array_elements(v_payload->'steps') with ordinality as t(elem, ord);
 
   v_result := jsonb_build_object('recipe_id', p_recipe_id, 'version', v_version);
-  update public.private_recipe_operations set result = v_result, completed_at = now()
-  where owner_id = v_owner and operation_type = 'update' and operation_key = p_operation_key;
-  return v_result;
+  return private.complete_private_recipe_operation(
+    p_operation_key, 'update', v_hash, v_result
+  );
 end;
 $$;
 
@@ -515,7 +640,7 @@ as $$
 declare
   v_owner uuid := auth.uid();
   v_hash text;
-  v_op public.private_recipe_operations%rowtype;
+  v_existing jsonb;
   v_source public.recipes%rowtype;
   v_recipe_id uuid := gen_random_uuid();
   v_result jsonb;
@@ -532,17 +657,13 @@ begin
     raise exception using errcode = '42501', message = 'source_recipe_not_eligible';
   end if;
 
-  v_hash := md5(jsonb_build_object('source_recipe_id', p_source_recipe_id)::text);
-  insert into public.private_recipe_operations(owner_id, operation_type, operation_key, request_hash)
-  values (v_owner, 'clone', p_operation_key, v_hash)
-  on conflict do nothing;
-  select * into v_op from public.private_recipe_operations
-  where owner_id = v_owner and operation_type = 'clone' and operation_key = p_operation_key
-  for update;
-  if v_op.request_hash <> v_hash then
-    raise exception using errcode = '22023', message = 'private_recipe_idempotency_conflict';
-  end if;
-  if v_op.result is not null then return v_op.result; end if;
+  v_hash := encode(sha256(convert_to(jsonb_build_object(
+    'source_recipe_id', p_source_recipe_id
+  )::text, 'UTF8')), 'hex');
+  v_existing := private.claim_private_recipe_operation(
+    p_operation_key, 'clone', null, v_hash
+  );
+  if v_existing is not null then return v_existing; end if;
 
   insert into public.recipes (
     id, slug, title, description, cover_photo_url, servings, prep_minutes, cook_minutes, rest_minutes,
@@ -565,9 +686,9 @@ begin
   from public.recipe_steps where recipe_id = p_source_recipe_id;
 
   v_result := jsonb_build_object('recipe_id', v_recipe_id, 'version', 1);
-  update public.private_recipe_operations set result = v_result, completed_at = now()
-  where owner_id = v_owner and operation_type = 'clone' and operation_key = p_operation_key;
-  return v_result;
+  return private.complete_private_recipe_operation(
+    p_operation_key, 'clone', v_hash, v_result
+  );
 end;
 $$;
 

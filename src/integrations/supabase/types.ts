@@ -4727,7 +4727,7 @@ export type Database = {
           p_operation_key: string
           p_operation_type: string
           p_payload: Json
-          p_request_hash?: string | null
+          p_input_hash?: string | null
           p_source_recipe_id?: string | null
         }
         Returns: Json
@@ -4736,7 +4736,7 @@ export type Database = {
         Args: {
           p_operation_key: string
           p_operation_type: string
-          p_request_hash: string
+          p_input_hash: string
         }
         Returns: Json
       }

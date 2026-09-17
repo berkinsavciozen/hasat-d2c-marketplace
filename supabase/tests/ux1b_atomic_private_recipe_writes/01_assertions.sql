@@ -10,9 +10,36 @@ select pg_temp.assert(not has_function_privilege('anon','public.rpc_create_priva
 select pg_temp.assert(not has_function_privilege('anon','public.rpc_get_private_recipe_operation(uuid,text,text)','execute'),'anon operation lookup denied');
 select pg_temp.assert(not has_function_privilege('anon','public.rpc_update_private_recipe(uuid,uuid,bigint,jsonb)','execute'),'anon update execute denied');
 select pg_temp.assert(not has_function_privilege('anon','public.rpc_clone_recipe(uuid,uuid)','execute'),'anon clone execute denied');
+select pg_temp.assert(not has_table_privilege('authenticated','private.private_recipe_operations','insert'),'authenticated ledger insert denied');
+select pg_temp.assert(not has_table_privilege('authenticated','private.private_recipe_operations','update'),'authenticated ledger update denied');
+select pg_temp.assert(has_function_privilege('authenticated','private.claim_private_recipe_operation(uuid,text,text,text)','execute'),'authenticated has narrow ledger claim execute');
+select pg_temp.assert(not has_function_privilege('anon','private.claim_private_recipe_operation(uuid,text,text,text)','execute'),'anon ledger helper execute denied');
+select pg_temp.assert((
+  select bool_and(p.prosecdef and p.proconfig @> array['search_path=""'])
+  from pg_proc p join pg_namespace n on n.oid=p.pronamespace
+  where n.nspname='private' and p.proname in ('claim_private_recipe_operation','complete_private_recipe_operation')
+),'private ledger definers have fixed empty search_path');
+select pg_temp.assert(not exists(
+  select 1 from pg_proc p join pg_namespace n on n.oid=p.pronamespace
+  where n.nspname='public'
+    and p.proname in ('rpc_create_private_recipe','rpc_get_private_recipe_operation','rpc_update_private_recipe','rpc_clone_recipe')
+    and p.prosecdef
+),'no UX-1B SECURITY DEFINER function is exposed in public');
 
 set role authenticated;
 select set_config('request.jwt.claim.sub','20000000-0000-0000-0000-000000000001',false);
+
+do $$ begin
+  begin
+    insert into private.private_recipe_operations(owner_id,operation_type,operation_key,input_hash)
+    values (auth.uid(),'create_text','30000000-0000-4000-8000-000000000010',repeat('f',64));
+    raise exception 'expected direct ledger insert denial';
+  exception when insufficient_privilege then null; end;
+  begin
+    update private.private_recipe_operations set result='{"recipe_id":"10000000-0000-0000-0000-000000000001","version":1}'::jsonb;
+    raise exception 'expected direct ledger update denial';
+  exception when insufficient_privilege then null; end;
+end $$;
 
 select pg_temp.assert(
   public.rpc_get_private_recipe_operation('30000000-0000-4000-8000-000000000009','create_photo_estimate',repeat('a',64)) is null,
@@ -26,6 +53,18 @@ select pg_temp.assert(
   public.rpc_get_private_recipe_operation('30000000-0000-4000-8000-000000000009','create_photo_estimate',repeat('a',64)) = :'preflight_create'::jsonb,
   'preflight replay returns the completed result before AI work'
 );
+do $$ begin
+  begin
+    perform public.rpc_create_private_recipe(
+      '30000000-0000-4000-8000-000000000009','create_photo_estimate',
+      '{"title":"Forged Hash Payload","steps":[{"instruction":"Different"}]}'::jsonb,
+      null,repeat('a',64)
+    );
+    raise exception 'expected forged input hash payload conflict';
+  exception when sqlstate '22023' then
+    perform pg_temp.assert(sqlerrm='private_recipe_idempotency_conflict','same client hash cannot mask a different canonical payload');
+  end;
+end $$;
 
 select public.rpc_create_private_recipe(
   '30000000-0000-4000-8000-000000000001','create_text',
@@ -59,19 +98,21 @@ do $$ declare before_count bigint; begin
     perform public.rpc_create_private_recipe('30000000-0000-4000-8000-000000000002','create_text','{"title":"Ingredient Fail","ingredients":[{"free_text_name":"FORCE_FAIL"}],"steps":[{"instruction":"ok"}]}'::jsonb);
   exception when others then null; end;
   perform pg_temp.assert((select count(*) from public.recipes)=before_count,'ingredient failure leaves no parent');
-  perform pg_temp.assert(not exists(select 1 from public.private_recipe_operations where operation_key='30000000-0000-4000-8000-000000000002'),'ingredient failure rolls back ledger');
   begin
     perform public.rpc_create_private_recipe('30000000-0000-4000-8000-000000000003','create_text','{"title":"Step Fail","ingredients":[{"free_text_name":"ok"}],"steps":[{"instruction":"FORCE_FAIL"}]}'::jsonb);
   exception when others then null; end;
   perform pg_temp.assert((select count(*) from public.recipes)=before_count,'step failure leaves no parent or children');
 end $$;
+reset role;
+select pg_temp.assert(not exists(select 1 from private.private_recipe_operations where operation_key='30000000-0000-4000-8000-000000000002'),'ingredient failure rolls back ledger');
+select pg_temp.assert(not exists(select 1 from private.private_recipe_operations where operation_key='30000000-0000-4000-8000-000000000003'),'step failure rolls back ledger');
 
 -- Same key is independently usable by a second owner.
-reset role; set role authenticated;
+set role authenticated;
 select set_config('request.jwt.claim.sub','20000000-0000-0000-0000-000000000002',false);
 select public.rpc_create_private_recipe('30000000-0000-4000-8000-000000000001','create_text','{"title":"Owner Two","steps":[{"instruction":"ok"}]}'::jsonb);
 reset role;
-select pg_temp.assert((select count(*) from public.private_recipe_operations where operation_key='30000000-0000-4000-8000-000000000001')=2,'same key scoped by owner');
+select pg_temp.assert((select count(*) from private.private_recipe_operations where operation_key='30000000-0000-4000-8000-000000000001')=2,'same key scoped by owner');
 
 -- Owner one: update own draft atomically, replay, stale-version conflict, and foreign denial.
 set role authenticated;

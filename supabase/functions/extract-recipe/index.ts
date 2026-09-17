@@ -234,7 +234,7 @@ Deno.serve(async (req) => {
   const { data: existing, error: preflightError } = await userClient.rpc("rpc_get_private_recipe_operation", {
     p_operation_key: operationKey,
     p_operation_type: operationType,
-    p_request_hash: requestHash,
+    p_input_hash: requestHash,
   });
   if (preflightError) {
     const conflict = preflightError.message?.includes("idempotency_conflict");
@@ -384,7 +384,7 @@ Deno.serve(async (req) => {
     p_operation_key: operationKey,
     p_operation_type: operationType,
     p_payload: recipePayload,
-    p_request_hash: requestHash,
+    p_input_hash: requestHash,
   });
   if (recErr || !writeResult?.recipe_id) {
     console.error("[extract-recipe] atomic recipe RPC failed", recErr);

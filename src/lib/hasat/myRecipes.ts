@@ -10,6 +10,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuthUserId } from "@/lib/hasat/queries";
+import { createRetryOperationKeyStore } from "@/lib/hasat/retryOperationKey";
 
 export interface DraftIngredient {
   crop: string | null;
@@ -210,7 +211,7 @@ export function useMyRecipeDraft(recipeId: string | undefined) {
 export function useUpdateMyRecipeDraft(recipeId: string) {
   const qc = useQueryClient();
   const userId = useAuthUserId();
-  const operationKey = useRef(crypto.randomUUID());
+  const operationKeys = useRef(createRetryOperationKeyStore());
   return useMutation({
     mutationFn: async (draft: RecipeDraft) => {
       const clean = cleanDraft(draft);
@@ -225,26 +226,34 @@ export function useUpdateMyRecipeDraft(recipeId: string) {
         rest_minutes: clean.restMinutes,
         difficulty: clean.difficulty,
         ingredients: clean.ingredients.map((i) => ({
-            crop: i.crop?.trim() ? i.crop.trim() : null,
-            free_text_name: i.freeTextName?.trim() ? i.freeTextName.trim() : null,
-            quantity: i.quantity,
-            unit: i.unit?.trim() ? i.unit.trim() : null,
-            note: i.note?.trim() ? i.note.trim() : null,
-            is_key_ingredient: i.isKeyIngredient,
-          })),
+          crop: i.crop?.trim() ? i.crop.trim() : null,
+          free_text_name: i.freeTextName?.trim() ? i.freeTextName.trim() : null,
+          quantity: i.quantity,
+          unit: i.unit?.trim() ? i.unit.trim() : null,
+          note: i.note?.trim() ? i.note.trim() : null,
+          is_key_ingredient: i.isKeyIngredient,
+        })),
         steps: clean.steps.map((s) => ({
-            instruction: s.instruction.trim(),
-            timer_seconds: s.timerSeconds,
-          })),
+          instruction: s.instruction.trim(),
+          timer_seconds: s.timerSeconds,
+        })),
       };
+      const operationIdentity = JSON.stringify({
+        recipeId,
+        expectedVersion: loaded.version,
+        payload,
+      });
+      const operationKey = operationKeys.current.acquire(operationIdentity);
       const { data, error } = await supabase.rpc("rpc_update_private_recipe", {
-        p_operation_key: operationKey.current,
+        p_operation_key: operationKey,
         p_recipe_id: recipeId,
         p_expected_version: loaded.version,
         p_payload: payload,
       });
       if (error) throw error;
-      if (!data || typeof data !== "object" || !("recipe_id" in data)) throw new Error("update_failed");
+      if (!data || typeof data !== "object" || !("recipe_id" in data))
+        throw new Error("update_failed");
+      operationKeys.current.succeed(operationIdentity, operationKey);
       return recipeId;
     },
     onSuccess: () => {
@@ -266,18 +275,22 @@ export function useDeleteMyRecipeDraft() {
   });
 }
 
-/** F11 — AI'sız birebir kopya. Hook ömrü boyunca aynı key retry ve çift tıklarda yeniden kullanılır. */
+/** F11 — AI'sız birebir kopya. Aynı source retry'ı key'i korur; başarı veya farklı source key'i döndürür. */
 export function useCloneRecipe() {
   const qc = useQueryClient();
-  const operationKey = useRef(crypto.randomUUID());
+  const operationKeys = useRef(createRetryOperationKeyStore());
   return useMutation({
     mutationFn: async (sourceRecipeId: string): Promise<string> => {
+      const operationIdentity = `clone:${sourceRecipeId}`;
+      const operationKey = operationKeys.current.acquire(operationIdentity);
       const { data, error } = await supabase.rpc("rpc_clone_recipe", {
         p_source_recipe_id: sourceRecipeId,
-        p_operation_key: operationKey.current,
+        p_operation_key: operationKey,
       });
       if (error) throw error;
-      if (!data || typeof data !== "object" || !("recipe_id" in data)) throw new Error("clone_failed");
+      if (!data || typeof data !== "object" || !("recipe_id" in data))
+        throw new Error("clone_failed");
+      operationKeys.current.succeed(operationIdentity, operationKey);
       return String(data.recipe_id);
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["myRecipeDrafts"] }),

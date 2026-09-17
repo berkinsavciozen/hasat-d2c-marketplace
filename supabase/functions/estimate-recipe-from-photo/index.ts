@@ -219,7 +219,7 @@ Deno.serve(async (req) => {
   const { data: existing, error: preflightError } = await userClient.rpc("rpc_get_private_recipe_operation", {
     p_operation_key: operationKey,
     p_operation_type: "create_photo_estimate",
-    p_request_hash: requestHash,
+    p_input_hash: requestHash,
   });
   if (preflightError) {
     const conflict = preflightError.message?.includes("idempotency_conflict");
@@ -361,7 +361,7 @@ görmediğin hiçbir malzemeyi bu isimden yola çıkarak UYDURMA — yine de gö
     p_operation_key: operationKey,
     p_operation_type: "create_photo_estimate",
     p_payload: recipePayload,
-    p_request_hash: requestHash,
+    p_input_hash: requestHash,
   });
   if (recErr || !writeResult?.recipe_id) {
     console.error("[estimate-recipe-from-photo] atomic recipe RPC failed", recErr);

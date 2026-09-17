@@ -128,7 +128,7 @@ values ('10000000-0000-0000-0000-000000000001',1,'Domates',2,'adet');
 insert into public.recipe_steps(recipe_id,step_no,instruction,photo_url,timer_seconds)
 values ('10000000-0000-0000-0000-000000000001',1,'Doğra.','https://example.test/source.jpg',60);
 
-create function public.ux1b_force_child_failure() returns trigger language plpgsql as $$
+create function public.ux1b_force_child_failure() returns trigger language plpgsql set search_path = '' as $$
 begin
   if coalesce(to_jsonb(new)->>'free_text_name', to_jsonb(new)->>'instruction') = 'FORCE_FAIL' then
     raise exception 'forced child failure';
