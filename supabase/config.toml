@@ -31,6 +31,11 @@ verify_jwt = false
 [functions.extract-recipe]
 verify_jwt = true
 
+# T7a is user-only. Keep the platform JWT gate enabled; the handler then binds owner_id to the
+# validated token subject and forces visibility=private/status=draft.
+[functions.estimate-recipe-from-photo]
+verify_jwt = true
+
 [functions.send-push]
 verify_jwt = true
 
