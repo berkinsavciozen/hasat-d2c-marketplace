@@ -20,14 +20,11 @@ const importMapUrl = new URL(
 
 const sha256 = (value) => createHash("sha256").update(value).digest("hex");
 
-test("recovered production sources remain byte-faithful", async () => {
-  const [edge, cloneMigration, aclMigration] = await Promise.all([
-    readFile(edgeUrl, "utf8"),
+test("recovered UX-1A migration sources remain byte-faithful", async () => {
+  const [cloneMigration, aclMigration] = await Promise.all([
     readFile(cloneMigrationUrl, "utf8"),
     readFile(aclMigrationUrl, "utf8"),
   ]);
-
-  assert.equal(sha256(edge), "ee4a8121c6ce159a3228b16b8bbadfd1a5e4d16a43817d4b36743e16a3bc243f");
   assert.equal(
     sha256(cloneMigration),
     "73b0fa21ad708151a0f72a85885de13f43609996bb8fd08ccf0f0512b86130eb",
@@ -52,16 +49,14 @@ test("T7a deployment inputs are explicit and reproducible", async () => {
   await assert.rejects(access(importMapUrl));
 });
 
-test("T7a binds ownership to auth and fixes every created recipe to private draft", async () => {
+test("T7a delegates owner/state binding to the authenticated atomic RPC", async () => {
   const edge = await readFile(edgeUrl, "utf8");
 
   assert.match(edge, /const userId = userIdFromAuth\(req\);/);
   assert.match(edge, /if \(!userId\) return json\(\{ error: "unauthorized" \}, 401\);/);
-  assert.match(edge, /status: "draft"/);
-  assert.match(edge, /visibility: "private"/);
-  assert.match(edge, /source_type: "photo_estimate"/);
-  assert.match(edge, /owner_id: userId/);
-  assert.match(edge, /author_type: "kullanici"/);
+  assert.match(edge, /global: \{ headers: \{ Authorization: authHeader \} \}/);
+  assert.match(edge, /userClient\.rpc\("rpc_create_private_recipe"/);
+  assert.match(edge, /p_operation_type: "create_photo_estimate"/);
   assert.doesNotMatch(edge, /owner_id:\s*(?:body|parsed)\./);
   assert.doesNotMatch(edge, /visibility:\s*(?:body|parsed)\./);
   assert.doesNotMatch(edge, /status:\s*(?:body|parsed)\./);
