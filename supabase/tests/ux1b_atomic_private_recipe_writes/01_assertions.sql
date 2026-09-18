@@ -114,37 +114,128 @@ select public.rpc_create_private_recipe('30000000-0000-4000-8000-000000000001','
 reset role;
 select pg_temp.assert((select count(*) from private.private_recipe_operations where operation_key='30000000-0000-4000-8000-000000000001')=2,'same key scoped by owner');
 
--- Owner one: update own draft atomically, replay, stale-version conflict, and foreign denial.
+-- Owner one: a real storage object is preserved on a title-only rewrite.
+select set_config('app.supabase_url','https://efuqpiaavrzimvstpdpm.supabase.co',false);
+insert into storage.objects(bucket_id,name) values
+  ('recipe-step-photos','20000000-0000-0000-0000-000000000001/' || (select id from test_ids where label='created') || '/step-1.jpg'),
+  ('recipe-step-photos','20000000-0000-0000-0000-000000000002/' || (select id from test_ids where label='created') || '/foreign-user.jpg'),
+  ('recipe-step-photos','20000000-0000-0000-0000-000000000001/10000000-0000-0000-0000-000000000002/foreign-recipe.jpg'),
+  ('other-bucket','20000000-0000-0000-0000-000000000001/' || (select id from test_ids where label='created') || '/wrong-bucket.jpg');
+update public.recipe_steps
+set photo_url = 'https://efuqpiaavrzimvstpdpm.supabase.co/storage/v1/object/public/recipe-step-photos/20000000-0000-0000-0000-000000000001/'
+  || (select id from test_ids where label='created') || '/step-1.jpg'
+where recipe_id = (select id from test_ids where label='created') and step_no = 1;
+
 set role authenticated;
 select set_config('request.jwt.claim.sub','20000000-0000-0000-0000-000000000001',false);
 select public.rpc_update_private_recipe(
   '30000000-0000-4000-8000-000000000004',(select id from test_ids where label='created'),1,
-  '{"title":"Updated","ingredients":[{"free_text_name":"Soğan"}],"steps":[{"instruction":"Pişir."}]}'::jsonb
+  jsonb_build_object(
+    'title','Updated','ingredients',jsonb_build_array(jsonb_build_object('free_text_name','Soğan')),
+    'steps',jsonb_build_array(jsonb_build_object(
+      'instruction','Pişir.',
+      'photo_url','https://efuqpiaavrzimvstpdpm.supabase.co/storage/v1/object/public/recipe-step-photos/20000000-0000-0000-0000-000000000001/'
+        || (select id from test_ids where label='created') || '/step-1.jpg'
+    ))
+  )
 ) as update_result \gset
 select pg_temp.assert((:'update_result'::jsonb->>'version')::int=2,'update increments version');
 select pg_temp.assert((select title='Updated' from public.recipes where id=(select id from test_ids where label='created')),'update rewrites recipe');
-select public.rpc_update_private_recipe(
-  '30000000-0000-4000-8000-000000000004',(select id from test_ids where label='created'),1,
-  '{"title":"Updated","ingredients":[{"free_text_name":"Soğan"}],"steps":[{"instruction":"Pişir."}]}'::jsonb
-);
+select pg_temp.assert((
+  select photo_url like '%/recipe-step-photos/20000000-0000-0000-0000-000000000001/%/step-1.jpg'
+  from public.recipe_steps where recipe_id=(select id from test_ids where label='created')
+),'title-only update preserves step photo');
+
+-- The photo participates in canonical idempotency identity.
 do $$ begin
   begin
-    perform public.rpc_update_private_recipe('30000000-0000-4000-8000-000000000005',(select id from pg_temp.test_ids where label='created'),1,'{"title":"Stale","steps":[{"instruction":"X"}]}'::jsonb);
+    perform public.rpc_update_private_recipe(
+      '30000000-0000-4000-8000-000000000004',
+      (select id from pg_temp.test_ids where label='created'),1,
+      '{"title":"Updated","ingredients":[{"free_text_name":"Soğan"}],"steps":[{"instruction":"Pişir.","photo_url":null}]}'::jsonb
+    );
+    raise exception 'expected photo idempotency conflict';
+  exception when sqlstate '22023' then
+    perform pg_temp.assert(sqlerrm='private_recipe_idempotency_conflict','different photo conflicts for the same operation key');
+  end;
+end $$;
+
+-- Explicit null clears the photo.
+select public.rpc_update_private_recipe(
+  '30000000-0000-4000-8000-000000000005',(select id from test_ids where label='created'),2,
+  '{"title":"Cleared","ingredients":[{"free_text_name":"Soğan"}],"steps":[{"instruction":"Pişir.","photo_url":null}]}'::jsonb
+) as clear_result \gset
+select pg_temp.assert((:'clear_result'::jsonb->>'version')::int=3,'photo clear increments version');
+select pg_temp.assert((select photo_url is null from public.recipe_steps where recipe_id=(select id from test_ids where label='created')),'explicit null clears step photo');
+
+-- Existing objects belonging to another user/recipe/bucket and arbitrary external URLs are denied.
+do $$
+declare
+  v_recipe uuid := (select id from pg_temp.test_ids where label='created');
+  v_photo text;
+begin
+  foreach v_photo in array array[
+    'recipe-step-photos/20000000-0000-0000-0000-000000000002/' || v_recipe || '/foreign-user.jpg',
+    'recipe-step-photos/20000000-0000-0000-0000-000000000001/10000000-0000-0000-0000-000000000002/foreign-recipe.jpg',
+    'other-bucket/20000000-0000-0000-0000-000000000001/' || v_recipe || '/wrong-bucket.jpg',
+    'https://evil.example/storage/v1/object/public/recipe-step-photos/20000000-0000-0000-0000-000000000001/' || v_recipe || '/step-1.jpg'
+  ] loop
+    begin
+      perform public.rpc_update_private_recipe(
+        gen_random_uuid(),v_recipe,3,
+        jsonb_build_object('title','Injection','steps',jsonb_build_array(jsonb_build_object('instruction','X','photo_url',v_photo)))
+      );
+      raise exception 'expected step photo rejection';
+    exception when sqlstate '22023' then
+      perform pg_temp.assert(sqlerrm='private_recipe_invalid_step_photo','foreign photo reference rejected');
+    end;
+  end loop;
+end $$;
+
+-- Bucket-prefixed object paths are accepted and canonicalized to the project public URL.
+select public.rpc_update_private_recipe(
+  '30000000-0000-4000-8000-000000000006',(select id from test_ids where label='created'),3,
+  jsonb_build_object(
+    'title','Photo Restored','ingredients',jsonb_build_array(jsonb_build_object('free_text_name','Soğan')),
+    'steps',jsonb_build_array(jsonb_build_object(
+      'instruction','Pişir.',
+      'photo_url','recipe-step-photos/20000000-0000-0000-0000-000000000001/'
+        || (select id from test_ids where label='created') || '/step-1.jpg'
+    ))
+  )
+) as restore_result \gset
+select pg_temp.assert((:'restore_result'::jsonb->>'version')::int=4,'valid path update increments version');
+
+-- A child failure rolls back the parent version/title and the old photo link.
+do $$ begin
+  begin
+    perform public.rpc_update_private_recipe(
+      '30000000-0000-4000-8000-000000000016',(select id from pg_temp.test_ids where label='created'),4,
+      '{"title":"Must Roll Back","ingredients":[{"free_text_name":"FORCE_FAIL"}],"steps":[{"instruction":"X"}]}'::jsonb
+    );
+    raise exception 'expected forced child failure';
+  exception when others then
+    perform pg_temp.assert(sqlerrm='forced child failure','child failure reached');
+  end;
+  perform pg_temp.assert((select title='Photo Restored' and private_edit_version=4 from public.recipes where id=(select id from pg_temp.test_ids where label='created')),'rollback preserves parent');
+  perform pg_temp.assert((select photo_url like '%/step-1.jpg' from public.recipe_steps where recipe_id=(select id from pg_temp.test_ids where label='created')),'rollback preserves old photo link');
+  begin
+    perform public.rpc_update_private_recipe('30000000-0000-4000-8000-000000000014',(select id from pg_temp.test_ids where label='created'),1,'{"title":"Stale","steps":[{"instruction":"X"}]}'::jsonb);
     raise exception 'expected version conflict';
   exception when sqlstate '40001' then
     perform pg_temp.assert(sqlerrm='private_recipe_version_conflict','deterministic version conflict');
   end;
-  perform pg_temp.assert((select title='Updated' from public.recipes where id=(select id from pg_temp.test_ids where label='created')),'stale write preserves data');
+  perform pg_temp.assert((select title='Photo Restored' from public.recipes where id=(select id from pg_temp.test_ids where label='created')),'stale write preserves data');
   begin
-    perform public.rpc_update_private_recipe('30000000-0000-4000-8000-000000000006','10000000-0000-0000-0000-000000000002',1,'{"title":"Foreign","steps":[{"instruction":"X"}]}'::jsonb);
+    perform public.rpc_update_private_recipe('30000000-0000-4000-8000-000000000015','10000000-0000-0000-0000-000000000002',1,'{"title":"Foreign","steps":[{"instruction":"X"}]}'::jsonb);
     raise exception 'expected foreign denial';
   exception when sqlstate '42501' then null; end;
 end $$;
 
 -- Clone is idempotent, snapshot-independent and deliberately omits step photo_url.
-select public.rpc_clone_recipe('10000000-0000-0000-0000-000000000001','30000000-0000-4000-8000-000000000007') as clone_result \gset
+select public.rpc_clone_recipe('10000000-0000-0000-0000-000000000001','30000000-0000-4000-8000-000000000020') as clone_result \gset
 insert into test_ids values ('clone',(:'clone_result'::jsonb->>'recipe_id')::uuid);
-select public.rpc_clone_recipe('10000000-0000-0000-0000-000000000001','30000000-0000-4000-8000-000000000007') as clone_replay \gset
+select public.rpc_clone_recipe('10000000-0000-0000-0000-000000000001','30000000-0000-4000-8000-000000000020') as clone_replay \gset
 select pg_temp.assert(:'clone_result'::jsonb=:'clone_replay'::jsonb,'clone replay identical');
 select pg_temp.assert((select photo_url is null from public.recipe_steps where recipe_id=(select id from test_ids where label='clone')),'clone omits step photo');
 reset role;
