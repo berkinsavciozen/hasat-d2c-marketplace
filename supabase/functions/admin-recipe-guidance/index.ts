@@ -1,9 +1,11 @@
 // F2 Recipe Automation — admin recipe-guidance dashboard endpoint.
 //
-// PROMPT: gives the admin panel, at brief-authoring time, the same read-only signal the Planner/QA
-// agents already have ahead of drafting — "what's already published for this crop" (mode=catalog)
-// and "does this working title look like a duplicate" (mode=duplicates) — so a human editing a
-// brief sees it BEFORE the Writer ever runs, not only after QA flags it. Same human-facing
+// PROMPT: gives the admin panel, at brief-authoring/plan-creation time, the same read-only signal
+// the Planner/QA agents already have — "what's already published for this crop" (mode=catalog),
+// "does this working title look like a duplicate" (mode=duplicates), and "how many crops actually
+// have active supply right now" (mode=activeSupply, the same `get_active_listing_crops` count the
+// Planner itself is bound by) — so a human sees it BEFORE the Writer ever runs, not only after QA
+// flags it. Same human-facing
 // admin-dashboard auth convention as ../admin-recipe-jobs/index.ts and every other
 // admin-recipe-plan-* function: timing-safe `x-admin-key` compared against `ADMIN_DASHBOARD_KEY`,
 // service-role internally, no `is_admin`, no RLS, no normal Lovable user session. Read-only: this
@@ -11,7 +13,11 @@
 // header — every call is an existing narrow RPC, never a new one, never a raw table scan).
 import { requireSharedSecret } from "../_shared/recipe-automation/infra/admin-auth.ts";
 import { getSupabaseAdminClient } from "../_shared/recipe-automation/infra/supabase-admin.ts";
-import { checkTitleDuplicates, getCatalogGuidance } from "../_shared/recipe-automation/admin/plan-guidance.ts";
+import {
+  checkTitleDuplicates,
+  getActiveSupplyGuidance,
+  getCatalogGuidance,
+} from "../_shared/recipe-automation/admin/plan-guidance.ts";
 import { toSafeErrorPayload } from "../_shared/recipe-automation/infra/errors.ts";
 
 const CORS = {
@@ -40,8 +46,11 @@ async function handleRequest(req: Request): Promise<Response> {
   const url = new URL(req.url);
   const mode = url.searchParams.get("mode");
 
-  if (mode !== "catalog" && mode !== "duplicates") {
-    return json({ error: "invalid_mode", detail: "mode query param must be 'catalog' or 'duplicates'" }, 400);
+  if (mode !== "catalog" && mode !== "duplicates" && mode !== "activeSupply") {
+    return json(
+      { error: "invalid_mode", detail: "mode query param must be 'catalog', 'duplicates' or 'activeSupply'" },
+      400,
+    );
   }
 
   const workingTitle = url.searchParams.get("workingTitle") ?? "";
@@ -58,6 +67,11 @@ async function handleRequest(req: Request): Promise<Response> {
       return json(result, 200);
     }
 
+    if (mode === "activeSupply") {
+      const result = await getActiveSupplyGuidance(client);
+      return json(result, 200);
+    }
+
     const focusCrop = url.searchParams.get("focusCrop");
     const duplicates = await checkTitleDuplicates(client, { workingTitle, focusCrop });
     return json({ duplicates }, 200);
@@ -69,7 +83,7 @@ async function handleRequest(req: Request): Promise<Response> {
 }
 
 // Exposed for index.test.ts — same convention recipe-stage-write/recipe-stage-revise's own
-// index.test.ts use: every early-return path above the two mode branches returns BEFORE ever
+// index.test.ts use: every early-return path above the mode branches returns BEFORE ever
 // constructing a Supabase client, so the auth-gate/method/mode-validation tests need no network/DB
 // double, just the handler function itself.
 (globalThis as unknown as { __denoServeHandler?: (req: Request) => Promise<Response> }).__denoServeHandler = handleRequest;

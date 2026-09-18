@@ -237,6 +237,48 @@ Deno.test("runPlanStage: server-side briefId override fixes a planner briefId co
   assert.equal(new Set(briefIds).size, 4, "every stored brief_id must be unique");
 });
 
+// allowCropRepeat wiring (admin "Aynı ürünü... izin ver" checkbox) — the diversity RPC must
+// actually receive the caller's choice as `p_options.allowCropRepeat`, and it must default to
+// `false` (today's strict behavior) when the caller doesn't send it at all.
+Deno.test("runPlanStage: validate_recipe_plan_diversity is called with p_options: { allowCropRepeat: false } by default", async () => {
+  const client = new FakeSupabaseClient();
+  registerHappyPathRpcs(client);
+  let seenOptions: unknown;
+  client.onRpc("validate_recipe_plan_diversity", (args) => {
+    seenOptions = args.p_options;
+    return { data: PASS, error: null };
+  });
+  const runner = fixtureAgentRunner(4);
+
+  const result = await runPlanStage(asClient(client), { batchInput: validBatchInput(), agentRunner: runner });
+
+  assert.equal(result.outcome, "planned");
+  assert.deepEqual(seenOptions, { allowCropRepeat: false });
+});
+
+Deno.test("runPlanStage: allowCropRepeat=true forwards p_options: { allowCropRepeat: true } and lets a repeated focusCrop through", async () => {
+  const client = new FakeSupabaseClient();
+  registerHappyPathRpcs(client);
+  let seenOptions: unknown;
+  client.onRpc("validate_recipe_plan_diversity", (args) => {
+    seenOptions = args.p_options;
+    // Mirrors validate_recipe_plan_diversity's own real behavior: allowCropRepeat: true means a
+    // repeated focusCrop is no longer a blocking DIVERSITY_CROP_REPEATED issue.
+    return { data: PASS, error: null };
+  });
+  // All four briefs share the same focusCrop — exactly the "targetCount > active supply" shape the
+  // checkbox exists for.
+  const runner = fixtureAgentRunner(4, () => ({ focusCrop: "kabak" }));
+
+  const result = await runPlanStage(asClient(client), {
+    batchInput: validBatchInput({ allowCropRepeat: true }),
+    agentRunner: runner,
+  });
+
+  assert.equal(result.outcome, "planned");
+  assert.deepEqual(seenOptions, { allowCropRepeat: true });
+});
+
 Deno.test("runPlanStage: agent_call_failed records plan_error and never stores briefs", async () => {
   const client = new FakeSupabaseClient();
   registerHappyPathRpcs(client);

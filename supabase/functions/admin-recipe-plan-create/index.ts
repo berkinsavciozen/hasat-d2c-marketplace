@@ -40,6 +40,7 @@ interface RequestBody {
   locale?: unknown;
   notes?: unknown;
   adminActor?: unknown;
+  allowCropRepeat?: unknown;
 }
 
 Deno.serve(async (req) => {
@@ -69,15 +70,18 @@ Deno.serve(async (req) => {
   }
 
   // recipeBatchInputSchema (schemas.ts) is `.strict()` — only forward the fields this endpoint's
-  // own contract accepts (targetCount/focusCrops/dietFocus/locale/notes). batchId/requestedBy are
-  // never caller-supplied here; runPlanStage's own resolveOrCreateBatch creates a fresh batch with
-  // requestedBy left at the schema's default (null).
+  // own contract accepts (targetCount/focusCrops/dietFocus/locale/notes/allowCropRepeat).
+  // batchId/requestedBy are never caller-supplied here; runPlanStage's own resolveOrCreateBatch
+  // creates a fresh batch with requestedBy left at the schema's default (null).
   const batchInput = {
     targetCount: body.targetCount,
     focusCrops: body.focusCrops,
     dietFocus: body.dietFocus,
     locale: body.locale,
     notes: body.notes,
+    // Safe boolean coercion, same convention as every other admin-recipe-* boolean-ish field —
+    // anything other than a literal `true` (missing, string, number, ...) stays the strict default.
+    allowCropRepeat: body.allowCropRepeat === true,
   };
 
   try {

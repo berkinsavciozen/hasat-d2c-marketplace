@@ -208,10 +208,11 @@ async function callValidationRpc(
   client: SupabaseClient,
   fn: "validate_recipe_plan" | "validate_recipe_plan_diversity",
   planJson: Record<string, unknown>,
+  options: { allowCropRepeat?: boolean } = {},
 ): Promise<ValidationRpcResult> {
   const { data, error } = fn === "validate_recipe_plan"
     ? await client.rpc(fn, { p_plan: planJson })
-    : await client.rpc(fn, { p_plan: planJson, p_options: {} });
+    : await client.rpc(fn, { p_plan: planJson, p_options: { allowCropRepeat: options.allowCropRepeat ?? false } });
   if (error) {
     throw new RecipeAutomationError({
       code: `${fn.toUpperCase()}_RPC_FAILED`,
@@ -411,7 +412,9 @@ export async function runPlanStage(
     return { outcome: "structural_validation_failed", batchId: batch.id, errorCode: error.code, issues: structural.issues };
   }
 
-  const diversity = await callValidationRpc(client, "validate_recipe_plan_diversity", planJson);
+  const diversity = await callValidationRpc(client, "validate_recipe_plan_diversity", planJson, {
+    allowCropRepeat: parsedInput.data.allowCropRepeat,
+  });
   await client.from("recipe_generation_batches").update({ diversity_report: diversity }).eq("id", batch.id);
 
   if (!diversity.valid) {
