@@ -4718,27 +4718,15 @@ export type Database = {
         Args: { p_job_id: string }
         Returns: Json
       }
-      rpc_clone_recipe: {
-        Args: { p_operation_key: string; p_source_recipe_id: string }
-        Returns: Json
-      }
-      rpc_create_private_recipe: {
-        Args: {
-          p_operation_key: string
-          p_operation_type: string
-          p_payload: Json
-          p_input_hash?: string | null
-          p_source_recipe_id?: string | null
-        }
-        Returns: Json
-      }
-      rpc_get_private_recipe_operation: {
-        Args: {
-          p_operation_key: string
-          p_operation_type: string
-          p_input_hash: string
-        }
-        Returns: Json
+      rpc_clone_recipe:
+        | { Args: { p_source_recipe_id: string }; Returns: string }
+        | {
+            Args: { p_operation_key: string; p_source_recipe_id: string }
+            Returns: Json
+          }
+      rpc_clone_shared_recipe: {
+        Args: { p_share_token: string }
+        Returns: string
       }
       rpc_consume_mobile_handoff_nonce: {
         Args: { p_nonce: string }
@@ -4764,15 +4752,6 @@ export type Database = {
           p_title: string
         }
         Returns: string
-      }
-      rpc_update_private_recipe: {
-        Args: {
-          p_expected_version: number
-          p_operation_key: string
-          p_payload: Json
-          p_recipe_id: string
-        }
-        Returns: Json
       }
       rpc_create_offer: {
         Args: {
@@ -4813,7 +4792,30 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      rpc_create_private_recipe: {
+        Args: {
+          p_input_hash?: string
+          p_operation_key: string
+          p_operation_type: string
+          p_payload: Json
+          p_source_recipe_id?: string
+        }
+        Returns: Json
+      }
       rpc_delete_own_account: { Args: never; Returns: undefined }
+      rpc_generate_recipe_share_token: {
+        Args: { p_recipe_id: string }
+        Returns: string
+      }
+      rpc_get_private_recipe_operation: {
+        Args: {
+          p_input_hash: string
+          p_operation_key: string
+          p_operation_type: string
+        }
+        Returns: Json
+      }
+      rpc_get_shared_recipe: { Args: { p_share_token: string }; Returns: Json }
       rpc_recipe_availability: {
         Args: { p_recipe_id: string }
         Returns: {
@@ -4863,6 +4865,19 @@ export type Database = {
       rpc_register_device_token: {
         Args: { p_platform: string; p_token: string }
         Returns: string
+      }
+      rpc_revoke_recipe_share_token: {
+        Args: { p_recipe_id: string }
+        Returns: undefined
+      }
+      rpc_update_private_recipe: {
+        Args: {
+          p_expected_version: number
+          p_operation_key: string
+          p_payload: Json
+          p_recipe_id: string
+        }
+        Returns: Json
       }
       search_existing_recipes: {
         Args: {
