@@ -389,7 +389,6 @@ function PriceTransparency() {
   }, [crops, selectedCrop]);
   const { data, isLoading, isError } = usePriceHistorySummary(selectedCrop || null);
   const [tab, setTab] = useState<"official" | "hasat">("official");
-  const official = data?.official;
   const hasat = data?.hasat;
   const updated = data?.lastUpdated ? new Intl.DateTimeFormat("tr-TR", { dateStyle: "medium" }).format(new Date(data.lastUpdated)) : null;
 
@@ -414,7 +413,7 @@ function PriceTransparency() {
           </div>
           <div className="min-h-64 pt-6" aria-live="polite">
             {isLoading || cropsLoading ? <EmptyData title="Veriler kontrol ediliyor" body="Kaynak ve güncellenme bilgisi doğrulanıyor." /> : isError ? <EmptyData title="Bu ürün için güncel veri bulunamadı" body="Bağlantı yeniden kurulduğunda tekrar deneyebilirsin." /> : !selectedCrop ? <EmptyData title="Henüz veri bulunmuyor" body="Kaynağı doğrulanmış bir ürün verisi geldiğinde burada gösterilecek." /> : tab === "official" ? (
-              official ? <PriceRecord label="Hal / resmî kaynak ortalaması" price={official.avgPrice} unit={data?.unit} source={official.officialSourceName} updated="Güncellenme bilgisi kaynaktan gelmiyor" /> : <EmptyData title="Bu ürün için güncel hal verisi bulunamadı" body="Sisteme bağlı olmayan hal veya şehir için fiyat üretilmez." />
+              data && data.marketSources.length > 0 ? <MarketSourcesList sources={data.marketSources} unit={data.unit} updated={updated} /> : <EmptyData title="Bu ürün için güncel hal verisi bulunamadı" body="Sisteme bağlı olmayan hal veya şehir için fiyat üretilmez." />
             ) : hasat && !hasat.insufficientData && hasat.avgPrice != null ? (
               <PriceRecord label="Tamamlanmış Hasat satış ortalaması" price={hasat.avgPrice} unit={data?.unit} source="Hasat'ta tamamlanmış satışlar" updated={updated ? `Son güncelleme: ${updated}` : "Güncellenme bilgisi bulunmuyor"} />
             ) : <EmptyData title="Henüz yeterli satış verisi yok" body="Ticari gizliliği koruyan minimum eşik karşılandığında anonim özet gösterilir." />}
@@ -426,6 +425,29 @@ function PriceTransparency() {
         </div>
       </div>
     </section>
+  );
+}
+
+function MarketSourcesList({ sources, unit, updated }: { sources: { sourceCode: string; displayName: string; region: string | null; avgPrice: number | null }[]; unit: string | null; updated: string | null }) {
+  return (
+    <div>
+      <p className="text-xs font-bold uppercase tracking-[0.12em] text-muted-foreground">Güncel hal fiyatları</p>
+      <ul className="mt-4 grid gap-2">
+        {sources.map((source) => (
+          <li key={source.sourceCode} className="flex items-center justify-between gap-3 rounded-lg border bg-card px-4 py-3">
+            <span className="flex min-w-0 items-center gap-2 text-sm font-medium text-foreground">
+              <Store className="h-4 w-4 shrink-0 text-saffron" />
+              <span className="truncate">{source.displayName}</span>
+            </span>
+            <span className="shrink-0 text-right font-serif text-lg text-primary">
+              {source.avgPrice != null ? formatTRY(source.avgPrice) : "—"}
+              {source.avgPrice != null ? <span className="ml-1 text-xs text-muted-foreground">/{unit ?? "kg"}</span> : null}
+            </span>
+          </li>
+        ))}
+      </ul>
+      {updated ? <p className="mt-4 text-right text-xs text-muted-foreground">Son güncelleme: {updated}</p> : null}
+    </div>
   );
 }
 
