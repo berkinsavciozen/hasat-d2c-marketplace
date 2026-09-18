@@ -85,6 +85,26 @@ test("migration constrains auth, ACL, states, limits, idempotency and optimistic
   assert.doesNotMatch(migration, /coalesce\(\s*p_(?:request|input)_hash,\s*md5/i);
 });
 
+test("UX-1B-M correction binds step photos to the authenticated recipe and canonical update hash", async () => {
+  const migration = await read(
+    "../supabase/migrations/20260918090000_ux1b_private_step_photo_preservation.sql",
+  );
+  assert.match(migration, /v_owner uuid := auth\.uid\(\)/);
+  assert.match(migration, /app\.supabase_url/);
+  assert.match(migration, /storage\.objects/);
+  assert.match(migration, /o\.bucket_id = 'recipe-step-photos'/);
+  assert.match(migration, /v_owner::text \|\| '\/' \|\| p_recipe_id::text \|\| '\/'/);
+  assert.match(migration, /private_recipe_invalid_step_photo/);
+  assert.match(migration, /'photo_url', v_photo/);
+  assert.match(migration, /'payload', v_payload/);
+  assert.match(
+    migration,
+    /insert into public\.recipe_steps\(recipe_id, step_no, instruction, photo_url, timer_seconds\)/,
+  );
+  assert.doesNotMatch(migration, /create or replace function public\.rpc_clone_recipe/);
+  assert.match(migration, /UX-1C owns that separate media-model change/);
+});
+
 test("operation keys survive only matching retries and rotate after successful update/clone requests", async () => {
   const source = await read("../src/lib/hasat/retryOperationKey.ts");
   const compiled = ts.transpileModule(source, {

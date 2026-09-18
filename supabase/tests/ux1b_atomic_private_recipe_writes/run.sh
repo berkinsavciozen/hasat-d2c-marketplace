@@ -16,5 +16,6 @@ done
 docker exec "$CONTAINER" psql -U postgres -d ux1b -Atc 'show server_version;'
 docker exec -i "$CONTAINER" psql -v ON_ERROR_STOP=1 -X -U postgres -d ux1b < "$SCRIPT_DIR/00_fixtures.sql"
 docker exec -i "$CONTAINER" psql -v ON_ERROR_STOP=1 -X -U postgres -d ux1b < "$REPO_ROOT/supabase/migrations/20260917081905_ux1b_atomic_private_recipe_writes.sql"
+docker exec -i "$CONTAINER" psql -v ON_ERROR_STOP=1 -X -U postgres -d ux1b < "$REPO_ROOT/supabase/migrations/20260918090000_ux1b_private_step_photo_preservation.sql"
 docker exec -i "$CONTAINER" psql -v ON_ERROR_STOP=1 -X -U postgres -d ux1b < "$SCRIPT_DIR/01_assertions.sql"
 echo 'UX-1B disposable PostgreSQL 17 suite: PASSED'

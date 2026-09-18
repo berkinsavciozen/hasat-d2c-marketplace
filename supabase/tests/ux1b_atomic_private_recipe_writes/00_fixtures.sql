@@ -14,6 +14,14 @@ grant usage on schema auth to anon, authenticated, service_role;
 grant execute on function auth.uid() to anon, authenticated, service_role;
 grant usage on schema public to anon, authenticated, service_role;
 
+create schema storage;
+create table storage.objects (
+  id uuid primary key default gen_random_uuid(),
+  bucket_id text not null,
+  name text not null,
+  unique (bucket_id, name)
+);
+
 create table public.recipes (
   id uuid primary key default gen_random_uuid(),
   slug text not null,
