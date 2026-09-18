@@ -25,6 +25,7 @@ export const validBatchInput: RecipeBatchInput = {
   locale: "tr",
   notes: "F13 sebze serisi icin kabak agirlikli tarifler.",
   requestedAt: "2026-08-19T09:00:00Z",
+  allowCropRepeat: false,
 };
 
 export const validBrief: RecipeBrief = {

@@ -206,6 +206,14 @@ export const recipeBatchInputSchema = z.object({
   locale: z.string().trim().min(2).default("tr"),
   notes: z.string().trim().max(4000).nullable().default(null),
   requestedAt: isoDateTimeSchema.optional(),
+  // Per-attempt override for `validate_recipe_plan_diversity`'s own `allowCropRepeat` RPC option
+  // (f2s13 migration — the DB function already supports it, only the caller never surfaced it).
+  // Deliberately NOT one of `resolveOrCreateBatch`'s (plan-stage.ts) explicit insert columns, so it
+  // is never persisted onto `recipe_generation_batches` — a retry of an existing `batchId` re-reads
+  // this flag from that retry's own request, not from a stored batch setting. Defaults to `false`
+  // so every existing caller (recipe-stage-plan-scheduler's fixed weekly input, any pre-existing
+  // admin request that doesn't send it) keeps today's strict "no repeated focusCrop" behavior.
+  allowCropRepeat: z.boolean().default(false),
 }).strict();
 
 // ---------------------------------------------------------------------------
