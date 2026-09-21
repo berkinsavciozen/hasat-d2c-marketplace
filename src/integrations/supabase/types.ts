@@ -1776,6 +1776,9 @@ export type Database = {
           offer_id: string
           price_per_unit: number
           quantity: number
+          snapshot_batch_name: string | null
+          snapshot_crop: string | null
+          snapshot_unit: string | null
         }
         Insert: {
           created_at?: string
@@ -1784,6 +1787,9 @@ export type Database = {
           offer_id: string
           price_per_unit: number
           quantity: number
+          snapshot_batch_name?: string | null
+          snapshot_crop?: string | null
+          snapshot_unit?: string | null
         }
         Update: {
           created_at?: string
@@ -1792,6 +1798,9 @@ export type Database = {
           offer_id?: string
           price_per_unit?: number
           quantity?: number
+          snapshot_batch_name?: string | null
+          snapshot_crop?: string | null
+          snapshot_unit?: string | null
         }
         Relationships: [
           {
@@ -1862,6 +1871,8 @@ export type Database = {
           delivery: Database["public"]["Enums"]["delivery_type"]
           delivery_date: string | null
           farmer_id: string
+          final_price_per_unit: number | null
+          final_quantity: number | null
           id: string
           listing_id: string
           negotiation_history: Json
@@ -1869,6 +1880,11 @@ export type Database = {
           payment_status: string
           price_per_unit: number
           quantity: number
+          snapshot_commercial_terms_version: string | null
+          snapshot_commission_rate_bps: number | null
+          snapshot_crop: string | null
+          snapshot_payment_mode: string | null
+          snapshot_unit: string | null
           source_recipe_id: string | null
           status: Database["public"]["Enums"]["offer_status"]
           subscription_id: string | null
@@ -1884,6 +1900,8 @@ export type Database = {
           delivery?: Database["public"]["Enums"]["delivery_type"]
           delivery_date?: string | null
           farmer_id: string
+          final_price_per_unit?: number | null
+          final_quantity?: number | null
           id?: string
           listing_id: string
           negotiation_history?: Json
@@ -1891,6 +1909,11 @@ export type Database = {
           payment_status?: string
           price_per_unit: number
           quantity: number
+          snapshot_commercial_terms_version?: string | null
+          snapshot_commission_rate_bps?: number | null
+          snapshot_crop?: string | null
+          snapshot_payment_mode?: string | null
+          snapshot_unit?: string | null
           source_recipe_id?: string | null
           status?: Database["public"]["Enums"]["offer_status"]
           subscription_id?: string | null
@@ -1906,6 +1929,8 @@ export type Database = {
           delivery?: Database["public"]["Enums"]["delivery_type"]
           delivery_date?: string | null
           farmer_id?: string
+          final_price_per_unit?: number | null
+          final_quantity?: number | null
           id?: string
           listing_id?: string
           negotiation_history?: Json
@@ -1913,6 +1938,11 @@ export type Database = {
           payment_status?: string
           price_per_unit?: number
           quantity?: number
+          snapshot_commercial_terms_version?: string | null
+          snapshot_commission_rate_bps?: number | null
+          snapshot_crop?: string | null
+          snapshot_payment_mode?: string | null
+          snapshot_unit?: string | null
           source_recipe_id?: string | null
           status?: Database["public"]["Enums"]["offer_status"]
           subscription_id?: string | null
@@ -4900,6 +4930,8 @@ export type Database = {
           delivery: Database["public"]["Enums"]["delivery_type"]
           delivery_date: string | null
           farmer_id: string
+          final_price_per_unit: number | null
+          final_quantity: number | null
           id: string
           listing_id: string
           negotiation_history: Json
@@ -4907,6 +4939,11 @@ export type Database = {
           payment_status: string
           price_per_unit: number
           quantity: number
+          snapshot_commercial_terms_version: string | null
+          snapshot_commission_rate_bps: number | null
+          snapshot_crop: string | null
+          snapshot_payment_mode: string | null
+          snapshot_unit: string | null
           source_recipe_id: string | null
           status: Database["public"]["Enums"]["offer_status"]
           subscription_id: string | null
