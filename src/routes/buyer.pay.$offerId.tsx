@@ -1,7 +1,7 @@
 import { createFileRoute, useNavigate, useRouter } from "@tanstack/react-router";
 import { ArrowLeft, Copy, Check, Info } from "lucide-react";
 import { useEffect, useState } from "react";
-import { useBuyerOffers, useSimulatePayment, useMarkTransferSent } from "@/lib/hasat/queries";
+import { useBuyerOffers, useMarkTransferSent } from "@/lib/hasat/queries";
 import { LoadingDots } from "@/components/hasat/LoadingDots";
 import { formatTRY, formatCrop } from "@/lib/hasat/format";
 import { toast } from "sonner";
@@ -25,7 +25,6 @@ function PayPage() {
   const navigate = useNavigate();
   const router = useRouter();
   const { data: offers, isPending, isError, error, refetch } = useBuyerOffers();
-  const pay = useSimulatePayment();
   const markTransfer = useMarkTransferSent();
   const [copied, setCopied] = useState(false);
   const [timedOut, setTimedOut] = useState(false);
