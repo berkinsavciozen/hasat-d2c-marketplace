@@ -22,6 +22,11 @@ export const Route = createFileRoute("/admin/recipes/$jobId")({
   component: AdminRecipeJobDetailPage,
 });
 
+type DraftIngredient = {
+  crop: string | null; freeTextName: string | null; quantity: number | null; unit: string | null;
+  note: string | null; isKeyIngredient: boolean; sortOrder: number;
+};
+
 type QAIssue = { code: string; field: string; severity: "info" | "warning" | "blocking"; message: string; requiredChange: string | null };
 type SafetyFinding = { flagged: boolean; notes: string | null };
 
@@ -39,7 +44,7 @@ type JobDetail = {
       title: string; description: string | null; servings: number | null; prepMinutes: number | null;
       cookMinutes: number | null; restMinutes: number | null; difficulty: string | null; cuisine: string | null;
       dietTags: string[]; allergenLabels: string[] | null;
-      ingredients: Array<{ crop: string | null; freeTextName: string | null; quantity: number | null; unit: string | null; note: string | null; isKeyIngredient: boolean }>;
+      ingredients: DraftIngredient[];
       steps: Array<{ stepNo: number; instruction: string; photoUrl: string | null; timerSeconds: number | null }>;
     };
   } | null;
@@ -72,6 +77,50 @@ type JobDetail = {
   } | null;
 };
 
+// F2-S18 — Besin Değeri Eksikliği, Sınıf A/C çözümleme (bkz. admin-recipe-nutrition-resolve).
+type NutritionResolutionKind = "add_measure" | "alias_to_existing" | "new_reference" | "mark_unquantified";
+
+type NutritionResolveForm = {
+  tab: NutritionResolutionKind;
+  scopeKind: "crop" | "food";
+  scopeKey: string;
+  unit: string;
+  gramsPerUnit: string;
+  targetKind: "crop" | "food";
+  targetKey: string;
+  foodKey: string;
+  displayName: string;
+  caloriesKcal: string;
+  proteinG: string;
+  carbsG: string;
+  fatG: string;
+  fiberG: string;
+};
+
+const EMPTY_RESOLVE_FORM: NutritionResolveForm = {
+  tab: "add_measure",
+  scopeKind: "crop",
+  scopeKey: "",
+  unit: "",
+  gramsPerUnit: "",
+  targetKind: "crop",
+  targetKey: "",
+  foodKey: "",
+  displayName: "",
+  caloriesKcal: "",
+  proteinG: "",
+  carbsG: "",
+  fatG: "",
+  fiberG: "",
+};
+
+const RESOLVE_TAB_LABEL: Record<NutritionResolutionKind, string> = {
+  add_measure: "Ölçü ekle",
+  alias_to_existing: "Mevcut malzemeyle eşle",
+  new_reference: "Yeni malzeme ekle",
+  mark_unquantified: "Miktar belirtilmemiş",
+};
+
 type Checklist = {
   temperatureReviewed: boolean;
   timingReviewed: boolean;
@@ -96,6 +145,8 @@ function AdminRecipeJobDetailPage() {
   const [checklist, setChecklist] = useState<Checklist>(EMPTY_CHECKLIST);
   const [notes, setNotes] = useState("");
   const [adminActor, setAdminActor] = useState("");
+  const [resolvingSortOrder, setResolvingSortOrder] = useState<number | null>(null);
+  const [resolveForm, setResolveForm] = useState<NutritionResolveForm>(EMPTY_RESOLVE_FORM);
 
   useEffect(() => {
     setAdminKey(sessionStorage.getItem(ADMIN_RECIPE_KEY_STORAGE));
@@ -175,6 +226,111 @@ function AdminRecipeJobDetailPage() {
       toast.error(`İşlem hatası: ${anyErr.message ?? "bilinmiyor"}`);
     },
   });
+
+  const RESOLVE_FAILURE_LABEL: Record<string, string> = {
+    already_exists: "Bu ölçü/eşleşme zaten kayıtlı",
+    ingredient_not_found: "Malzeme taslakta bulunamadı (isim eşleşmedi)",
+  };
+
+  const resolveMutation = useMutation({
+    mutationFn: async (params: { ingredientLabel: string; resolution: Record<string, unknown> }) => {
+      const { data, error } = await supabase.functions.invoke("admin-recipe-nutrition-resolve", {
+        method: "POST",
+        headers: { "x-admin-key": adminKey!, "content-type": "application/json" },
+        body: {
+          jobId,
+          ingredientLabel: params.ingredientLabel,
+          resolution: params.resolution,
+          adminActor: adminActor.trim() || null,
+        },
+      });
+      if (error) throw error;
+      return data as { ok: boolean; reason?: string };
+    },
+    onSuccess: (data) => {
+      if (!data.ok) {
+        toast.error(RESOLVE_FAILURE_LABEL[data.reason ?? ""] ?? "Çözümleme başarısız");
+        return;
+      }
+      toast.success("Çözümlendi — besin önizlemesi güncellendi");
+      setResolvingSortOrder(null);
+      setResolveForm(EMPTY_RESOLVE_FORM);
+      queryClient.invalidateQueries({ queryKey: ["admin-recipe-job-detail", jobId] });
+    },
+    onError: async (error: unknown) => {
+      const anyErr = error as { context?: Response; message?: string };
+      let reason: string | undefined;
+      if (anyErr.context && typeof anyErr.context.clone === "function") {
+        try {
+          const body = await anyErr.context.clone().json();
+          reason = body?.reason ?? body?.error;
+        } catch {
+          // yanıt gövdesi JSON değilse yut — aşağıdaki genel mesaj gösterilir
+        }
+      }
+      toast.error(
+        (reason && RESOLVE_FAILURE_LABEL[reason]) ?? `Çözümleme hatası: ${anyErr.message ?? "bilinmiyor"}`,
+      );
+    },
+  });
+
+  function openResolvePanel(sortOrder: number, reason: string, ingredient: DraftIngredient | undefined) {
+    const defaultTab: NutritionResolutionKind =
+      reason === "quantity_or_unit_not_resolvable" && ingredient?.crop ? "add_measure" : "alias_to_existing";
+    setResolvingSortOrder(sortOrder);
+    setResolveForm({
+      ...EMPTY_RESOLVE_FORM,
+      tab: defaultTab,
+      scopeKind: ingredient?.crop ? "crop" : "food",
+      scopeKey: ingredient?.crop ?? "",
+      unit: ingredient?.unit ?? "",
+    });
+  }
+
+  function submitResolve(ingredientLabel: string) {
+    const f = resolveForm;
+    let resolution: Record<string, unknown> | null = null;
+
+    if (f.tab === "add_measure") {
+      const gramsPerUnit = Number(f.gramsPerUnit);
+      if (!f.scopeKey.trim() || !f.unit.trim() || !Number.isFinite(gramsPerUnit) || gramsPerUnit <= 0) {
+        toast.error("Hedef (crop/food), birim ve pozitif bir gram değeri gerekli");
+        return;
+      }
+      resolution = {
+        kind: "add_measure",
+        scope: f.scopeKind === "crop" ? { crop: f.scopeKey.trim() } : { foodKey: f.scopeKey.trim() },
+        unit: f.unit.trim(),
+        gramsPerUnit,
+      };
+    } else if (f.tab === "alias_to_existing") {
+      if (!f.targetKey.trim()) {
+        toast.error("Hedef malzeme anahtarı gerekli");
+        return;
+      }
+      resolution = { kind: "alias_to_existing", targetKind: f.targetKind, targetKey: f.targetKey.trim() };
+    } else if (f.tab === "new_reference") {
+      const macros = [f.caloriesKcal, f.proteinG, f.carbsG, f.fatG, f.fiberG].map(Number);
+      if (!f.foodKey.trim() || !f.displayName.trim() || macros.some((m) => !Number.isFinite(m) || m < 0)) {
+        toast.error("Anahtar, görünen ad ve 5 makro alanı (negatif olmayan sayı) gerekli");
+        return;
+      }
+      resolution = {
+        kind: "new_reference",
+        foodKey: f.foodKey.trim(),
+        displayName: f.displayName.trim(),
+        caloriesKcal: macros[0],
+        proteinG: macros[1],
+        carbsG: macros[2],
+        fatG: macros[3],
+        fiberG: macros[4],
+      };
+    } else {
+      resolution = { kind: "mark_unquantified" };
+    }
+
+    resolveMutation.mutate({ ingredientLabel, resolution });
+  }
 
   if (!adminKey) {
     return (
@@ -392,17 +548,145 @@ function AdminRecipeJobDetailPage() {
                 </div>
               )}
               {d.nutritionPreview.unresolved.length > 0 && (
-                <div className="rounded-lg border border-[color:var(--hred)] bg-[color-mix(in_oklab,var(--hred)_8%,transparent)] p-3">
+                <div className="rounded-lg border border-[color:var(--hred)] bg-[color-mix(in_oklab,var(--hred)_8%,transparent)] p-3 space-y-2">
                   <div className="font-medium text-[color:var(--hred)] text-xs mb-1">
                     Eşleşmeyen malzemeler (onaydan önce çözülmeli):
                   </div>
-                  <ul className="text-xs space-y-0.5">
-                    {d.nutritionPreview.unresolved.map((u) => (
-                      <li key={u.sortOrder}>
-                        {u.name} —{" "}
-                        {u.reason === "nutrition_reference_missing" ? "besin referansı eksik" : "miktar/birim çözülemedi"}
-                      </li>
-                    ))}
+                  <ul className="text-xs space-y-2">
+                    {d.nutritionPreview.unresolved.map((u) => {
+                      const ingredient = draft?.ingredients.find((ing) => ing.sortOrder === u.sortOrder);
+                      const isOpen = resolvingSortOrder === u.sortOrder;
+                      return (
+                        <li key={u.sortOrder} className="border-b border-[color:var(--hred)]/20 last:border-0 pb-2 last:pb-0">
+                          <div className="flex items-center justify-between gap-2">
+                            <span>
+                              {u.name} —{" "}
+                              {u.reason === "nutrition_reference_missing" ? "besin referansı eksik" : "miktar/birim çözülemedi"}
+                              {ingredient?.unit && <span className="text-hmuted"> ({ingredient.quantity ?? "?"} {ingredient.unit})</span>}
+                            </span>
+                            <Button
+                              type="button"
+                              variant="outline"
+                              className="h-6 px-2 text-xs shrink-0"
+                              onClick={() => (isOpen ? setResolvingSortOrder(null) : openResolvePanel(u.sortOrder, u.reason, ingredient))}
+                            >
+                              {isOpen ? "Kapat" : "Çözümle"}
+                            </Button>
+                          </div>
+
+                          {isOpen && (
+                            <div className="mt-2 space-y-2 rounded-lg border bg-background p-3 text-foreground">
+                              <div className="flex flex-wrap gap-1">
+                                {(["add_measure", "alias_to_existing", "new_reference", "mark_unquantified"] as NutritionResolutionKind[]).map((tab) => (
+                                  <button
+                                    key={tab}
+                                    type="button"
+                                    onClick={() => setResolveForm((f) => ({ ...f, tab }))}
+                                    className={cn(
+                                      "rounded-full px-2.5 py-1 text-xs border",
+                                      resolveForm.tab === tab ? "bg-primary text-primary-foreground border-primary" : "text-hmuted",
+                                    )}
+                                  >
+                                    {RESOLVE_TAB_LABEL[tab]}
+                                  </button>
+                                ))}
+                              </div>
+
+                              {resolveForm.tab === "add_measure" && (
+                                <div className="space-y-2">
+                                  <p className="text-xs text-hmuted">Bu birim için 1 {resolveForm.unit || ingredient?.unit || "birim"} kaç gram?</p>
+                                  <div className="flex gap-2">
+                                    <select
+                                      value={resolveForm.scopeKind}
+                                      onChange={(e) => setResolveForm((f) => ({ ...f, scopeKind: e.target.value as "crop" | "food" }))}
+                                      className="rounded-md border bg-transparent px-2 text-xs"
+                                    >
+                                      <option value="crop">crop</option>
+                                      <option value="food">food key</option>
+                                    </select>
+                                    <Input
+                                      value={resolveForm.scopeKey}
+                                      onChange={(e) => setResolveForm((f) => ({ ...f, scopeKey: e.target.value }))}
+                                      placeholder="ör. portakal"
+                                      className="text-xs h-8"
+                                    />
+                                    <Input
+                                      value={resolveForm.unit}
+                                      onChange={(e) => setResolveForm((f) => ({ ...f, unit: e.target.value }))}
+                                      placeholder="birim (ör. adet)"
+                                      className="text-xs h-8 w-28"
+                                    />
+                                    <Input
+                                      value={resolveForm.gramsPerUnit}
+                                      onChange={(e) => setResolveForm((f) => ({ ...f, gramsPerUnit: e.target.value }))}
+                                      placeholder="gram"
+                                      inputMode="decimal"
+                                      className="text-xs h-8 w-24"
+                                    />
+                                  </div>
+                                </div>
+                              )}
+
+                              {resolveForm.tab === "alias_to_existing" && (
+                                <div className="flex gap-2">
+                                  <select
+                                    value={resolveForm.targetKind}
+                                    onChange={(e) => setResolveForm((f) => ({ ...f, targetKind: e.target.value as "crop" | "food" }))}
+                                    className="rounded-md border bg-transparent px-2 text-xs"
+                                  >
+                                    <option value="crop">crop</option>
+                                    <option value="food">food key</option>
+                                  </select>
+                                  <Input
+                                    value={resolveForm.targetKey}
+                                    onChange={(e) => setResolveForm((f) => ({ ...f, targetKey: e.target.value }))}
+                                    placeholder="Bu aslında şuyla aynı — ör. ceviz veya cinnamon_ground"
+                                    className="text-xs h-8"
+                                  />
+                                </div>
+                              )}
+
+                              {resolveForm.tab === "new_reference" && (
+                                <div className="grid grid-cols-2 gap-2">
+                                  <Input
+                                    value={resolveForm.foodKey}
+                                    onChange={(e) => setResolveForm((f) => ({ ...f, foodKey: e.target.value }))}
+                                    placeholder="foodKey (ör. tavuk_gogsu_fileto)"
+                                    className="text-xs h-8 col-span-2"
+                                  />
+                                  <Input
+                                    value={resolveForm.displayName}
+                                    onChange={(e) => setResolveForm((f) => ({ ...f, displayName: e.target.value }))}
+                                    placeholder="Görünen ad"
+                                    className="text-xs h-8 col-span-2"
+                                  />
+                                  <Input value={resolveForm.caloriesKcal} onChange={(e) => setResolveForm((f) => ({ ...f, caloriesKcal: e.target.value }))} placeholder="kcal/100g" inputMode="decimal" className="text-xs h-8" />
+                                  <Input value={resolveForm.proteinG} onChange={(e) => setResolveForm((f) => ({ ...f, proteinG: e.target.value }))} placeholder="protein g/100g" inputMode="decimal" className="text-xs h-8" />
+                                  <Input value={resolveForm.carbsG} onChange={(e) => setResolveForm((f) => ({ ...f, carbsG: e.target.value }))} placeholder="karbonhidrat g/100g" inputMode="decimal" className="text-xs h-8" />
+                                  <Input value={resolveForm.fatG} onChange={(e) => setResolveForm((f) => ({ ...f, fatG: e.target.value }))} placeholder="yağ g/100g" inputMode="decimal" className="text-xs h-8" />
+                                  <Input value={resolveForm.fiberG} onChange={(e) => setResolveForm((f) => ({ ...f, fiberG: e.target.value }))} placeholder="lif g/100g" inputMode="decimal" className="text-xs h-8" />
+                                </div>
+                              )}
+
+                              {resolveForm.tab === "mark_unquantified" && (
+                                <p className="text-xs text-hmuted">
+                                  Bu malzeme miktar/birim belirtilmeden (ör. "damak tadına göre") eklenecek — besin hesabından kapsam dışı bırakılır.
+                                </p>
+                              )}
+
+                              <Button
+                                type="button"
+                                className="h-7 px-3 text-xs"
+                                disabled={resolveMutation.isPending}
+                                onClick={() => submitResolve(u.name)}
+                              >
+                                Kaydet
+                              </Button>
+                            </div>
+                          )}
+                        </li>
+                      );
+                    })}
                   </ul>
                 </div>
               )}
