@@ -620,8 +620,8 @@ function dbToOffer(r: any, side: "farmer" | "buyer"): Offer {
 function dbToOrder(r: any, side: "farmer" | "buyer"): Order {
   const offer = r.offer ?? {};
   const listing = offer.listing ?? {};
-  const qty = Number(offer.quantity ?? 0);
-  const price = Number(offer.price_per_unit ?? 0);
+  const qty = Number(offer.final_quantity ?? offer.current_quantity ?? offer.quantity ?? 0);
+  const price = Number(offer.final_price_per_unit ?? offer.current_price ?? offer.price_per_unit ?? 0);
   const partyName = side === "buyer" ? (r.farmer?.name ?? "Üretici") : (r.buyer?.name ?? "Alıcı");
   // DB order_status -> UI OrderStatus
   const statusMap: Record<string, OrderStatus> = {
