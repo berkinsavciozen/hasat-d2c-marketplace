@@ -578,8 +578,8 @@ function dbToOffer(r: any, side: "farmer" | "buyer"): Offer {
     id: r.id,
     buyerName: partyName,
     buyerType: (((raw) => (raw === "organik_market" ? "market" : raw))(r.buyer?.buyer_type) ?? "bireysel") as BuyerType,
-    crop: r.listing?.crop ?? "—",
-    unit: (r.listing?.unit ?? "kg") as Offer["unit"],
+    crop: r.snapshot_crop ?? r.listing?.crop ?? "—",
+    unit: (r.snapshot_unit ?? r.listing?.unit ?? "kg") as Offer["unit"],
     quantity: liveQty,
     pricePerUnit: livePrice,
     createdAt: r.created_at,
@@ -620,8 +620,8 @@ function dbToOffer(r: any, side: "farmer" | "buyer"): Offer {
 function dbToOrder(r: any, side: "farmer" | "buyer"): Order {
   const offer = r.offer ?? {};
   const listing = offer.listing ?? {};
-  const qty = Number(offer.quantity ?? 0);
-  const price = Number(offer.price_per_unit ?? 0);
+  const qty = Number(offer.final_quantity ?? offer.current_quantity ?? offer.quantity ?? 0);
+  const price = Number(offer.final_price_per_unit ?? offer.current_price ?? offer.price_per_unit ?? 0);
   const partyName = side === "buyer" ? (r.farmer?.name ?? "Üretici") : (r.buyer?.name ?? "Alıcı");
   // DB order_status -> UI OrderStatus
   const statusMap: Record<string, OrderStatus> = {
@@ -639,7 +639,7 @@ function dbToOrder(r: any, side: "farmer" | "buyer"): Order {
     producerName: partyName,
     producerPhone: side === "buyer" ? (r.farmer?.phone ?? undefined) : (r.buyer?.phone ?? undefined),
     buyerId: r.buyer_id,
-    crop: listing.crop ?? "—",
+    crop: offer.snapshot_crop ?? listing.crop ?? "—",
     quantity: qty,
     unit: (listing.unit ?? "kg") as Order["unit"],
     pricePerUnit: price,
@@ -1231,7 +1231,7 @@ export function useOfferItems(offerId: string | undefined | null) {
     queryFn: async (): Promise<OfferItemRow[]> => {
       const { data, error } = await (supabase as any)
         .from("offer_items")
-        .select("id, offer_id, listing_id, quantity, price_per_unit, created_at, listings:listing_id (crop, batch_name, unit)")
+        .select("id, offer_id, listing_id, quantity, price_per_unit, created_at, snapshot_crop, snapshot_unit, snapshot_batch_name, listings:listing_id (crop, batch_name, unit)")
         .eq("offer_id", offerId!)
         .order("created_at", { ascending: true });
       if (error) throw error;
@@ -1242,9 +1242,9 @@ export function useOfferItems(offerId: string | undefined | null) {
         quantity: Number(r.quantity),
         pricePerUnit: Number(r.price_per_unit),
         createdAt: r.created_at,
-        batchName: r.listings?.batch_name ?? `Batch #${idx + 1}`,
-        crop: r.listings?.crop ?? "",
-        unit: r.listings?.unit ?? "",
+        batchName: r.snapshot_batch_name ?? r.listings?.batch_name ?? `Batch #${idx + 1}`,
+        crop: r.snapshot_crop ?? r.listings?.crop ?? "",
+        unit: r.snapshot_unit ?? r.listings?.unit ?? "",
       }));
     },
   });
@@ -1614,7 +1614,7 @@ export function useBuyerConversations() {
 // ORDERS
 // =====================================================================
 const ORDER_SELECT =
-  "*, offer:offers(quantity,price_per_unit,delivery,delivery_date,listing_id,subscription_id, listing:listings(id,crop,unit,status))";
+  "*, offer:offers(quantity,price_per_unit,current_price,current_quantity,final_price_per_unit,final_quantity,delivery,delivery_date,listing_id,subscription_id,snapshot_crop,snapshot_unit, listing:listings(id,crop,unit,status))";
 
 
 export function useFarmerOrders() {
