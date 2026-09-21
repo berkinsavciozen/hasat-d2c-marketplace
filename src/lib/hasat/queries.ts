@@ -1375,70 +1375,42 @@ export function useCounterOffer() {
   });
 }
 
-// Buyer simulates payment for an accepted offer.
-// Sets payment_status=paid (offer status stays 'accepted'), creates an order row + initial timeline.
-export function useSimulatePayment() {
-  const qc = useQueryClient();
-  const userId = useAuthUserId();
-  return useMutation({
-    mutationFn: async (offerId: string) => {
-      if (!userId) throw new Error("Oturum bulunamadı");
-      const { data: offerRow, error: e1 } = await supabase
-        .from("offers")
-        .update({ payment_status: "paid", status: "accepted" } as any)
-        .eq("id", offerId)
-        .select("*")
-        .single();
-      if (e1) throw e1;
+// payment_status artık yalnızca sunucu tarafı RPC'lerle değişir (FIN-2 trigger).
+// Doğrudan offers.update({payment_status}) çağrıları Postgres tarafından reddedilir.
+type PaymentRpcResult = {
+  ok?: boolean;
+  reason?: "not_found" | "wrong_offer_status" | "wrong_payment_status" | string;
+  orderId?: string;
+};
 
-      // Idempotent: only create the order if not already there.
-      const { data: existing } = await supabase
-        .from("orders").select("id").eq("offer_id", offerId).maybeSingle();
-      if (!existing) {
-        const { data: order, error: e2 } = await supabase.from("orders").insert({
-          offer_id: offerRow.id,
-          buyer_id: offerRow.buyer_id,
-          farmer_id: offerRow.farmer_id,
-          status: "preparing",
-          order_ref: "",
-        } as any).select("id").single();
-        if (e2) throw e2;
-        await supabase.from("order_timeline").insert({
-          order_id: order.id,
-          step: "submitted",
-          label: "Sipariş Alındı",
-          completed_at: new Date().toISOString(),
-        });
-      }
-      return offerRow;
-    },
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["farmerOffers", userId] });
-      qc.invalidateQueries({ queryKey: ["buyerOffers", userId] });
-      qc.invalidateQueries({ queryKey: ["farmerOrders", userId] });
-      qc.invalidateQueries({ queryKey: ["buyerOrders", userId] });
-    },
-  });
+function paymentRpcError(result: PaymentRpcResult | null): Error {
+  const reason = result?.reason;
+  const message =
+    reason === "wrong_offer_status"
+      ? "Bu teklif ödeme bekleyen durumda değil"
+      : reason === "wrong_payment_status"
+        ? "Bu ödeme zaten bildirilmiş veya tamamlanmış"
+        : "Teklif bulunamadı";
+  return new Error(message);
 }
 
-// Buyer marks an IBAN transfer as sent. Offer moves to payment_status='pending_transfer'.
-// Farmer will later confirm receipt with useConfirmTransferReceived.
+async function callPaymentRpc(fn: "buyer_mark_transfer_sent" | "farmer_confirm_payment_received", offerId: string) {
+  const { data, error } = await (supabase.rpc as any)(fn, { p_offer_id: offerId });
+  if (error) throw error;
+  const result = data as PaymentRpcResult | null;
+  if (!result || result.ok === false) throw paymentRpcError(result);
+  return result;
+}
+
+// Buyer marks an IBAN transfer as sent. Offer moves to payment_status='pending_transfer'
+// via the guarded RPC. Farmer will later confirm receipt with useConfirmTransferReceived.
 export function useMarkTransferSent() {
   const qc = useQueryClient();
   const userId = useAuthUserId();
   return useMutation({
     mutationFn: async (offerId: string) => {
       if (!userId) throw new Error("Oturum bulunamadı");
-      const { data, error } = await supabase
-        .from("offers")
-        .update({ payment_status: "pending_transfer" } as any)
-        .eq("id", offerId)
-        .eq("buyer_id", userId)
-        .eq("status", "accepted")
-        .select("id")
-        .single();
-      if (error) throw error;
-      return data;
+      return callPaymentRpc("buyer_mark_transfer_sent", offerId);
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["farmerOffers"] });
@@ -1447,43 +1419,15 @@ export function useMarkTransferSent() {
   });
 }
 
-// Farmer confirms havale receipt. Marks payment_status=paid and creates the order
-// (idempotently, mirroring useSimulatePayment). Only the farmer on the offer may call this.
+// Farmer confirms havale receipt. The RPC marks payment_status=paid and creates the
+// order + timeline idempotently. Only the farmer on the offer may call this.
 export function useConfirmTransferReceived() {
   const qc = useQueryClient();
   const userId = useAuthUserId();
   return useMutation({
     mutationFn: async (offerId: string) => {
       if (!userId) throw new Error("Oturum bulunamadı");
-      const { data: offerRow, error: e1 } = await supabase
-        .from("offers")
-        .update({ payment_status: "paid" } as any)
-        .eq("id", offerId)
-        .eq("farmer_id", userId)
-        .eq("payment_status", "pending_transfer")
-        .select("*")
-        .single();
-      if (e1) throw e1;
-
-      const { data: existing } = await supabase
-        .from("orders").select("id").eq("offer_id", offerId).maybeSingle();
-      if (!existing) {
-        const { data: order, error: e2 } = await supabase.from("orders").insert({
-          offer_id: offerRow.id,
-          buyer_id: offerRow.buyer_id,
-          farmer_id: offerRow.farmer_id,
-          status: "preparing",
-          order_ref: "",
-        } as any).select("id").single();
-        if (e2) throw e2;
-        await supabase.from("order_timeline").insert({
-          order_id: order.id,
-          step: "submitted",
-          label: "Sipariş Alındı",
-          completed_at: new Date().toISOString(),
-        });
-      }
-      return offerRow;
+      return callPaymentRpc("farmer_confirm_payment_received", offerId);
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["farmerOffers", userId] });
