@@ -49,11 +49,13 @@ function TermsPage() {
         <section>
           <h2 className="font-serif text-2xl mb-3 text-foreground">2. Komisyon</h2>
           <p className="text-sm text-foreground/80 leading-relaxed">
-            Hasat, platform üzerinden gerçekleştirilen her başarılı satıştan
+            Kontrollü pilot süresince Hasat, platform üzerinden gerçekleştirilen
+            satışlardan herhangi bir komisyon almaz. Alıcı, anlaşılan sipariş
+            tutarının tamamını doğrudan çiftçinin IBAN'ına banka havalesiyle aktarır.
+            Kontrollü pilot sonrasındaki ticari lansmanda Hasat,
             <strong className="text-foreground"> %5 GMV (brüt satış hacmi) komisyonu</strong>{" "}
-            alır. Komisyon, ödeme tahsilatı sırasında düşülür ve kalan tutar çiftçinin
-            IBAN'ına aktarılır. Komisyon oranları değişirse, en az 30 gün önceden
-            bildirilir.
+            alabilecektir; komisyon oranlarında değişiklik olursa en az 30 gün
+            önceden bildirilir.
           </p>
         </section>
 
