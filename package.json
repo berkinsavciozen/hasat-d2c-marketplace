@@ -1,7 +1,9 @@
 {
   "name": "tanstack_start_ts",
   "private": true,
-  "sideEffects": ["src/instrument.client.ts"],
+  "sideEffects": [
+    "src/instrument.client.ts"
+  ],
   "type": "module",
   "scripts": {
     "dev": "vite dev",
@@ -73,7 +75,7 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.32.0",
-    "@lovable.dev/vite-tanstack-config": "2.13.1",
+    "@lovable.dev/vite-tanstack-config": "2.23.1",
     "@types/node": "^25.9.2",
     "@types/react": "^19.2.0",
     "@types/react-dom": "^19.2.0",

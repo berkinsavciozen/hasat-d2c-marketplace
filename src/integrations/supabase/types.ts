@@ -1724,6 +1724,50 @@ export type Database = {
           },
         ]
       }
+      nutrition_admin_resolutions: {
+        Row: {
+          admin_actor: string | null
+          created_at: string
+          id: string
+          ingredient_label: string
+          job_id: string
+          notes: string | null
+          outcome: string
+          resolution: Json
+          resolution_kind: string
+        }
+        Insert: {
+          admin_actor?: string | null
+          created_at?: string
+          id?: string
+          ingredient_label: string
+          job_id: string
+          notes?: string | null
+          outcome: string
+          resolution: Json
+          resolution_kind: string
+        }
+        Update: {
+          admin_actor?: string | null
+          created_at?: string
+          id?: string
+          ingredient_label?: string
+          job_id?: string
+          notes?: string | null
+          outcome?: string
+          resolution?: Json
+          resolution_kind?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "nutrition_admin_resolutions_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "recipe_generation_jobs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       offer_items: {
         Row: {
           created_at: string
@@ -4479,6 +4523,16 @@ export type Database = {
       }
     }
     Functions: {
+      admin_resolve_nutrition_unresolved: {
+        Args: {
+          p_admin_actor?: string
+          p_ingredient_label: string
+          p_job_id: string
+          p_notes?: string
+          p_resolution: Json
+        }
+        Returns: Json
+      }
       admin_update_ingredient_nutrition: {
         Args: {
           p_crop: string
