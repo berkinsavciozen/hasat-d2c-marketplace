@@ -127,15 +127,6 @@ function PayPage() {
     }
   };
 
-  const completeTest = async () => {
-    try {
-      await pay.mutateAsync(offer.id);
-      toast.success("Ödeme alındı. Sipariş aktif.");
-      navigate({ to: "/buyer/orders", search: { tab: "active" } });
-    } catch (e: any) {
-      toast.error(e.message ?? "Ödeme başarısız");
-    }
-  };
 
   return (
     <div>
@@ -260,21 +251,6 @@ function PayPage() {
           )}
         </div>
 
-        {/* Secondary: Test simulate */}
-        {import.meta.env.DEV && (
-          <div className="rounded-2xl border border-dashed p-4">
-            <div className="text-[11px] text-hmuted mb-2">
-              QA / test amaçlı — anında ödeme simüle eder.
-            </div>
-            <button
-              onClick={completeTest}
-              disabled={pay.isPending}
-              className="w-full rounded-lg border py-2.5 text-sm font-medium disabled:opacity-50"
-            >
-              {pay.isPending ? "İşleniyor…" : `Ödemeyi Tamamla (Test) — ${formatTRY(grand)}`}
-            </button>
-          </div>
-        )}
       </div>
     </div>
   );
