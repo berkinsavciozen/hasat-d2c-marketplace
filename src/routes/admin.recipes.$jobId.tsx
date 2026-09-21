@@ -221,9 +221,27 @@ function AdminRecipeJobDetailPage() {
       queryClient.invalidateQueries({ queryKey: ["admin-recipe-job-detail", jobId] });
       queryClient.invalidateQueries({ queryKey: ["admin-recipe-jobs"] });
     },
-    onError: (error: unknown) => {
-      const anyErr = error as { message?: string };
-      toast.error(`İşlem hatası: ${anyErr.message ?? "bilinmiyor"}`);
+    onError: async (error: unknown) => {
+      const anyErr = error as { context?: Response; message?: string };
+      let reason: string | undefined;
+      if (anyErr.context && typeof anyErr.context.clone === "function") {
+        try {
+          const body = await anyErr.context.clone().json();
+          reason = body?.reason ?? body?.error;
+        } catch {
+          // yanıt gövdesi JSON değilse yut — aşağıdaki genel mesaj gösterilir
+        }
+      }
+      const reasonLabel: Record<string, string> = {
+        not_found: "İş bulunamadı",
+        wrong_state: "İş beklenmeyen bir durumda — sayfa güncel olmayabilir",
+        revision_limit_reached: "Revizyon sınırına (2) ulaşıldı",
+        checklist_incomplete: "Kontrol listesi eksik — tüm maddeler onaylanmalı",
+        nutrition_incomplete: "Besin değerleri tam değil — aşağıdaki 'Besin Değerleri' panelinden eksik malzemeleri kontrol edin",
+      };
+      toast.error(
+        (reason && reasonLabel[reason]) ?? `İşlem hatası: ${anyErr.message ?? "bilinmiyor"}`,
+      );
     },
   });
 
