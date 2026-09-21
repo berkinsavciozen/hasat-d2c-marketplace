@@ -1231,7 +1231,7 @@ export function useOfferItems(offerId: string | undefined | null) {
     queryFn: async (): Promise<OfferItemRow[]> => {
       const { data, error } = await (supabase as any)
         .from("offer_items")
-        .select("id, offer_id, listing_id, quantity, price_per_unit, created_at, listings:listing_id (crop, batch_name, unit)")
+        .select("id, offer_id, listing_id, quantity, price_per_unit, created_at, snapshot_crop, snapshot_unit, snapshot_batch_name, listings:listing_id (crop, batch_name, unit)")
         .eq("offer_id", offerId!)
         .order("created_at", { ascending: true });
       if (error) throw error;
