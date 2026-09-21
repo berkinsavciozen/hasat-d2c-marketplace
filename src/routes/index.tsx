@@ -254,7 +254,7 @@ function Hero({ onRole }: { onRole: (role: "farmer" | "buyer") => void }) {
             </Button>
           </div>
           <div className="mt-7 flex flex-wrap gap-x-5 gap-y-2 text-xs text-hwhite/80">
-            {["Kaynağı belli hal fiyatları", "Fotoğraflı tarla günlüğü", "Sabit %5 komisyon"].map((item) => (
+            {["Kaynağı belli hal fiyatları", "Fotoğraflı tarla günlüğü", "Kontrollü pilotta komisyon yok"].map((item) => (
               <span key={item} className="inline-flex items-center gap-1.5"><Check className="h-3.5 w-3.5 text-sage" />{item}</span>
             ))}
           </div>

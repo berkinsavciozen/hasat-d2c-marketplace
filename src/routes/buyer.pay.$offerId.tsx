@@ -99,8 +99,8 @@ function PayPage() {
   const qty = offer.currentQuantity ?? offer.quantity;
   const price = offer.currentPrice ?? offer.pricePerUnit;
   const total = qty * price;
-  const fee = Math.round(total * 0.025);
-  const grand = total + fee;
+  const fee = 0;
+  const grand = total;
   const hasIban = !!offer.farmerIban;
   const isTransferPending = offer.paymentStatus === "pending_transfer";
 
@@ -175,10 +175,6 @@ function PayPage() {
             <div className="flex justify-between gap-3">
               <span>Ara Toplam</span>
               <span className="font-medium tabular-nums">{formatTRY(total)}</span>
-            </div>
-            <div className="flex justify-between gap-3 text-hmuted">
-              <span>Hasat komisyonu (%2.5)</span>
-              <span className="tabular-nums">{formatTRY(fee)}</span>
             </div>
             <div className="flex justify-between gap-3 border-t pt-2 mt-2">
               <span className="font-medium">Ödenecek Toplam</span>
