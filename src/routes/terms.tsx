@@ -83,9 +83,11 @@ function TermsPage() {
         <section>
           <h2 className="font-serif text-2xl mb-3 text-foreground">5. Ödeme ve İade</h2>
           <p className="text-sm text-foreground/80 leading-relaxed">
-            Ödemeler platform üzerinden tahsil edilir. Ürün tesliminden sonra 48 saat
-            içinde alıcı itiraz etmezse, tutar (komisyon düşülerek) çiftçiye aktarılır.
-            İadeler yalnızca ürünün tanıma uygun olmaması durumunda geçerlidir.
+            Kontrollü pilot süresince ödemeler, alıcı tarafından doğrudan çiftçinin
+            IBAN'ına banka havalesiyle yapılır; Hasat ödemeyi tahsil etmez, elinde
+            tutmaz ve komisyon düşmez. Ürün tesliminden sonra 48 saat içinde alıcı
+            itiraz etmezse sipariş tamamlanmış kabul edilir. İadeler yalnızca ürünün
+            tanıma uygun olmaması durumunda geçerlidir.
           </p>
         </section>
 
