@@ -76,9 +76,16 @@ type CreateBatchForm = {
   focusCrops: string;
   dietFocus: string;
   notes: string;
+  allowCropRepeat: boolean;
 };
 
-const EMPTY_CREATE_FORM: CreateBatchForm = { targetCount: "", focusCrops: "", dietFocus: "", notes: "" };
+const EMPTY_CREATE_FORM: CreateBatchForm = {
+  targetCount: "",
+  focusCrops: "",
+  dietFocus: "",
+  notes: "",
+  allowCropRepeat: false,
+};
 
 function splitCsv(value: string): string[] | null {
   const items = value.split(",").map((s) => s.trim()).filter(Boolean);
@@ -151,10 +158,28 @@ async function invokeAdminFn<T>(
   throw error;
 }
 
+/** "Şu an N üründe aktif arz var" hint next to the target-count field — the same
+ * `get_active_listing_crops` count the Planner itself is bound by (admin-recipe-guidance's own
+ * `mode=activeSupply`), so the admin can see up front whether "Aynı ürünü... izin ver" will be
+ * required for the target count they're about to type. Reuses `invokeAdminFn` above, the same way
+ * `ScheduleCard` does for its own GET call. */
+function useActiveSupplyCount(adminKey: string, enabled: boolean) {
+  return useQuery({
+    queryKey: ["admin-recipe-guidance-active-supply", adminKey],
+    enabled,
+    retry: false,
+    queryFn: () =>
+      invokeAdminFn<{ activeListingCropCount: number }>("admin-recipe-guidance?mode=activeSupply", adminKey, {
+        method: "GET",
+      }),
+  });
+}
+
 function CreateBatchCard({ adminKey, onCreated }: { adminKey: string; onCreated: () => void }) {
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState<CreateBatchForm>(EMPTY_CREATE_FORM);
   const [result, setResult] = useState<RunPlanStageResult | null>(null);
+  const activeSupply = useActiveSupplyCount(adminKey, open);
 
   const mutation = useMutation({
     mutationFn: () => {
@@ -163,6 +188,7 @@ function CreateBatchCard({ adminKey, onCreated }: { adminKey: string; onCreated:
         focusCrops: splitCsv(form.focusCrops),
         dietFocus: splitCsv(form.dietFocus) ?? [],
         notes: form.notes.trim() || null,
+        allowCropRepeat: form.allowCropRepeat,
       };
       return invokeAdminFn<RunPlanStageResult>("admin-recipe-plan-create", adminKey, { method: "POST", body });
     },
@@ -219,6 +245,11 @@ function CreateBatchCard({ adminKey, onCreated }: { adminKey: string; onCreated:
                 onChange={(e) => setForm((f) => ({ ...f, targetCount: e.target.value }))}
                 required
               />
+              {activeSupply.data && (
+                <span className="block text-hmuted font-normal">
+                  Şu an {activeSupply.data.activeListingCropCount} üründe aktif arz var
+                </span>
+              )}
             </label>
             <label className="text-xs space-y-1">
               <span className="text-hmuted block">Odak Ürünler</span>
@@ -237,6 +268,22 @@ function CreateBatchCard({ adminKey, onCreated }: { adminKey: string; onCreated:
               />
             </label>
           </div>
+          <label className="flex items-start gap-2 text-xs">
+            <input
+              type="checkbox"
+              className="mt-0.5"
+              checked={form.allowCropRepeat}
+              onChange={(e) => setForm((f) => ({ ...f, allowCropRepeat: e.target.checked }))}
+            />
+            <span>
+              <span className="block">Aynı ürünü planda birden fazla tarifte kullanmaya izin ver</span>
+              <span className="block text-hmuted mt-0.5">
+                Şu an aktif arzı olan ürün sayısı hedef tarif sayısından azsa, bu işaretlenmeden plan
+                oluşturulamaz.
+              </span>
+            </span>
+          </label>
+
           <label className="text-xs space-y-1 block">
             <span className="text-hmuted block">Not</span>
             <Textarea
@@ -264,6 +311,14 @@ function CreateBatchCard({ adminKey, onCreated }: { adminKey: string; onCreated:
               {result.errorCode && <div className="mt-0.5 font-mono">{result.errorCode}</div>}
               {result.issues && result.issues.length > 0 && (
                 <div className="mt-0.5 font-mono break-all">{JSON.stringify(result.issues)}</div>
+              )}
+              {result.issues?.some(
+                (issue) => (issue as { code?: string }).code === "DIVERSITY_CROP_REPEATED",
+              ) && (
+                <div className="mt-1">
+                  Aktif arzı olan ürün sayısı hedef tarif sayısından az. "Aynı ürünü planda birden
+                  fazla tarifte kullanmaya izin ver" kutusunu işaretleyip tekrar deneyin.
+                </div>
               )}
               {result.batchId && succeeded && (
                 <Link

@@ -22,7 +22,12 @@
 // No new table, no new RPC, no new write path — this module never calls `.insert()`/`.update()`.
 import type { SupabaseClient } from "../infra/supabase-admin.ts";
 import { RecipeAutomationError } from "../infra/errors.ts";
-import { loadRecentRecipeMix, type ExistingRecipeSummary, type RecentRecipeMixEntry } from "../plan/context.ts";
+import {
+  loadActiveListingCrops,
+  loadRecentRecipeMix,
+  type ExistingRecipeSummary,
+  type RecentRecipeMixEntry,
+} from "../plan/context.ts";
 
 const MAX_FOCUS_CROPS = 5;
 const EXISTING_PER_CROP_LIMIT = 10;
@@ -91,6 +96,16 @@ export async function getCatalogGuidance(
   ]);
 
   return { existingByCrop, recentMix };
+}
+
+/** "Şu an aktif arzı olan ürün sayısı" hint for the manual-plan-creation form — same
+ * `get_active_listing_crops` RPC/limit `loadActiveListingCrops` already calls for the Planner
+ * itself (plan/context.ts), just counted rather than folded into an agent prompt. No new RPC. */
+export async function getActiveSupplyGuidance(
+  client: SupabaseClient,
+): Promise<{ activeListingCropCount: number }> {
+  const crops = await loadActiveListingCrops(client, { limit: 30 });
+  return { activeListingCropCount: crops.length };
 }
 
 export interface DuplicateCandidate {
