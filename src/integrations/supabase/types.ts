@@ -2187,6 +2187,74 @@ export type Database = {
           },
         ]
       }
+      payment_status_transitions: {
+        Row: {
+          actor_id: string
+          actor_role: string
+          created_at: string
+          from_status: string | null
+          id: string
+          offer_id: string
+          to_status: string
+        }
+        Insert: {
+          actor_id: string
+          actor_role: string
+          created_at?: string
+          from_status?: string | null
+          id?: string
+          offer_id: string
+          to_status: string
+        }
+        Update: {
+          actor_id?: string
+          actor_role?: string
+          created_at?: string
+          from_status?: string | null
+          id?: string
+          offer_id?: string
+          to_status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payment_status_transitions_offer_id_fkey"
+            columns: ["offer_id"]
+            isOneToOne: false
+            referencedRelation: "offers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      platform_settings: {
+        Row: {
+          commercial_terms_version: string
+          commission_rate_bps: number
+          id: number
+          payment_mode: string
+          platform_collects_payment: boolean
+          seller_payout_mode: string
+          updated_at: string
+        }
+        Insert: {
+          commercial_terms_version?: string
+          commission_rate_bps?: number
+          id?: number
+          payment_mode?: string
+          platform_collects_payment?: boolean
+          seller_payout_mode?: string
+          updated_at?: string
+        }
+        Update: {
+          commercial_terms_version?: string
+          commission_rate_bps?: number
+          id?: number
+          payment_mode?: string
+          platform_collects_payment?: boolean
+          seller_payout_mode?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       price_alerts: {
         Row: {
           active: boolean
@@ -4561,6 +4629,7 @@ export type Database = {
         }
         Returns: undefined
       }
+      buyer_mark_transfer_sent: { Args: { p_offer_id: string }; Returns: Json }
       calculate_recipe_nutrition: {
         Args: { p_recipe_id: string }
         Returns: undefined
@@ -4603,6 +4672,10 @@ export type Database = {
         Returns: undefined
       }
       fan_out_recipe_plan_batch: { Args: { _batch_id: string }; Returns: Json }
+      farmer_confirm_payment_received: {
+        Args: { p_offer_id: string }
+        Returns: Json
+      }
       find_recipe_duplicates: {
         Args: {
           p_crop?: string
