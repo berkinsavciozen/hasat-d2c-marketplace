@@ -1242,9 +1242,9 @@ export function useOfferItems(offerId: string | undefined | null) {
         quantity: Number(r.quantity),
         pricePerUnit: Number(r.price_per_unit),
         createdAt: r.created_at,
-        batchName: r.listings?.batch_name ?? `Batch #${idx + 1}`,
-        crop: r.listings?.crop ?? "",
-        unit: r.listings?.unit ?? "",
+        batchName: r.snapshot_batch_name ?? r.listings?.batch_name ?? `Batch #${idx + 1}`,
+        crop: r.snapshot_crop ?? r.listings?.crop ?? "",
+        unit: r.snapshot_unit ?? r.listings?.unit ?? "",
       }));
     },
   });
