@@ -37,8 +37,8 @@ function Payment() {
     );
   }
 
-  const fee = pending ? Math.round(pending.total * 0.025) : 0;
-  const grand = pending ? pending.total + fee : 0;
+  const fee = 0;
+  const grand = pending ? pending.total : 0;
   const isPending = createOffer.isPending || createMultiOffer.isPending;
   const batchItems = pending?.items?.length ? pending.items : null;
 
@@ -159,10 +159,6 @@ function Payment() {
             <div className="flex justify-between gap-3">
               <span>Ara Toplam</span>
               <span className="font-medium tabular-nums">{formatTRY(pending!.total)}</span>
-            </div>
-            <div className="flex justify-between gap-3 text-hmuted">
-              <span>Hasat komisyonu (%2.5)</span>
-              <span className="tabular-nums">{formatTRY(fee)}</span>
             </div>
             <div className="mt-2 flex justify-between gap-3 border-t pt-2">
               <span className="font-medium">Kabul edilirse toplam</span>
