@@ -1,65 +1,59 @@
-# F0 TestFlight recipe write regression runbook
+# F0 TestFlight recipe ACL reconciliation runbook
 
-Status: draft PR only. No production migration, deploy, merge, or TestFlight verification has been performed.
+Status: correction draft only. No production migration, deploy, merge, or
+TestFlight verification has been performed.
 
-## Root cause
+## Corrected root cause
 
-The UX-1B recipe RPCs are `SECURITY INVOKER`. Production grants allow
-`authenticated` to execute them, but omit the table/column `INSERT` and
-`UPDATE` privileges that their bodies need on `public.recipes` and
-`public.recipe_ingredients`. PostgreSQL therefore raises `42501` before the
-existing restrictive owner/private/draft/`kullanici` RLS policies can decide
-the row operation.
+The UX-1B recipe RPCs are `SECURITY INVOKER`. Production carries legacy
+column-level INSERT/UPDATE ACLs on `recipes` and `recipe_ingredients` for
+both `anon` and `authenticated`, but the later `private_edit_version`
+column has neither authenticated privilege. The atomic create/update RPCs
+therefore fail with `42501`.
 
-The `recipe_saves` contract is separate: production has authenticated CRUD,
-RLS is enabled, and all four policies bind `user_id` to `auth.uid()`. This
-migration intentionally does not change favorites.
+Adding only the missing version grant would make the RPCs work but preserve the
+legacy anon writes and authenticated owner/state mutation surface. The
+correction migration first removes every table- and column-level INSERT/UPDATE
+grant for `PUBLIC`, `anon`, and `authenticated`, then grants only the
+exact RPC write columns to `authenticated`. Existing SELECT/DELETE and
+restrictive RLS policies are not changed.
 
 ## Proposed rollout (still pending)
 
-1. Review the migration and the PostgreSQL 17 test evidence in this PR.
-2. Record fresh security and performance advisor results immediately before
-   applying the migration.
-3. Apply only `20260922082508_f0_testflight_recipe_write_grants.sql` through the
-   approved production migration path.
-4. Re-run both advisors. Expected delta: zero findings, because the migration
-   creates no schema objects, functions, policies, or indexes and only grants
-   named columns to `authenticated`. Stop if any new finding appears.
-5. Run authenticated smoke checks for create, update, clone, T6 customization,
-   ingredient replacement, and favorite/unfavorite. Confirm cross-owner and
-   public/published attempts remain denied. Do not log payloads or user data.
-6. Only after the production contract is verified, build a new mobile binary
-   from the current mobile `main`; do not reuse TestFlight build 12 or 13.
+1. Record fresh production ACL, security advisor, and performance advisor
+   baselines.
+2. Confirm migration `20260922082508` is still absent from production history
+   and the merged Git blob matches the reviewed migration.
+3. Apply only
+   `20260922082508_f0_testflight_recipe_write_grants.sql` through the approved
+   production migration path.
+4. Read back the complete table/column ACL matrix:
+   - no INSERT/UPDATE for `PUBLIC` or `anon`;
+   - authenticated recipe INSERT and UPDATE match the migration allow-lists;
+   - authenticated ingredient INSERT matches its allow-list and UPDATE is empty;
+   - SELECT/DELETE remain unchanged;
+   - recipe RPCs remain authenticated-only and `SECURITY INVOKER`;
+   - restrictive owner/private/draft/`kullanici` policies remain present.
+5. Re-run both advisors. Expected delta: zero new findings. Stop on any new
+   warning or error.
+6. Run the approved authenticated create/update/clone/T6/ingredient replacement
+   and favorite smoke matrix without logging payloads or user data.
+7. Re-test TestFlight build 13. Do not start a new build in this rollout.
 
-The 2026-09-22 preflight advisor scan contains unrelated existing findings.
-This PR does not broaden scope to remediate them. Relevant reference:
-https://supabase.com/docs/guides/database/database-linter
+## Safe containment rollback
 
-## Rollback
-
-Rollback recreates the launch-blocking `42501` behavior for clients using the
-atomic RPCs. Revert dependent clients first and confirm no fixed binary remains
-in use before considering it.
+Do not restore the legacy broad `anon` grants or authenticated owner/state
+grants. If the RPC rollout must be stopped, revoke only the newly required
+version privileges:
 
 ```sql
-revoke insert (
-  id, slug, title, description, cover_photo_url, servings, prep_minutes,
-  cook_minutes, rest_minutes, difficulty, cuisine, diet_tags,
-  required_equipment, extraction_confidence, status, visibility, source_type,
-  owner_id, author_type, cloned_from_recipe_id, private_edit_version
-) on public.recipes from authenticated;
-
-revoke update (
-  title, description, servings, prep_minutes, cook_minutes, rest_minutes,
-  difficulty, private_edit_version, updated_at
-) on public.recipes from authenticated;
-
-revoke insert (
-  recipe_id, sort_order, crop, free_text_name, quantity, unit, note,
-  is_key_ingredient, ingredient_class
-) on public.recipe_ingredients from authenticated;
+revoke insert (private_edit_version)
+  on public.recipes from authenticated;
+revoke update (private_edit_version)
+  on public.recipes from authenticated;
 ```
 
-After rollback, re-run the advisors and the same authenticated/denied smoke
-matrix. `anon`, `PUBLIC`, `service_role`, RPC definitions, and client payloads
-must remain unchanged throughout rollout and rollback.
+This deliberately returns atomic create/update to the pre-fix `42501` state
+while leaving the ACL narrowing intact. Investigate and fix forward. Re-run the
+ACL matrix and advisors after containment; do not automatically replay the
+historical unsafe grants.

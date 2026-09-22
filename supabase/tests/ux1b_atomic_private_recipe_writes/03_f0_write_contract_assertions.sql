@@ -18,22 +18,75 @@ select pg_temp.assert(not exists(
     and p.prosecdef
 ),'recipe write RPCs remain SECURITY INVOKER');
 
--- Only columns explicitly written by the RPC bodies are restored.
-select pg_temp.assert(has_column_privilege('authenticated','public.recipes','title','insert'),'recipes title INSERT restored');
-select pg_temp.assert(has_column_privilege('authenticated','public.recipes','title','update'),'recipes title UPDATE restored');
-select pg_temp.assert(has_column_privilege('authenticated','public.recipes','private_edit_version','update'),'version UPDATE restored');
-select pg_temp.assert(has_column_privilege('authenticated','public.recipe_ingredients','recipe_id','insert'),'ingredient INSERT restored');
-select pg_temp.assert(not has_column_privilege('authenticated','public.recipe_ingredients','recipe_id','update'),'ingredient UPDATE remains ungranted');
-select pg_temp.assert(not has_column_privilege('authenticated','public.recipes','owner_id','update'),'owner UPDATE remains ungranted');
-select pg_temp.assert(not has_column_privilege('authenticated','public.recipes','author_type','update'),'author type UPDATE remains ungranted');
-select pg_temp.assert(not has_column_privilege('authenticated','public.recipes','visibility','update'),'visibility UPDATE remains ungranted');
-select pg_temp.assert(not has_column_privilege('authenticated','public.recipes','status','update'),'status UPDATE remains ungranted');
-select pg_temp.assert(not has_column_privilege('anon','public.recipes','title','insert'),'anon recipes INSERT denied');
-select pg_temp.assert(not has_column_privilege('anon','public.recipes','title','update'),'anon recipes UPDATE denied');
-select pg_temp.assert(not has_column_privilege('anon','public.recipe_ingredients','recipe_id','insert'),'anon ingredient INSERT denied');
-select pg_temp.assert(not has_column_privilege('public','public.recipes','title','insert'),'PUBLIC recipes INSERT denied');
-select pg_temp.assert(not has_column_privilege('public','public.recipes','title','update'),'PUBLIC recipes UPDATE denied');
-select pg_temp.assert(not has_column_privilege('public','public.recipe_ingredients','recipe_id','insert'),'PUBLIC ingredient INSERT denied');
+-- authenticated receives exact RPC write allow-lists, not table-wide grants.
+select pg_temp.assert(not has_table_privilege('authenticated','public.recipes','insert'),'no table-wide recipes INSERT');
+select pg_temp.assert(not has_table_privilege('authenticated','public.recipes','update'),'no table-wide recipes UPDATE');
+select pg_temp.assert(not has_table_privilege('authenticated','public.recipe_ingredients','insert'),'no table-wide ingredient INSERT');
+select pg_temp.assert(not has_table_privilege('authenticated','public.recipe_ingredients','update'),'no table-wide ingredient UPDATE');
+
+select pg_temp.assert(not exists(
+  select 1 from pg_attribute a
+  where a.attrelid='public.recipes'::regclass and a.attnum>0 and not a.attisdropped
+    and (
+      has_column_privilege('authenticated','public.recipes',a.attname,'INSERT')
+      <> (a.attname = any(array[
+        'id','slug','title','description','cover_photo_url','servings',
+        'prep_minutes','cook_minutes','rest_minutes','difficulty','cuisine',
+        'diet_tags','required_equipment','extraction_confidence','status',
+        'visibility','source_type','owner_id','author_type',
+        'cloned_from_recipe_id','private_edit_version'
+      ]))
+      or has_column_privilege('authenticated','public.recipes',a.attname,'UPDATE')
+      <> (a.attname = any(array[
+        'title','description','servings','prep_minutes','cook_minutes',
+        'rest_minutes','difficulty','private_edit_version','updated_at'
+      ]))
+    )
+),'recipes exact authenticated INSERT/UPDATE matrix');
+
+select pg_temp.assert(not exists(
+  select 1 from pg_attribute a
+  where a.attrelid='public.recipe_ingredients'::regclass and a.attnum>0 and not a.attisdropped
+    and (
+      has_column_privilege('authenticated','public.recipe_ingredients',a.attname,'INSERT')
+      <> (a.attname = any(array[
+        'recipe_id','sort_order','crop','free_text_name','quantity','unit','note',
+        'is_key_ingredient','ingredient_class'
+      ]))
+      or has_column_privilege('authenticated','public.recipe_ingredients',a.attname,'UPDATE')
+    )
+),'ingredient exact authenticated INSERT and zero UPDATE matrix');
+
+-- anon and PUBLIC have no recipe writes in either table, at table or column level.
+select pg_temp.assert(not exists(
+  select 1 from pg_attribute a
+  where a.attrelid in ('public.recipes'::regclass,'public.recipe_ingredients'::regclass)
+    and a.attnum>0 and not a.attisdropped
+    and (
+      has_column_privilege('anon',a.attrelid,a.attname,'INSERT')
+      or has_column_privilege('anon',a.attrelid,a.attname,'UPDATE')
+    )
+),'anon recipe INSERT/UPDATE denied on every column');
+select pg_temp.assert(not exists(
+  select 1
+  from pg_class c join pg_namespace n on n.oid=c.relnamespace
+  cross join lateral aclexplode(c.relacl) x
+  where n.nspname='public' and c.relname in ('recipes','recipe_ingredients')
+    and x.grantee=0 and x.privilege_type in ('INSERT','UPDATE')
+  union all
+  select 1
+  from pg_class c join pg_namespace n on n.oid=c.relnamespace
+  join pg_attribute a on a.attrelid=c.oid and a.attnum>0 and not a.attisdropped
+  cross join lateral aclexplode(a.attacl) x
+  where n.nspname='public' and c.relname in ('recipes','recipe_ingredients')
+    and x.grantee=0 and x.privilege_type in ('INSERT','UPDATE')
+),'PUBLIC recipe INSERT/UPDATE ACL absent');
+
+-- The reconcile does not disturb existing read/delete capabilities.
+select pg_temp.assert(has_table_privilege('authenticated','public.recipes','select,delete'),'authenticated recipes read/delete intact');
+select pg_temp.assert(has_table_privilege('authenticated','public.recipe_ingredients','select,delete'),'authenticated ingredients read/delete intact');
+select pg_temp.assert(has_table_privilege('anon','public.recipes','select'),'anon recipes SELECT intact');
+select pg_temp.assert(has_table_privilege('anon','public.recipe_ingredients','select'),'anon ingredients SELECT intact');
 
 -- Favorite/save stays owner-bound and independently writable.
 select pg_temp.assert((select relrowsecurity from pg_class where oid='public.recipe_saves'::regclass),'recipe_saves RLS enabled');
@@ -52,7 +105,7 @@ select pg_temp.assert((select count(*)=1 from public.recipe_saves where user_id=
 delete from public.recipe_saves where user_id=auth.uid() and recipe_id='10000000-0000-0000-0000-000000000001';
 select pg_temp.assert((select count(*)=0 from public.recipe_saves where user_id=auth.uid()),'favorite delete succeeds for owner');
 
--- Direct writes cannot forge the RPC ownership/state invariants.
+-- Direct writes cannot forge ownership/state or mutate ingredient rows.
 do $$
 begin
   begin
@@ -62,7 +115,7 @@ begin
   exception when insufficient_privilege then null; end;
   begin
     update public.recipes set title='cross-owner write'
-    where id='10000000-0000-0000-0000-000000000003';
+    where id='10000000-0000-0000-0000-000000000002';
     if found then raise exception 'expected cross-owner update denial'; end if;
   end;
   begin
@@ -84,6 +137,11 @@ begin
     update public.recipes set visibility='public', status='published', author_type='hasat'
     where id='10000000-0000-0000-0000-000000000002';
     raise exception 'expected state update privilege denial';
+  exception when insufficient_privilege then null; end;
+  begin
+    update public.recipe_ingredients set quantity=999
+    where recipe_id='10000000-0000-0000-0000-000000000001';
+    raise exception 'expected direct ingredient UPDATE privilege denial';
   exception when insufficient_privilege then null; end;
 end $$;
 reset role;
