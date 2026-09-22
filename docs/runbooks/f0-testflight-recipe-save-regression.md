@@ -1,7 +1,8 @@
 # F0 TestFlight recipe ACL reconciliation runbook
 
-Status: correction draft only. No production migration, deploy, merge, or
-TestFlight verification has been performed.
+Status: production SQL was applied and runtime-verified as migration
+`20260922124009_f0_testflight_recipe_write_grants`. This repository-only
+follow-up aligns the migration filename with that recorded production version.
 
 ## Corrected root cause
 
@@ -18,27 +19,27 @@ grant for `PUBLIC`, `anon`, and `authenticated`, then grants only the
 exact RPC write columns to `authenticated`. Existing SELECT/DELETE and
 restrictive RLS policies are not changed.
 
-## Proposed rollout (still pending)
+## Production verification (completed)
 
-1. Record fresh production ACL, security advisor, and performance advisor
-   baselines.
-2. Confirm migration `20260922082508` is still absent from production history
-   and the merged Git blob matches the reviewed migration.
-3. Apply only
-   `20260922082508_f0_testflight_recipe_write_grants.sql` through the approved
-   production migration path.
-4. Read back the complete table/column ACL matrix:
+1. Production ACL, security advisor, and performance advisor baselines were
+   recorded before rollout.
+2. Confirm migration `20260922124009` is present in production history and
+   the repository Git blob still matches the reviewed/applied SQL byte-for-byte.
+3. The reviewed SQL was applied once through the approved production migration
+   path and recorded as
+   `20260922124009_f0_testflight_recipe_write_grants.sql`. Do not reapply it.
+4. The complete table/column ACL matrix was read back:
    - no INSERT/UPDATE for `PUBLIC` or `anon`;
    - authenticated recipe INSERT and UPDATE match the migration allow-lists;
    - authenticated ingredient INSERT matches its allow-list and UPDATE is empty;
    - SELECT/DELETE remain unchanged;
    - recipe RPCs remain authenticated-only and `SECURITY INVOKER`;
    - restrictive owner/private/draft/`kullanici` policies remain present.
-5. Re-run both advisors. Expected delta: zero new findings. Stop on any new
-   warning or error.
-6. Run the approved authenticated create/update/clone/T6/ingredient replacement
-   and favorite smoke matrix without logging payloads or user data.
-7. Re-test TestFlight build 13. Do not start a new build in this rollout.
+5. Both advisors were re-run with zero new findings.
+6. The approved authenticated create/update/clone/T6/ingredient replacement
+   and favorite runtime matrix passed without logging payloads or user data.
+7. TestFlight build 13 remains the client verification target; this repository
+   history reconciliation does not start a new build.
 
 ## Safe containment rollback
 
