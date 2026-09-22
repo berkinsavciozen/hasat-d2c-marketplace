@@ -92,7 +92,7 @@ test("migration constrains auth, ACL, states, limits, idempotency and optimistic
 
 test("F0 reconciles broad legacy ACLs to exact authenticated RPC grants", async () => {
   const migration = await read(
-    "../supabase/migrations/20260922082508_f0_testflight_recipe_write_grants.sql",
+    "../supabase/migrations/20260922124009_f0_testflight_recipe_write_grants.sql",
   );
   const sql = migration.replace(/^--.*$/gm, "");
   assert.match(
