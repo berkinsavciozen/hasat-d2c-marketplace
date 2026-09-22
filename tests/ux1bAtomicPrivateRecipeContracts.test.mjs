@@ -17,6 +17,8 @@ test("OCR and T7a adapters use one authenticated transaction RPC", async () => {
     assert.match(source, /p_input_hash: requestHash/);
     assert.doesNotMatch(source, /from\("recipe_ingredients"\)\.insert/);
     assert.doesNotMatch(source, /from\("recipe_steps"\)\.insert/);
+    assert.doesNotMatch(source, /from\("recipes"\)\s*\.insert/);
+    assert.doesNotMatch(source, /from\("recipes"\)\s*\.update/);
     assert.doesNotMatch(source, /from\("recipes"\)\.delete/);
   }
   assert.match(ocr, /"create_text" : "create_photo"/);
@@ -35,6 +37,8 @@ test("T6 compatibility adapter is owner-scoped and delegates to the common primi
   );
   assert.match(edge, /onConflict: "user_id,idempotency_key"/);
   assert.match(edge, /source\.status !== "published"/);
+  assert.doesNotMatch(edge, /from\("recipes"\)\s*\.(?:insert|update)/);
+  assert.doesNotMatch(edge, /from\("recipe_ingredients"\)\s*\.(?:insert|update)/);
 });
 
 test("web data adapter uses versioned update and keyed clone without changing UI components", async () => {
@@ -45,6 +49,7 @@ test("web data adapter uses versioned update and keyed clone without changing UI
   assert.match(adapter, /operationKeys\.current\.acquire\(operationIdentity\)/);
   assert.match(adapter, /operationKeys\.current\.succeed\(operationIdentity, operationKey\)/);
   assert.match(adapter, /rpc_clone_recipe/);
+  assert.doesNotMatch(adapter, /from\("recipes"\)\s*\.(?:insert|update)/);
   assert.doesNotMatch(adapter, /from\("recipe_ingredients"\)\s*\.delete\(\)/);
   assert.doesNotMatch(adapter, /from\("recipe_steps"\)\s*\.delete\(\)/);
 });
@@ -85,18 +90,31 @@ test("migration constrains auth, ACL, states, limits, idempotency and optimistic
   assert.doesNotMatch(migration, /coalesce\(\s*p_(?:request|input)_hash,\s*md5/i);
 });
 
-test("F0 restores only the column grants required by private recipe RPCs", async () => {
+test("F0 reconciles broad legacy ACLs to exact authenticated RPC grants", async () => {
   const migration = await read(
     "../supabase/migrations/20260922082508_f0_testflight_recipe_write_grants.sql",
   );
   const sql = migration.replace(/^--.*$/gm, "");
+  assert.match(
+    sql,
+    /revoke insert, update on table public\.recipes from public, anon, authenticated/i,
+  );
+  assert.match(
+    sql,
+    /revoke insert, update on table public\.recipe_ingredients from public, anon, authenticated/i,
+  );
+  assert.match(
+    sql,
+    /revoke insert \(%1\$s\), update \(%1\$s\).*recipes from public, anon, authenticated/i,
+  );
   assert.match(sql, /grant insert \([\s\S]*\) on public\.recipes to authenticated/i);
   assert.match(sql, /grant update \([\s\S]*\) on public\.recipes to authenticated/i);
   assert.match(
     sql,
     /grant insert \([\s\S]*\) on public\.recipe_ingredients to authenticated/i,
   );
-  assert.doesNotMatch(sql, /to anon/i);
+  assert.doesNotMatch(sql, /grant[\s\S]*?to\s+(?:public|anon)(?:\s*[,;])/i);
+  assert.doesNotMatch(sql, /grant update \([^;]+\) on public\.recipe_ingredients/i);
   assert.doesNotMatch(sql, /security definer/i);
   assert.doesNotMatch(sql, /grant[\s\S]*recipe_saves/i);
 });
