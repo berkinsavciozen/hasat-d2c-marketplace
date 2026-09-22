@@ -85,6 +85,22 @@ test("migration constrains auth, ACL, states, limits, idempotency and optimistic
   assert.doesNotMatch(migration, /coalesce\(\s*p_(?:request|input)_hash,\s*md5/i);
 });
 
+test("F0 restores only the column grants required by private recipe RPCs", async () => {
+  const migration = await read(
+    "../supabase/migrations/20260922082508_f0_testflight_recipe_write_grants.sql",
+  );
+  const sql = migration.replace(/^--.*$/gm, "");
+  assert.match(sql, /grant insert \([\s\S]*\) on public\.recipes to authenticated/i);
+  assert.match(sql, /grant update \([\s\S]*\) on public\.recipes to authenticated/i);
+  assert.match(
+    sql,
+    /grant insert \([\s\S]*\) on public\.recipe_ingredients to authenticated/i,
+  );
+  assert.doesNotMatch(sql, /to anon/i);
+  assert.doesNotMatch(sql, /security definer/i);
+  assert.doesNotMatch(sql, /grant[\s\S]*recipe_saves/i);
+});
+
 test("UX-1B-M correction binds step photos to the authenticated recipe and canonical update hash", async () => {
   const migration = await read(
     "../supabase/migrations/20260918090000_ux1b_private_step_photo_preservation.sql",
