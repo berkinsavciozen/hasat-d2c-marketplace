@@ -1,6 +1,6 @@
-+# UX-1F-B web/mobile dormant rollout handoff
+# UX-1F-B web/mobile dormant rollout handoff
 
-Status: draft client work only. Backend migration `20260923071622_ux1f_a_secure_private_recipe_share.sql` is merged but is not applied to production. Do not enable either client yet.
+Status: dormant client work only. Backend migration `20260923122740_ux1f_a_secure_private_recipe_share.sql` is applied in production with the reviewed SQL blob, but synthetic production smoke is intentionally pending repository reconciliation, independent acceptance, and separate explicit authorization. Do not enable either client yet.
 
 ## Client contract
 
@@ -21,8 +21,8 @@ Both default to OFF when absent. OFF hides owner entry points and suppresses all
 
 1. Merge both dormant UX-1F-B draft PRs with flags absent/false.
 2. Record the production baseline: migration history, exact migration blob, function/table ACLs, RLS, F0 grants, security/performance advisors, deployed web/mobile build versions, and both flags OFF.
-3. Apply only the reviewed UX-1F-A migration through the approved production path.
-4. Perform read-only history/function/table/RLS/F0 ACL/advisor checks, then the synthetic create → resolve → clone → exact replay lifecycle smoke from the UX-1F-A runbook. Do not log the token or RPC body.
+3. Confirm the reviewed UX-1F-A migration is recorded exactly once as `20260923122740_ux1f_a_secure_private_recipe_share`; do not re-apply or repair/replay its production history.
+4. Preserve the completed read-only history/function/table/RLS/F0 ACL/advisor evidence. After repository reconciliation is merged and independently accepted, obtain separate explicit production-write authorization before the synthetic create → resolve → clone → exact replay lifecycle smoke from the UX-1F-A runbook. Do not log the token or RPC body.
 5. Enable the web flag, then the mobile flag, only after all gates pass. Mobile enablement requires a new signed build because Expo public values are baked into the binary.
 6. Run real browser/device acceptance: web keyboard/focus/200% zoom and fragment removal; iOS Dynamic Type/safe area/VoiceOver; Android font scale/safe area/TalkBack; authenticated and same-tab unauthenticated handoff; owner create/list/rotate/revoke; recipient neutral invalid state and clone retry matrix.
 7. If containment is needed, turn both flags OFF first, then follow UX-1F-A by revoking EXECUTE on the six public wrappers/private helpers, preserving ledgers for investigation, and fixing forward. Never restore legacy UUID signatures, anonymous preview, raw `share_token`, or broad column grants.

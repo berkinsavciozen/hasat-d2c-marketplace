@@ -22,7 +22,7 @@ docker exec -i "$CONTAINER" psql -v ON_ERROR_STOP=1 -X -U postgres -d ux1fa < "$
 docker exec -i "$CONTAINER" psql -v ON_ERROR_STOP=1 -X -U postgres -d ux1fa < "$REPO_ROOT/supabase/migrations/20260917090100_revoke_anon_execute_recipe_share_rpcs.sql"
 docker exec -i "$CONTAINER" psql -v ON_ERROR_STOP=1 -X -U postgres -d ux1fa < "$REPO_ROOT/supabase/tests/ux1b_atomic_private_recipe_writes/02_f0_live_acl_regression.sql"
 docker exec -i "$CONTAINER" psql -v ON_ERROR_STOP=1 -X -U postgres -d ux1fa < "$REPO_ROOT/supabase/migrations/20260922124009_f0_testflight_recipe_write_grants.sql"
-docker exec -i "$CONTAINER" psql -v ON_ERROR_STOP=1 -X -U postgres -d ux1fa < "$REPO_ROOT/supabase/migrations/20260923071622_ux1f_a_secure_private_recipe_share.sql"
+docker exec -i "$CONTAINER" psql -v ON_ERROR_STOP=1 -X -U postgres -d ux1fa < "$REPO_ROOT/supabase/migrations/20260923122740_ux1f_a_secure_private_recipe_share.sql"
 docker exec -i "$CONTAINER" psql -v ON_ERROR_STOP=1 -X -U postgres -d ux1fa < "$SCRIPT_DIR/01_assertions.sql"
 
 echo 'UX-1F-A disposable PostgreSQL 17 suite: PASSED'
