@@ -17,6 +17,11 @@ select pg_temp.assert((select relrowsecurity from pg_class where oid='private.re
 select pg_temp.assert(not has_table_privilege('authenticated','private.recipe_share_grants','select'),'authenticated grant table denied');
 select pg_temp.assert(not has_table_privilege('service_role','private.recipe_share_grants','select'),'service role grant table denied');
 select pg_temp.assert(not has_table_privilege('anon','private.recipe_share_clone_operations','insert'),'anon operation table denied');
+select pg_temp.assert((
+  select data_type='bytea' from information_schema.columns
+  where table_schema='private' and table_name='recipe_share_clone_operations'
+    and column_name='token_fingerprint'
+),'operation ledger stores a bytea token fingerprint');
 select pg_temp.assert(not exists(
   select 1 from pg_class c
   cross join lateral aclexplode(c.relacl) x
@@ -70,6 +75,9 @@ declare
   v_second jsonb;
   v_self jsonb;
   v_revoke jsonb;
+  v_replay_revoke jsonb;
+  v_replay_expire jsonb;
+  v_replay_delete jsonb;
 begin
   v_created := public.rpc_create_recipe_share_grant(
     '10000000-0000-0000-0000-000000000002', clock_timestamp()+interval '1 day'
@@ -117,10 +125,31 @@ begin
   );
   insert into test_runtime_tokens values ('second',v_second->>'token',(v_second->>'grant_id')::uuid);
 
+  v_replay_revoke := public.rpc_create_recipe_share_grant(
+    '10000000-0000-0000-0000-000000000002', clock_timestamp()+interval '1 day'
+  );
+  insert into test_runtime_tokens values (
+    'replay_revoke',v_replay_revoke->>'token',(v_replay_revoke->>'grant_id')::uuid
+  );
+
+  v_replay_expire := public.rpc_create_recipe_share_grant(
+    '10000000-0000-0000-0000-000000000002', clock_timestamp()+interval '1 day'
+  );
+  insert into test_runtime_tokens values (
+    'replay_expire',v_replay_expire->>'token',(v_replay_expire->>'grant_id')::uuid
+  );
+
   v_self := public.rpc_create_recipe_share_grant(
     '10000000-0000-0000-0000-000000000005', clock_timestamp()+interval '1 day'
   );
   insert into test_runtime_tokens values ('delete',v_self->>'token',(v_self->>'grant_id')::uuid);
+
+  v_replay_delete := public.rpc_create_recipe_share_grant(
+    '10000000-0000-0000-0000-000000000005', clock_timestamp()+interval '1 day'
+  );
+  insert into test_runtime_tokens values (
+    'replay_delete',v_replay_delete->>'token',(v_replay_delete->>'grant_id')::uuid
+  );
 
   begin
     perform public.rpc_clone_shared_recipe(v_self->>'token','30000000-0000-4000-8000-000000000199');
@@ -218,6 +247,104 @@ begin
   end;
 end $$;
 
+-- Completed replay is an immutable receipt: later revoke, expiry, or
+-- source/grant deletion cannot invalidate the same owner/key/token retry.
+do $$
+declare
+  v_result jsonb;
+begin
+  v_result := public.rpc_clone_shared_recipe(
+    (select token from test_runtime_tokens where label='replay_revoke'),
+    '30000000-0000-4000-8000-000000000201'
+  );
+  insert into test_ids values ('replay_revoke',(v_result->>'recipe_id')::uuid);
+  perform pg_temp.assert(v_result->>'replayed'='false','revoke case first clone is new');
+
+  v_result := public.rpc_clone_shared_recipe(
+    (select token from test_runtime_tokens where label='replay_expire'),
+    '30000000-0000-4000-8000-000000000202'
+  );
+  insert into test_ids values ('replay_expire',(v_result->>'recipe_id')::uuid);
+  perform pg_temp.assert(v_result->>'replayed'='false','expiry case first clone is new');
+
+  v_result := public.rpc_clone_shared_recipe(
+    (select token from test_runtime_tokens where label='replay_delete'),
+    '30000000-0000-4000-8000-000000000203'
+  );
+  insert into test_ids values ('replay_delete',(v_result->>'recipe_id')::uuid);
+  perform pg_temp.assert(v_result->>'replayed'='false','deletion case first clone is new');
+end $$;
+
+select set_config('request.jwt.claim.sub','20000000-0000-0000-0000-000000000002',false);
+do $$ begin
+  perform public.rpc_revoke_recipe_share_grant(
+    (select grant_id from test_runtime_tokens where label='replay_revoke')
+  );
+end $$;
+select set_config('request.jwt.claim.sub','20000000-0000-0000-0000-000000000001',false);
+do $$ declare v_result jsonb; begin
+  v_result := public.rpc_clone_shared_recipe(
+    (select token from test_runtime_tokens where label='replay_revoke'),
+    '30000000-0000-4000-8000-000000000201'
+  );
+  perform pg_temp.assert(v_result->>'replayed'='true','revoked grant permits completed replay');
+  perform pg_temp.assert(
+    (v_result->>'recipe_id')::uuid=(select id from test_ids where label='replay_revoke'),
+    'revoked grant replay returns the completed recipe'
+  );
+end $$;
+
+reset role;
+update private.recipe_share_grants
+set created_at=clock_timestamp()-interval '2 days',
+    expires_at=clock_timestamp()-interval '1 second'
+where id=(select grant_id from test_runtime_tokens where label='replay_expire');
+set role authenticated;
+select set_config('request.jwt.claim.sub','20000000-0000-0000-0000-000000000001',false);
+do $$ declare v_result jsonb; begin
+  v_result := public.rpc_clone_shared_recipe(
+    (select token from test_runtime_tokens where label='replay_expire'),
+    '30000000-0000-4000-8000-000000000202'
+  );
+  perform pg_temp.assert(v_result->>'replayed'='true','expired grant permits completed replay');
+  perform pg_temp.assert(
+    (v_result->>'recipe_id')::uuid=(select id from test_ids where label='replay_expire'),
+    'expired grant replay returns the completed recipe'
+  );
+end $$;
+
+reset role;
+delete from public.recipes where id='10000000-0000-0000-0000-000000000005';
+select pg_temp.assert(not exists(
+  select 1 from private.recipe_share_grants
+  where id=(select grant_id from test_runtime_tokens where label='replay_delete')
+),'source deletion cascades the replay grant');
+set role authenticated;
+select set_config('request.jwt.claim.sub','20000000-0000-0000-0000-000000000001',false);
+do $$ declare v_result jsonb; begin
+  v_result := public.rpc_clone_shared_recipe(
+    (select token from test_runtime_tokens where label='replay_delete'),
+    '30000000-0000-4000-8000-000000000203'
+  );
+  perform pg_temp.assert(v_result->>'replayed'='true','deleted source/grant permits completed replay');
+  perform pg_temp.assert(
+    (v_result->>'recipe_id')::uuid=(select id from test_ids where label='replay_delete'),
+    'deleted source/grant replay returns the completed recipe'
+  );
+  begin
+    perform public.rpc_clone_shared_recipe(
+      (select token from test_runtime_tokens where label='rotated'),
+      '30000000-0000-4000-8000-000000000203'
+    );
+    raise exception 'expected lifecycle-independent idempotency conflict';
+  exception when sqlstate '22023' then
+    perform pg_temp.assert(
+      sqlerrm='recipe_share_idempotency_conflict',
+      'same key with different token/grant/source conflicts after deletion'
+    );
+  end;
+end $$;
+
 -- Clone rollback: forced child failure leaves neither clone nor completed ledger.
 select set_config('request.jwt.claim.sub','20000000-0000-0000-0000-000000000002',false);
 do $$ declare v_failure jsonb; begin
@@ -251,6 +378,22 @@ select pg_temp.assert(not exists(
   select 1 from private.recipe_share_clone_operations
   where operation_key='30000000-0000-4000-8000-000000000102'
 ),'failed clone ledger rolled back');
+
+update public.recipe_ingredients set free_text_name='Recovered ingredient'
+where recipe_id='10000000-0000-0000-0000-000000000006';
+set role authenticated;
+select set_config('request.jwt.claim.sub','20000000-0000-0000-0000-000000000001',false);
+do $$ declare v_result jsonb; begin
+  v_result := public.rpc_clone_shared_recipe(
+    (select token from test_runtime_tokens where label='failure'),
+    '30000000-0000-4000-8000-000000000102'
+  );
+  perform pg_temp.assert(
+    v_result->>'replayed'='false',
+    'rolled-back first attempt is executed as a new clone, not accepted as replay'
+  );
+end $$;
+reset role;
 
 -- Expiry and stale/deleted source all use the same fail-closed error.
 update private.recipe_share_grants
@@ -304,7 +447,9 @@ select pg_temp.assert((
 set role authenticated;
 select set_config('request.jwt.claim.sub','20000000-0000-0000-0000-000000000001',false);
 do $$
-declare v_label text;
+declare
+  v_label text;
+  v_operation_key uuid;
 begin
   foreach v_label in array array['second','delete','stale'] loop
     begin
@@ -313,12 +458,33 @@ begin
     exception when sqlstate '22023' then
       perform pg_temp.assert(sqlerrm='recipe_share_invalid_or_inactive',v_label || ' fails closed');
     end;
+    v_operation_key := case v_label
+      when 'second' then '30000000-0000-4000-8000-000000000301'::uuid
+      when 'delete' then '30000000-0000-4000-8000-000000000302'::uuid
+      else '30000000-0000-4000-8000-000000000303'::uuid
+    end;
+    begin
+      perform public.rpc_clone_shared_recipe(
+        (select token from test_runtime_tokens where label=v_label),
+        v_operation_key
+      );
+      raise exception 'expected inactive first clone denial';
+    exception when sqlstate '22023' then
+      perform pg_temp.assert(
+        sqlerrm='recipe_share_invalid_or_inactive',
+        v_label || ' first clone fails closed'
+      );
+    end;
   end loop;
 end $$;
 reset role;
 
 -- No raw token-shaped value exists in either persistent ledger.
 select pg_temp.assert((select bool_and(octet_length(token_digest)=32) from private.recipe_share_grants),'only 32-byte digests persisted');
+select pg_temp.assert((
+  select bool_and(octet_length(token_fingerprint)=32)
+  from private.recipe_share_clone_operations
+),'only 32-byte token fingerprints persisted in operation ledger');
 select pg_temp.assert(not exists(
   select 1 from information_schema.columns
   where table_schema='private' and table_name in ('recipe_share_grants','recipe_share_clone_operations')

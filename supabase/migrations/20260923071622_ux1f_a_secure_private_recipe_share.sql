@@ -62,11 +62,14 @@ create table private.recipe_share_clone_operations (
   operation_key uuid not null,
   grant_id uuid not null,
   source_recipe_id uuid not null,
+  token_fingerprint bytea not null,
   request_digest bytea not null,
   result_recipe_id uuid,
   created_at timestamptz not null default clock_timestamp(),
   completed_at timestamptz,
   primary key (owner_id, operation_key),
+  constraint recipe_share_clone_operations_token_fingerprint_length
+    check (octet_length(token_fingerprint) = 32),
   constraint recipe_share_clone_operations_digest_length
     check (octet_length(request_digest) = 32),
   constraint recipe_share_clone_operations_result_shape check (
@@ -76,7 +79,7 @@ create table private.recipe_share_clone_operations (
 );
 
 comment on table private.recipe_share_clone_operations is
-  'UX-1F-A idempotency ledger. Grant/source identifiers are deliberately not foreign keys so deletion cannot invalidate a completed clone replay record.';
+  'UX-1F-A idempotency ledger. token_fingerprint is SHA-256 of the presented token; raw tokens are never stored. Grant/source identifiers are deliberately not foreign keys so deletion cannot invalidate a completed clone replay record.';
 
 alter table private.recipe_share_clone_operations enable row level security;
 create policy "recipe share clone operations deny direct authenticated access"
@@ -391,6 +394,7 @@ declare
   v_grant private.recipe_share_grants%rowtype;
   v_source record;
   v_existing private.recipe_share_clone_operations%rowtype;
+  v_token_fingerprint bytea;
   v_request_digest bytea;
   v_new_recipe_id uuid;
   v_slug text;
@@ -406,9 +410,34 @@ begin
     raise exception using errcode = '22023', message = 'recipe_share_invalid_or_inactive';
   end if;
 
+  v_token_fingerprint := sha256(convert_to(p_token, 'UTF8'));
+
+  -- A committed clone is an immutable receipt. Authenticate the caller and
+  -- validate token shape first, then replay that receipt before consulting the
+  -- mutable grant/source lifecycle. The fingerprint binds the retry without
+  -- persisting the bearer token. FOR UPDATE serializes a concurrent retry;
+  -- an aborted first attempt leaves no visible operation row.
+  select * into v_existing
+  from private.recipe_share_clone_operations o
+  where o.owner_id = v_user_id and o.operation_key = p_operation_key
+  for update;
+
+  if found then
+    if v_existing.token_fingerprint <> v_token_fingerprint then
+      raise exception using errcode = '22023', message = 'recipe_share_idempotency_conflict';
+    end if;
+    if v_existing.result_recipe_id is null then
+      raise exception using errcode = '40001', message = 'recipe_share_operation_in_progress';
+    end if;
+    return jsonb_build_object(
+      'recipe_id', v_existing.result_recipe_id,
+      'replayed', true
+    );
+  end if;
+
   select g.* into v_grant
   from private.recipe_share_grants g
-  where g.token_digest = sha256(convert_to(p_token, 'UTF8'))
+  where g.token_digest = v_token_fingerprint
     and g.revoked_at is null
     and g.expires_at > clock_timestamp();
 
@@ -441,7 +470,7 @@ begin
   select g.* into v_grant
   from private.recipe_share_grants g
   where g.id = v_grant.id
-    and g.token_digest = sha256(convert_to(p_token, 'UTF8'))
+    and g.token_digest = v_token_fingerprint
     and g.source_recipe_id = v_source.id
     and g.owner_id = v_source.owner_id
     and g.revoked_at is null
@@ -464,9 +493,11 @@ begin
   )::text, 'UTF8'));
 
   insert into private.recipe_share_clone_operations(
-    owner_id, operation_key, grant_id, source_recipe_id, request_digest
+    owner_id, operation_key, grant_id, source_recipe_id,
+    token_fingerprint, request_digest
   ) values (
-    v_user_id, p_operation_key, v_grant.id, v_source.id, v_request_digest
+    v_user_id, p_operation_key, v_grant.id, v_source.id,
+    v_token_fingerprint, v_request_digest
   )
   on conflict (owner_id, operation_key) do nothing;
 
@@ -476,7 +507,8 @@ begin
     where o.owner_id = v_user_id and o.operation_key = p_operation_key
     for update;
 
-    if v_existing.grant_id <> v_grant.id
+    if v_existing.token_fingerprint <> v_token_fingerprint
+       or v_existing.grant_id <> v_grant.id
        or v_existing.source_recipe_id <> v_source.id
        or v_existing.request_digest <> v_request_digest then
       raise exception using errcode = '22023', message = 'recipe_share_idempotency_conflict';

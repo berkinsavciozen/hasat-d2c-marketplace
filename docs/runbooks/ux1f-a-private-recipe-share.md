@@ -34,10 +34,12 @@ digest. The raw token is 32 random bytes encoded as 64 lowercase hexadecimal
 characters and is returned only in a successful create/rotate response.
 
 `private.recipe_share_clone_operations` binds `(owner_id, operation_key)` to a
-canonical digest of contract version, grant ID, and source recipe ID. Grant and
-source IDs are intentionally not foreign keys in this completed-operation
-ledger. A completed clone therefore remains independent if its source or grant
-is later deleted.
+32-byte SHA-256 fingerprint of the presented token plus a canonical digest of
+contract version, grant ID, and source recipe ID. It never stores the raw token.
+Grant and source IDs are intentionally not foreign keys in this
+completed-operation ledger. A completed clone receipt therefore remains
+independent if its grant is revoked or expires, or if its source/grant is later
+deleted.
 
 Grant states are:
 
@@ -99,10 +101,18 @@ step media, editorial/review fields, and token/digest.
 {"recipe_id":"uuid","replayed":false}
 ```
 
-An exact retry returns the same `recipe_id` with `replayed: true`. Reusing the
-same operation key for a different grant/source yields a deterministic conflict.
-The clone transaction inserts the recipe, ingredients, steps, and completed
-operation record atomically; any child failure rolls everything back.
+After authentication and token-shape validation, an exact completed retry for
+the same owner + operation key + token fingerprint returns the same `recipe_id`
+with `replayed: true` before mutable grant/source state is consulted. This is
+deliberate: revoke, expiry, and source/grant deletion block every new clone but
+cannot invalidate an already committed receipt. Reusing the same operation key
+with a different token (and therefore a different grant/source request) yields
+the deterministic `recipe_share_idempotency_conflict`, even if the original
+grant/source no longer exists. The clone transaction inserts the recipe,
+ingredients, steps, and completed operation record atomically; any child
+failure rolls everything back and creates no replayable receipt. A later retry
+of that rolled-back attempt is evaluated as a new clone and must pass all active
+grant/source checks.
 
 The clone is always `private` + `draft` + `kullanici` + `shared_clone`, owned by
 the recipient. It copies no cover/step media and sets `cloned_from_recipe_id` to
@@ -120,7 +130,7 @@ Clients must branch on the exact database message, not localized text:
 | `recipe_share_source_not_owned` | Owner grant-list filter is not owned |
 | `recipe_share_grant_not_active` | Rotate target is absent, expired, revoked, rotated, or source is no longer eligible |
 | `recipe_share_grant_not_found` | Revoke target is absent or cross-owner |
-| `recipe_share_invalid_or_inactive` | Resolve/clone token is malformed, forged, expired, revoked, rotated, deleted, or stale; do not distinguish these cases in UI |
+| `recipe_share_invalid_or_inactive` | Resolve token, or a first-time clone token, is malformed, forged, expired, revoked, rotated, deleted, or stale; do not distinguish these cases in UI. A completed exact clone retry is the sole lifecycle-independent exception after token-shape validation |
 | `recipe_share_operation_key_required` | Clone requires a UUID operation key |
 | `recipe_share_idempotency_conflict` | Same key was already bound to a different grant/source; generate a new key only for a genuinely new action |
 | `recipe_share_cannot_clone_own` | Owner cannot clone their own share |
@@ -184,6 +194,9 @@ invokers.
    - F0 recipe/ingredient ACL allow-lists are unchanged;
    - security/performance advisor delta contains no new WARN/ERROR.
 7. Run synthetic owner/recipient smoke tests without logging token or payload.
+   Verify in order that a completed clone replays the same recipe after grant
+   revoke, grant expiry, and source/grant deletion; a different token on the
+   same key conflicts; and a rolled-back first attempt is not treated as replay.
 8. Enable UX-1F-B only after every gate passes.
 
 ## 8. Safe rollback / containment

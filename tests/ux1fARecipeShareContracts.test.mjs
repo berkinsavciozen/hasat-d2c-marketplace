@@ -11,6 +11,8 @@ test("UX-1F-A stores only a digest in private RLS ledgers", async () => {
   assert.match(migration, /create table private\.recipe_share_grants/);
   assert.match(migration, /create table private\.recipe_share_clone_operations/);
   assert.match(migration, /token_digest bytea not null unique/);
+  assert.match(migration, /token_fingerprint bytea not null/);
+  assert.match(migration, /octet_length\(token_fingerprint\) = 32/);
   assert.match(migration, /extensions\.gen_random_bytes\(32\)/);
   assert.match(migration, /sha256\(convert_to\(v_token, 'UTF8'\)\)/);
   assert.doesNotMatch(migration, /create table[\s\S]*?\btoken text\b/i);
@@ -50,6 +52,7 @@ test("UX-1F-A clone operation keys bind canonical grant and source identity", as
     "../supabase/migrations/20260923071622_ux1f_a_secure_private_recipe_share.sql",
   );
   assert.match(migration, /primary key \(owner_id, operation_key\)/);
+  assert.match(migration, /v_token_fingerprint := sha256\(convert_to\(p_token, 'UTF8'\)\)/);
   assert.match(migration, /'contract_version', 1/);
   assert.match(migration, /'grant_id', v_grant\.id/);
   assert.match(migration, /'source_recipe_id', v_source\.id/);
@@ -59,6 +62,27 @@ test("UX-1F-A clone operation keys bind canonical grant and source identity", as
   assert.doesNotMatch(
     migration.match(/create table private\.recipe_share_clone_operations[\s\S]*?\n\);/)?.[0] ?? "",
     /references private\.recipe_share_grants|references public\.recipes/,
+  );
+
+  const cloneFunction = migration.match(
+    /create or replace function private\.clone_recipe_share[\s\S]*?\nend;\n\$\$;/,
+  )?.[0];
+  assert.ok(cloneFunction);
+  const completedReplayLookup = cloneFunction.indexOf(
+    "from private.recipe_share_clone_operations o",
+  );
+  const activeGrantLookup = cloneFunction.indexOf(
+    "from private.recipe_share_grants g",
+  );
+  assert.ok(completedReplayLookup >= 0);
+  assert.ok(activeGrantLookup >= 0);
+  assert.ok(
+    completedReplayLookup < activeGrantLookup,
+    "completed operation replay must precede mutable grant/source validation",
+  );
+  assert.match(
+    cloneFunction,
+    /v_existing\.token_fingerprint <> v_token_fingerprint[\s\S]*?recipe_share_idempotency_conflict/,
   );
 });
 
