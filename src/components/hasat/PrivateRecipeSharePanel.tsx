@@ -4,6 +4,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { PUBLIC_BASE_URL } from "@/lib/hasat/constants";
 import { buildPrivateRecipeShareUrl } from "@/lib/hasat/recipeShareSecurity";
+import { RECIPE_SHARE_DURATIONS } from "@/lib/hasat/recipeShareExpiry";
 import {
   expiryFromNow,
   useCreateRecipeShareGrant,
@@ -12,16 +13,8 @@ import {
   useRotateRecipeShareGrant,
 } from "@/lib/hasat/recipeShare";
 
-const DURATIONS = [
-  { label: "5 dakika", value: 5 * 60_000 },
-  { label: "1 saat", value: 60 * 60_000 },
-  { label: "1 gün", value: 24 * 60 * 60_000 },
-  { label: "7 gün", value: 7 * 24 * 60 * 60_000 },
-  { label: "30 gün", value: 30 * 24 * 60 * 60_000 },
-];
-
 export function PrivateRecipeSharePanel({ recipeId }: { recipeId: string }) {
-  const [duration, setDuration] = useState(DURATIONS[3].value);
+  const [duration, setDuration] = useState(RECIPE_SHARE_DURATIONS[3].value);
   const grants = useRecipeShareGrants(recipeId);
   const create = useCreateRecipeShareGrant(recipeId);
   const rotate = useRotateRecipeShareGrant(recipeId);
@@ -82,7 +75,7 @@ export function PrivateRecipeSharePanel({ recipeId }: { recipeId: string }) {
             onChange={(event) => setDuration(Number(event.target.value))}
             className="min-h-10 rounded-lg border bg-background px-2 text-sm"
           >
-            {DURATIONS.map((option) => (
+            {RECIPE_SHARE_DURATIONS.map((option) => (
               <option key={option.value} value={option.value}>
                 {option.label}
               </option>
