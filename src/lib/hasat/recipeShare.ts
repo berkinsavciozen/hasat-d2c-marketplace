@@ -3,6 +3,7 @@ import { useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { createRetryOperationKeyStore } from "./retryOperationKey";
 import { PRIVATE_RECIPE_SHARE_ENABLED } from "./privateRecipeShareFlag";
+export { expiryFromNow } from "./recipeShareExpiry";
 
 export interface RecipeShareGrant {
   grant_id: string;
@@ -62,10 +63,6 @@ export function recipeShareErrorCode(error: unknown): string {
       "recipe_share_grant_not_active",
     ].find((code) => message.includes(code)) ?? "recipe_share_unknown"
   );
-}
-
-export function expiryFromNow(milliseconds: number): string {
-  return new Date(Date.now() + milliseconds).toISOString();
 }
 
 export function useRecipeShareGrants(recipeId: string) {
