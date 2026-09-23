@@ -1,4 +1,5 @@
 import * as Sentry from "@sentry/tanstackstart-react";
+import { sanitizeBreadcrumb, sanitizeEvent } from "@/lib/sentry/sanitize";
 
 Sentry.init({
   dsn:
@@ -7,4 +8,6 @@ Sentry.init({
   dataCollection: {
     httpBodies: [], // minimum veri toplama kararı — istek gövdelerini raporlama
   },
+  beforeBreadcrumb: sanitizeBreadcrumb,
+  beforeSend: sanitizeEvent,
 });

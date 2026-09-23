@@ -1,38 +1,23 @@
-/**
- * Private tarif paylaşım linki: sahip kendi taslağını (`tariflerim`) bir link ile paylaşabilir;
- * linke erişen, giriş yapmış ve sahibi olmayan bir kullanıcı tarifi kendi defterine kaydedebilir.
- * Backend: rpc_generate_recipe_share_token / rpc_revoke_recipe_share_token / rpc_get_shared_recipe /
- * rpc_clone_shared_recipe — canlıda mevcut ama paylaşılan core tip dosyasında yok, CloneRecipeButton /
- * useCloneRecipe'deki `as any` cast desenine uygun.
- */
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { createRetryOperationKeyStore } from "./retryOperationKey";
+import { PRIVATE_RECIPE_SHARE_ENABLED } from "./privateRecipeShareFlag";
 
-export interface SharedRecipeIngredient {
-  id: string;
-  sort_order: number;
-  crop: string | null;
-  free_text_name: string | null;
-  quantity: number | null;
-  unit: string | null;
-  note: string | null;
-  is_key_ingredient: boolean;
+export interface RecipeShareGrant {
+  grant_id: string;
+  source_recipe_id: string;
+  created_at: string;
+  expires_at: string;
+  revoked_at: string | null;
+  status: "active" | "expired" | "rotated" | "revoked";
 }
 
-export interface SharedRecipeStep {
-  id: string;
-  step_no: number;
-  instruction: string;
-  photo_url: string | null;
-  timer_seconds: number | null;
-}
-
-export interface SharedRecipe {
+export interface SharedRecipePreview {
+  expires_at: string;
   recipe: {
-    id: string;
     title: string;
     description: string | null;
-    cover_photo_url: string | null;
     servings: number | null;
     prep_minutes: number | null;
     cook_minutes: number | null;
@@ -42,65 +27,138 @@ export interface SharedRecipe {
     diet_tags: string[];
     required_equipment: string[];
   };
-  ingredients: SharedRecipeIngredient[];
-  steps: SharedRecipeStep[];
+  ingredients: Array<{
+    sort_order: number;
+    crop: string | null;
+    free_text_name: string | null;
+    quantity: number | null;
+    unit: string | null;
+    note: string | null;
+    is_key_ingredient: boolean;
+  }>;
+  steps: Array<{ step_no: number; instruction: string; timer_seconds: number | null }>;
 }
 
-/** Sahip — "Paylaş": token yoksa üretir, varsa aynısını döndürür (idempotent). */
-export function useGenerateRecipeShareLink() {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: async (recipeId: string): Promise<string> => {
-      const { data, error } = await (supabase.rpc as any)("rpc_generate_recipe_share_token", {
-        p_recipe_id: recipeId,
-      });
-      if (error) throw error;
-      if (!data) throw new Error("share_link_failed");
-      return data as string;
-    },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["myRecipeDraft"] }),
-  });
+type TokenResult = { grant_id: string; token: string; expires_at: string };
+type CloneResult = { recipe_id: string; replayed: boolean };
+
+function requireEnabled(): void {
+  if (!PRIVATE_RECIPE_SHARE_ENABLED) throw new Error("recipe_share_feature_disabled");
 }
 
-/** Sahip — "Paylaşımı durdur": mevcut linki geçersiz kılar. */
-export function useRevokeRecipeShareLink() {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: async (recipeId: string): Promise<void> => {
-      const { error } = await (supabase.rpc as any)("rpc_revoke_recipe_share_token", {
-        p_recipe_id: recipeId,
-      });
-      if (error) throw error;
-    },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["myRecipeDraft"] }),
-  });
+export function recipeShareErrorCode(error: unknown): string {
+  const message =
+    typeof error === "object" && error && "message" in error
+      ? String((error as { message: unknown }).message)
+      : String(error ?? "");
+  return (
+    [
+      "recipe_share_invalid_or_inactive",
+      "recipe_share_cannot_clone_own",
+      "recipe_share_idempotency_conflict",
+      "recipe_share_operation_in_progress",
+      "recipe_share_invalid_expiry",
+      "recipe_share_source_not_eligible",
+      "recipe_share_grant_not_active",
+    ].find((code) => message.includes(code)) ?? "recipe_share_unknown"
+  );
 }
 
-/** Ziyaretçi — link önizlemesi. anon dahil çağrılabilir; token geçersizse null döner. */
-export function useSharedRecipe(token: string | undefined) {
+export function expiryFromNow(milliseconds: number): string {
+  return new Date(Date.now() + milliseconds).toISOString();
+}
+
+export function useRecipeShareGrants(recipeId: string) {
   return useQuery({
-    queryKey: ["sharedRecipe", token],
-    enabled: !!token,
-    queryFn: async (): Promise<SharedRecipe | null> => {
-      const { data, error } = await (supabase.rpc as any)("rpc_get_shared_recipe", {
-        p_share_token: token,
+    queryKey: ["recipeShareGrants", recipeId],
+    enabled: PRIVATE_RECIPE_SHARE_ENABLED && !!recipeId,
+    queryFn: async (): Promise<RecipeShareGrant[]> => {
+      requireEnabled();
+      const { data, error } = await supabase.rpc("rpc_list_recipe_share_grants", {
+        p_recipe_id: recipeId,
       });
       if (error) throw error;
-      return (data as SharedRecipe | null) ?? null;
+      return (data ?? []) as unknown as RecipeShareGrant[];
     },
   });
 }
 
-/** Ziyaretçi — "Defterime kaydet": backend kendi tarifini klonlamayı reddeder. */
-export function useCloneSharedRecipe() {
+export function useCreateRecipeShareGrant(recipeId: string) {
+  const client = useQueryClient();
   return useMutation({
-    mutationFn: async (token: string): Promise<string> => {
-      const { data, error } = await (supabase.rpc as any)("rpc_clone_shared_recipe", {
-        p_share_token: token,
+    mutationFn: async (expiresAt: string): Promise<TokenResult> => {
+      requireEnabled();
+      const { data, error } = await supabase.rpc("rpc_create_recipe_share_grant", {
+        p_recipe_id: recipeId,
+        p_expires_at: expiresAt,
       });
       if (error) throw error;
-      if (!data) throw new Error("clone_failed");
-      return data as string;
+      return data as unknown as TokenResult;
+    },
+    onSuccess: () => client.invalidateQueries({ queryKey: ["recipeShareGrants", recipeId] }),
+  });
+}
+
+export function useRotateRecipeShareGrant(recipeId: string) {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ grantId, expiresAt }: { grantId: string; expiresAt: string }) => {
+      requireEnabled();
+      const { data, error } = await supabase.rpc("rpc_rotate_recipe_share_grant", {
+        p_grant_id: grantId,
+        p_expires_at: expiresAt,
+      });
+      if (error) throw error;
+      return data as unknown as TokenResult;
+    },
+    onSuccess: () => client.invalidateQueries({ queryKey: ["recipeShareGrants", recipeId] }),
+  });
+}
+
+export function useRevokeRecipeShareGrant(recipeId: string) {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: async (grantId: string) => {
+      requireEnabled();
+      const { error } = await supabase.rpc("rpc_revoke_recipe_share_grant", {
+        p_grant_id: grantId,
+      });
+      if (error) throw error;
+    },
+    onSuccess: () => client.invalidateQueries({ queryKey: ["recipeShareGrants", recipeId] }),
+  });
+}
+
+export function useResolveRecipeShare() {
+  return useMutation({
+    mutationFn: async (token: string): Promise<SharedRecipePreview> => {
+      requireEnabled();
+      const { data, error } = await supabase.rpc("rpc_resolve_recipe_share", { p_token: token });
+      if (error) throw error;
+      return data as unknown as SharedRecipePreview;
+    },
+  });
+}
+
+export function useCloneSharedRecipe() {
+  const keys = useRef(createRetryOperationKeyStore());
+  return useMutation({
+    mutationFn: async ({
+      token,
+      actionId,
+    }: {
+      token: string;
+      actionId: string;
+    }): Promise<CloneResult> => {
+      requireEnabled();
+      const operationKey = keys.current.acquire(actionId);
+      const { data, error } = await supabase.rpc("rpc_clone_shared_recipe", {
+        p_token: token,
+        p_operation_key: operationKey,
+      });
+      if (error) throw error;
+      keys.current.succeed(actionId, operationKey);
+      return data as unknown as CloneResult;
     },
   });
 }
