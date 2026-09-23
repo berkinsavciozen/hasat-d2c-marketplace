@@ -3205,6 +3205,10 @@ export type Database = {
         Args: { p_operation_key: string; p_source_recipe_id: string }
         Returns: Json
       }
+      rpc_clone_shared_recipe: {
+        Args: { p_operation_key: string; p_token: string }
+        Returns: Json
+      }
       rpc_create_private_recipe: {
         Args: {
           p_operation_key: string
@@ -3215,12 +3219,20 @@ export type Database = {
         }
         Returns: Json
       }
+      rpc_create_recipe_share_grant: {
+        Args: { p_expires_at: string; p_recipe_id: string }
+        Returns: Json
+      }
       rpc_get_private_recipe_operation: {
         Args: {
           p_operation_key: string
           p_operation_type: string
           p_input_hash: string
         }
+        Returns: Json
+      }
+      rpc_list_recipe_share_grants: {
+        Args: { p_recipe_id?: string | null }
         Returns: Json
       }
       rpc_create_offer: {
@@ -3263,6 +3275,18 @@ export type Database = {
         }
       }
       rpc_delete_own_account: { Args: never; Returns: undefined }
+      rpc_resolve_recipe_share: {
+        Args: { p_token: string }
+        Returns: Json
+      }
+      rpc_revoke_recipe_share_grant: {
+        Args: { p_grant_id: string }
+        Returns: Json
+      }
+      rpc_rotate_recipe_share_grant: {
+        Args: { p_expires_at: string; p_grant_id: string }
+        Returns: Json
+      }
       rpc_recipe_availability: {
         Args: { p_recipe_id: string }
         Returns: {
