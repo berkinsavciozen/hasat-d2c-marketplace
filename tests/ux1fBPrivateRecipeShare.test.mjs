@@ -7,9 +7,32 @@ import {
   hasPendingShareToken,
   withPendingShareToken,
 } from "../src/lib/hasat/recipeShareSecurity.ts";
+import {
+  expiryFromNow,
+  RECIPE_SHARE_DURATIONS,
+} from "../src/lib/hasat/recipeShareExpiry.ts";
 
 const read = (path) => readFile(new URL(path, import.meta.url), "utf8");
 const TOKEN = "a".repeat(64);
+
+test("share durations match the client contract and remain valid after transport delay", () => {
+  assert.deepEqual(
+    RECIPE_SHARE_DURATIONS.map(({ label }) => label),
+    ["10 dakika", "1 saat", "1 gün", "7 gün", "30 gün"],
+  );
+
+  const clientNow = Date.UTC(2026, 8, 23, 12, 0, 0);
+  const backendNow = clientNow + 7_000;
+  const minimumExpiry = Date.parse(
+    expiryFromNow(RECIPE_SHARE_DURATIONS[0].value, clientNow),
+  );
+  const maximumExpiry = Date.parse(
+    expiryFromNow(RECIPE_SHARE_DURATIONS[4].value, clientNow),
+  );
+
+  assert.ok(minimumExpiry >= backendNow + 5 * 60_000);
+  assert.ok(maximumExpiry <= backendNow + 30 * 24 * 60 * 60_000);
+});
 
 test("fragment is captured in memory and synchronously removed from the address", async () => {
   let replaced = "";
