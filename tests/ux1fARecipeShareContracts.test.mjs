@@ -1,13 +1,21 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { readFile } from "node:fs/promises";
+import { readFile, readdir } from "node:fs/promises";
 
 const read = (path) => readFile(new URL(path, import.meta.url), "utf8");
+const migrationPath =
+  "../supabase/migrations/20260923122740_ux1f_a_secure_private_recipe_share.sql";
+
+test("UX-1F-A repository history matches the production migration version", async () => {
+  const migrationsUrl = new URL("../supabase/migrations/", import.meta.url);
+  const files = await readdir(migrationsUrl);
+  const matches = files.filter((file) => file.endsWith("_ux1f_a_secure_private_recipe_share.sql"));
+
+  assert.deepEqual(matches, ["20260923122740_ux1f_a_secure_private_recipe_share.sql"]);
+});
 
 test("UX-1F-A stores only a digest in private RLS ledgers", async () => {
-  const migration = await read(
-    "../supabase/migrations/20260923071622_ux1f_a_secure_private_recipe_share.sql",
-  );
+  const migration = await read(migrationPath);
   assert.match(migration, /create table private\.recipe_share_grants/);
   assert.match(migration, /create table private\.recipe_share_clone_operations/);
   assert.match(migration, /token_digest bytea not null unique/);
@@ -25,9 +33,7 @@ test("UX-1F-A stores only a digest in private RLS ledgers", async () => {
 });
 
 test("UX-1F-A enforces owner state, expiry, fail-closed resolution and media-free snapshots", async () => {
-  const migration = await read(
-    "../supabase/migrations/20260923071622_ux1f_a_secure_private_recipe_share.sql",
-  );
+  const migration = await read(migrationPath);
   assert.match(migration, /r\.owner_id = v_owner_id/);
   assert.match(migration, /r\.visibility = 'private'/);
   assert.match(migration, /r\.status = 'draft'/);
@@ -37,7 +43,9 @@ test("UX-1F-A enforces owner state, expiry, fail-closed resolution and media-fre
   assert.match(migration, /recipe_share_invalid_or_inactive/);
   assert.match(migration, /revoke_reason = 'rotated'/);
   assert.doesNotMatch(
-    migration.match(/create or replace function private\.resolve_recipe_share[\s\S]*?\nend;\n\$\$;/)?.[0] ?? "",
+    migration.match(
+      /create or replace function private\.resolve_recipe_share[\s\S]*?\nend;\n\$\$;/,
+    )?.[0] ?? "",
     /photo_url|cover_photo_url/,
   );
   assert.match(migration, /cloned_from_recipe_id[\s\S]*?'shared_clone'[\s\S]*?null/);
@@ -48,9 +56,7 @@ test("UX-1F-A enforces owner state, expiry, fail-closed resolution and media-fre
 });
 
 test("UX-1F-A clone operation keys bind canonical grant and source identity", async () => {
-  const migration = await read(
-    "../supabase/migrations/20260923071622_ux1f_a_secure_private_recipe_share.sql",
-  );
+  const migration = await read(migrationPath);
   assert.match(migration, /primary key \(owner_id, operation_key\)/);
   assert.match(migration, /v_token_fingerprint := sha256\(convert_to\(p_token, 'UTF8'\)\)/);
   assert.match(migration, /'contract_version', 1/);
@@ -71,9 +77,7 @@ test("UX-1F-A clone operation keys bind canonical grant and source identity", as
   const completedReplayLookup = cloneFunction.indexOf(
     "from private.recipe_share_clone_operations o",
   );
-  const activeGrantLookup = cloneFunction.indexOf(
-    "from private.recipe_share_grants g",
-  );
+  const activeGrantLookup = cloneFunction.indexOf("from private.recipe_share_grants g");
   assert.ok(completedReplayLookup >= 0);
   assert.ok(activeGrantLookup >= 0);
   assert.ok(
@@ -87,19 +91,14 @@ test("UX-1F-A clone operation keys bind canonical grant and source identity", as
 });
 
 test("UX-1F-A keeps privilege bridges private and public wrappers invoker-only", async () => {
-  const migration = await read(
-    "../supabase/migrations/20260923071622_ux1f_a_secure_private_recipe_share.sql",
-  );
+  const migration = await read(migrationPath);
   const publicWrappers = migration.match(
     /create or replace function public\.rpc_create_recipe_share_grant[\s\S]*?comment on function/s,
   )?.[0];
   assert.ok(publicWrappers);
   assert.doesNotMatch(publicWrappers, /security definer/i);
   assert.match(publicWrappers, /security invoker set search_path = ''/i);
-  assert.match(
-    migration,
-    /security definer\nset search_path = ''/i,
-  );
+  assert.match(migration, /security definer\nset search_path = ''/i);
   assert.match(
     migration,
     /revoke all on function public\.rpc_resolve_recipe_share\(text\)[\s\S]*?from public, anon, authenticated, service_role/,
@@ -135,7 +134,7 @@ test("UX-1F-B handoff forbids token-bearing paths and defines coordinated cutove
   const doc = await read("../docs/runbooks/ux1f-a-private-recipe-share.md");
   assert.match(doc, /\/tarif-paylasim#share=<token>/);
   assert.match(doc, /must never\ncontain the token/);
-  assert.match(doc, /Disable the legacy share entry point/);
+  assert.match(doc, /legacy share entry point.*disabled/i);
   assert.match(doc, /no new WARN\/ERROR/);
   assert.match(doc, /Do not restore old raw tokens/);
 });

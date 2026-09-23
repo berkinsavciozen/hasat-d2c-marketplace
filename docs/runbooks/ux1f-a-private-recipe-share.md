@@ -1,8 +1,13 @@
 # UX-1F-A secure private recipe share contract
 
-Status: draft PR contract only. No production migration, history repair, Edge
-deploy, application deploy, merge, or user-data write has been performed.
-UX-1F-B web/mobile work is explicitly out of scope.
+Status: the reviewed SQL was applied to production on 2026-09-23 and recorded
+as `20260923122740_ux1f_a_secure_private_recipe_share`. Its stored SQL SHA-256
+matches the reviewed blob (`e962e291dcebf67adbf0b1dbe821f6d1eda19a03b69fc47320bdde55cfe0480c`).
+Validation stopped before synthetic smoke because the repository still used a
+pre-apply filename. This repository-only reconciliation aligns the filename
+with production without changing a SQL byte. No production history repair/replay,
+additional database write, feature enablement, deploy, or TestFlight action is
+part of this change.
 
 ## 1. Audited production delta
 
@@ -171,20 +176,20 @@ does not claim to fix them. Post-apply must show no new WARN/ERROR finding or
 count. The new definers are non-exposed private helpers; the public wrappers are
 invokers.
 
-## 7. Production rollout and read-only verification
+## 7. Production rollout and remaining verification
 
-1. Obtain ACCEPTED on this draft; merge separately. Do not apply from the PR.
-2. UX-1F-B prepares a dormant/feature-flagged client using exactly this API.
-3. Record fresh migration-history, function ACL, table ACL/RLS, and security/
-   performance advisor baselines. Stop if `20260923071622` already exists or
-   the reviewed Git blob differs.
-4. Disable the legacy share entry point. Existing raw links are intentionally
-   invalidated by the migration and must not remain advertised.
-5. Apply only
-   `20260923071622_ux1f_a_secure_private_recipe_share.sql` through the approved
-   production migration path.
-6. Read-only verify:
-   - migration history has the exact version/name once;
+1. Merge this repository-only rename only after independent acceptance. The
+   canonical migration path is
+   `20260923122740_ux1f_a_secure_private_recipe_share.sql`; no retired copy may
+   remain.
+2. Before resuming rollout, prove the canonical Git blob and production stored
+   SQL both have SHA-256
+   `e962e291dcebf67adbf0b1dbe821f6d1eda19a03b69fc47320bdde55cfe0480c`.
+3. Do not re-apply the migration and do not repair/replay production history.
+   Read-only verification must confirm production history has exactly one
+   `20260923122740_ux1f_a_secure_private_recipe_share` record.
+4. Preserve the completed read-only gates:
+   - the legacy share entry point remains disabled;
    - legacy four signatures are absent;
    - six new public wrappers are invokers and authenticated-only;
    - private helpers have empty search paths and no anon/service-role execute;
@@ -193,11 +198,13 @@ invokers.
      is validated;
    - F0 recipe/ingredient ACL allow-lists are unchanged;
    - security/performance advisor delta contains no new WARN/ERROR.
-7. Run synthetic owner/recipient smoke tests without logging token or payload.
+5. After this PR is merged and independently accepted, obtain separate explicit
+   production-write authorization before running synthetic owner/recipient smoke
+   tests without logging token or payload.
    Verify in order that a completed clone replays the same recipe after grant
    revoke, grant expiry, and source/grant deletion; a different token on the
    same key conflicts; and a rolled-back first attempt is not treated as replay.
-8. Enable UX-1F-B only after every gate passes.
+6. Enable UX-1F-B only after every remaining gate passes.
 
 ## 8. Safe rollback / containment
 
