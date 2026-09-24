@@ -218,7 +218,7 @@ export async function fetchRecipeBySlug(slug: string): Promise<{
   // link a bot only sees after JS runs doesn't count for discoverability.
   const keyCrops = Array.from(
     new Set(
-      ((ingredientRows ?? []) as RecipeIngredientRow[])
+      ((ingredientRows ?? []) as unknown as RecipeIngredientRow[])
         .filter((i) => i.is_key_ingredient && i.crop)
         .map((i) => i.crop as string),
     ),
@@ -254,7 +254,7 @@ export async function fetchRecipeBySlug(slug: string): Promise<{
   return {
     recipe: { ...withCover, ...mapRecipeFacts(recipeRow), diet_tags: recipeRow.diet_tags ?? [] },
     steps: (stepRows ?? []) as RecipeStepRow[],
-    ingredients: (ingredientRows ?? []) as RecipeIngredientRow[],
+    ingredients: (ingredientRows ?? []) as unknown as RecipeIngredientRow[],
     relatedRecipes,
   };
 }
