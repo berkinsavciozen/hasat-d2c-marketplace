@@ -69,6 +69,7 @@ export interface RecipeIngredientRow {
   unit: string | null;
   note: string | null;
   is_key_ingredient: boolean;
+  nutrition_exclusion_reason?: string | null;
 }
 
 const RECIPE_BASE_COLUMNS =
@@ -204,7 +205,7 @@ export async function fetchRecipeBySlug(slug: string): Promise<{
         .order("step_no", { ascending: true }),
       supabase
         .from("recipe_ingredients")
-        .select("id, sort_order, crop, free_text_name, quantity, unit, note, is_key_ingredient")
+        .select("id, sort_order, crop, free_text_name, quantity, unit, note, is_key_ingredient, nutrition_exclusion_reason")
         .eq("recipe_id", recipeRow.id)
         .order("sort_order", { ascending: true }),
     ]);
@@ -217,7 +218,7 @@ export async function fetchRecipeBySlug(slug: string): Promise<{
   // link a bot only sees after JS runs doesn't count for discoverability.
   const keyCrops = Array.from(
     new Set(
-      ((ingredientRows ?? []) as RecipeIngredientRow[])
+      ((ingredientRows ?? []) as unknown as RecipeIngredientRow[])
         .filter((i) => i.is_key_ingredient && i.crop)
         .map((i) => i.crop as string),
     ),
@@ -253,7 +254,7 @@ export async function fetchRecipeBySlug(slug: string): Promise<{
   return {
     recipe: { ...withCover, ...mapRecipeFacts(recipeRow), diet_tags: recipeRow.diet_tags ?? [] },
     steps: (stepRows ?? []) as RecipeStepRow[],
-    ingredients: (ingredientRows ?? []) as RecipeIngredientRow[],
+    ingredients: (ingredientRows ?? []) as unknown as RecipeIngredientRow[],
     relatedRecipes,
   };
 }
