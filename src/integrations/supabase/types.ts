@@ -5033,10 +5033,7 @@ export type Database = {
         Args: { p_platform: string; p_token: string }
         Returns: string
       }
-      rpc_resolve_recipe_share: {
-        Args: { p_token: string }
-        Returns: Json
-      }
+      rpc_resolve_recipe_share: { Args: { p_token: string }; Returns: Json }
       rpc_revoke_recipe_share_grant: {
         Args: { p_grant_id: string }
         Returns: Json
