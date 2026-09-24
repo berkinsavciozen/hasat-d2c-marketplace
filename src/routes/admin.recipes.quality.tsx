@@ -31,6 +31,22 @@ export const Route = createFileRoute("/admin/recipes/quality")({
 // Types (mirrors supabase/functions/_shared/recipe-automation/admin/quality.ts response shapes)
 // -----------------------------------------------------------------------------------------------
 
+// DQ-2: backend artık her tarif için tutarlılık sorunları döndürüyor. Hepsi opsiyonel — eski
+// backend'e karşı da ekran eskisi gibi çalışır.
+type QualityIssue = {
+  code: string;
+  severity: "kritik" | "uyari" | "bilgi";
+  message: string;
+  ingredientId?: string;
+  suggestion?: {
+    addAllergen?: string;
+    removeAllergen?: string;
+    addDietTag?: string;
+    removeDietTag?: string;
+    setCrop?: string;
+  };
+};
+
 type QualityListItem = {
   id: string;
   slug: string;
@@ -45,6 +61,10 @@ type QualityListItem = {
   allergensReviewed: boolean;
   ingredientCount: number;
   unresolvedIngredientCount: number;
+  qualityIssues?: QualityIssue[];
+  criticalIssueCount?: number;
+  warningIssueCount?: number;
+  issueCount?: number;
 };
 
 type ListResponse = { recipes: QualityListItem[]; total: number };
@@ -58,6 +78,8 @@ type QualityIngredient = {
   unit: string | null;
   nutritionFoodKey: string | null;
   nutritionExclusionReason: string | null;
+  note?: string | null;
+  ingredientClass?: string | null;
 };
 
 type FoodKeyOption = { foodKey: string; displayName: string };
@@ -83,9 +105,22 @@ type QualityDetail = {
     carbsG: number | null;
     fatG: number | null;
     fiberG: number | null;
+    prepMinutes?: number | null;
+    cookMinutes?: number | null;
+    restMinutes?: number | null;
+    coverPhotoUrl?: string | null;
   };
   ingredients: QualityIngredient[];
+  issues?: QualityIssue[];
 };
+
+type ListMode = "incomplete" | "issues" | "all";
+
+const LIST_MODES: { value: ListMode; label: string }[] = [
+  { value: "incomplete", label: "Eksik veya hatalı" },
+  { value: "issues", label: "Yalnız tutarsızlıklar" },
+  { value: "all", label: "Tümü" },
+];
 
 const EQUIPMENT_SLUGS = Object.keys(EQUIPMENT_LABELS);
 
@@ -108,7 +143,8 @@ function functionErrorMessage(error: unknown): string {
 function AdminRecipeQualityPage() {
   const [key, setKey] = useState("");
   const [submittedKey, setSubmittedKey] = useState<string | null>(null);
-  const [onlyIncomplete, setOnlyIncomplete] = useState(true);
+  const [mode, setMode] = useState<ListMode>("incomplete");
+  const [search, setSearch] = useState("");
   const [selectedRecipeId, setSelectedRecipeId] = useState<string | null>(null);
   const queryClient = useQueryClient();
 
@@ -138,12 +174,12 @@ function AdminRecipeQualityPage() {
   };
 
   const listQuery = useQuery({
-    queryKey: ["admin-recipe-quality", submittedKey, onlyIncomplete],
+    queryKey: ["admin-recipe-quality", submittedKey, mode],
     enabled: !!submittedKey,
     retry: false,
     queryFn: async (): Promise<ListResponse> => {
       try {
-        return (await invoke(onlyIncomplete ? "?incomplete=true" : "", { method: "GET" })) as ListResponse;
+        return (await invoke(`?mode=${mode}`, { method: "GET" })) as ListResponse;
       } catch (error) {
         toast.error(functionErrorMessage(error));
         const anyErr = error as { context?: { status?: number }; status?: number };
@@ -205,10 +241,23 @@ function AdminRecipeQualityPage() {
     );
   }
 
-  const recipes = listQuery.data?.recipes ?? [];
-  const missingEquipmentCount = recipes.filter((r) => !r.hasEquipment).length;
-  const missingNutritionCount = recipes.filter((r) => !r.nutritionComplete).length;
-  const unreviewedAllergensCount = recipes.filter((r) => !r.allergensReviewed).length;
+  const allRecipes = listQuery.data?.recipes ?? [];
+  const missingEquipmentCount = allRecipes.filter((r) => !r.hasEquipment).length;
+  const missingNutritionCount = allRecipes.filter((r) => !r.nutritionComplete).length;
+  const unreviewedAllergensCount = allRecipes.filter((r) => !r.allergensReviewed).length;
+  const criticalRecipesCount = allRecipes.filter((r) => (r.criticalIssueCount ?? 0) > 0).length;
+  const warningRecipesCount = allRecipes.filter((r) => (r.warningIssueCount ?? 0) > 0).length;
+
+  const searchTerm = search.trim().toLocaleLowerCase("tr");
+  const recipes = allRecipes
+    .filter((r) => !searchTerm || r.title.toLocaleLowerCase("tr").includes(searchTerm) || r.slug.includes(searchTerm))
+    .sort((a, b) => {
+      const crit = (b.criticalIssueCount ?? 0) - (a.criticalIssueCount ?? 0);
+      if (crit !== 0) return crit;
+      const warn = (b.warningIssueCount ?? 0) - (a.warningIssueCount ?? 0);
+      if (warn !== 0) return warn;
+      return b.createdAt.localeCompare(a.createdAt);
+    });
 
   return (
     <div className="min-h-screen bg-background">
@@ -216,7 +265,7 @@ function AdminRecipeQualityPage() {
         <header className="flex items-center justify-between">
           <div>
             <h1 className="font-serif text-2xl">Tarif Veri Kalitesi</h1>
-            <p className="text-xs text-hmuted mt-1">Yayınlanan katalog — ekipman/besin/alerjen tamlığı</p>
+            <p className="text-xs text-hmuted mt-1">Yayınlanan katalog — ekipman/besin/alerjen tamlığı ve tutarlılık</p>
           </div>
           <div className="flex items-center gap-4">
             <Link to="/admin/recipes" className="text-xs text-hmuted underline">
@@ -228,16 +277,37 @@ function AdminRecipeQualityPage() {
           </div>
         </header>
 
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
           <StatCard label="Ekipman eksik" accent="saffron" value={missingEquipmentCount} />
           <StatCard label="Besin değeri eksik" accent="hred" value={missingNutritionCount} />
           <StatCard label="Alerjen incelenmemiş" accent="gold" value={unreviewedAllergensCount} />
+          <StatCard label="Kritik tutarsızlık" accent="hred" value={criticalRecipesCount} />
+          <StatCard label="Uyarı" accent="saffron" value={warningRecipesCount} />
         </div>
 
-        <label className="flex items-center gap-2 text-sm cursor-pointer w-fit">
-          <Checkbox checked={onlyIncomplete} onCheckedChange={(v) => setOnlyIncomplete(v === true)} />
-          Yalnız eksiği olanlar
-        </label>
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="inline-flex rounded-lg border p-0.5">
+            {LIST_MODES.map((m) => (
+              <button
+                key={m.value}
+                type="button"
+                onClick={() => setMode(m.value)}
+                className={cn(
+                  "rounded-md px-3 py-1.5 text-xs font-medium transition-colors",
+                  mode === m.value ? "bg-primary text-primary-foreground" : "text-hmuted hover:text-foreground",
+                )}
+              >
+                {m.label}
+              </button>
+            ))}
+          </div>
+          <Input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Başlıkta ara…"
+            className="text-sm max-w-[240px]"
+          />
+        </div>
 
         <SectionCard title="Tarifler">
           {listQuery.isLoading ? (
@@ -253,6 +323,7 @@ function AdminRecipeQualityPage() {
                     <th className="text-left py-2 px-3">Ekipman</th>
                     <th className="text-left py-2 px-3">Besin</th>
                     <th className="text-left py-2 px-3">Alerjen</th>
+                    <th className="text-left py-2 px-3">Tutarsızlık</th>
                     <th className="text-right py-2 pl-3">Malzeme</th>
                   </tr>
                 </thead>
@@ -282,6 +353,9 @@ function AdminRecipeQualityPage() {
                       </td>
                       <td className="py-2 px-3">
                         <QualityBadge ok={r.allergensReviewed} okLabel="İncelendi" badLabel="Bekliyor" />
+                      </td>
+                      <td className="py-2 px-3">
+                        <IssueCountBadges critical={r.criticalIssueCount ?? 0} warning={r.warningIssueCount ?? 0} />
                       </td>
                       <td className="text-right py-2 pl-3 font-mono text-xs">
                         {r.ingredientCount}
@@ -327,8 +401,26 @@ function QualityBadge({ ok, okLabel, badLabel }: { ok: boolean; okLabel: string;
   );
 }
 
+function IssueCountBadges({ critical, warning }: { critical: number; warning: number }) {
+  if (critical === 0 && warning === 0) return <span className="text-xs text-hmuted">—</span>;
+  return (
+    <span className="inline-flex flex-wrap gap-1">
+      {critical > 0 && (
+        <span className="inline-block rounded-full px-2 py-0.5 text-xs bg-[color-mix(in_oklab,var(--hred)_15%,transparent)] text-[color:var(--hred)]">
+          {critical} kritik
+        </span>
+      )}
+      {warning > 0 && (
+        <span className="inline-block rounded-full px-2 py-0.5 text-xs bg-[color-mix(in_oklab,var(--saffron)_20%,transparent)] text-[color:var(--saffron)]">
+          {warning} uyarı
+        </span>
+      )}
+    </span>
+  );
+}
+
 // -----------------------------------------------------------------------------------------------
-// Detail panel — allergens / facts / nutrition ingredients + recalculate
+// Detail panel — issues / meta / allergens / facts / nutrition ingredients + recalculate
 // -----------------------------------------------------------------------------------------------
 
 function RecipeQualityDetailPanel({
@@ -372,6 +464,16 @@ function RecipeQualityDetailPanel({
     onError: (error) => toast.error(functionErrorMessage(error)),
   });
 
+  const metaMutation = useMutation({
+    mutationFn: (body: { servings: number; prepMinutes: number | null; cookMinutes: number | null; restMinutes: number | null }) =>
+      invoke(`/${recipeId}/meta`, { method: "PATCH", body }),
+    onSuccess: () => {
+      toast.success("Tarif bilgileri kaydedildi");
+      onSaved();
+    },
+    onError: (error) => toast.error(functionErrorMessage(error)),
+  });
+
   const ingredientMutation = useMutation({
     mutationFn: ({ ingredientId, body }: { ingredientId: string; body: Record<string, unknown> }) =>
       invoke(`/${recipeId}/ingredients/${ingredientId}`, { method: "PATCH", body }),
@@ -391,6 +493,12 @@ function RecipeQualityDetailPanel({
     onError: (error) => toast.error(functionErrorMessage(error)),
   });
 
+  // Öneri uygulama sinyalleri: "Öneriyi uygula" ilgili formun state'ini günceller, kaydetmez.
+  const [allergenSuggestion, setAllergenSuggestion] = useState<{ add?: string; remove?: string; nonce: number } | null>(null);
+  const [dietTagSuggestion, setDietTagSuggestion] = useState<{ add?: string; remove?: string; nonce: number } | null>(null);
+  const [cropSuggestion, setCropSuggestion] = useState<{ ingredientId: string; crop: string; nonce: number } | null>(null);
+  const [highlightedIngredientId, setHighlightedIngredientId] = useState<string | null>(null);
+
   if (isLoading || !detail) {
     return (
       <SectionCard title="Tarif Detayı">
@@ -400,6 +508,28 @@ function RecipeQualityDetailPanel({
   }
 
   const r = detail.recipe;
+  const issues = detail.issues ?? [];
+  const hasCoverNotHero = issues.some((i) => i.code === "COVER_NOT_HERO");
+
+  const applySuggestion = (issue: QualityIssue) => {
+    const s = issue.suggestion;
+    if (!s) return;
+    if (s.addAllergen || s.removeAllergen) {
+      setAllergenSuggestion({ add: s.addAllergen, remove: s.removeAllergen, nonce: Date.now() });
+    }
+    if (s.addDietTag || s.removeDietTag) {
+      setDietTagSuggestion({ add: s.addDietTag, remove: s.removeDietTag, nonce: Date.now() });
+    }
+    if (s.setCrop && issue.ingredientId) {
+      setCropSuggestion({ ingredientId: issue.ingredientId, crop: s.setCrop, nonce: Date.now() });
+    }
+    toast.success("Öneri forma uygulandı — kaydetmek için ilgili bölümün Kaydet butonunu kullanın");
+  };
+
+  const scrollToIngredient = (ingredientId: string) => {
+    setHighlightedIngredientId(ingredientId);
+    document.getElementById(`ing-${ingredientId}`)?.scrollIntoView({ behavior: "smooth", block: "center" });
+  };
 
   return (
     <div className="space-y-4">
@@ -410,9 +540,36 @@ function RecipeQualityDetailPanel({
         </button>
       </div>
 
+      {r.coverPhotoUrl && (
+        <SectionCard title="Kapak Önizlemesi">
+          <div className="relative w-full max-w-md overflow-hidden rounded-lg border" style={{ aspectRatio: "16 / 9" }}>
+            <img src={r.coverPhotoUrl} alt={r.title} className="h-full w-full object-cover" />
+            {hasCoverNotHero && (
+              <span className="absolute left-2 top-2 rounded-full bg-[color-mix(in_oklab,var(--saffron)_90%,transparent)] px-2 py-0.5 text-xs font-medium text-white">
+                kapak 16:9 değil
+              </span>
+            )}
+          </div>
+        </SectionCard>
+      )}
+
+      {issues.length > 0 && (
+        <IssuesSection issues={issues} onApplySuggestion={applySuggestion} onShowIngredient={scrollToIngredient} />
+      )}
+
+      <MetaSection
+        servings={r.servings}
+        prepMinutes={r.prepMinutes ?? null}
+        cookMinutes={r.cookMinutes ?? null}
+        restMinutes={r.restMinutes ?? null}
+        isSaving={metaMutation.isPending}
+        onSave={(body) => metaMutation.mutate(body)}
+      />
+
       <AllergenSection
         initialLabels={(r.allergenLabels ?? []) as AllergenSlug[]}
         initialReviewed={r.allergensReviewed}
+        suggestion={allergenSuggestion}
         isSaving={allergensMutation.isPending}
         onSave={(labels, reviewed) => allergensMutation.mutate({ allergenLabels: labels, reviewed })}
       />
@@ -420,6 +577,7 @@ function RecipeQualityDetailPanel({
       <FactsSection
         initialEquipment={r.requiredEquipment ?? []}
         initialDietTags={r.dietTags}
+        suggestion={dietTagSuggestion}
         isSaving={factsMutation.isPending}
         onSave={(equipment, dietTags) => factsMutation.mutate({ requiredEquipment: equipment, dietTags })}
       />
@@ -454,6 +612,8 @@ function RecipeQualityDetailPanel({
                 ingredient={ing}
                 foodKeyOptions={detail.nutritionFoodKeyOptions}
                 isSaving={ingredientMutation.isPending}
+                highlighted={highlightedIngredientId === ing.id}
+                cropSuggestion={cropSuggestion?.ingredientId === ing.id ? cropSuggestion : null}
                 onSave={(body) => ingredientMutation.mutate({ ingredientId: ing.id, body })}
               />
             ))}
@@ -464,14 +624,169 @@ function RecipeQualityDetailPanel({
   );
 }
 
+// -----------------------------------------------------------------------------------------------
+// DQ-2: Veri tutarlılığı — severity'ye göre sorun satırları; bilgi seviyesi katlanır
+// -----------------------------------------------------------------------------------------------
+
+const SEVERITY_STYLES: Record<QualityIssue["severity"], string> = {
+  kritik: "text-[color:var(--hred)]",
+  uyari: "text-[color:var(--saffron)]",
+  bilgi: "text-hmuted",
+};
+
+const SEVERITY_DOT: Record<QualityIssue["severity"], string> = {
+  kritik: "bg-[color:var(--hred)]",
+  uyari: "bg-[color:var(--saffron)]",
+  bilgi: "bg-[color:var(--info,var(--hmuted))]",
+};
+
+function IssuesSection({
+  issues,
+  onApplySuggestion,
+  onShowIngredient,
+}: {
+  issues: QualityIssue[];
+  onApplySuggestion: (issue: QualityIssue) => void;
+  onShowIngredient: (ingredientId: string) => void;
+}) {
+  const [showInfo, setShowInfo] = useState(false);
+  const visible = issues.filter((i) => i.severity !== "bilgi");
+  const infoIssues = issues.filter((i) => i.severity === "bilgi");
+
+  const renderIssue = (issue: QualityIssue, idx: number) => (
+    <li
+      key={`${issue.code}-${idx}`}
+      className={cn("flex flex-wrap items-center gap-2 text-xs", issue.ingredientId && "cursor-pointer")}
+      onClick={() => issue.ingredientId && onShowIngredient(issue.ingredientId)}
+    >
+      <span className={cn("inline-block h-2 w-2 rounded-full shrink-0", SEVERITY_DOT[issue.severity])} />
+      <span className={SEVERITY_STYLES[issue.severity]}>{issue.message}</span>
+      {issue.suggestion && (
+        <Button
+          type="button"
+          size="sm"
+          variant="outline"
+          className="h-6 px-2 text-[11px]"
+          onClick={(e) => {
+            e.stopPropagation();
+            onApplySuggestion(issue);
+          }}
+        >
+          Öneriyi uygula
+        </Button>
+      )}
+    </li>
+  );
+
+  return (
+    <SectionCard title="Veri tutarlılığı">
+      <ul className="space-y-2">{visible.map(renderIssue)}</ul>
+      {infoIssues.length > 0 && (
+        <div className="mt-2">
+          <button type="button" onClick={() => setShowInfo((v) => !v)} className="text-xs text-hmuted underline">
+            {showInfo ? "Diğer notları gizle" : `Diğer notlar (${infoIssues.length})`}
+          </button>
+          {showInfo && <ul className="mt-2 space-y-2">{infoIssues.map(renderIssue)}</ul>}
+        </div>
+      )}
+    </SectionCard>
+  );
+}
+
+// -----------------------------------------------------------------------------------------------
+// DQ-2: Tarif bilgileri — porsiyon + süreler, PATCH /meta
+// -----------------------------------------------------------------------------------------------
+
+function MetaSection({
+  servings,
+  prepMinutes,
+  cookMinutes,
+  restMinutes,
+  isSaving,
+  onSave,
+}: {
+  servings: number | null;
+  prepMinutes: number | null;
+  cookMinutes: number | null;
+  restMinutes: number | null;
+  isSaving: boolean;
+  onSave: (body: { servings: number; prepMinutes: number | null; cookMinutes: number | null; restMinutes: number | null }) => void;
+}) {
+  const [servingsStr, setServingsStr] = useState(servings != null ? String(servings) : "");
+  const [prepStr, setPrepStr] = useState(prepMinutes != null ? String(prepMinutes) : "");
+  const [cookStr, setCookStr] = useState(cookMinutes != null ? String(cookMinutes) : "");
+  const [restStr, setRestStr] = useState(restMinutes != null ? String(restMinutes) : "");
+
+  useEffect(() => {
+    setServingsStr(servings != null ? String(servings) : "");
+    setPrepStr(prepMinutes != null ? String(prepMinutes) : "");
+    setCookStr(cookMinutes != null ? String(cookMinutes) : "");
+    setRestStr(restMinutes != null ? String(restMinutes) : "");
+  }, [servings, prepMinutes, cookMinutes, restMinutes]);
+
+  const parseMinutes = (v: string): number | null | undefined => {
+    const t = v.trim();
+    if (t === "") return null;
+    const n = Number(t);
+    return Number.isInteger(n) && n >= 0 ? n : undefined;
+  };
+
+  const save = () => {
+    const servingsNum = Number(servingsStr);
+    if (!Number.isInteger(servingsNum) || servingsNum <= 0) {
+      toast.error("Porsiyon pozitif tam sayı olmalı");
+      return;
+    }
+    const prep = parseMinutes(prepStr);
+    const cook = parseMinutes(cookStr);
+    const rest = parseMinutes(restStr);
+    if (prep === undefined || cook === undefined || rest === undefined) {
+      toast.error("Süreler boş ya da negatif olmayan tam sayı olmalı");
+      return;
+    }
+    onSave({ servings: servingsNum, prepMinutes: prep, cookMinutes: cook, restMinutes: rest });
+  };
+
+  return (
+    <SectionCard title="Tarif bilgileri">
+      <div className="space-y-3">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+          <div>
+            <label className="text-xs text-hmuted">Porsiyon</label>
+            <Input type="number" min={1} value={servingsStr} onChange={(e) => setServingsStr(e.target.value)} className="text-sm" />
+          </div>
+          <div>
+            <label className="text-xs text-hmuted">Hazırlık (dk)</label>
+            <Input type="number" min={0} value={prepStr} onChange={(e) => setPrepStr(e.target.value)} className="text-sm" />
+          </div>
+          <div>
+            <label className="text-xs text-hmuted">Pişirme (dk)</label>
+            <Input type="number" min={0} value={cookStr} onChange={(e) => setCookStr(e.target.value)} className="text-sm" />
+          </div>
+          <div>
+            <label className="text-xs text-hmuted">Dinlenme (dk)</label>
+            <Input type="number" min={0} value={restStr} onChange={(e) => setRestStr(e.target.value)} className="text-sm" />
+          </div>
+        </div>
+        <p className="text-xs text-hmuted">Porsiyon değişince besin değeri kaydettikten sonra yeniden hesaplanır.</p>
+        <Button size="sm" disabled={isSaving} onClick={save}>
+          Kaydet
+        </Button>
+      </div>
+    </SectionCard>
+  );
+}
+
 function AllergenSection({
   initialLabels,
   initialReviewed,
+  suggestion,
   isSaving,
   onSave,
 }: {
   initialLabels: AllergenSlug[];
   initialReviewed: boolean;
+  suggestion: { add?: string; remove?: string; nonce: number } | null;
   isSaving: boolean;
   onSave: (labels: string[], reviewed: boolean) => void;
 }) {
@@ -483,6 +798,16 @@ function AllergenSection({
     setReviewed(initialReviewed);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialLabels.join(","), initialReviewed]);
+
+  useEffect(() => {
+    if (!suggestion) return;
+    setLabels((prev) => {
+      const next = new Set(prev);
+      if (suggestion.add) next.add(suggestion.add);
+      if (suggestion.remove) next.delete(suggestion.remove);
+      return next;
+    });
+  }, [suggestion]);
 
   return (
     <SectionCard title="Alerjen">
@@ -520,11 +845,13 @@ function AllergenSection({
 function FactsSection({
   initialEquipment,
   initialDietTags,
+  suggestion,
   isSaving,
   onSave,
 }: {
   initialEquipment: string[];
   initialDietTags: string[];
+  suggestion: { add?: string; remove?: string; nonce: number } | null;
   isSaving: boolean;
   onSave: (equipment: string[], dietTags: string[]) => void;
 }) {
@@ -537,6 +864,16 @@ function FactsSection({
     setDietTags(initialDietTags);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialEquipment.join(","), initialDietTags.join(",")]);
+
+  useEffect(() => {
+    if (!suggestion) return;
+    setDietTags((prev) => {
+      let next = prev;
+      if (suggestion.remove) next = next.filter((t) => t !== suggestion.remove);
+      if (suggestion.add && !next.includes(suggestion.add)) next = [...next, suggestion.add];
+      return next;
+    });
+  }, [suggestion]);
 
   const addTag = () => {
     const t = newTag.trim();
@@ -617,11 +954,15 @@ function IngredientRow({
   ingredient,
   foodKeyOptions,
   isSaving,
+  highlighted,
+  cropSuggestion,
   onSave,
 }: {
   ingredient: QualityIngredient;
   foodKeyOptions: FoodKeyOption[];
   isSaving: boolean;
+  highlighted: boolean;
+  cropSuggestion: { crop: string; nonce: number } | null;
   onSave: (body: Record<string, unknown>) => void;
 }) {
   const [crop, setCrop] = useState(ingredient.crop ?? "");
@@ -630,7 +971,12 @@ function IngredientRow({
   const [unit, setUnit] = useState(ingredient.unit ?? "");
   const [nutritionFoodKey, setNutritionFoodKey] = useState(ingredient.nutritionFoodKey ?? "");
   const [nutritionExclusionReason, setNutritionExclusionReason] = useState(ingredient.nutritionExclusionReason ?? "");
+  const [note, setNote] = useState(ingredient.note ?? "");
   const [foodKeyOpen, setFoodKeyOpen] = useState(false);
+
+  useEffect(() => {
+    if (cropSuggestion) setCrop(cropSuggestion.crop);
+  }, [cropSuggestion]);
 
   const selectedFoodKeyLabel = useMemo(
     () => foodKeyOptions.find((o) => o.foodKey === nutritionFoodKey)?.displayName,
@@ -647,11 +993,18 @@ function IngredientRow({
       // A food key and an exclusion reason can never both be set (recipe_ingredients' own CHECK) —
       // picking a food key clears any exclusion reason client-side too, so Save can't submit both.
       nutritionExclusionReason: nutritionFoodKey ? null : (nutritionExclusionReason || null),
+      note: note.trim() || null,
     });
   };
 
   return (
-    <div className="rounded-lg border p-3 space-y-2">
+    <div
+      id={`ing-${ingredient.id}`}
+      className={cn(
+        "rounded-lg border p-3 space-y-2 transition-shadow",
+        highlighted && "ring-2 ring-[color:var(--saffron)]",
+      )}
+    >
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
         <div>
           <label className="text-xs text-hmuted">Crop (slug)</label>
@@ -744,6 +1097,11 @@ function IngredientRow({
             ))}
           </select>
         </div>
+      </div>
+
+      <div>
+        <label className="text-xs text-hmuted">Not</label>
+        <Input value={note} onChange={(e) => setNote(e.target.value)} className="text-sm" placeholder="Örn. damak tadına göre" />
       </div>
 
       <div className="flex justify-end">

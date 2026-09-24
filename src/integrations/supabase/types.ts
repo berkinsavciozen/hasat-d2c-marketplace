@@ -3517,6 +3517,36 @@ export type Database = {
           },
         ]
       }
+      recipe_quality_keyword_rules: {
+        Row: {
+          allergen_label: string | null
+          exclude_keywords: string[]
+          exempt_if_note_contains: string[]
+          id: number
+          keyword: string
+          notes: string | null
+          rule_kind: string
+        }
+        Insert: {
+          allergen_label?: string | null
+          exclude_keywords?: string[]
+          exempt_if_note_contains?: string[]
+          id?: never
+          keyword: string
+          notes?: string | null
+          rule_kind: string
+        }
+        Update: {
+          allergen_label?: string | null
+          exclude_keywords?: string[]
+          exempt_if_note_contains?: string[]
+          id?: never
+          keyword?: string
+          notes?: string | null
+          rule_kind?: string
+        }
+        Relationships: []
+      }
       recipe_rfq_links: {
         Row: {
           created_at: string
@@ -4090,50 +4120,6 @@ export type Database = {
           visibility: string | null
           warning_issue_count: number | null
         }
-        Insert: {
-          allergen_labels?: string[] | null
-          allergens_reviewed?: boolean | null
-          allergens_reviewed_state?: never
-          created_at?: string | null
-          critical_issue_count?: never
-          has_equipment?: never
-          id?: string | null
-          ingredient_count?: never
-          issue_count?: never
-          nutrition_complete?: never
-          nutrition_coverage_pct?: number | null
-          nutrition_reference_version?: string | null
-          nutrition_source?: string | null
-          quality_issues?: never
-          slug?: string | null
-          status?: string | null
-          title?: string | null
-          unresolved_ingredient_count?: never
-          visibility?: string | null
-          warning_issue_count?: never
-        }
-        Update: {
-          allergen_labels?: string[] | null
-          allergens_reviewed?: boolean | null
-          allergens_reviewed_state?: never
-          created_at?: string | null
-          critical_issue_count?: never
-          has_equipment?: never
-          id?: string | null
-          ingredient_count?: never
-          issue_count?: never
-          nutrition_complete?: never
-          nutrition_coverage_pct?: number | null
-          nutrition_reference_version?: string | null
-          nutrition_source?: string | null
-          quality_issues?: never
-          slug?: string | null
-          status?: string | null
-          title?: string | null
-          unresolved_ingredient_count?: never
-          visibility?: string | null
-          warning_issue_count?: never
-        }
         Relationships: []
       }
       public_certifications: {
@@ -4633,6 +4619,14 @@ export type Database = {
       }
     }
     Functions: {
+      admin_recipe_draft_quality_issues: {
+        Args: { p_job_id: string }
+        Returns: Json
+      }
+      admin_recipe_quality_issues: {
+        Args: { p_recipe_id: string }
+        Returns: Json
+      }
       admin_resolve_nutrition_unresolved: {
         Args: {
           p_admin_actor?: string
@@ -4641,14 +4635,6 @@ export type Database = {
           p_notes?: string
           p_resolution: Json
         }
-        Returns: Json
-      }
-      admin_recipe_draft_quality_issues: {
-        Args: { p_job_id: string }
-        Returns: Json
-      }
-      admin_recipe_quality_issues: {
-        Args: { p_recipe_id: string }
         Returns: Json
       }
       admin_update_ingredient_nutrition: {
@@ -4784,6 +4770,20 @@ export type Database = {
         Returns: number
       }
       fn_recipe_quality_issues: { Args: { p: Json }; Returns: Json }
+      fn_rq_matches: {
+        Args: {
+          p_excludes?: string[]
+          p_keyword: string
+          p_prefix?: boolean
+          p_text: string
+        }
+        Returns: boolean
+      }
+      fn_rq_normalize: { Args: { p_text: string }; Returns: string }
+      fn_rq_pattern: {
+        Args: { p_keyword: string; p_prefix?: boolean }
+        Returns: string
+      }
       get_active_listing_crops: {
         Args: { p_limit?: number }
         Returns: {
