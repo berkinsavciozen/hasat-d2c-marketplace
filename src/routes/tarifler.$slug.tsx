@@ -225,6 +225,7 @@ function RecipeDetailPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loggedIn, recipe.id]);
 
+  const { map: cropConfigMap } = useCropConfigMap();
   const ingredientLabelFor = (ing: RecipeIngredientRow) =>
     ing.crop ? formatCropIngredient(ing.crop) : (ing.free_text_name ?? "");
   const ingredientClassFor = (ing: RecipeIngredientRow): "tarimsal" | "platform_disi" =>
