@@ -149,10 +149,17 @@ function seedOverview(client: FakeSupabaseClient) {
   client.seed("admin_recipe_quality_overview", [clean, missingEquipment, withIssue, onlyInfo]);
 }
 
-Deno.test("listRecipeQuality: default mode is incomplete (T10 gaps OR DQ-2 issues)", async () => {
+Deno.test("listRecipeQuality: no mode -> all (T10's unfiltered default)", async () => {
   const client = new FakeSupabaseClient();
   seedOverview(client);
   const result = await listRecipeQuality(asClient(client));
+  assert.equal(result.total, 4);
+});
+
+Deno.test("listRecipeQuality: mode=incomplete -> T10 gaps OR DQ-2 issues", async () => {
+  const client = new FakeSupabaseClient();
+  seedOverview(client);
+  const result = await listRecipeQuality(asClient(client), { mode: "incomplete" });
   assert.deepEqual(result.recipes.map((r) => r.slug), ["tahinli", "ekipmansiz"]);
   assert.equal(result.total, 2);
 });

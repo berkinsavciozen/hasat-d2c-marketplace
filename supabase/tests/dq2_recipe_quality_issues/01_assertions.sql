@@ -49,14 +49,15 @@ $$;
 -- Single ingredient helper (id 'i-x').
 create or replace function pg_temp.ing(
   p_name text, p_crop text default null, p_note text default null,
-  p_quantity numeric default 1, p_unit text default 'adet', p_class text default 'platform_disi'
+  p_quantity numeric default 1, p_unit text default 'adet', p_class text default 'platform_disi',
+  p_food_key text default null, p_exclusion text default null
 )
 returns jsonb
 language sql
 as $$
   select jsonb_build_object('id', 'i-' || coalesce(p_name, p_crop), 'crop', p_crop, 'freeTextName', p_name,
     'quantity', p_quantity, 'unit', p_unit, 'note', p_note, 'ingredientClass', p_class,
-    'nutritionExclusionReason', null);
+    'nutritionFoodKey', p_food_key, 'nutritionExclusionReason', p_exclusion);
 $$;
 
 create or replace function pg_temp.issues(p_doc jsonb)
@@ -236,9 +237,19 @@ select pg_temp.assert(pg_temp.has_issue(pg_temp.dq2_doc(jsonb_build_object('step
   jsonb_build_object('stepNo', 2, 'instruction', 'Karıştırın.'),
   jsonb_build_object('stepNo', 3, 'instruction', 'Kısık ateşte pişirip servis edin.')))), 'STEPS_THIN'),
   '<15 char step -> STEPS_THIN');
+-- UNIT_UNKNOWN = exactly "calculate_recipe_nutrition cannot turn this row into grams"
 select pg_temp.assert(pg_temp.has_issue(pg_temp.dq2_doc(jsonb_build_object(
-  'ingredients', jsonb_build_array(pg_temp.ing('üzüm', 'üzüm', null, 1, 'salkım', 'tarimsal')))), 'UNIT_UNKNOWN'),
-  'salkım -> UNIT_UNKNOWN');
+  'ingredients', jsonb_build_array(pg_temp.ing('bilinmeyen baharat karışımı', null, null, 3, 'fincan')))), 'UNIT_UNKNOWN'),
+  '3 fincan + unknown ingredient -> UNIT_UNKNOWN');
+select pg_temp.assert(
+  (select e->>'ingredientId' = 'i-tahin' from jsonb_array_elements(pg_temp.issues(pg_temp.dq2_doc(jsonb_build_object(
+     'allergenLabels', jsonb_build_array('susam'),
+     'ingredients', jsonb_build_array(pg_temp.ing('tahin', null, null, 1, 'fincan')))))) e
+   where e->>'code' = 'UNIT_UNKNOWN'),
+  'known ingredient (alias tahin -> tahini) with an unconvertible unit -> UNIT_UNKNOWN on that row');
+select pg_temp.assert(pg_temp.has_issue(pg_temp.dq2_doc(jsonb_build_object(
+  'ingredients', jsonb_build_array(pg_temp.ing('bilinmeyen sos', null, null, 2, null)))), 'UNIT_UNKNOWN'),
+  'quantity without a unit -> UNIT_UNKNOWN');
 select pg_temp.assert(pg_temp.has_issue(pg_temp.dq2_doc(jsonb_build_object(
   'ingredients', jsonb_build_array(pg_temp.ing('Oil, olive', null, null, 1, 'yemek kaşığı')))), 'NAME_FORMAT'),
   'USDA-style name -> NAME_FORMAT');
@@ -317,8 +328,32 @@ select pg_temp.assert(pg_temp.issues(pg_temp.dq2_doc(jsonb_build_object(
 
 -- units su_bardagi and su bardağı -> no UNIT_UNKNOWN
 select pg_temp.assert(not pg_temp.has_issue(pg_temp.dq2_doc(jsonb_build_object(
-  'ingredients', jsonb_build_array(pg_temp.ing('su', null, null, 2, 'su_bardagi'), pg_temp.ing('süzme su', null, null, 1, 'su bardağı')))), 'UNIT_UNKNOWN'),
+  'ingredients', jsonb_build_array(pg_temp.ing('su', null, null, 2, 'su_bardagi'), pg_temp.ing('sıcak su', null, null, 1, 'su bardağı')))), 'UNIT_UNKNOWN'),
   'su_bardagi / su bardağı -> no UNIT_UNKNOWN');
+
+-- üzüm "1 salkım" resolves through crop_culinary_meta.conversion_hints (500 g) -> no UNIT_UNKNOWN
+select pg_temp.assert(not pg_temp.has_issue(pg_temp.dq2_doc(jsonb_build_object(
+  'ingredients', jsonb_build_array(pg_temp.ing('üzüm', 'üzüm', null, 1, 'salkım', 'tarimsal')))), 'UNIT_UNKNOWN'),
+  'üzüm / salkım -> no UNIT_UNKNOWN');
+
+-- Row excluded from nutrition (damla sakızı "2 parça", trace_flavoring_unquantified) -> no UNIT_UNKNOWN
+select pg_temp.assert(not pg_temp.has_issue(pg_temp.dq2_doc(jsonb_build_object(
+  'ingredients', jsonb_build_array(pg_temp.ing('damla sakızı', null, 'ezilmiş', 2, 'parça', 'platform_disi', null, 'trace_flavoring_unquantified')))), 'UNIT_UNKNOWN'),
+  'excluded row -> no UNIT_UNKNOWN');
+
+-- Alias-only resolution paths calculate_recipe_nutrition uses must not become false positives
+select pg_temp.assert(not pg_temp.has_issue(pg_temp.dq2_doc(jsonb_build_object(
+  'ingredients', jsonb_build_array(pg_temp.ing('toz şeker', null, null, 2, 'yemek kaşığı')))), 'UNIT_UNKNOWN'),
+  'ingredient_nutrition_alias -> food (toz şeker / yemek kaşığı) -> no UNIT_UNKNOWN');
+select pg_temp.assert(not pg_temp.has_issue(pg_temp.dq2_doc(jsonb_build_object(
+  'ingredients', jsonb_build_array(pg_temp.ing('taze nane', null, null, 1, 'demet')))), 'UNIT_UNKNOWN'),
+  'ingredient_nutrition_alias -> crop (taze nane / demet) -> no UNIT_UNKNOWN');
+select pg_temp.assert(not pg_temp.has_issue(pg_temp.dq2_doc(jsonb_build_object(
+  'ingredients', jsonb_build_array(pg_temp.ing('kırmızı mercimek', null, null, 1, 'bardak')))), 'UNIT_UNKNOWN'),
+  'crop_culinary_meta.culinary_aliases -> crop (kırmızı mercimek / bardak) -> no UNIT_UNKNOWN');
+select pg_temp.assert(not pg_temp.has_issue(pg_temp.dq2_doc(jsonb_build_object(
+  'ingredients', jsonb_build_array(pg_temp.ing('ev yapımı tahin', null, null, 2, 'yemek kaşığı', 'platform_disi', 'tahini')))), 'UNIT_UNKNOWN'),
+  'explicit nutritionFoodKey -> no UNIT_UNKNOWN');
 
 -- Extra false-positive guards from the corpus
 select pg_temp.assert(not public.fn_rq_matches(' hindistan cevizi yağı ', 'hindi'), 'hindistan is not hindi');
@@ -409,6 +444,19 @@ select pg_temp.assert(
   'admin_recipe_quality_issues: CROP_UNLINKED from stored rows');
 select pg_temp.assert(public.admin_recipe_quality_issues('00000000-0000-0000-0000-00000000d202') = '[]'::jsonb,
   'clean stored recipe -> []');
+
+-- nutrition_food_key / nutrition_exclusion_reason reach the checker from stored rows
+insert into public.recipe_ingredients (id, recipe_id, sort_order, crop, free_text_name, quantity, unit, ingredient_class, nutrition_food_key, nutrition_exclusion_reason)
+values
+  ('00000000-0000-0000-0000-00000000d222', '00000000-0000-0000-0000-00000000d202', 1, null, 'ev yapımı tahin', 1, 'yemek kaşığı', 'platform_disi', 'tahini', null),
+  ('00000000-0000-0000-0000-00000000d223', '00000000-0000-0000-0000-00000000d202', 2, null, 'damla sakızı', 2, 'parça', 'platform_disi', null, 'trace_flavoring_unquantified');
+select pg_temp.assert(
+  not (public.admin_recipe_quality_issues('00000000-0000-0000-0000-00000000d202') @> '[{"code":"UNIT_UNKNOWN"}]'),
+  'stored food key + stored exclusion -> no UNIT_UNKNOWN, got ' || public.admin_recipe_quality_issues('00000000-0000-0000-0000-00000000d202')::text);
+select pg_temp.assert(
+  public.admin_recipe_quality_issues('00000000-0000-0000-0000-00000000d202') @> '[{"code":"ALLERGEN_MISSING","suggestion":{"addAllergen":"susam"}}]',
+  'stored ev yapımı tahin still needs susam');
+delete from public.recipe_ingredients where id in ('00000000-0000-0000-0000-00000000d222', '00000000-0000-0000-0000-00000000d223');
 select pg_temp.assert(public.admin_recipe_quality_issues('00000000-0000-0000-0000-0000000000ff') is null,
   'unknown recipe -> null');
 

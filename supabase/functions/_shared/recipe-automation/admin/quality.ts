@@ -105,9 +105,9 @@ export interface RecipeQualityListItem {
 }
 
 /**
- * - `incomplete` (default): T10's 4 missing-field conditions OR any DQ-2 kritik/uyari issue.
+ * - `all` (default, T10's unfiltered behavior): no filter.
+ * - `incomplete`: T10's 4 missing-field conditions OR any DQ-2 kritik/uyari issue.
  * - `issues`: only rows with a DQ-2 kritik/uyari issue.
- * - `all`: no filter.
  */
 export type RecipeQualityListMode = "incomplete" | "issues" | "all";
 export const RECIPE_QUALITY_LIST_MODES: readonly RecipeQualityListMode[] = ["incomplete", "issues", "all"];
@@ -203,7 +203,7 @@ export async function listRecipeQuality(
     .range(offset, offset + limit - 1);
 
   // `.or()` needs one comma-joined expression string.
-  const filter = qualityListFilter(params.mode ?? "incomplete");
+  const filter = qualityListFilter(params.mode ?? "all");
   if (filter) query = query.or(filter);
 
   const { data, error, count } = await query;

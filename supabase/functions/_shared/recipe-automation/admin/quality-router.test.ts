@@ -30,10 +30,11 @@ async function call(client: FakeSupabaseClient, method: string, path: string, bo
 // parseListMode
 // ---------------------------------------------------------------------------
 
-Deno.test("parseListMode: default and legacy ?incomplete", () => {
-  assert.equal(parseListMode(new URLSearchParams("")), "incomplete");
+Deno.test("parseListMode: no parameter keeps T10's unfiltered list; legacy ?incomplete=true", () => {
+  assert.equal(parseListMode(new URLSearchParams("")), "all");
   assert.equal(parseListMode(new URLSearchParams("incomplete=true")), "incomplete");
   assert.equal(parseListMode(new URLSearchParams("incomplete=false")), "all");
+  assert.equal(parseListMode(new URLSearchParams("limit=10")), "all");
 });
 
 Deno.test("parseListMode: ?mode wins over ?incomplete; unknown mode -> null", () => {
@@ -82,19 +83,26 @@ function seedList(client: FakeSupabaseClient) {
   ]);
 }
 
-Deno.test("GET /: no params -> incomplete (T10 gap + DQ-2 issue rows)", async () => {
+Deno.test("GET /: no params -> every row (T10 behavior the live screen relies on)", async () => {
   const client = new FakeSupabaseClient();
   seedList(client);
   const { status, body } = await call(client, "GET", "");
   assert.equal(status, 200);
-  assert.deepEqual(body.recipes.map((r: { slug: string }) => r.slug).sort(), ["besin-eksik", "kapak"]);
+  assert.equal(body.total, 3);
 });
 
-Deno.test("GET /?incomplete=true keeps working (legacy)", async () => {
+Deno.test("GET /?incomplete=true keeps working (legacy) and now also includes DQ-2 issue rows", async () => {
   const client = new FakeSupabaseClient();
   seedList(client);
   const { body } = await call(client, "GET", "?incomplete=true");
-  assert.equal(body.total, 2);
+  assert.deepEqual(body.recipes.map((r: { slug: string }) => r.slug).sort(), ["besin-eksik", "kapak"]);
+});
+
+Deno.test("GET /?mode=incomplete -> T10 gap + DQ-2 issue rows", async () => {
+  const client = new FakeSupabaseClient();
+  seedList(client);
+  const { body } = await call(client, "GET", "?mode=incomplete");
+  assert.deepEqual(body.recipes.map((r: { slug: string }) => r.slug).sort(), ["besin-eksik", "kapak"]);
 });
 
 Deno.test("GET /?mode=issues -> only DQ-2 issue rows, with the list contract fields", async () => {

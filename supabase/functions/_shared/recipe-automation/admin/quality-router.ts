@@ -4,8 +4,8 @@
 // only ever sees an already-authenticated request and a service-role client handed to it.
 //
 // Routes (path after the function's own name):
-//   GET    /                                      -> list (?mode=incomplete|issues|all, default
-//                                                     incomplete; legacy ?incomplete=true|false)
+//   GET    /                                      -> list (?mode=incomplete|issues|all; no param =
+//                                                     all, legacy ?incomplete=true = incomplete)
 //   GET    /draft-issues/:jobId                    -> DQ-2 issues for a job's latest draft
 //   GET    /:recipeId                              -> one recipe's full quality detail (+ DQ-2 issues)
 //   PATCH  /:recipeId/allergens                    -> admin_update_recipe_allergens
@@ -61,15 +61,15 @@ function isStringArray(v: unknown): v is string[] {
   return Array.isArray(v) && v.every((x) => typeof x === "string");
 }
 
-/** `?mode=` wins; otherwise the T10-era `?incomplete=false` means "all" and anything else
- * (including no parameter, or the legacy `?incomplete=true`) means the default "incomplete".
- * Returns null for an unknown mode. */
+/** `?mode=` wins; otherwise T10's contract is kept exactly: the legacy `?incomplete=true` means
+ * "incomplete" and anything else — including no parameter at all, which is what the live admin
+ * screen sends with "Yalnız eksikler" unchecked — means "all". Returns null for an unknown mode. */
 export function parseListMode(params: URLSearchParams): RecipeQualityListMode | null {
   const mode = params.get("mode");
   if (mode !== null) {
     return (RECIPE_QUALITY_LIST_MODES as readonly string[]).includes(mode) ? (mode as RecipeQualityListMode) : null;
   }
-  return params.get("incomplete") === "false" ? "all" : "incomplete";
+  return params.get("incomplete") === "true" ? "incomplete" : "all";
 }
 
 const isNonNegativeIntOrNull = (v: unknown): v is number | null =>

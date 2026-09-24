@@ -277,7 +277,7 @@ grant execute on function public.fn_rq_matches(text, text, text[], boolean) to s
 --   { title, servings, prepMinutes, cookMinutes, restMinutes, calories (per serving),
 --     dietTags[], allergenLabels[], requiredEquipment[], coverPhotoUrl,
 --     ingredients[]: { id?, crop, freeTextName, quantity, unit, note, ingredientClass,
---                      nutritionExclusionReason },
+--                      nutritionFoodKey, nutritionExclusionReason },
 --     steps[]: { stepNo, instruction, timerSeconds } }
 -- Output: [{ code, severity: kritik|uyari|bilgi, message, ingredientId?, suggestion? }], sorted
 -- kritik -> uyari -> bilgi (stable within a severity).
@@ -308,7 +308,9 @@ declare
   v_tag text;
   v_rec record;
   v_ing record;
-  v_u text;
+  v_alias_kind text;
+  v_alias_key text;
+  v_ccm_crop text;
   v_crop_hit text;
   v_ings jsonb;
   v_hits jsonb;
@@ -340,6 +342,8 @@ begin
       'quantity', nullif(t.e->>'quantity', ''),
       'unit', nullif(btrim(t.e->>'unit'), ''),
       'ingredient_class', nullif(btrim(t.e->>'ingredientClass'), ''),
+      'food_key', nullif(btrim(t.e->>'nutritionFoodKey'), ''),
+      'exclusion_reason', nullif(btrim(t.e->>'nutritionExclusionReason'), ''),
       'txt', public.fn_rq_normalize(coalesce(nullif(btrim(t.e->>'freeTextName'), ''), replace(t.e->>'crop', '_', ' '))),
       'note_txt', public.fn_rq_normalize(t.e->>'note')
     ) order by t.ord)
@@ -565,18 +569,48 @@ begin
   end if;
 
   -- ---- per-ingredient: UNIT_UNKNOWN (uyari), NAME_FORMAT / CLASS_NULL (bilgi) -------------------
-  for v_ing in select * from jsonb_to_recordset(v_ings) as i(ord int, id text, display text, free_text_name text, crop text, quantity text, unit text, ingredient_class text, txt text) order by i.ord loop
-    if v_ing.quantity is not null and v_ing.unit is not null then
-      -- Both storage spellings are valid on purpose (pipeline: su_bardagi, REF-DQ-1: su bardağı);
-      -- fn_nutrition_normalize_unit folds them together, so neither is flagged.
-      v_u := public.fn_nutrition_normalize_unit(v_ing.unit);
-      if v_u is not null
-         and v_u <> all (array['g', 'gr', 'gram', 'kg', 'ml', 'l', 'lt', 'litre'])
-         and not exists (select 1 from public.ingredient_measure_reference m
-                         where public.fn_nutrition_normalize_unit(m.normalized_unit) = v_u) then
+  for v_ing in
+    select * from jsonb_to_recordset(v_ings) as i(ord int, id text, display text, free_text_name text, crop text,
+      quantity text, unit text, ingredient_class text, food_key text, exclusion_reason text, txt text)
+    order by i.ord
+  loop
+    -- UNIT_UNKNOWN asks exactly what calculate_recipe_nutrition asks: can this row be turned into
+    -- grams? Same resolution order as its ingredient query (explicit food_key/crop, then
+    -- ingredient_nutrition_alias, then crop_culinary_meta.culinary_aliases), then the same
+    -- fn_recipe_ingredient_grams_v2. Rows excluded from nutrition are never flagged. Both unit
+    -- spellings (su_bardagi / su bardağı) resolve there via fn_nutrition_normalize_unit.
+    if v_ing.exclusion_reason is null and v_ing.quantity is not null then
+      v_alias_kind := null;
+      v_alias_key := null;
+      v_ccm_crop := null;
+      if v_ing.crop is null and v_ing.food_key is null then
+        select a.target_kind, a.target_key into v_alias_kind, v_alias_key
+        from public.ingredient_nutrition_alias a
+        where a.normalized_alias = public.fn_nutrition_normalize_text(v_ing.free_text_name);
+        if v_alias_kind is null then
+          select c.crop into v_ccm_crop
+          from public.crop_culinary_meta c
+          where exists (
+            select 1 from unnest(c.culinary_aliases) as alias
+            where public.fn_nutrition_normalize_text(alias) = public.fn_nutrition_normalize_text(v_ing.free_text_name)
+          )
+          order by c.crop
+          limit 1;
+        end if;
+      end if;
+
+      if public.fn_recipe_ingredient_grams_v2(
+           coalesce(v_ing.crop, case when v_alias_kind = 'crop' then v_alias_key end, v_ccm_crop),
+           coalesce(v_ing.food_key, case when v_alias_kind = 'food' then v_alias_key end),
+           v_ing.free_text_name,
+           v_ing.quantity::numeric,
+           v_ing.unit) is null then
         v_issues := v_issues || jsonb_build_array(jsonb_strip_nulls(jsonb_build_object(
           'code', 'UNIT_UNKNOWN', 'severity', 'uyari',
-          'message', format('"%s" için "%s" birimi tanınmıyor (gram karşılığı yok).', v_ing.display, v_ing.unit),
+          'message', case when v_ing.unit is null
+            then format('"%s" için birim yok; miktar grama çevrilemiyor, besin hesabına girmiyor.', v_ing.display)
+            else format('"%s" için "%s" birimi grama çevrilemiyor, besin hesabına girmiyor.', v_ing.display, v_ing.unit)
+          end,
           'ingredientId', v_ing.id)));
       end if;
     end if;
@@ -651,6 +685,7 @@ begin
         'unit', i.unit,
         'note', i.note,
         'ingredientClass', i.ingredient_class,
+        'nutritionFoodKey', i.nutrition_food_key,
         'nutritionExclusionReason', i.nutrition_exclusion_reason
       ) order by i.sort_order, i.id), '[]'::jsonb)
       from public.recipe_ingredients i where i.recipe_id = r.id),
@@ -689,7 +724,9 @@ declare
 begin
   -- Draft ingredient/step JSON already uses the document's camelCase keys (freeTextName,
   -- ingredientClass, stepNo, timerSeconds — recipeIngredientDraftSchema/recipeStepDraftSchema),
-  -- so it is passed through. Calories come from the per-serving nutrition_preview (f2s17).
+  -- so it is passed through. A draft ingredient carries no nutritionFoodKey /
+  -- nutritionExclusionReason today, so both read as null (alias resolution still applies).
+  -- Calories come from the per-serving nutrition_preview (f2s17).
   select jsonb_build_object(
     'title', d.title,
     'servings', d.servings,
