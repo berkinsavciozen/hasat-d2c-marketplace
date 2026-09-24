@@ -59,6 +59,7 @@ export const Route = createFileRoute("/farmer/storefront")({
 });
 
 function Storefront() {
+  const { map: storeCropMap } = useCropConfigMap();
   const { data: profile } = useProfile();
   const { data: listings = [], isLoading } = useFarmerListings();
   const { data: parcels = [] } = useParcels();
@@ -320,6 +321,7 @@ function ListingCard({
   onEdit?: () => void;
   onRemove?: () => void;
 }) {
+  const { map: cardCropMap } = useCropConfigMap();
   const statusLabel =
     listing.status === "active"
       ? "Aktif"
