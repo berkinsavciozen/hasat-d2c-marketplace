@@ -12,6 +12,8 @@
 export interface FakeQueryResult<T> {
   data: T | null;
   error: { message: string; code?: string } | null;
+  /** Only set when `.select(cols, { count: "exact" })` asked for it — total matches before `.range()`. */
+  count?: number | null;
 }
 
 type Row = Record<string, unknown>;
@@ -27,6 +29,15 @@ function parseClause(clause: string): Predicate {
   const val = rest.join(".");
   if (op === "is") {
     return (row) => (val === "null" ? row[col] === null || row[col] === undefined : row[col] === val);
+  }
+  if (op === "eq") {
+    return (row) => String(row[col]) === val;
+  }
+  if (op === "gt") {
+    return (row) => {
+      const v = row[col];
+      return v !== null && v !== undefined && Number(v) > Number(val);
+    };
   }
   if (op === "lt") {
     return (row) => {
@@ -53,6 +64,9 @@ class FakeQueryBuilder<T = Row> {
   private orderCol: string | null = null;
   private orderAscending = true;
   private limitN: number | null = null;
+  private rangeFrom: number | null = null;
+  private rangeTo: number | null = null;
+  private wantCount = false;
 
   private table: FakeTable;
 
@@ -106,7 +120,15 @@ class FakeQueryBuilder<T = Row> {
     return this;
   }
 
-  select(_cols?: string): this {
+  select(_cols?: string, opts: { count?: "exact" } = {}): this {
+    if (opts.count === "exact") this.wantCount = true;
+    return this;
+  }
+
+  /** Mirrors supabase-js's `.range(from, to)` (inclusive), applied after `.order()`. */
+  range(from: number, to: number): this {
+    this.rangeFrom = from;
+    this.rangeTo = to;
     return this;
   }
 
@@ -189,9 +211,13 @@ class FakeQueryBuilder<T = Row> {
         return (av! > bv! ? 1 : -1) * dir;
       });
     }
+    const total = matches.length;
+    if (this.rangeFrom !== null && this.rangeTo !== null) matches = matches.slice(this.rangeFrom, this.rangeTo + 1);
     if (this.limitN !== null) matches = matches.slice(0, this.limitN);
 
-    return { data: matches as T[], error: null };
+    return this.wantCount
+      ? { data: matches as T[], error: null, count: total }
+      : { data: matches as T[], error: null };
   }
 }
 
