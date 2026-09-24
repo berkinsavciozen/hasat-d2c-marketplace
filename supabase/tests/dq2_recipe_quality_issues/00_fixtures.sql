@@ -1,4 +1,4 @@
--- DQ-2 — SQL test fixtures for 20260924120000_dq2_recipe_quality_issues.sql.
+-- DQ-2 — SQL test fixtures for 20260924204804_dq2_recipe_quality_issues.sql.
 --
 -- Self-contained: the tables below are reduced copies of the LIVE shapes captured in
 -- 20260917120000_baseline_consolidated_schema_2026-09-17.sql (recipes, recipe_ingredients,

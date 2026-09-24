@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# DQ-2 — SQL test runner for 20260924120000_dq2_recipe_quality_issues.sql.
+# DQ-2 — SQL test runner for 20260924204804_dq2_recipe_quality_issues.sql.
 #
 # FRESH local PostgreSQL database every run: fixtures (live-shaped tables) -> the real T10 migration
 # (DQ-2 replaces its view and its admin_update_ingredient_nutrition signature) -> the real DQ-2
@@ -23,11 +23,11 @@ echo "==> Applying fixtures"
 echo "==> Applying 20260911140000_t10_admin_recipe_quality_overview.sql (T10, dependency)"
 "${PSQL[@]}" -d "$DB_NAME" -f "$MIGRATIONS_DIR/20260911140000_t10_admin_recipe_quality_overview.sql"
 
-echo "==> Applying 20260924120000_dq2_recipe_quality_issues.sql (migration under test)"
-"${PSQL[@]}" -d "$DB_NAME" -f "$MIGRATIONS_DIR/20260924120000_dq2_recipe_quality_issues.sql"
+echo "==> Applying 20260924204804_dq2_recipe_quality_issues.sql (migration under test)"
+"${PSQL[@]}" -d "$DB_NAME" -f "$MIGRATIONS_DIR/20260924204804_dq2_recipe_quality_issues.sql"
 
 echo "==> Re-applying the DQ-2 migration (must be re-runnable)"
-"${PSQL[@]}" -d "$DB_NAME" -f "$MIGRATIONS_DIR/20260924120000_dq2_recipe_quality_issues.sql"
+"${PSQL[@]}" -d "$DB_NAME" -f "$MIGRATIONS_DIR/20260924204804_dq2_recipe_quality_issues.sql"
 
 echo "==> Running assertions"
 "${PSQL[@]}" -d "$DB_NAME" -f "$SCRIPT_DIR/01_assertions.sql"

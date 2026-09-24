@@ -7,7 +7,7 @@
 // Every write here goes through one of the service_role-only RPCs added by
 // 20260911140000_t10_admin_recipe_quality_overview.sql (admin_update_recipe_allergens/
 // admin_update_recipe_facts/admin_update_ingredient_nutrition) or DQ-2's
-// 20260924120000_dq2_recipe_quality_issues.sql (admin_update_recipe_meta) — this module never writes
+// 20260924204804_dq2_recipe_quality_issues.sql (admin_update_recipe_meta) — this module never writes
 // `recipes`/`recipe_ingredients` directly, so the RPCs' own validation (allergen taxonomy,
 // equipment taxonomy, recipe_ingredients' native CHECK/FK constraints) is the only place that
 // logic lives, and PostgREST-level grants stay exactly as narrow as those migrations left them.

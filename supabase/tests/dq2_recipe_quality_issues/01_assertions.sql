@@ -1,4 +1,4 @@
--- DQ-2 — assertion suite for 20260924120000_dq2_recipe_quality_issues.sql.
+-- DQ-2 — assertion suite for 20260924204804_dq2_recipe_quality_issues.sql.
 --
 -- Documents are built from one clean base document (dq2_doc) plus per-case overrides, using real
 -- ingredient/step phrasings from the 2026-09-24 REF-DQ audit corpus. Each "yakalamalı" case
