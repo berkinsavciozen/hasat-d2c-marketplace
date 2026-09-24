@@ -7,6 +7,7 @@ import { useHasat } from "@/lib/hasat/store";
 import { supabase } from "@/integrations/supabase/client";
 import { BrandLogo } from "@/components/hasat/BrandLogo";
 import { Button } from "@/components/ui/button";
+import { navigateToLoginNext, safeLoginNext } from "@/lib/hasat/loginNext";
 
 export const Route = createFileRoute("/login")({
   head: () => ({ meta: [{ title: "Giriş — Hasat" }] }),
@@ -14,10 +15,8 @@ export const Route = createFileRoute("/login")({
     const out: { role?: "farmer" | "buyer"; next?: string } = {};
     if (s.role === "buyer") out.role = "buyer";
     else if (s.role === "farmer") out.role = "farmer";
-    // Only preserve same-origin relative paths — never external URLs.
-    if (typeof s.next === "string" && s.next.startsWith("/") && !s.next.startsWith("//")) {
-      out.next = s.next;
-    }
+    const next = safeLoginNext(s.next);
+    if (next) out.next = next;
     return out;
   },
   component: LoginPage,
@@ -90,10 +89,7 @@ function LoginPage() {
       if (cancelled) return;
       const r = (profile?.role === "buyer" ? "buyer" : "farmer") as "farmer" | "buyer";
       const hasProfile = !!profile?.name && profile.name.trim() !== "";
-      if (next && hasProfile) {
-        window.location.href = next;
-        return;
-      }
+      if (hasProfile && navigateToLoginNext(navigate, next)) return;
       if (!hasProfile) {
         navigate({ to: r === "buyer" ? "/onboarding/buyer" : "/onboarding/farmer" });
       } else {
@@ -208,9 +204,7 @@ function LoginPage() {
           city: profile.city ?? "",
           premium: !!profile.premium,
         });
-        if (next) {
-          window.location.href = next;
-        } else {
+        if (!navigateToLoginNext(navigate, next)) {
           navigate({ to: profileRole === "buyer" ? "/buyer/discover" : "/farmer/home" });
         }
       }
