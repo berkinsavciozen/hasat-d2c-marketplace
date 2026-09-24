@@ -364,7 +364,7 @@ function ListingGroupCard({ items, canonicalUnit, cropConfig, onOpen }: { items:
           </div>
         )}
         <div className="absolute bottom-2 left-3 right-3 text-white">
-          <div className="font-serif text-base leading-tight line-clamp-2">{cropEmoji(first.crop)} {formatCrop(first.crop)}</div>
+          <div className="font-serif text-base leading-tight line-clamp-2">{cropEmoji(first.crop, cropConfig)} {formatCrop(first.crop)}</div>
           <div className="text-[11px] opacity-80 truncate">
             {farmerSlug ? (
               <Link to="/s/$slug" params={{ slug: farmerSlug }} className="underline hover:text-primary">

@@ -284,7 +284,7 @@ function ProducerProfile() {
                       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                         <div>
                           <div className="font-medium">
-                            {cropEmoji(l.crop)} {formatCrop(l.crop)}
+                            {cropEmoji(l.crop, cfg)} {formatCrop(l.crop)}
                           </div>
                           <div className="text-xs text-hmuted mt-1">
                             {l.quantity} {l.unit} · Min {l.minOrder} {l.unit}

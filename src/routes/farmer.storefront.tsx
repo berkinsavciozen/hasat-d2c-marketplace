@@ -111,7 +111,7 @@ function Storefront() {
                           className="h-full w-full object-cover"
                         />
                       ) : (
-                        cropEmoji(l.crop)
+                        cropEmoji(l.crop, findCropConfig(storeCropMap, l.crop))
                       )}
                     </div>
                     <div className="mt-1 text-[10px] truncate text-hmuted">
@@ -350,7 +350,7 @@ function ListingCard({
           />
         ) : (
           <div className="grid h-12 w-12 place-items-center rounded-xl bg-cream text-2xl">
-            {cropEmoji(listing.crop)}
+            {cropEmoji(listing.crop, findCropConfig(cardCropMap, listing.crop))}
           </div>
         )}
         <div className="flex-1">

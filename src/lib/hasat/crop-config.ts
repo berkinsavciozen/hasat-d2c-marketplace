@@ -100,6 +100,7 @@ const CROP_EMOJI_OVERRIDES: Record<string, string> = {
   "yumurta": "🥚",
   "tereyağı": "🧈",
   "bal": "🍯",
+  "limon suyu": "🍋",
 };
 
 /** Eşleşme yoksa gösterilen nötr ikon (🌾 yalnız tahıl grubunda). */
@@ -116,7 +117,33 @@ export function cropEmoji(crop: string | null | undefined, cfg?: CropConfig | nu
   if (key && CROP_EMOJI_OVERRIDES[key]) return CROP_EMOJI_OVERRIDES[key];
   const group = cfg?.category_group;
   if (group && CATEGORY_GROUP_META[group]) return CATEGORY_GROUP_META[group].emoji;
-  return group === "tahil" ? "🌾" : NEUTRAL_INGREDIENT_EMOJI;
+  return "🌾";
+}
+
+/** Serbest metinde: tam ad → son iki kelime → son kelime → ilk kelime. "veya" varsa ilk parça. */
+function lookupFreeText(name: string | null | undefined): string | null {
+  let key = normalizeCropKey(name);
+  if (!key) return null;
+  key = key.split(/\s+veya\s+/)[0].trim();
+  const words = key.split(" ").filter(Boolean);
+  const candidates = [key, words.slice(-2).join(" "), words[words.length - 1], words[0]];
+  for (const c of candidates) if (c && CROP_EMOJI_OVERRIDES[c]) return CROP_EMOJI_OVERRIDES[c];
+  return null;
+}
+
+/** Yalnız tarif malzemeleri: eşleşme yoksa 🥄. */
+export function ingredientEmoji(
+  crop: string | null | undefined,
+  freeTextName: string | null | undefined,
+  cfg?: CropConfig | null,
+): string {
+  if (crop) {
+    const key = normalizeCropKey(crop);
+    if (CROP_EMOJI_OVERRIDES[key]) return CROP_EMOJI_OVERRIDES[key];
+    const group = cfg?.category_group;
+    if (group && CATEGORY_GROUP_META[group]) return CATEGORY_GROUP_META[group].emoji;
+  }
+  return lookupFreeText(freeTextName) ?? (crop ? lookupFreeText(crop) : null) ?? NEUTRAL_INGREDIENT_EMOJI;
 }
 
 export interface CropOption {

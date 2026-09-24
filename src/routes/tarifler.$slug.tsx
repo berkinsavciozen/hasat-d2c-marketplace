@@ -12,9 +12,7 @@ import {
   formatTRY,
 } from "@/lib/hasat/format";
 import {
-  CROP_EMOJI_OVERRIDES_LOOKUP,
-  NEUTRAL_INGREDIENT_EMOJI,
-  cropEmoji,
+  ingredientEmoji,
   findCropConfig,
   useCropConfigMap,
 } from "@/lib/hasat/crop-config";
@@ -453,10 +451,11 @@ function RecipeDetailPage() {
                         className="h-11 w-11 object-cover"
                       />
                     ) : (
-                      ing.crop
-                        ? cropEmoji(ing.crop, findCropConfig(cropConfigMap, ing.crop))
-                        : (CROP_EMOJI_OVERRIDES_LOOKUP(ing.free_text_name) ??
-                          NEUTRAL_INGREDIENT_EMOJI)
+                      ingredientEmoji(
+                        ing.crop,
+                        ing.free_text_name,
+                        ing.crop ? findCropConfig(cropConfigMap, ing.crop) : null,
+                      )
                     )}
                     {/* crop_photo_url her zaman crop_config'in stok fotoğrafı —
                         malzeme belirli bir ilana değil crop'a bağlı, bu yüzden
@@ -482,6 +481,7 @@ function RecipeDetailPage() {
                         const unit = shop ? shop.recipe_unit : ing.unit;
                         if (q == null && !unit) {
                           const r = ing.nutrition_exclusion_reason;
+                          if (ing.note && /damak|tadına|zevkine/i.test(ing.note)) return "";
                           return r ? (INGREDIENT_UNQUANTIFIED_LABELS[r] ?? "") : "";
                         }
                         return `${q != null ? formatQuantity(q, unit) : ""} ${formatIngredientUnit(unit)}`.trim();
