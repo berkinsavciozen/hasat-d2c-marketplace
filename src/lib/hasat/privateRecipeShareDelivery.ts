@@ -1,6 +1,11 @@
 export type PrivateRecipeShareNavigator = Pick<Navigator, "share" | "clipboard">;
 
 export type PrivateRecipeShareDeliveryResult = "shared" | "copied" | "aborted";
+export type PrivateRecipeShareAttemptResult = PrivateRecipeShareDeliveryResult | "failed";
+export type PendingPrivateRecipeShareDelivery = {
+  actionKey: string;
+  token: string;
+} | null;
 
 function isAbortError(error: unknown): boolean {
   return (
@@ -32,4 +37,28 @@ export async function deliverPrivateRecipeShareUrl(
     // Do not attach the original errors: browser errors can include the capability URL.
     throw new Error("private_recipe_share_delivery_failed");
   }
+}
+
+export async function runPrivateRecipeShareAction({
+  actionKey,
+  pendingDelivery,
+  grantAction,
+  deliverToken,
+}: {
+  actionKey: string;
+  pendingDelivery: PendingPrivateRecipeShareDelivery;
+  grantAction: () => Promise<{ token: string }>;
+  deliverToken: (token: string) => Promise<PrivateRecipeShareAttemptResult>;
+}): Promise<{
+  result: PrivateRecipeShareAttemptResult;
+  pendingDelivery: PendingPrivateRecipeShareDelivery;
+}> {
+  const token =
+    pendingDelivery?.actionKey === actionKey ? pendingDelivery.token : (await grantAction()).token;
+  const result = await deliverToken(token);
+
+  return {
+    result,
+    pendingDelivery: result === "shared" || result === "copied" ? null : { actionKey, token },
+  };
 }

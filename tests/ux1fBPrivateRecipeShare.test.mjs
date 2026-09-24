@@ -8,7 +8,10 @@ import {
   withPendingShareToken,
 } from "../src/lib/hasat/recipeShareSecurity.ts";
 import { expiryFromNow, RECIPE_SHARE_DURATIONS } from "../src/lib/hasat/recipeShareExpiry.ts";
-import { deliverPrivateRecipeShareUrl } from "../src/lib/hasat/privateRecipeShareDelivery.ts";
+import {
+  deliverPrivateRecipeShareUrl,
+  runPrivateRecipeShareAction,
+} from "../src/lib/hasat/privateRecipeShareDelivery.ts";
 
 const read = (path) => readFile(new URL(path, import.meta.url), "utf8");
 const TOKEN = "a".repeat(64);
@@ -155,17 +158,84 @@ test("share and clipboard double failure emits a token-free error", async () => 
   );
 });
 
+test("double delivery failure retries the same token without creating another grant", async () => {
+  let grantCalls = 0;
+  const delivered = [];
+  const grantAction = async () => ({ token: `token-${++grantCalls}` });
+  const deliverToken = async (token) => {
+    delivered.push(token);
+    return "failed";
+  };
+
+  const first = await runPrivateRecipeShareAction({
+    actionKey: "create:recipe-a",
+    pendingDelivery: null,
+    grantAction,
+    deliverToken,
+  });
+  const second = await runPrivateRecipeShareAction({
+    actionKey: "create:recipe-a",
+    pendingDelivery: first.pendingDelivery,
+    grantAction,
+    deliverToken,
+  });
+
+  assert.equal(grantCalls, 1);
+  assert.deepEqual(delivered, ["token-1", "token-1"]);
+  assert.deepEqual(second.pendingDelivery, {
+    actionKey: "create:recipe-a",
+    token: "token-1",
+  });
+});
+
+test("a different recipe cannot reuse the previous recipe's pending token", async () => {
+  let grantCalls = 0;
+  const delivered = [];
+  const grantAction = async () => ({ token: `token-${++grantCalls}` });
+  const deliverToken = async (token) => {
+    delivered.push(token);
+    return "failed";
+  };
+  const recipeA = await runPrivateRecipeShareAction({
+    actionKey: "create:recipe-a",
+    pendingDelivery: null,
+    grantAction,
+    deliverToken,
+  });
+
+  await runPrivateRecipeShareAction({
+    actionKey: "create:recipe-b",
+    pendingDelivery: recipeA.pendingDelivery,
+    grantAction,
+    deliverToken,
+  });
+
+  assert.equal(grantCalls, 2);
+  assert.deepEqual(delivered, ["token-1", "token-2"]);
+});
+
 test("create and rotate both deliver their one-time token under one pending guard", async () => {
   const owner = await read("../src/components/hasat/PrivateRecipeSharePanel.tsx");
 
   assert.match(owner, /actionPendingRef\.current/);
-  assert.match(owner, /abortedDeliveryRef/);
-  assert.match(owner, /abortedDelivery\?\.actionKey === actionKey/);
-  assert.match(owner, /result === "aborted" \? \{ actionKey, token \} : null/);
+  assert.match(owner, /pendingDeliveryRef/);
+  assert.match(owner, /`create:\$\{recipeId\}`/);
+  assert.match(
+    owner,
+    /activeRecipeIdRef\.current = recipeId;\s*pendingDeliveryRef\.current = null/,
+  );
+  assert.match(owner, /activeRecipeIdRef\.current === recipeId/);
   assert.match(owner, /runGrantAction\([\s\S]*?create\.mutateAsync/);
   assert.match(owner, /runGrantAction\([\s\S]*?rotate\.mutateAsync/);
-  assert.match(owner, /await grantAction\(\)\)\.token/);
   assert.match(owner, /disabled=\{actionPending\}/);
+});
+
+test("delivery pending disables create, rotate, and revoke actions", async () => {
+  const owner = await read("../src/components/hasat/PrivateRecipeSharePanel.tsx");
+
+  assert.equal(owner.match(/disabled=\{actionPending\}/g)?.length, 2);
+  assert.match(owner, /disabled=\{actionPending \|\| revoke\.isPending\}/);
+  assert.match(owner, /!actionPendingRef\.current &&\s*revoke\.mutate/);
 });
 
 test("delivery keeps capabilities out of query strings, logging, and persistence", async () => {

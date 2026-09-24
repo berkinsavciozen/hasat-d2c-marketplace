@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Share2 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -7,7 +7,9 @@ import { buildPrivateRecipeShareUrl } from "@/lib/hasat/recipeShareSecurity";
 import { RECIPE_SHARE_DURATIONS } from "@/lib/hasat/recipeShareExpiry";
 import {
   deliverPrivateRecipeShareUrl,
-  type PrivateRecipeShareDeliveryResult,
+  runPrivateRecipeShareAction,
+  type PendingPrivateRecipeShareDelivery,
+  type PrivateRecipeShareAttemptResult,
 } from "@/lib/hasat/privateRecipeShareDelivery";
 import {
   expiryFromNow,
@@ -24,10 +26,16 @@ export function PrivateRecipeSharePanel({ recipeId }: { recipeId: string }) {
   const rotate = useRotateRecipeShareGrant(recipeId);
   const revoke = useRevokeRecipeShareGrant(recipeId);
   const actionPendingRef = useRef(false);
-  const abortedDeliveryRef = useRef<{ actionKey: string; token: string } | null>(null);
+  const activeRecipeIdRef = useRef(recipeId);
+  const pendingDeliveryRef = useRef<PendingPrivateRecipeShareDelivery>(null);
   const [actionPending, setActionPending] = useState(false);
 
-  const shareOnce = async (token: string): Promise<PrivateRecipeShareDeliveryResult | "failed"> => {
+  useEffect(() => {
+    activeRecipeIdRef.current = recipeId;
+    pendingDeliveryRef.current = null;
+  }, [recipeId]);
+
+  const shareOnce = async (token: string): Promise<PrivateRecipeShareAttemptResult> => {
     try {
       const url = buildPrivateRecipeShareUrl(PUBLIC_BASE_URL, token);
       const result = await deliverPrivateRecipeShareUrl(url, navigator);
@@ -48,13 +56,15 @@ export function PrivateRecipeSharePanel({ recipeId }: { recipeId: string }) {
     actionPendingRef.current = true;
     setActionPending(true);
     try {
-      const abortedDelivery = abortedDeliveryRef.current;
-      const token =
-        abortedDelivery?.actionKey === actionKey
-          ? abortedDelivery.token
-          : (await grantAction()).token;
-      const result = await shareOnce(token);
-      abortedDeliveryRef.current = result === "aborted" ? { actionKey, token } : null;
+      const attempt = await runPrivateRecipeShareAction({
+        actionKey,
+        pendingDelivery: pendingDeliveryRef.current,
+        grantAction,
+        deliverToken: shareOnce,
+      });
+      if (activeRecipeIdRef.current === recipeId) {
+        pendingDeliveryRef.current = attempt.pendingDelivery;
+      }
     } catch {
       toast.error(errorMessage);
     } finally {
@@ -65,7 +75,7 @@ export function PrivateRecipeSharePanel({ recipeId }: { recipeId: string }) {
 
   const createLink = () =>
     void runGrantAction(
-      "create",
+      `create:${recipeId}`,
       () => create.mutateAsync(expiryFromNow(duration)),
       "Link oluşturulamadı. Tekrar deneyebilirsin.",
     );
@@ -76,6 +86,7 @@ export function PrivateRecipeSharePanel({ recipeId }: { recipeId: string }) {
       "Link yenilenemedi. Tekrar deneyebilirsin.",
     );
   const revokeLink = (grantId: string) =>
+    !actionPendingRef.current &&
     revoke.mutate(grantId, {
       onSuccess: () => toast.success("Link kapatıldı"),
       onError: () => toast.error("Link kapatılamadı. Tekrar deneyebilirsin."),
@@ -138,7 +149,7 @@ export function PrivateRecipeSharePanel({ recipeId }: { recipeId: string }) {
                   variant="ghost"
                   size="sm"
                   onClick={() => revokeLink(grant.grant_id)}
-                  disabled={revoke.isPending}
+                  disabled={actionPending || revoke.isPending}
                 >
                   Kapat
                 </Button>
