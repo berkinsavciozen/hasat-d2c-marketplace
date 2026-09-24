@@ -4073,54 +4073,66 @@ export type Database = {
           allergens_reviewed: boolean | null
           allergens_reviewed_state: boolean | null
           created_at: string | null
+          critical_issue_count: number | null
           has_equipment: boolean | null
           id: string | null
           ingredient_count: number | null
+          issue_count: number | null
           nutrition_complete: boolean | null
           nutrition_coverage_pct: number | null
           nutrition_reference_version: string | null
           nutrition_source: string | null
+          quality_issues: Json | null
           slug: string | null
           status: string | null
           title: string | null
           unresolved_ingredient_count: number | null
           visibility: string | null
+          warning_issue_count: number | null
         }
         Insert: {
           allergen_labels?: string[] | null
           allergens_reviewed?: boolean | null
           allergens_reviewed_state?: never
           created_at?: string | null
+          critical_issue_count?: never
           has_equipment?: never
           id?: string | null
           ingredient_count?: never
+          issue_count?: never
           nutrition_complete?: never
           nutrition_coverage_pct?: number | null
           nutrition_reference_version?: string | null
           nutrition_source?: string | null
+          quality_issues?: never
           slug?: string | null
           status?: string | null
           title?: string | null
           unresolved_ingredient_count?: never
           visibility?: string | null
+          warning_issue_count?: never
         }
         Update: {
           allergen_labels?: string[] | null
           allergens_reviewed?: boolean | null
           allergens_reviewed_state?: never
           created_at?: string | null
+          critical_issue_count?: never
           has_equipment?: never
           id?: string | null
           ingredient_count?: never
+          issue_count?: never
           nutrition_complete?: never
           nutrition_coverage_pct?: number | null
           nutrition_reference_version?: string | null
           nutrition_source?: string | null
+          quality_issues?: never
           slug?: string | null
           status?: string | null
           title?: string | null
           unresolved_ingredient_count?: never
           visibility?: string | null
+          warning_issue_count?: never
         }
         Relationships: []
       }
@@ -4631,11 +4643,20 @@ export type Database = {
         }
         Returns: Json
       }
+      admin_recipe_draft_quality_issues: {
+        Args: { p_job_id: string }
+        Returns: Json
+      }
+      admin_recipe_quality_issues: {
+        Args: { p_recipe_id: string }
+        Returns: Json
+      }
       admin_update_ingredient_nutrition: {
         Args: {
           p_crop: string
           p_free_text_name: string
           p_ingredient_id: string
+          p_note?: string
           p_nutrition_exclusion_reason: string
           p_nutrition_food_key: string
           p_quantity: number
@@ -4656,6 +4677,16 @@ export type Database = {
           p_diet_tags: string[]
           p_recipe_id: string
           p_required_equipment: string[]
+        }
+        Returns: undefined
+      }
+      admin_update_recipe_meta: {
+        Args: {
+          p_cook: number
+          p_prep: number
+          p_recipe_id: string
+          p_rest: number
+          p_servings: number
         }
         Returns: undefined
       }
@@ -4752,6 +4783,7 @@ export type Database = {
         }
         Returns: number
       }
+      fn_recipe_quality_issues: { Args: { p: Json }; Returns: Json }
       get_active_listing_crops: {
         Args: { p_limit?: number }
         Returns: {

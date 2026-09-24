@@ -4,14 +4,77 @@
 // "index.ts is a thin HTTP shell, admin/*.ts does the work" convention as list-jobs.ts/
 // plan-review.ts/job-detail.ts) so it stays unit-testable without an HTTP layer.
 //
-// Every write here goes through one of the 3 service_role-only RPCs added by
+// Every write here goes through one of the service_role-only RPCs added by
 // 20260911140000_t10_admin_recipe_quality_overview.sql (admin_update_recipe_allergens/
-// admin_update_recipe_facts/admin_update_ingredient_nutrition) — this module never writes
+// admin_update_recipe_facts/admin_update_ingredient_nutrition) or DQ-2's
+// 20260924204804_dq2_recipe_quality_issues.sql (admin_update_recipe_meta) — this module never writes
 // `recipes`/`recipe_ingredients` directly, so the RPCs' own validation (allergen taxonomy,
 // equipment taxonomy, recipe_ingredients' native CHECK/FK constraints) is the only place that
 // logic lives, and PostgREST-level grants stay exactly as narrow as those migrations left them.
 import type { SupabaseClient } from "../infra/supabase-admin.ts";
 import { RecipeAutomationError } from "../infra/errors.ts";
+
+// ---------------------------------------------------------------------------
+// DQ-2 consistency issues (fn_recipe_quality_issues). The shape below is the UI contract the
+// Lovable admin screen is written against — do not rename or add keys.
+// ---------------------------------------------------------------------------
+
+export type QualityIssueSeverity = "kritik" | "uyari" | "bilgi";
+
+export interface QualityIssueSuggestion {
+  addAllergen?: string;
+  removeAllergen?: string;
+  addDietTag?: string;
+  removeDietTag?: string;
+  setCrop?: string;
+}
+
+export interface QualityIssue {
+  code: string;
+  severity: QualityIssueSeverity;
+  message: string;
+  ingredientId?: string;
+  suggestion?: QualityIssueSuggestion;
+}
+
+const SEVERITIES: readonly QualityIssueSeverity[] = ["kritik", "uyari", "bilgi"];
+const SUGGESTION_KEYS: readonly (keyof QualityIssueSuggestion)[] = [
+  "addAllergen",
+  "removeAllergen",
+  "addDietTag",
+  "removeDietTag",
+  "setCrop",
+];
+
+/** Normalizes the jsonb an RPC/view column hands back into `QualityIssue[]`: drops anything that
+ * is not a well-formed issue and any key outside the contract, so a future SQL-side addition can
+ * never leak an unexpected field to the UI. `null` (unknown recipe / job without a draft) -> []. */
+export function mapQualityIssues(raw: unknown): QualityIssue[] {
+  if (!Array.isArray(raw)) return [];
+  const out: QualityIssue[] = [];
+  for (const item of raw) {
+    if (!item || typeof item !== "object") continue;
+    const r = item as Record<string, unknown>;
+    if (typeof r.code !== "string" || typeof r.message !== "string") continue;
+    if (!SEVERITIES.includes(r.severity as QualityIssueSeverity)) continue;
+    const issue: QualityIssue = {
+      code: r.code,
+      severity: r.severity as QualityIssueSeverity,
+      message: r.message,
+    };
+    if (typeof r.ingredientId === "string") issue.ingredientId = r.ingredientId;
+    if (r.suggestion && typeof r.suggestion === "object") {
+      const sugIn = r.suggestion as Record<string, unknown>;
+      const sug: QualityIssueSuggestion = {};
+      for (const key of SUGGESTION_KEYS) {
+        if (typeof sugIn[key] === "string") sug[key] = sugIn[key] as string;
+      }
+      if (Object.keys(sug).length > 0) issue.suggestion = sug;
+    }
+    out.push(issue);
+  }
+  return out;
+}
 
 // ---------------------------------------------------------------------------
 // List (admin_recipe_quality_overview)
@@ -34,11 +97,23 @@ export interface RecipeQualityListItem {
   allergenLabels: string[] | null;
   ingredientCount: number;
   unresolvedIngredientCount: number;
+  qualityIssues: QualityIssue[];
+  criticalIssueCount: number;
+  warningIssueCount: number;
+  /** kritik + uyari; bilgi is not counted. */
+  issueCount: number;
 }
 
+/**
+ * - `all` (default, T10's unfiltered behavior): no filter.
+ * - `incomplete`: T10's 4 missing-field conditions OR any DQ-2 kritik/uyari issue.
+ * - `issues`: only rows with a DQ-2 kritik/uyari issue.
+ */
+export type RecipeQualityListMode = "incomplete" | "issues" | "all";
+export const RECIPE_QUALITY_LIST_MODES: readonly RecipeQualityListMode[] = ["incomplete", "issues", "all"];
+
 export interface ListRecipeQualityParams {
-  /** Only rows missing equipment, missing complete nutrition, or with an unreviewed/unresolved gap. */
-  onlyIncomplete?: boolean;
+  mode?: RecipeQualityListMode;
   limit?: number;
   offset?: number;
 }
@@ -68,9 +143,13 @@ interface QualityOverviewRow {
   allergen_labels: string[] | null;
   ingredient_count: number;
   unresolved_ingredient_count: number;
+  quality_issues: unknown;
+  critical_issue_count: number | null;
+  warning_issue_count: number | null;
+  issue_count: number | null;
 }
 
-function mapQualityRow(r: QualityOverviewRow): RecipeQualityListItem {
+export function mapQualityRow(r: QualityOverviewRow): RecipeQualityListItem {
   return {
     id: r.id,
     slug: r.slug,
@@ -88,7 +167,26 @@ function mapQualityRow(r: QualityOverviewRow): RecipeQualityListItem {
     allergenLabels: r.allergen_labels,
     ingredientCount: r.ingredient_count,
     unresolvedIngredientCount: r.unresolved_ingredient_count,
+    qualityIssues: mapQualityIssues(r.quality_issues),
+    criticalIssueCount: r.critical_issue_count ?? 0,
+    warningIssueCount: r.warning_issue_count ?? 0,
+    issueCount: r.issue_count ?? 0,
   };
+}
+
+/** PostgREST `or` expression for a list mode, or null for no filter. */
+export function qualityListFilter(mode: RecipeQualityListMode): string | null {
+  switch (mode) {
+    case "incomplete":
+      // T10's missing-field gaps (missing equipment info, incomplete nutrition, an unreviewed
+      // allergen state, an unresolved ingredient) plus DQ-2's consistency issues.
+      return "has_equipment.eq.false,nutrition_complete.eq.false,allergens_reviewed.eq.false," +
+        "unresolved_ingredient_count.gt.0,issue_count.gt.0";
+    case "issues":
+      return "issue_count.gt.0";
+    case "all":
+      return null;
+  }
 }
 
 export async function listRecipeQuality(
@@ -104,14 +202,9 @@ export async function listRecipeQuality(
     .order("created_at", { ascending: false })
     .range(offset, offset + limit - 1);
 
-  if (params.onlyIncomplete) {
-    // PostgREST `or` filter — same shape as gaps this overview is meant to surface: missing
-    // equipment info, incomplete nutrition, an unreviewed allergen state, or an unresolved
-    // ingredient. `.or()` needs one comma-joined expression string.
-    query = query.or(
-      "has_equipment.eq.false,nutrition_complete.eq.false,allergens_reviewed.eq.false,unresolved_ingredient_count.gt.0",
-    );
-  }
+  // `.or()` needs one comma-joined expression string.
+  const filter = qualityListFilter(params.mode ?? "all");
+  if (filter) query = query.or(filter);
 
   const { data, error, count } = await query;
   if (error) {
@@ -142,6 +235,8 @@ export interface RecipeQualityIngredient {
   unit: string | null;
   nutritionFoodKey: string | null;
   nutritionExclusionReason: string | null;
+  note: string | null;
+  ingredientClass: string | null;
 }
 
 export interface NutritionFoodKeyOption {
@@ -160,6 +255,10 @@ export interface RecipeQualityDetail {
     slug: string;
     title: string;
     servings: number | null;
+    prepMinutes: number | null;
+    cookMinutes: number | null;
+    restMinutes: number | null;
+    coverPhotoUrl: string | null;
     allergenLabels: string[] | null;
     allergensReviewed: boolean;
     allergensReviewedAt: string | null;
@@ -177,6 +276,8 @@ export interface RecipeQualityDetail {
     fiberG: number | null;
   };
   ingredients: RecipeQualityIngredient[];
+  /** DQ-2 consistency issues for this recipe (admin_recipe_quality_issues). */
+  issues: QualityIssue[];
 }
 
 interface RecipeDetailRow {
@@ -184,6 +285,10 @@ interface RecipeDetailRow {
   slug: string;
   title: string;
   servings: number | null;
+  prep_minutes: number | null;
+  cook_minutes: number | null;
+  rest_minutes: number | null;
+  cover_photo_url: string | null;
   allergen_labels: string[] | null;
   allergens_reviewed: boolean;
   allergens_reviewed_at: string | null;
@@ -210,6 +315,8 @@ interface IngredientRow {
   unit: string | null;
   nutrition_food_key: string | null;
   nutrition_exclusion_reason: string | null;
+  note: string | null;
+  ingredient_class: string | null;
 }
 
 const numOrNull = (v: number | string | null): number | null => (v == null ? null : Number(v));
@@ -221,7 +328,8 @@ export async function getRecipeQualityDetail(
   const { data: recipe, error: recipeError } = await client
     .from("recipes")
     .select(
-      "id, slug, title, servings, allergen_labels, allergens_reviewed, allergens_reviewed_at, " +
+      "id, slug, title, servings, prep_minutes, cook_minutes, rest_minutes, cover_photo_url, " +
+        "allergen_labels, allergens_reviewed, allergens_reviewed_at, " +
         "required_equipment, diet_tags, nutrition_source, nutrition_coverage_pct, " +
         "nutrition_reference_version, nutrition_calculated_at, nutrition_warnings, calories, " +
         "protein_g, carbs_g, fat_g, fiber_g",
@@ -237,11 +345,14 @@ export async function getRecipeQualityDetail(
     });
   }
   if (!recipe) return null;
-  const r = recipe as RecipeDetailRow;
+  const r = recipe as unknown as RecipeDetailRow;
 
   const { data: ingredients, error: ingredientsError } = await client
     .from("recipe_ingredients")
-    .select("id, sort_order, crop, free_text_name, quantity, unit, nutrition_food_key, nutrition_exclusion_reason")
+    .select(
+      "id, sort_order, crop, free_text_name, quantity, unit, nutrition_food_key, nutrition_exclusion_reason, " +
+        "note, ingredient_class",
+    )
     .eq("recipe_id", recipeId)
     .order("sort_order", { ascending: true });
   if (ingredientsError) {
@@ -266,6 +377,18 @@ export async function getRecipeQualityDetail(
     });
   }
 
+  const { data: issues, error: issuesError } = await client.rpc("admin_recipe_quality_issues", {
+    p_recipe_id: recipeId,
+  });
+  if (issuesError) {
+    throw new RecipeAutomationError({
+      code: "ADMIN_RECIPE_QUALITY_DETAIL_ISSUES_QUERY_FAILED",
+      message: "failed to compute admin_recipe_quality_issues for quality detail",
+      retryable: true,
+      details: { pgCode: (issuesError as { code?: string }).code },
+    });
+  }
+
   return {
     nutritionFoodKeyOptions: ((foodKeys ?? []) as Array<{ food_key: string; display_name: string }>).map((f) => ({
       foodKey: f.food_key,
@@ -276,6 +399,10 @@ export async function getRecipeQualityDetail(
       slug: r.slug,
       title: r.title,
       servings: r.servings,
+      prepMinutes: r.prep_minutes,
+      cookMinutes: r.cook_minutes,
+      restMinutes: r.rest_minutes,
+      coverPhotoUrl: r.cover_photo_url,
       allergenLabels: r.allergen_labels,
       allergensReviewed: r.allergens_reviewed,
       allergensReviewedAt: r.allergens_reviewed_at,
@@ -292,7 +419,7 @@ export async function getRecipeQualityDetail(
       fatG: numOrNull(r.fat_g),
       fiberG: numOrNull(r.fiber_g),
     },
-    ingredients: ((ingredients ?? []) as IngredientRow[]).map((i) => ({
+    ingredients: ((ingredients ?? []) as unknown as IngredientRow[]).map((i) => ({
       id: i.id,
       sortOrder: i.sort_order,
       crop: i.crop,
@@ -301,12 +428,37 @@ export async function getRecipeQualityDetail(
       unit: i.unit,
       nutritionFoodKey: i.nutrition_food_key,
       nutritionExclusionReason: i.nutrition_exclusion_reason,
+      note: i.note,
+      ingredientClass: i.ingredient_class,
     })),
+    issues: mapQualityIssues(issues),
   };
 }
 
 // ---------------------------------------------------------------------------
-// Writes — thin wrappers over the 3 RPCs. A Postgres error raised inside the RPC (our own
+// Draft issues — the same checker over a pipeline job's latest recipe_drafts version, for the
+// F2 approval screen. null = the job has no draft.
+// ---------------------------------------------------------------------------
+
+export async function getDraftQualityIssues(
+  client: SupabaseClient,
+  jobId: string,
+): Promise<QualityIssue[] | null> {
+  const { data, error } = await client.rpc("admin_recipe_draft_quality_issues", { p_job_id: jobId });
+  if (error) {
+    throw new RecipeAutomationError({
+      code: "ADMIN_RECIPE_QUALITY_DRAFT_ISSUES_QUERY_FAILED",
+      message: "failed to compute admin_recipe_draft_quality_issues",
+      retryable: true,
+      details: { pgCode: (error as { code?: string }).code },
+    });
+  }
+  if (data == null) return null;
+  return mapQualityIssues(data);
+}
+
+// ---------------------------------------------------------------------------
+// Writes — thin wrappers over the admin_update_* RPCs. A Postgres error raised inside the RPC (our own
 // validation, or a native CHECK/FK violation) is classified from its sqlstate/message prefix so
 // the Edge Function layer can map it to a clean 4xx instead of a bare 500.
 // ---------------------------------------------------------------------------
@@ -363,6 +515,27 @@ export async function updateRecipeFacts(
   return { ok: true };
 }
 
+export async function updateRecipeMeta(
+  client: SupabaseClient,
+  params: {
+    recipeId: string;
+    servings: number;
+    prepMinutes: number | null;
+    cookMinutes: number | null;
+    restMinutes: number | null;
+  },
+): Promise<QualityWriteResult> {
+  const { error } = await client.rpc("admin_update_recipe_meta", {
+    p_recipe_id: params.recipeId,
+    p_servings: params.servings,
+    p_prep: params.prepMinutes,
+    p_cook: params.cookMinutes,
+    p_rest: params.restMinutes,
+  });
+  if (error) return classifyRpcError(error, "ADMIN_UPDATE_META_NOT_FOUND");
+  return { ok: true };
+}
+
 export async function updateIngredientNutrition(
   client: SupabaseClient,
   params: {
@@ -373,6 +546,8 @@ export async function updateIngredientNutrition(
     unit: string | null;
     nutritionFoodKey: string | null;
     nutritionExclusionReason: string | null;
+    /** undefined = leave the note unchanged, null = clear it, string = set it. */
+    note?: string | null;
   },
 ): Promise<QualityWriteResult> {
   const { error } = await client.rpc("admin_update_ingredient_nutrition", {
@@ -383,6 +558,8 @@ export async function updateIngredientNutrition(
     p_unit: params.unit,
     p_nutrition_food_key: params.nutritionFoodKey,
     p_nutrition_exclusion_reason: params.nutritionExclusionReason,
+    // The RPC reads p_note null as "unchanged" and '' as "clear".
+    p_note: params.note === undefined ? null : params.note === null ? "" : params.note,
   });
   if (error) return classifyRpcError(error, "ADMIN_UPDATE_INGREDIENT_NOT_FOUND");
   return { ok: true };
