@@ -1,4 +1,5 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { formatIngredientUnit } from "@/lib/hasat/format";
 import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { LoadingDots } from "@/components/hasat/LoadingDots";
@@ -157,7 +158,7 @@ function PrivateRecipeSharePage() {
               key={`${item.sort_order}-${item.crop ?? item.free_text_name}`}
               className="rounded-xl border p-3 text-sm"
             >
-              {[item.quantity, item.unit, item.crop ?? item.free_text_name]
+              {[item.quantity, formatIngredientUnit(item.unit), item.crop ?? item.free_text_name]
                 .filter(Boolean)
                 .join(" ")}
               {item.note ? ` · ${item.note}` : ""}

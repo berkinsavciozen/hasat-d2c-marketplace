@@ -82,14 +82,41 @@ const CROP_EMOJI_OVERRIDES: Record<string, string> = {
   "pamuk": "🌱",
   "çay": "🍵",
   "fıstık": "🥜",
+  "nar": "🍎",
+  "kabak": "🥒",
+  "salatalık": "🥒",
+  "patlıcan": "🍆",
+  "incir": "🍇",
+  "nohut": "🫘",
+  "mercimek": "🫘",
+  "ayva": "🍐",
+  "mandalina": "🍊",
+  "greyfurt": "🍊",
+  "zencefil": "🫚",
+  "şeker": "🍬",
+  "tuz": "🧂",
+  "su": "💧",
+  "süt": "🥛",
+  "yumurta": "🥚",
+  "tereyağı": "🧈",
+  "bal": "🍯",
 };
+
+/** Eşleşme yoksa gösterilen nötr ikon (🌾 yalnız tahıl grubunda). */
+export const NEUTRAL_INGREDIENT_EMOJI = "🥄";
+
+/** Crop'u olmayan serbest metin malzemeler için yalnız override tablosuna bakar. */
+export function CROP_EMOJI_OVERRIDES_LOOKUP(name: string | null | undefined): string | null {
+  const key = normalizeCropKey(name);
+  return key ? (CROP_EMOJI_OVERRIDES[key] ?? null) : null;
+}
 
 export function cropEmoji(crop: string | null | undefined, cfg?: CropConfig | null): string {
   const key = normalizeCropKey(crop);
   if (key && CROP_EMOJI_OVERRIDES[key]) return CROP_EMOJI_OVERRIDES[key];
   const group = cfg?.category_group;
   if (group && CATEGORY_GROUP_META[group]) return CATEGORY_GROUP_META[group].emoji;
-  return "🌾";
+  return group === "tahil" ? "🌾" : NEUTRAL_INGREDIENT_EMOJI;
 }
 
 export interface CropOption {

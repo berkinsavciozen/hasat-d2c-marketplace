@@ -99,7 +99,12 @@ function RecipeListPage() {
   const filtered = recipes.filter((r) => {
     if (difficulty && r.difficulty !== difficulty) return false;
     if (cuisine && r.cuisine !== cuisine) return false;
-    if (diet && !r.diet_tags.includes(diet)) return false;
+    if (
+      diet &&
+      !r.diet_tags.includes(diet) &&
+      !(diet === "vejetaryen" && r.diet_tags.includes("vegan"))
+    )
+      return false;
     if (equipment.length > 0 && !equipment.every((e) => r.required_equipment.includes(e)))
       return false;
     if (!matchesAllergenExclusion(r, excludedAllergens)) return false;

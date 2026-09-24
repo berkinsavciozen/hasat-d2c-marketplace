@@ -4,8 +4,20 @@ import { Clock, Minus, Plus, Timer as TimerIcon, Search, AlarmClock, Share2 } fr
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useProfile } from "@/lib/hasat/queries";
-import { formatCropIngredient, formatQuantity, formatTRY } from "@/lib/hasat/format";
-import { cropEmoji } from "@/lib/hasat/crop-config";
+import {
+  INGREDIENT_UNQUANTIFIED_LABELS,
+  formatCropIngredient,
+  formatIngredientUnit,
+  formatQuantity,
+  formatTRY,
+} from "@/lib/hasat/format";
+import {
+  CROP_EMOJI_OVERRIDES_LOOKUP,
+  NEUTRAL_INGREDIENT_EMOJI,
+  cropEmoji,
+  findCropConfig,
+  useCropConfigMap,
+} from "@/lib/hasat/crop-config";
 import { PUBLIC_BASE_URL } from "@/lib/hasat/constants";
 import {
   fetchRecipeBySlug,
@@ -43,7 +55,10 @@ function ingredientLabel(i: RecipeIngredientRow): string {
   // Lowercase — this array reads as "1 bardak ceviz", not "1 bardak Ceviz"
   // (kural: crop adı cümle içinde geçerken küçük harf, P23-M4-b).
   const name = i.crop ? formatCropIngredient(i.crop) : (i.free_text_name ?? "");
-  const qty = [i.quantity, i.unit].filter((x) => x != null && x !== "").join(" ");
+  const qty =
+    i.quantity == null && !i.unit && i.nutrition_exclusion_reason
+      ? (INGREDIENT_UNQUANTIFIED_LABELS[i.nutrition_exclusion_reason] ?? "")
+      : [i.quantity, formatIngredientUnit(i.unit)].filter((x) => x != null && x !== "").join(" ");
   const base = [qty, name].filter(Boolean).join(" ").trim();
   return i.note ? `${base} (${i.note})` : base;
 }
@@ -264,13 +279,32 @@ function RecipeDetailPage() {
 
   return (
     <div className="min-h-screen pb-24">
-      <RepresentativePhoto
-        src={recipe.displayPhotoUrl}
-        isRepresentative={recipe.isRepresentativePhoto}
-        alt={recipe.title}
-        placeholderEmoji="🍽️"
-        className="h-56 w-full md:h-72"
-      />
+      {recipe.displayPhotoUrl && /-1x1\.webp$/i.test(recipe.displayPhotoUrl) ? (
+        <div className="relative h-56 w-full overflow-hidden md:h-72">
+          <img
+            src={recipe.displayPhotoUrl}
+            alt=""
+            aria-hidden="true"
+            className="absolute inset-0 h-full w-full object-cover blur-2xl scale-110 opacity-60"
+          />
+          <img
+            src={recipe.displayPhotoUrl}
+            alt={recipe.isRepresentativePhoto ? `${recipe.title} (temsili görsel)` : recipe.title}
+            className="absolute inset-0 h-full w-full object-contain"
+          />
+          {recipe.isRepresentativePhoto && (
+            <RepresentativeBadge className="absolute bottom-1 right-1" />
+          )}
+        </div>
+      ) : (
+        <RepresentativePhoto
+          src={recipe.displayPhotoUrl}
+          isRepresentative={recipe.isRepresentativePhoto}
+          alt={recipe.title}
+          placeholderEmoji="🍽️"
+          className="h-56 w-full md:h-72"
+        />
+      )}
 
       <div className="px-4 py-5 md:px-8 space-y-6 max-w-2xl mx-auto">
         <div>
@@ -418,7 +452,10 @@ function RecipeDetailPage() {
                         className="h-11 w-11 object-cover"
                       />
                     ) : (
-                      cropEmoji(ing.crop ?? undefined)
+                      ing.crop
+                        ? cropEmoji(ing.crop, findCropConfig(cropConfigMap, ing.crop))
+                        : (CROP_EMOJI_OVERRIDES_LOOKUP(ing.free_text_name) ??
+                          NEUTRAL_INGREDIENT_EMOJI)
                     )}
                     {/* crop_photo_url her zaman crop_config'in stok fotoğrafı —
                         malzeme belirli bir ilana değil crop'a bağlı, bu yüzden
@@ -442,7 +479,11 @@ function RecipeDetailPage() {
                           ? (shop.scaled_quantity ?? shop.recipe_quantity)
                           : ing.quantity;
                         const unit = shop ? shop.recipe_unit : ing.unit;
-                        return `${q != null ? formatQuantity(q, unit) : ""} ${unit ?? ""}`.trim();
+                        if (q == null && !unit) {
+                          const r = ing.nutrition_exclusion_reason;
+                          return r ? (INGREDIENT_UNQUANTIFIED_LABELS[r] ?? "") : "";
+                        }
+                        return `${q != null ? formatQuantity(q, unit) : ""} ${formatIngredientUnit(unit)}`.trim();
                       })()}
                       {shop && shop.scale_factor !== 1 && (
                         <span className="ml-1 opacity-70">(×{shop.scale_factor})</span>

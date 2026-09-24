@@ -78,3 +78,29 @@ export function formatCropIngredient(slug: string | null | undefined): string {
     .filter(Boolean)
     .join(" ");
 }
+
+const INGREDIENT_UNIT_LABELS: Record<string, string> = {
+  su_bardagi: "su bardağı",
+  yemek_kasigi: "yemek kaşığı",
+  tatli_kasigi: "tatlı kaşığı",
+  cay_kasigi: "çay kaşığı",
+  cay_bardagi: "çay bardağı",
+  dis: "diş",
+  avuc: "avuç",
+  salkim: "salkım",
+  l: "litre",
+};
+
+/** Malzeme birimini okunur Türkçe'ye çevirir (yalnız gösterim; saklanan değer ham kalır). */
+export function formatIngredientUnit(unit: string | null | undefined): string {
+  if (unit == null) return "";
+  const raw = String(unit).trim();
+  if (!raw) return "";
+  return INGREDIENT_UNIT_LABELS[raw] ?? raw.replace(/_/g, " ");
+}
+
+export const INGREDIENT_UNQUANTIFIED_LABELS: Record<string, string> = {
+  seasoning_to_taste_unquantified: "damak tadına göre",
+  serving_only_unquantified: "servis için",
+  trace_flavoring_unquantified: "bir miktar",
+};
