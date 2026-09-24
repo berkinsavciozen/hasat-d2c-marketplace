@@ -1,10 +1,14 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Share2 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { PUBLIC_BASE_URL } from "@/lib/hasat/constants";
 import { buildPrivateRecipeShareUrl } from "@/lib/hasat/recipeShareSecurity";
 import { RECIPE_SHARE_DURATIONS } from "@/lib/hasat/recipeShareExpiry";
+import {
+  deliverPrivateRecipeShareUrl,
+  type PrivateRecipeShareDeliveryResult,
+} from "@/lib/hasat/privateRecipeShareDelivery";
 import {
   expiryFromNow,
   useCreateRecipeShareGrant,
@@ -19,32 +23,57 @@ export function PrivateRecipeSharePanel({ recipeId }: { recipeId: string }) {
   const create = useCreateRecipeShareGrant(recipeId);
   const rotate = useRotateRecipeShareGrant(recipeId);
   const revoke = useRevokeRecipeShareGrant(recipeId);
+  const actionPendingRef = useRef(false);
+  const abortedDeliveryRef = useRef<{ actionKey: string; token: string } | null>(null);
+  const [actionPending, setActionPending] = useState(false);
 
-  const shareOnce = async (token: string) => {
-    const url = buildPrivateRecipeShareUrl(PUBLIC_BASE_URL, token);
+  const shareOnce = async (token: string): Promise<PrivateRecipeShareDeliveryResult | "failed"> => {
     try {
-      if (navigator.share) await navigator.share({ title: "Özel tarifim", url });
-      else {
-        await navigator.clipboard.writeText(url);
-        toast.success("Güvenli link kopyalandı");
-      }
-    } catch (error) {
-      if ((error as DOMException)?.name !== "AbortError") toast.error("Link paylaşılamadı");
+      const url = buildPrivateRecipeShareUrl(PUBLIC_BASE_URL, token);
+      const result = await deliverPrivateRecipeShareUrl(url, navigator);
+      if (result === "copied") toast.success("Güvenli link kopyalandı");
+      return result;
+    } catch {
+      toast.error("Link paylaşılamadı");
+      return "failed";
+    }
+  };
+
+  const runGrantAction = async (
+    actionKey: string,
+    grantAction: () => Promise<{ token: string }>,
+    errorMessage: string,
+  ) => {
+    if (actionPendingRef.current) return;
+    actionPendingRef.current = true;
+    setActionPending(true);
+    try {
+      const abortedDelivery = abortedDeliveryRef.current;
+      const token =
+        abortedDelivery?.actionKey === actionKey
+          ? abortedDelivery.token
+          : (await grantAction()).token;
+      const result = await shareOnce(token);
+      abortedDeliveryRef.current = result === "aborted" ? { actionKey, token } : null;
+    } catch {
+      toast.error(errorMessage);
+    } finally {
+      actionPendingRef.current = false;
+      setActionPending(false);
     }
   };
 
   const createLink = () =>
-    create.mutate(expiryFromNow(duration), {
-      onSuccess: ({ token }) => void shareOnce(token),
-      onError: () => toast.error("Link oluşturulamadı. Tekrar deneyebilirsin."),
-    });
+    void runGrantAction(
+      "create",
+      () => create.mutateAsync(expiryFromNow(duration)),
+      "Link oluşturulamadı. Tekrar deneyebilirsin.",
+    );
   const rotateLink = (grantId: string) =>
-    rotate.mutate(
-      { grantId, expiresAt: expiryFromNow(duration) },
-      {
-        onSuccess: ({ token }) => void shareOnce(token),
-        onError: () => toast.error("Link yenilenemedi. Tekrar deneyebilirsin."),
-      },
+    void runGrantAction(
+      `rotate:${grantId}`,
+      () => rotate.mutateAsync({ grantId, expiresAt: expiryFromNow(duration) }),
+      "Link yenilenemedi. Tekrar deneyebilirsin.",
     );
   const revokeLink = (grantId: string) =>
     revoke.mutate(grantId, {
@@ -81,8 +110,8 @@ export function PrivateRecipeSharePanel({ recipeId }: { recipeId: string }) {
               </option>
             ))}
           </select>
-          <Button type="button" size="sm" onClick={createLink} disabled={create.isPending}>
-            <Share2 /> {create.isPending ? "Oluşturuluyor…" : "Paylaş"}
+          <Button type="button" size="sm" onClick={createLink} disabled={actionPending}>
+            <Share2 /> {actionPending ? "Oluşturuluyor…" : "Paylaş"}
           </Button>
         </div>
       </div>
@@ -100,7 +129,7 @@ export function PrivateRecipeSharePanel({ recipeId }: { recipeId: string }) {
                   variant="outline"
                   size="sm"
                   onClick={() => rotateLink(grant.grant_id)}
-                  disabled={rotate.isPending}
+                  disabled={actionPending}
                 >
                   Yenile
                 </Button>

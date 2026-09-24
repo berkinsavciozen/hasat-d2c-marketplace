@@ -7,10 +7,8 @@ import {
   hasPendingShareToken,
   withPendingShareToken,
 } from "../src/lib/hasat/recipeShareSecurity.ts";
-import {
-  expiryFromNow,
-  RECIPE_SHARE_DURATIONS,
-} from "../src/lib/hasat/recipeShareExpiry.ts";
+import { expiryFromNow, RECIPE_SHARE_DURATIONS } from "../src/lib/hasat/recipeShareExpiry.ts";
+import { deliverPrivateRecipeShareUrl } from "../src/lib/hasat/privateRecipeShareDelivery.ts";
 
 const read = (path) => readFile(new URL(path, import.meta.url), "utf8");
 const TOKEN = "a".repeat(64);
@@ -23,12 +21,8 @@ test("share durations match the client contract and remain valid after transport
 
   const clientNow = Date.UTC(2026, 8, 23, 12, 0, 0);
   const backendNow = clientNow + 7_000;
-  const minimumExpiry = Date.parse(
-    expiryFromNow(RECIPE_SHARE_DURATIONS[0].value, clientNow),
-  );
-  const maximumExpiry = Date.parse(
-    expiryFromNow(RECIPE_SHARE_DURATIONS[4].value, clientNow),
-  );
+  const minimumExpiry = Date.parse(expiryFromNow(RECIPE_SHARE_DURATIONS[0].value, clientNow));
+  const maximumExpiry = Date.parse(expiryFromNow(RECIPE_SHARE_DURATIONS[4].value, clientNow));
 
   assert.ok(minimumExpiry >= backendNow + 5 * 60_000);
   assert.ok(maximumExpiry <= backendNow + 30 * 24 * 60 * 60_000);
@@ -88,4 +82,101 @@ test("feature flag is default-off and gates every RPC surface", async () => {
   assert.match(flag, /=== "true"/);
   assert.match(api, /enabled: PRIVATE_RECIPE_SHARE_ENABLED/);
   assert.match(api, /function requireEnabled/);
+});
+
+test("native share success does not copy the capability URL", async () => {
+  const calls = [];
+  const result = await deliverPrivateRecipeShareUrl("https://example.test/#share=secret", {
+    share: async (data) => calls.push(["share", data.url]),
+    clipboard: { writeText: async (value) => calls.push(["copy", value]) },
+  });
+
+  assert.equal(result, "shared");
+  assert.deepEqual(calls, [["share", "https://example.test/#share=secret"]]);
+});
+
+test("unsupported native share copies the same fragment URL", async () => {
+  const copied = [];
+  const url = "https://example.test/tarif-paylasim#share=secret";
+  const result = await deliverPrivateRecipeShareUrl(url, {
+    share: undefined,
+    clipboard: { writeText: async (value) => copied.push(value) },
+  });
+
+  assert.equal(result, "copied");
+  assert.deepEqual(copied, [url]);
+});
+
+test("non-Abort native share rejection falls back to clipboard", async () => {
+  const copied = [];
+  const url = "https://example.test/tarif-paylasim#share=secret";
+  const result = await deliverPrivateRecipeShareUrl(url, {
+    share: async () => {
+      throw new TypeError("share unavailable");
+    },
+    clipboard: { writeText: async (value) => copied.push(value) },
+  });
+
+  assert.equal(result, "copied");
+  assert.deepEqual(copied, [url]);
+});
+
+test("AbortError is a silent terminal result and does not copy", async () => {
+  let copied = false;
+  const result = await deliverPrivateRecipeShareUrl("https://example.test/#share=secret", {
+    share: async () => {
+      throw new DOMException("cancelled", "AbortError");
+    },
+    clipboard: { writeText: async () => void (copied = true) },
+  });
+
+  assert.equal(result, "aborted");
+  assert.equal(copied, false);
+});
+
+test("share and clipboard double failure emits a token-free error", async () => {
+  const url = "https://example.test/tarif-paylasim#share=must-not-leak";
+  await assert.rejects(
+    deliverPrivateRecipeShareUrl(url, {
+      share: async () => {
+        throw new TypeError("share failed");
+      },
+      clipboard: {
+        writeText: async () => {
+          throw new DOMException("copy failed", "NotAllowedError");
+        },
+      },
+    }),
+    (error) => {
+      assert.equal(error.message, "private_recipe_share_delivery_failed");
+      assert.doesNotMatch(String(error), /must-not-leak/);
+      return true;
+    },
+  );
+});
+
+test("create and rotate both deliver their one-time token under one pending guard", async () => {
+  const owner = await read("../src/components/hasat/PrivateRecipeSharePanel.tsx");
+
+  assert.match(owner, /actionPendingRef\.current/);
+  assert.match(owner, /abortedDeliveryRef/);
+  assert.match(owner, /abortedDelivery\?\.actionKey === actionKey/);
+  assert.match(owner, /result === "aborted" \? \{ actionKey, token \} : null/);
+  assert.match(owner, /runGrantAction\([\s\S]*?create\.mutateAsync/);
+  assert.match(owner, /runGrantAction\([\s\S]*?rotate\.mutateAsync/);
+  assert.match(owner, /await grantAction\(\)\)\.token/);
+  assert.match(owner, /disabled=\{actionPending\}/);
+});
+
+test("delivery keeps capabilities out of query strings, logging, and persistence", async () => {
+  const delivery = await read("../src/lib/hasat/privateRecipeShareDelivery.ts");
+  const owner = await read("../src/components/hasat/PrivateRecipeSharePanel.tsx");
+  const source = `${delivery}\n${owner}`;
+
+  assert.doesNotMatch(
+    source,
+    /console\.|captureException|captureMessage|localStorage|sessionStorage|indexedDB/,
+  );
+  assert.doesNotMatch(source, /[?&]share=/);
+  assert.doesNotMatch(delivery, /throw new Error\([^)]*url/);
 });
