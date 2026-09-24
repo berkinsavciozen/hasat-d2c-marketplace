@@ -20,8 +20,16 @@
 //      neither 'retryable' nor 'running' — so it needed its own candidate query. Found in
 //      production 2026-09-02 (job 451234c7-cdc0-4322-b201-9b4d62fe4cc9: approved, never
 //      published, no automated path back to `publish` at all before this).
+//   4. `status = 'queued'`, unlocked, untouched for longer than `STALE_QUEUED_GRACE_MS` — a job
+//      re-queued outside a stage-runner's own `advanceStageAndDispatch` path: an admin's
+//      "retry stage" (`admin/review-actions.ts`'s `retryStage()`: `failed` -> `queued`) or
+//      "request revision" (-> `revise`/`queued`), or any stage-runner advance whose best-effort
+//      dispatch was dropped. `claimJob()` claims 'queued' happily, but categories 1-3 never look
+//      at it, so before this every panel retry sat at 'queued' forever (F2-S19, found 2026-09-24:
+//      job c9059cbc queued since 2026-09-16). The grace window keeps this from racing a dispatch
+//      that is merely in flight — a freshly queued job is left to its own immediate nudge first.
 //
-// This module is the periodic nudge for all three: find every job currently eligible under any
+// This module is the periodic nudge for all four: find every job currently eligible under any
 // condition and re-dispatch it via the exact same `redispatchStage` helper every stage-runner's
 // own successful-advance path already uses — its own doc comment anticipates exactly this
 // ("re-nudging an already-queued job... e.g. a reconciliation sweep"). This module never claims or
@@ -34,7 +42,7 @@
 // redispatching it while the job is still at stage='awaiting_approval' is exactly the right call —
 // there is no earlier "advance to publish" step this sweep needs to perform itself.
 import type { SupabaseClient } from "./supabase-admin.ts";
-import { redispatchStage } from "./stage-dispatch.ts";
+import { redispatchStage, STAGE_FUNCTION_NAMES } from "./stage-dispatch.ts";
 import { RecipeAutomationError } from "./errors.ts";
 import type { RecipeJobStage } from "../types.ts";
 
@@ -42,25 +50,18 @@ import type { RecipeJobStage } from "../types.ts";
  * rather than in one unbounded pass. */
 const SWEEP_BATCH_LIMIT = 50;
 
-/** Mirrors `dispatch_recipe_stage`'s own `_allowed_function_names` allow-list (f2s05 migration)
- * exactly — 'awaiting_approval' is excluded here (used to look up a candidate's CURRENT stage for
- * categories 1/2 above) for the same reason it always was: it is a human-review resting state, and
- * neither 'retryable' nor 'running' is ever set while a job sits there. Category 3 (approved
- * awaiting publish) below targets `recipe-stage-publish` directly instead of going through this
- * map — see `PUBLISH_FUNCTION_NAME` and `fetchApprovedAwaitingPublishJobs`. */
-const STAGE_FUNCTION_NAMES: Partial<Record<RecipeJobStage, string>> = {
-  plan: "recipe-stage-plan",
-  write: "recipe-stage-write",
-  qa: "recipe-stage-qa",
-  revise: "recipe-stage-revise",
-  image: "recipe-stage-image",
-  finalize: "recipe-stage-finalize",
-  publish: "recipe-stage-publish",
-};
+/** How long a 'queued' job must sit untouched (`updated_at`) before category 4 treats it as
+ * orphaned. Two sweep ticks (the cron runs every 5 minutes) — long enough that an immediate
+ * dispatch still in flight is never double-nudged in the common case, short enough that a dropped
+ * one is recovered within ~10 minutes. A double nudge would be harmless anyway (see header). */
+export const STALE_QUEUED_GRACE_MS = 10 * 60 * 1000;
+
+/** Stages category 4 may redispatch — exactly the stages that have a stage-runner. */
+const QUEUED_SWEEP_STAGES = Object.keys(STAGE_FUNCTION_NAMES);
 
 /** Matches `admin/review-actions.ts`'s own `PUBLISH_FUNCTION_NAME` — category 3's target is always
  * `recipe-stage-publish`, regardless of the candidate's (still `awaiting_approval`) `stage` value,
- * so it is not looked up through `STAGE_FUNCTION_NAMES` above. */
+ * so it is not looked up through the imported `STAGE_FUNCTION_NAMES`. */
 const PUBLISH_FUNCTION_NAME = "recipe-stage-publish";
 
 interface SweepCandidateRow {
@@ -140,6 +141,32 @@ async function fetchApprovedAwaitingPublishJobs(client: SupabaseClient): Promise
   return (data as SweepCandidateRow[] | null) ?? [];
 }
 
+/** `status = 'queued'` jobs nobody has touched for `STALE_QUEUED_GRACE_MS` — category 4, see this
+ * module's header. `updated_at` (maintained by the table's own `set_updated_at` trigger) is the
+ * "when was this job last moved" clock: every transition into 'queued' is an UPDATE that bumps it,
+ * and a stage-runner's claim immediately moves the job off 'queued' again. */
+async function fetchStaleQueuedJobs(client: SupabaseClient, now: Date): Promise<SweepCandidateRow[]> {
+  const cutoffIso = new Date(now.getTime() - STALE_QUEUED_GRACE_MS).toISOString();
+  const { data, error } = await client
+    .from("recipe_generation_jobs")
+    .select("id, stage, batch_id")
+    .eq("status", "queued")
+    .in("stage", QUEUED_SWEEP_STAGES)
+    .is("locked_by", null)
+    .lte("updated_at", cutoffIso)
+    .limit(SWEEP_BATCH_LIMIT);
+
+  if (error) {
+    throw new RecipeAutomationError({
+      code: "RETRY_SWEEP_QUERY_FAILED",
+      message: "failed to query recipe_generation_jobs for stale queued jobs",
+      retryable: true,
+      details: { pgCode: (error as { code?: string }).code },
+    });
+  }
+  return (data as SweepCandidateRow[] | null) ?? [];
+}
+
 async function redispatchRows(
   client: SupabaseClient,
   rows: SweepCandidateRow[],
@@ -179,6 +206,9 @@ export interface RetrySweepResult {
   /** Jobs found at stage='awaiting_approval', status='approved', redispatched to
    * recipe-stage-publish — category 3, see this module's header. */
   approvedAwaitingPublishRedispatched: number;
+  /** Jobs found at status='queued', unlocked and untouched past `STALE_QUEUED_GRACE_MS`,
+   * redispatched at their current stage — category 4, see this module's header. */
+  staleQueuedRedispatched: number;
   /** Candidate rows whose `stage` isn't in the allow-list above — skipped, never redispatched.
    * Should always be empty in practice (every non-terminal stage a job can sit at while
    * retryable/running is in the map); surfaced for observability rather than silently dropped. */
@@ -192,22 +222,26 @@ export interface RetrySweepResult {
  * other infra module in this pipeline uses.
  */
 export async function runRetrySweep(client: SupabaseClient): Promise<RetrySweepResult> {
-  const nowIso = new Date().toISOString();
+  const now = new Date();
+  const nowIso = now.toISOString();
 
-  const [dueRetryable, staleRunning, approvedAwaitingPublish] = await Promise.all([
+  const [dueRetryable, staleRunning, approvedAwaitingPublish, staleQueued] = await Promise.all([
     fetchDueRetryableJobs(client, nowIso),
     fetchStaleRunningJobs(client, nowIso),
     fetchApprovedAwaitingPublishJobs(client),
+    fetchStaleQueuedJobs(client, now),
   ]);
 
   const retryable = await redispatchRows(client, dueRetryable);
   const staleLocks = await redispatchRows(client, staleRunning);
   const approvedAwaitingPublishRedispatched = await redispatchApprovedAwaitingPublishRows(client, approvedAwaitingPublish);
+  const queued = await redispatchRows(client, staleQueued);
 
   return {
     retryableRedispatched: retryable.redispatched,
     staleLockRedispatched: staleLocks.redispatched,
     approvedAwaitingPublishRedispatched,
-    skippedUnknownStage: [...retryable.skipped, ...staleLocks.skipped],
+    staleQueuedRedispatched: queued.redispatched,
+    skippedUnknownStage: [...retryable.skipped, ...staleLocks.skipped, ...queued.skipped],
   };
 }

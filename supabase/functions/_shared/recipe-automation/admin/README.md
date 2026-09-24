@@ -56,10 +56,15 @@ admin-identity model first, so that column can finally be set legitimately.
 
 ## What this module never does
 
-- **Never invokes a `recipe-stage-*` Edge Function.** `requestRevisionJob()`/`retryStage()` only
-  flip `recipe_generation_jobs.stage`/`status` back to a runnable state — making the job eligible
-  for the NEXT time something dispatches to that stage, not dispatching to it itself. See
-  `review-actions.ts`'s own header.
+- **Never waits on a `recipe-stage-*` Edge Function.** `approveJob()`, `requestRevisionJob()` and
+  `retryStage()` fire one best-effort `dispatch_recipe_stage` nudge after their transition commits
+  (never-throws; the action's outcome never depends on it), and `../infra/sweep.ts` re-nudges any
+  job still `queued` 10+ minutes later. Before F2-S19 (2026-09-24) retry/revision only flipped
+  the state and relied on a sweep that never looked at `queued`, so every panel retry was
+  orphaned. See `review-actions.ts`'s own header.
+- **Approve / request revision only at stage=`awaiting_approval`; reject at either resting
+  state.** QA/revise manual-review hand-offs park at stage=`qa`, status=`awaiting_approval` (no
+  images yet, QA verdict not `approved`), so the panel can only reject those (F2-S21).
 - **Never writes to `recipe_drafts` / `recipe_qa_results` / `recipe_assets`.** Only
   `recipe_generation_jobs` (the state machine) and this step's own `recipe_admin_reviews`.
 - **Never touches `recipe_qa_results.safety_approved`/`safety_reviewed_by`/`safety_reviewed_at`.**
