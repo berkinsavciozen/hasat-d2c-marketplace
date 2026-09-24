@@ -1,4 +1,4 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://hasat.lovable.app/sitemap.xml
+Sitemap: https://hasat-ai.com/sitemap.xml
