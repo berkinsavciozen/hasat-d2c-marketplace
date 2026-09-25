@@ -198,6 +198,34 @@ function AdminRecipeJobDetailPage() {
     },
   });
 
+  // DQ-2 §4: işin en son taslağı için veri tutarlılığı bulguları. Aynı x-admin-key auth'ı;
+  // job detay sorgusuyla aynı anahtara (adminKey) bağlı, taslak değişince (draftId/version) yeniden çekilir.
+  // 404 = işin taslağı yok → bölüm gösterilmez. Diğer hatalar bölümde küçük satır olarak gösterilir,
+  // onay akışını engellemez.
+  const draftId = query.data?.currentDraft?.id ?? null;
+  const draftVersion = query.data?.currentDraft?.version ?? null;
+
+  const draftIssuesQuery = useQuery({
+    queryKey: ["admin-recipe-draft-issues", jobId, adminKey, draftId, draftVersion],
+    enabled: !!adminKey && !!draftId,
+    retry: false,
+    staleTime: 0,
+    queryFn: async (): Promise<{ issues: QualityIssue[] } | { notFound: true }> => {
+      const { data, error } = await supabase.functions.invoke(
+        `admin-recipe-quality/draft-issues/${jobId}`,
+        { method: "GET", headers: { "x-admin-key": adminKey!, "content-type": "application/json" } },
+      );
+      if (error) {
+        const anyErr = error as { context?: { status?: number }; status?: number };
+        const status = anyErr.context?.status ?? anyErr.status;
+        if (status === 404) return { notFound: true };
+        throw error;
+      }
+      const issues = (data as { issues?: unknown } | null)?.issues;
+      return { issues: Array.isArray(issues) ? (issues as QualityIssue[]) : [] };
+    },
+  });
+
   const actionMutation = useMutation({
     mutationFn: async (params: { action: "approve" | "reject" | "request_revision" | "retry_stage" }) => {
       const draft = query.data?.currentDraft;
