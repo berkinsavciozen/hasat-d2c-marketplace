@@ -174,6 +174,8 @@ function AdminRecipeQualityPage() {
   const [mode, setMode] = useState<ListMode>("incomplete");
   const [search, setSearch] = useState("");
   const [selectedRecipeId, setSelectedRecipeId] = useState<string | null>(null);
+  const [coverDialogRecipe, setCoverDialogRecipe] = useState<{ id: string; title: string; coverPhotoUrl: string | null } | null>(null);
+  const [coverVersion, setCoverVersion] = useState(0);
   const queryClient = useQueryClient();
 
   useEffect(() => {
@@ -196,6 +198,21 @@ function AdminRecipeQualityPage() {
       method: options.method,
       headers: { "x-admin-key": submittedKey, "content-type": "application/json" },
       body: options.body,
+    });
+    if (error) throw error;
+    return data;
+  };
+
+  // Kapak yeniden üretme — aynı auth convention (x-admin-key), ayrı edge function.
+  // functions.invoke'un kendi timeout'u yok; Gemini üretimi 20–60 sn sürebildiği için
+  // generate çağrısında AbortSignal.timeout(120_000) ile en az 120 sn bekliyoruz.
+  const invokeCover = async (path: string, options: { method: InvokeMethod; body?: InvokeBody; longTimeout?: boolean }) => {
+    if (!submittedKey) throw new Error("Oturum yok");
+    const { data, error } = await supabase.functions.invoke(`admin-recipe-regenerate-cover${path}`, {
+      method: options.method,
+      headers: { "x-admin-key": submittedKey, "content-type": "application/json" },
+      body: options.body,
+      ...(options.longTimeout ? { signal: AbortSignal.timeout(120_000) } : {}),
     });
     if (error) throw error;
     return data;
