@@ -325,6 +325,7 @@ function AdminRecipeJobDetailPage() {
       setResolvingSortOrder(null);
       setResolveForm(EMPTY_RESOLVE_FORM);
       queryClient.invalidateQueries({ queryKey: ["admin-recipe-job-detail", jobId] });
+      queryClient.invalidateQueries({ queryKey: ["admin-recipe-draft-issues", jobId] });
     },
     onError: async (error: unknown) => {
       const anyErr = error as { context?: Response; message?: string };
