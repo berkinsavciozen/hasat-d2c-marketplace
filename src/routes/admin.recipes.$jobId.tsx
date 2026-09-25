@@ -152,6 +152,110 @@ const EMPTY_CHECKLIST: Checklist = {
   imagesReviewed: false,
 };
 
+// DQ-2 §4 — onay ekranındaki veri tutarlılığı bloğu, admin.recipes.quality.tsx'teki IssuesSection ile
+// aynı dili konuşur: kritik kırmızı, uyarı sarı, bilgi katlanır. Bu ekranda uygulama butonu YOK;
+// taslak düzeltmesi mevcut revizyon/ret akışıyla yapılır.
+function suggestionHint(s: QualityIssue["suggestion"]): string | null {
+  if (!s) return null;
+  const parts: string[] = [];
+  if (s.addAllergen) parts.push(`${s.addAllergen} alerjenini ekle`);
+  if (s.removeAllergen) parts.push(`${s.removeAllergen} alerjenini kaldır`);
+  if (s.addDietTag) parts.push(`${s.addDietTag} etiketini ekle`);
+  if (s.removeDietTag) parts.push(`${s.removeDietTag} etiketini kaldır`);
+  if (s.setCrop) parts.push(`malzemeyi ${s.setCrop} olarak işaretle`);
+  return parts.length ? `Öneri: ${parts.join("; ")}` : null;
+}
+
+function DraftConsistencyBlock({
+  loading,
+  isError,
+  notFound,
+  issues,
+  criticalCount,
+  warningCount,
+  infoIssues,
+}: {
+  loading: boolean;
+  isError: boolean;
+  notFound: boolean;
+  issues: QualityIssue[];
+  criticalCount: number;
+  warningCount: number;
+  infoIssues: QualityIssue[];
+}) {
+  const [showInfo, setShowInfo] = useState(false);
+
+  // 404 = işin taslağı yok → bölüm gösterilmez.
+  if (notFound) return null;
+
+  const actionable = issues.filter((i) => i.severity !== "bilgi");
+
+  return (
+    <div className="rounded-xl border bg-card/50 p-3 space-y-2">
+      <div className="flex items-center justify-between gap-2">
+        <h4 className="text-sm font-medium">Veri tutarlılığı</h4>
+        {!loading && !isError && (criticalCount > 0 || warningCount > 0) && (
+          <span className="text-xs">
+            <span className="text-[color:var(--hred)]">{criticalCount} kritik</span>
+            {" · "}
+            <span className="text-[color:var(--saffron)]">{warningCount} uyarı</span>
+          </span>
+        )}
+      </div>
+
+      {loading && <p className="text-xs text-hmuted">Veri tutarlılığı kontrol ediliyor…</p>}
+
+      {isError && (
+        <p className="text-xs text-hmuted">Veri tutarlılığı denetimi yüklenemedi — onay akışını engellemez.</p>
+      )}
+
+      {!loading && !isError && criticalCount === 0 && warningCount === 0 && (
+        <p className="text-xs text-[color:var(--sage)]">Veri tutarlılığı kontrolünden geçti.</p>
+      )}
+
+      {!loading &&
+        !isError &&
+        actionable.map((issue, idx) => (
+          <div key={`${issue.code}-${idx}`} className="space-y-0.5">
+            <div className="flex items-center gap-2 text-xs">
+              <span
+                className={cn(
+                  "inline-flex items-center rounded-full px-1.5 py-0.5 text-[11px] font-semibold",
+                  issue.severity === "kritik"
+                    ? "bg-[color-mix(in_oklab,var(--hred)_18%,transparent)] text-[color:var(--hred)]"
+                    : "bg-[color-mix(in_oklab,var(--saffron)_18%,transparent)] text-[color:var(--saffron)]",
+                )}
+              >
+                {issue.severity === "kritik" ? "Kritik" : "Uyarı"}
+              </span>
+              <span>{issue.message}</span>
+            </div>
+            {suggestionHint(issue.suggestion) && (
+              <p className="text-[11px] text-hmuted pl-1">{suggestionHint(issue.suggestion)}</p>
+            )}
+          </div>
+        ))}
+
+      {!loading && !isError && infoIssues.length > 0 && (
+        <div>
+          <button type="button" onClick={() => setShowInfo((v) => !v)} className="text-xs text-hmuted underline">
+            {showInfo ? "Diğer notları gizle" : `Bilgi (${infoIssues.length})`}
+          </button>
+          {showInfo && (
+            <div className="mt-1 space-y-0.5">
+              {infoIssues.map((issue, idx) => (
+                <div key={`info-${issue.code}-${idx}`} className="text-[11px] text-hmuted">
+                  {issue.message}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function AdminRecipeJobDetailPage() {
   const { jobId } = Route.useParams();
   const queryClient = useQueryClient();
