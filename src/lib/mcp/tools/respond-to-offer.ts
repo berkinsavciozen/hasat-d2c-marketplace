@@ -10,25 +10,10 @@ function supabaseForUser(ctx: ToolContext) {
   });
 }
 
-async function idempotentCreateOrder(sb: ReturnType<typeof supabaseForUser>, offerRow: any) {
-  const { data: existing } = await sb
-    .from("orders").select("id").eq("offer_id", offerRow.id).maybeSingle();
-  if (existing) return;
-  const { data: order, error } = await sb.from("orders").insert({
-    offer_id: offerRow.id,
-    buyer_id: offerRow.buyer_id,
-    farmer_id: offerRow.farmer_id,
-    status: "preparing",
-    order_ref: "",
-  } as any).select("id").single();
-  if (error) throw error;
-  await sb.from("order_timeline").insert({
-    order_id: order.id,
-    step: "submitted",
-    label: "Sipariş Alındı",
-    completed_at: new Date().toISOString(),
-  });
-}
+const ACCEPT_REASON_TEXT: Record<string, string> = {
+  not_found: "Offer not found.",
+  wrong_offer_status: "Offer can no longer be accepted (it is not pending or countered).",
+};
 
 export default defineTool({
   name: "respond_to_offer",
@@ -60,18 +45,23 @@ export default defineTool({
     }
 
     if (input.action === "accept") {
-      const { data, error } = await sb.from("offers")
-        .update({ status: "accepted", ball_side: "buyer", payment_status: "unpaid" } as any)
-        .eq("id", input.offer_id)
-        .eq("farmer_id", userId)
-        .select().single();
+      const { data: mine, error: rErr } = await sb
+        .from("offers").select("id").eq("id", input.offer_id).eq("farmer_id", userId).maybeSingle();
+      if (rErr) return { content: [{ type: "text", text: rErr.message }], isError: true };
+      if (!mine) return { content: [{ type: "text", text: "Offer not found or not on your listing." }], isError: true };
+
+      // Kabul + sipariş + timeline tek transaction'da (ORD-1 K1). Sıra/stok/snapshot DB trigger'larında.
+      const { data: res, error } = await (sb.rpc as any)("rpc_accept_offer", { p_offer_id: input.offer_id });
       if (error) return { content: [{ type: "text", text: error.message }], isError: true };
-      try {
-        await idempotentCreateOrder(sb, data);
-      } catch (e: any) {
-        return { content: [{ type: "text", text: `Accepted but order creation failed: ${e.message}` }], isError: true };
+      if (!res?.ok) {
+        const reason = String(res?.reason ?? "unknown");
+        return { content: [{ type: "text", text: ACCEPT_REASON_TEXT[reason] ?? `Offer could not be accepted (${reason}).` }], isError: true };
       }
-      return { content: [{ type: "text", text: `Accepted offer ${data.id}` }], structuredContent: { offer: data } };
+      const { data: offer } = await sb.from("offers").select().eq("id", input.offer_id).maybeSingle();
+      const text = res.alreadyAccepted
+        ? `Offer ${input.offer_id} was already accepted (order ${res.orderId}).`
+        : `Accepted offer ${input.offer_id}; order ${res.orderId} created.`;
+      return { content: [{ type: "text", text }], structuredContent: { offer, orderId: res.orderId, alreadyAccepted: !!res.alreadyAccepted } };
     }
 
     if (input.action === "decline") {

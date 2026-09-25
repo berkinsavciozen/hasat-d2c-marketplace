@@ -50,30 +50,21 @@ export default defineTool({
       return { content: [{ type: "text", text: `Declined counter on ${data.id}` }], structuredContent: { offer: data } };
     }
 
-    const { data: accepted, error: aErr } = await sb.from("offers")
-      .update({ status: "accepted", ball_side: "buyer", payment_status: "unpaid" } as any)
-      .eq("id", input.offer_id).select().single();
+    // Kabul + sipariş + timeline tek transaction'da (ORD-1 K1). Sıra/stok/snapshot DB trigger'larında.
+    const { data: res, error: aErr } = await (sb.rpc as any)("rpc_accept_offer", { p_offer_id: input.offer_id });
     if (aErr) return { content: [{ type: "text", text: aErr.message }], isError: true };
-
-    const { data: existing } = await sb
-      .from("orders").select("id").eq("offer_id", accepted.id).maybeSingle();
-    if (!existing) {
-      const { data: order, error: oErr } = await sb.from("orders").insert({
-        offer_id: accepted.id,
-        buyer_id: accepted.buyer_id,
-        farmer_id: accepted.farmer_id,
-        status: "preparing",
-        order_ref: "",
-      } as any).select("id").single();
-      if (oErr) return { content: [{ type: "text", text: `Accepted but order creation failed: ${oErr.message}` }], isError: true };
-      await sb.from("order_timeline").insert({
-        order_id: order.id,
-        step: "submitted",
-        label: "Sipariş Alındı",
-        completed_at: new Date().toISOString(),
-      });
+    if (!res?.ok) {
+      const reason = String(res?.reason ?? "unknown");
+      const text = reason === "wrong_offer_status"
+        ? "Offer can no longer be accepted (it is not pending or countered)."
+        : reason === "not_found" ? "Offer not found." : `Counter could not be accepted (${reason}).`;
+      return { content: [{ type: "text", text }], isError: true };
     }
+    const { data: accepted } = await sb.from("offers").select().eq("id", input.offer_id).maybeSingle();
 
-    return { content: [{ type: "text", text: `Accepted counter on ${accepted.id}` }], structuredContent: { offer: accepted } };
+    return {
+      content: [{ type: "text", text: `Accepted counter on ${input.offer_id}; order ${res.orderId}.` }],
+      structuredContent: { offer: accepted, orderId: res.orderId, alreadyAccepted: !!res.alreadyAccepted },
+    };
   },
 });
