@@ -785,6 +785,19 @@ function AdminRecipeJobDetailPage() {
 
         <SectionCard title="Onay Kontrol Listesi">
           <div className="space-y-3">
+            {/* DQ-2 §4: onaydan önce admin, kalite ekranındakiyle aynı tutarlılık kontrollerini görsün. */}
+            {d.currentDraft && (
+              <DraftConsistencyBlock
+                loading={draftIssuesQuery.isLoading}
+                isError={draftIssuesQuery.isError}
+                notFound={issuesNotFound}
+                issues={draftIssues}
+                criticalCount={criticalCount}
+                warningCount={warningCount}
+                infoIssues={infoIssues}
+              />
+            )}
+
             {([
               ["temperatureReviewed", "Pişirme sıcaklıkları kontrol edildi"],
               ["timingReviewed", "Pişirme/bekleme süreleri kontrol edildi"],
@@ -801,6 +814,18 @@ function AdminRecipeJobDetailPage() {
                 {label}
               </label>
             ))}
+
+            {/* Kritik tutarlılık uyarısı varsa ek onay kutusu — Onayla bunu ister (yalnız UI). */}
+            {criticalCount > 0 && (
+              <label className="flex items-start gap-2 text-sm cursor-pointer rounded-lg border border-[color:var(--hred)] bg-[color-mix(in_oklab,var(--hred)_8%,transparent)] p-3">
+                <Checkbox
+                  checked={ackCritical}
+                  onCheckedChange={(v) => setAckCritical(v === true)}
+                  disabled={!atPublishGate}
+                />
+                <span>Kritik veri tutarlılığı uyarılarını gördüm, yine de onaylıyorum.</span>
+              </label>
+            )}
 
             <Textarea
               value={notes}
