@@ -507,6 +507,8 @@ function RecipeQualityDetailPanel({
   invoke,
   onSaved,
   onClose,
+  coverVersion,
+  onRegenerateCover,
 }: {
   recipeId: string;
   detail: QualityDetail | undefined;
@@ -520,6 +522,8 @@ function RecipeQualityDetailPanel({
   ) => Promise<unknown>;
   onSaved: () => void;
   onClose: () => void;
+  coverVersion: number;
+  onRegenerateCover: () => void;
 }) {
   const allergensMutation = useMutation({
     mutationFn: (body: { allergenLabels: string[]; reviewed: boolean }) =>
@@ -612,15 +616,29 @@ function RecipeQualityDetailPanel({
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h2 className="font-serif text-lg">{r.title}</h2>
-        <button onClick={onClose} className="text-xs text-hmuted underline">
-          Kapat
-        </button>
+        <div className="flex items-center gap-4">
+          <button
+            type="button"
+            onClick={onRegenerateCover}
+            className="inline-flex items-center gap-1 text-xs text-hmuted underline hover:text-foreground"
+          >
+            <ImagePlus className="h-3 w-3" />
+            Kapağı yeniden üret
+          </button>
+          <button onClick={onClose} className="text-xs text-hmuted underline">
+            Kapat
+          </button>
+        </div>
       </div>
 
       {r.coverPhotoUrl && (
         <SectionCard title="Kapak Önizlemesi">
           <div className="relative w-full max-w-md overflow-hidden rounded-lg border" style={{ aspectRatio: "16 / 9" }}>
-            <img src={r.coverPhotoUrl} alt={r.title} className="h-full w-full object-cover" />
+            <img
+              src={coverVersion ? `${r.coverPhotoUrl}${r.coverPhotoUrl.includes("?") ? "&" : "?"}v=${coverVersion}` : r.coverPhotoUrl}
+              alt={r.title}
+              className="h-full w-full object-cover"
+            />
             {hasCoverNotHero && (
               <span className="absolute left-2 top-2 rounded-full bg-[color-mix(in_oklab,var(--saffron)_90%,transparent)] px-2 py-0.5 text-xs font-medium text-white">
                 kapak 16:9 değil
@@ -631,7 +649,12 @@ function RecipeQualityDetailPanel({
       )}
 
       {issues.length > 0 && (
-        <IssuesSection issues={issues} onApplySuggestion={applySuggestion} onShowIngredient={scrollToIngredient} />
+        <IssuesSection
+          issues={issues}
+          onApplySuggestion={applySuggestion}
+          onShowIngredient={scrollToIngredient}
+          onRegenerateCover={onRegenerateCover}
+        />
       )}
 
       <MetaSection
