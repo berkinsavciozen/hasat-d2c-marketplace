@@ -306,7 +306,7 @@
       {
         "name": "respond_to_offer",
         "title": "Respond to buyer's offer",
-        "description": "SENSITIVE — respond to a buyer's offer on your listing. action='accept' LOCKS the listing's stock via a DB trigger and creates an order; this cannot be reversed via this tool. action='decline' rejects it. action='counter' sends a counter-offer. Requires confirm=true.",
+        "description": "SENSITIVE — respond to a buyer's offer on your listing. action='accept' LOCKS the listing's stock via a DB trigger and creates an order; this cannot be reversed via this tool. action='decline' rejects it. action='counter' sends a counter-offer (çok partili tekliflerde counter_quantity kullanılamaz — yalnız fiyat karşı teklifi). Requires confirm=true.",
         "annotations": {
           "readOnlyHint": false,
           "destructiveHint": true,
