@@ -951,9 +951,9 @@ export function useListingStock(listingId: string | undefined | null) {
     queryKey: ["listingStock", listingId],
     enabled: !!listingId,
     queryFn: async (): Promise<ListingStock> => {
-      const { data, error } = await supabase.rpc("listing_stock_summary", { p_listing_id: listingId! });
+      const { data, error } = await (supabase.rpc as any)("listing_stock_summary", { p_listing_id: listingId! });
       if (error) throw error;
-      const row = (data ?? [])[0];
+      const row = ((data ?? []) as Array<{ base: number; reserved: number; available: number; linked_count: number; using_fallback: boolean }>)[0];
       if (!row) {
         // Aktif olmayan / çağırana ait olmayan ilan: satır dönmez → sıfır stok, hata yok.
         return { base: 0, reserved: 0, available: 0, linkedCount: 0, usingFallback: true };
@@ -1503,8 +1503,9 @@ export function useWithdrawCounter() {
         .limit(1);
 
       const prev = remaining?.[0];
-      const origPrice = Number((offerRow as any).initial_price_per_unit ?? offerRow.price_per_unit);
-      const origQty = Number((offerRow as any).initial_quantity ?? offerRow.quantity);
+      const o = offerRow as any;
+      const origPrice = Number(o.initial_price_per_unit ?? o.price_per_unit);
+      const origQty = Number(o.initial_quantity ?? o.quantity);
       const revertPrice = prev?.price != null ? Number(prev.price) : origPrice;
       const revertQty = prev?.quantity != null ? Number(prev.quantity) : origQty;
 
