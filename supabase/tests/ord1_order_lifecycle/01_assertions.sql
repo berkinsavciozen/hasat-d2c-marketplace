@@ -1,5 +1,5 @@
 -- ORD-1 — assertion suite for 20260925172029_ord1a_order_rpcs_and_guard.sql (A) +
--- 20260925180000_ord1b_lock_order_writes.sql (B), applied in that order by run.sh.
+-- 20260925175120_ord1b_lock_order_writes.sql (B), applied in that order by run.sh.
 --
 -- Negative matrix: claude/ORD-1-Spec-2026-09-25.md §5 (N1–N24) + the positive end-to-end flow.
 -- Every negative case runs as the real API role (set role authenticated / anon / service_role) with

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # ORD-1 — SQL test runner for 20260925172029_ord1a_order_rpcs_and_guard.sql (A) and
-# 20260925180000_ord1b_lock_order_writes.sql (B).
+# 20260925175120_ord1b_lock_order_writes.sql (B).
 #
 # FRESH local PostgreSQL database every run: fixtures (live-shaped tables + RLS + baseline function
 # bodies verbatim) -> FIN-2 (20260921113253 + 20260921113432) -> FIN-3 (20260921124738) -> FIN-3-S
@@ -22,7 +22,7 @@ PREREQS=(
 )
 MIGRATIONS=(
   "20260925172029_ord1a_order_rpcs_and_guard.sql"
-  "20260925180000_ord1b_lock_order_writes.sql"
+  "20260925175120_ord1b_lock_order_writes.sql"
 )
 
 PSQL=(psql -v ON_ERROR_STOP=1 -X -q)
