@@ -634,7 +634,7 @@ function dbToOfferBase(r: any, side: "farmer" | "buyer"): Offer {
   };
 }
 
-function dbToOrder(r: any, side: "farmer" | "buyer"): Order {
+function dbToOrder(r: any, side: "farmer" | "buyer"): OrderWithPayment {
   const offer = r.offer ?? {};
   const listing = offer.listing ?? {};
   const qty = Number(offer.final_quantity ?? offer.current_quantity ?? offer.quantity ?? 0);
@@ -674,8 +674,13 @@ function dbToOrder(r: any, side: "farmer" | "buyer"): Order {
     listingId: (listing.id ?? offer.listing_id) ?? undefined,
     listingActive: listing.status === "active",
     subscriptionId: offer.subscription_id ?? null,
+    paymentStatus: (offer.payment_status ?? "unpaid") as OrderPaymentStatus,
   };
 }
+
+export type OrderPaymentStatus = "unpaid" | "pending" | "pending_transfer" | "paid";
+/** Order satırı + teklifin ödeme durumu (ORDER_SELECT'ten). */
+export type OrderWithPayment = Order & { paymentStatus: OrderPaymentStatus };
 
 
 const TIMELINE_DEFAULT: { key: OrderStatus; label: string }[] = [
@@ -1263,46 +1268,59 @@ export function useOfferItems(offerId: string | undefined | null) {
 
 export type OfferStatusUpdate = "accepted" | "rejected" | "counter" | "completed";
 
+// ORD-1: sipariş akışı sunucu tarafı RPC'lerle. ok=false iş kuralı reddidir.
+type OrderRpcResult = { ok?: boolean; reason?: string; [k: string]: any };
+
+export const ORDER_RPC_MESSAGES: Record<string, string> = {
+  payment_not_confirmed: "Ödeme onaylanmadan kargoya verilemez.",
+  paid_admin_only: "Ödemesi alınmış sipariş yalnız Hasat destek tarafından iptal edilebilir.",
+  wrong_status: "Bu işlem siparişin şu anki durumunda yapılamaz.",
+  wrong_offer_status: "Bu işlem siparişin şu anki durumunda yapılamaz.",
+  window_closed: "İtiraz süresi doldu.",
+  tracking_required: "Kargo firması ve takip numarası gerekli.",
+  reason_required: "Lütfen bir açıklama yazın.",
+  not_last_sender: "Yalnız son teklifi gönderen geri çekebilir.",
+  no_counter: "Geri çekilecek karşı teklif yok.",
+  invalid_evidence_path: "Fotoğraf yüklenemedi, tekrar deneyin.",
+};
+const ORDER_FORBIDDEN_MESSAGE =
+  "Bu işlem için yetkiniz yok ya da sipariş durumu değişti. Sayfayı yenileyin.";
+
+export function orderRpcErrorMessage(reasonOrMessage: string | null | undefined): string {
+  const s = String(reasonOrMessage ?? "");
+  if (ORDER_RPC_MESSAGES[s]) return ORDER_RPC_MESSAGES[s];
+  if (/ORDER_INVALID_TRANSITION|[A-Z_]+_FORBIDDEN/.test(s)) return ORDER_FORBIDDEN_MESSAGE;
+  return s || "İşlem başarısız";
+}
+
+async function callOrderRpc(fn: string, args: Record<string, unknown>): Promise<OrderRpcResult> {
+  const { data, error } = await (supabase.rpc as any)(fn, args);
+  if (error) throw new Error(orderRpcErrorMessage(error.message));
+  const result = (data ?? null) as OrderRpcResult | null;
+  if (!result || result.ok === false) throw new Error(orderRpcErrorMessage(result?.reason));
+  return result;
+}
+
 export function useUpdateOfferStatus() {
   const qc = useQueryClient();
   const userId = useAuthUserId();
   return useMutation({
     mutationFn: async ({ id, status, reason }: { id: string; status: OfferStatusUpdate; reason?: string }) => {
-      const patch: any = { status };
       if (status === "accepted") {
-        // Farmer accepted -> waiting for buyer's payment.
-        patch.ball_side = "buyer";
-        patch.payment_status = "unpaid";
+        // Kabul + sipariş + timeline tek transaction'da sunucuda.
+        await callOrderRpc("rpc_accept_offer", { p_offer_id: id });
+        const { data: offerRow, error: rErr } = await supabase
+          .from("offers").select("*").eq("id", id).single();
+        if (rErr) throw rErr;
+        return offerRow;
       }
+      const patch: any = { status };
       if (status === "rejected" && reason) {
         patch.note = reason;
       }
       const { data: offerRow, error: e1 } = await supabase
         .from("offers").update(patch).eq("id", id).select("*").single();
       if (e1) throw e1;
-
-      // On acceptance, ensure an order row exists (idempotent) so the
-      // farmer's Siparişler view immediately reflects the accepted deal.
-      if (status === "accepted") {
-        const { data: existing } = await supabase
-          .from("orders").select("id").eq("offer_id", id).maybeSingle();
-        if (!existing) {
-          const { data: order, error: oErr } = await supabase.from("orders").insert({
-            offer_id: offerRow.id,
-            buyer_id: offerRow.buyer_id,
-            farmer_id: offerRow.farmer_id,
-            status: "preparing",
-            order_ref: "",
-          } as any).select("id").single();
-          if (oErr) throw oErr;
-          await supabase.from("order_timeline").insert({
-            order_id: order.id,
-            step: "submitted",
-            label: "Sipariş Alındı",
-            completed_at: new Date().toISOString(),
-          });
-        }
-      }
       return offerRow;
     },
     onSuccess: () => {
@@ -1456,73 +1474,14 @@ export function useConfirmTransferReceived() {
   });
 }
 
-// Withdraw the most recent counter-offer message.
-// Only the sender of that message may call this. Deletes the message,
-// reverts current_price/quantity to the prior message's values (or to the
-// offer's original price_per_unit/quantity if no messages remain),
-// reverts status to 'pending' and ball_side to the withdrawer's role.
+// Withdraw the most recent counter-offer. Tüm doğrulama ve geri alma sunucuda (rpc_withdraw_counter).
 export function useWithdrawCounter() {
   const qc = useQueryClient();
   const userId = useAuthUserId();
   return useMutation({
     mutationFn: async (offerId: string) => {
       if (!userId) throw new Error("Oturum bulunamadı");
-
-      // Read offer (originals + history)
-      const { data: offerRow, error: oErr } = await supabase
-        .from("offers")
-        .select("price_per_unit, quantity, initial_price_per_unit, initial_quantity, negotiation_history")
-        .eq("id", offerId)
-        .single();
-      if (oErr) throw oErr;
-
-      // Get the latest message and verify ownership
-      const { data: msgs, error: mErr } = await supabase
-        .from("offer_messages")
-        .select("id, sender_id, sender_role, price, quantity")
-        .eq("offer_id", offerId)
-        .order("created_at", { ascending: false })
-        .limit(1);
-      if (mErr) throw mErr;
-      const last = msgs?.[0];
-      if (!last) throw new Error("Geri çekilecek karşı teklif bulunamadı");
-      if (last.sender_id !== userId) throw new Error("Yalnızca son teklifi gönderen geri çekebilir");
-
-      const myRole = last.sender_role as "farmer" | "buyer";
-
-      // Delete the last message
-      const { error: dErr } = await supabase.from("offer_messages").delete().eq("id", last.id);
-      if (dErr) throw dErr;
-
-      // Determine reverted values from remaining messages
-      const { data: remaining } = await supabase
-        .from("offer_messages")
-        .select("price, quantity")
-        .eq("offer_id", offerId)
-        .order("created_at", { ascending: false })
-        .limit(1);
-
-      const prev = remaining?.[0];
-      const o = offerRow as any;
-      const origPrice = Number(o.initial_price_per_unit ?? o.price_per_unit);
-      const origQty = Number(o.initial_quantity ?? o.quantity);
-      const revertPrice = prev?.price != null ? Number(prev.price) : origPrice;
-      const revertQty = prev?.quantity != null ? Number(prev.quantity) : origQty;
-
-      // Trim negotiation_history (pop the last snapshot we appended for this message)
-      const prevHistory = Array.isArray((offerRow as any).negotiation_history)
-        ? (offerRow as any).negotiation_history
-        : [];
-      const nextHistory = prevHistory.slice(0, -1);
-
-      const { error: uErr } = await supabase.from("offers").update({
-        current_price: revertPrice,
-        current_quantity: revertQty,
-        status: (`pending_${myRole}` as any),
-        ball_side: myRole,
-        negotiation_history: nextHistory,
-      } as any).eq("id", offerId);
-      if (uErr) throw uErr;
+      await callOrderRpc("rpc_withdraw_counter", { p_offer_id: offerId });
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["farmerOffers", userId] });
@@ -1633,7 +1592,7 @@ export function useBuyerConversations() {
 // ORDERS
 // =====================================================================
 const ORDER_SELECT =
-  "*, offer:offers(quantity,price_per_unit,current_price,current_quantity,final_price_per_unit,final_quantity,delivery,delivery_date,listing_id,subscription_id,snapshot_crop,snapshot_unit, listing:listings(id,crop,unit,status))";
+  "*, offer:offers(quantity,price_per_unit,current_price,current_quantity,final_price_per_unit,final_quantity,delivery,delivery_date,listing_id,subscription_id,snapshot_crop,snapshot_unit,payment_status, listing:listings(id,crop,unit,status))";
 
 
 export function useFarmerOrders() {
@@ -3103,22 +3062,11 @@ export function useMarkShipped() {
   return useMutation({
     mutationFn: async ({ orderId, trackingNumber, carrier }: { orderId: string; trackingNumber: string; carrier: string }) => {
       if (!userId) throw new Error("Oturum bulunamadı");
-      const { data, error } = await supabase
-        .from("orders")
-        .update({ status: "shipped", tracking_number: trackingNumber, carrier } as any)
-        .eq("id", orderId)
-        .eq("farmer_id", userId)
-        .eq("status", "preparing")
-        .select("id")
-        .single();
-      if (error) throw error;
-      await supabase.from("order_timeline").insert({
-        order_id: data.id,
-        step: "shipped",
-        label: "Kargoya Verildi",
-        completed_at: new Date().toISOString(),
+      return callOrderRpc("rpc_mark_order_shipped", {
+        p_order_id: orderId,
+        p_tracking_number: trackingNumber,
+        p_carrier: carrier,
       });
-      return data;
     },
     onSuccess: (_d, v) => {
       qc.invalidateQueries({ queryKey: ["farmerOrders", userId] });
@@ -3142,23 +3090,8 @@ export function useConfirmDelivery() {
           .upload(path, photoFile, { upsert: false });
         if (upErr) throw upErr;
       }
-      const windowExpires = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
-      const { data, error } = await supabase
-        .from("orders")
-        .update({ status: "delivered", dispute_window_expires_at: windowExpires } as any)
-        .eq("id", orderId)
-        .eq("buyer_id", userId)
-        .eq("status", "shipped")
-        .select("id")
-        .single();
-      if (error) throw error;
-      await supabase.from("order_timeline").insert({
-        order_id: data.id,
-        step: "delivered",
-        label: "Teslim Edildi",
-        completed_at: new Date().toISOString(),
-      });
-      return data;
+      // dispute_window_expires_at ve timeline sunucuda yazılır.
+      return callOrderRpc("rpc_confirm_order_delivered", { p_order_id: orderId });
     },
     onSuccess: (_d, v) => {
       qc.invalidateQueries({ queryKey: ["farmerOrders"] });
@@ -3174,24 +3107,12 @@ export function useCancelOrder() {
   return useMutation({
     mutationFn: async ({ orderId, reason }: { orderId: string; reason?: string }) => {
       if (!userId) throw new Error("Oturum bulunamadı");
-      const { data, error } = await supabase
-        .from("orders")
-        .update({
-          status: "cancelled",
-          cancelled_at: new Date().toISOString(),
-          cancel_reason: reason ?? null,
-        } as any)
-        .eq("id", orderId)
-        .eq("status", "preparing")
-        .or(`buyer_id.eq.${userId},farmer_id.eq.${userId}`)
-        .select("id")
-        .single();
-      if (error) throw error;
-      return data;
+      return callOrderRpc("rpc_cancel_order", { p_order_id: orderId, p_reason: reason ?? null });
     },
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["farmerOrders", userId] });
-      qc.invalidateQueries({ queryKey: ["buyerOrders", userId] });
+    onSuccess: (_d, v) => {
+      qc.invalidateQueries({ queryKey: ["farmerOrders"] });
+      qc.invalidateQueries({ queryKey: ["buyerOrders"] });
+      qc.invalidateQueries({ queryKey: ["orderTimeline", v.orderId] });
     },
   });
 }
@@ -3202,42 +3123,22 @@ export function useOpenDispute() {
   return useMutation({
     mutationFn: async ({ orderId, reason, photoFiles }: { orderId: string; reason: string; photoFiles?: File[] }) => {
       if (!userId) throw new Error("Oturum bulunamadı");
-      // Verify order + membership + window
-      const { data: order, error: oErr } = await supabase
-        .from("orders")
-        .select("id,buyer_id,farmer_id,status,dispute_window_expires_at")
-        .eq("id", orderId)
-        .single();
-      if (oErr) throw oErr;
-      if (order.buyer_id !== userId && order.farmer_id !== userId) {
-        throw new Error("Bu sipariş için itiraz açamazsınız");
-      }
-      if (order.dispute_window_expires_at && new Date(order.dispute_window_expires_at).getTime() < Date.now()) {
-        throw new Error("İtiraz penceresi kapandı");
-      }
-      const urls: string[] = [];
+      const paths: string[] = [];
       if (photoFiles?.length) {
         for (const f of photoFiles) {
           const ext = f.name.split(".").pop() || "jpg";
           const path = `${orderId}/dispute-${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
           const { error: upErr } = await supabase.storage.from("delivery-photos").upload(path, f);
-          if (upErr) throw upErr;
-          urls.push(path);
+          if (upErr) throw new Error(ORDER_RPC_MESSAGES.invalid_evidence_path);
+          paths.push(path);
         }
       }
-      const { error: dErr } = await supabase.from("disputes").insert({
-        order_id: orderId,
-        opened_by: userId,
-        reason,
-        evidence_photo_urls: urls,
-        window_expires_at: order.dispute_window_expires_at,
-      } as any);
-      if (dErr) throw dErr;
-      const { error: sErr } = await supabase
-        .from("orders")
-        .update({ status: "disputed" } as any)
-        .eq("id", orderId);
-      if (sErr) throw sErr;
+      // Pencere/üyelik kontrolü sunucuda.
+      await callOrderRpc("rpc_open_dispute", {
+        p_order_id: orderId,
+        p_reason: reason,
+        p_evidence_paths: paths,
+      });
     },
     onSuccess: (_d, v) => {
       qc.invalidateQueries({ queryKey: ["farmerOrders"] });
