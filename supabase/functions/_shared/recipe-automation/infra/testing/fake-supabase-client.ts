@@ -26,7 +26,11 @@ function parseClause(clause: string): Predicate {
   const [col, op, ...rest] = clause.split(".");
   const val = rest.join(".");
   if (op === "is") {
-    return (row) => (val === "null" ? row[col] === null || row[col] === undefined : row[col] === val);
+    return (
+      row,
+    ) => (val === "null"
+      ? row[col] === null || row[col] === undefined
+      : row[col] === val);
   }
   if (op === "lt") {
     return (row) => {
@@ -88,7 +92,18 @@ class FakeQueryBuilder<T = Row> {
   lte(col: string, val: unknown): this {
     this.predicates.push((row) => {
       const v = row[col];
-      return v !== null && v !== undefined && (v as string | number) <= (val as string | number);
+      return v !== null && v !== undefined &&
+        (v as string | number) <= (val as string | number);
+    });
+    return this;
+  }
+
+  /** Mirrors supabase-js's `.lt(col, val)` for numeric and ISO-timestamp CAS predicates. */
+  lt(col: string, val: unknown): this {
+    this.predicates.push((row) => {
+      const v = row[col];
+      return v !== null && v !== undefined &&
+        (v as string | number) < (val as string | number);
     });
     return this;
   }
@@ -134,7 +149,10 @@ class FakeQueryBuilder<T = Row> {
   async single(): Promise<FakeQueryResult<T>> {
     const result = await this.maybeSingle();
     if (!result.data && !result.error) {
-      return { data: null, error: { message: "no rows returned for single()" } };
+      return {
+        data: null,
+        error: { message: "no rows returned for single()" },
+      };
     }
     return result;
   }
@@ -144,7 +162,9 @@ class FakeQueryBuilder<T = Row> {
    * PromiseLike too, and callers that want every matching row (not just the first) rely on that,
    * e.g. loading prior-QA history or duplicate candidates. */
   then<TResult1 = FakeQueryResult<T[]>, TResult2 = never>(
-    onfulfilled?: ((value: FakeQueryResult<T[]>) => TResult1 | PromiseLike<TResult1>) | null,
+    onfulfilled?:
+      | ((value: FakeQueryResult<T[]>) => TResult1 | PromiseLike<TResult1>)
+      | null,
     onrejected?: ((reason: unknown) => TResult2 | PromiseLike<TResult2>) | null,
   ): Promise<TResult1 | TResult2> {
     return this.executeList().then(onfulfilled, onrejected);
@@ -224,7 +244,10 @@ export class FakeSupabaseClient {
 
   /** Test setup: makes the very next `.insert()` against `tableName` fail with `error` (e.g. an
    * FK-violation-shaped `{ message, code: "23503" }`), then reverts to normal behavior. */
-  failNextInsert(tableName: string, error: { message: string; code?: string }): void {
+  failNextInsert(
+    tableName: string,
+    error: { message: string; code?: string },
+  ): void {
     this.table(tableName).pendingInsertError = error;
   }
 
@@ -237,10 +260,18 @@ export class FakeSupabaseClient {
     this.rpcHandlers.set(name, handler);
   }
 
-  async rpc(name: string, args: Record<string, unknown> = {}): Promise<FakeQueryResult<unknown>> {
+  async rpc(
+    name: string,
+    args: Record<string, unknown> = {},
+  ): Promise<FakeQueryResult<unknown>> {
     const handler = this.rpcHandlers.get(name);
     if (!handler) {
-      return { data: null, error: { message: `fake-supabase-client: no rpc handler for "${name}"` } };
+      return {
+        data: null,
+        error: {
+          message: `fake-supabase-client: no rpc handler for "${name}"`,
+        },
+      };
     }
     return await handler(args);
   }
