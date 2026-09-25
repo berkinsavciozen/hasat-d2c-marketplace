@@ -41,7 +41,7 @@ done
 "${PSQL[@]}" -d "$DB_NAME" -f "$SCRIPT_DIR/00_fixtures.sql"
 "${PSQL[@]}" -d "$DB_NAME" -f "$MIGRATIONS_DIR/20260911095451_t4_production_nutrition_debt_closure.sql"
 "${PSQL[@]}" -d "$DB_NAME" -f "$SCRIPT_DIR/01_before_fix.sql"
-"${PSQL[@]}" -d "$DB_NAME" -f "$MIGRATIONS_DIR/20260924100000_f2s20_publish_unquantified_nutrition_exclusion.sql"
+"${PSQL[@]}" -d "$DB_NAME" -f "$MIGRATIONS_DIR/20260925083137_f2s20_publish_unquantified_nutrition_exclusion.sql"
 "${PSQL[@]}" -d "$DB_NAME" -f "$SCRIPT_DIR/02_after_fix.sql"
 
 echo "F2-S20 publish unquantified nutrition exclusion SQL suite: PASSED"
