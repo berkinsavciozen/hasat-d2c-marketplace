@@ -81,7 +81,7 @@
       {
         "name": "list_pending_offers",
         "title": "List pending offers",
-        "description": "List offers currently awaiting the signed-in user's response (as farmer or buyer). RLS scopes the result.",
+        "description": "List offers currently awaiting the signed-in user's response (as farmer or buyer). RLS scopes the result. Anlaşılan fiyat/miktar için final_* alanlarını, yoksa current_* alanlarını kullan.",
         "annotations": {
           "readOnlyHint": true,
           "idempotentHint": true,
@@ -271,7 +271,7 @@
       {
         "name": "list_offers_on_my_listings",
         "title": "List offers on my listings",
-        "description": "List all offers on the signed-in farmer's listings, in any status. RLS scopes results to your listings.",
+        "description": "List all offers on the signed-in farmer's listings, in any status. RLS scopes results to your listings. Anlaşılan fiyat/miktar için final_* alanlarını, yoksa current_* alanlarını kullan.",
         "annotations": {
           "readOnlyHint": true,
           "idempotentHint": true,
@@ -493,7 +493,7 @@
       {
         "name": "list_my_offers",
         "title": "List my offers",
-        "description": "List the signed-in buyer's offers, in any status.",
+        "description": "List the signed-in buyer's offers, in any status. Anlaşılan fiyat/miktar için final_* alanlarını, yoksa current_* alanlarını kullan.",
         "annotations": {
           "readOnlyHint": true,
           "idempotentHint": true,

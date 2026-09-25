@@ -13,7 +13,7 @@ export default defineTool({
   name: "list_pending_offers",
   title: "List pending offers",
   description:
-    "List offers currently awaiting the signed-in user's response (as farmer or buyer). RLS scopes the result.",
+    "List offers currently awaiting the signed-in user's response (as farmer or buyer). RLS scopes the result. Anlaşılan fiyat/miktar için final_* alanlarını, yoksa current_* alanlarını kullan.",
   inputSchema: {
     limit: z.number().int().min(1).max(50).default(20),
   },
@@ -26,7 +26,7 @@ export default defineTool({
     const { data, error } = await sb
       .from("offers")
       .select(
-        "id, listing_id, status, ball_side, quantity, price_per_unit, current_quantity, current_price, payment_status, created_at",
+        "id, listing_id, status, ball_side, quantity, price_per_unit, current_quantity, current_price, final_price_per_unit, final_quantity, snapshot_crop, snapshot_unit, payment_status, created_at",
       )
       .in("status", ["pending", "counter"])
       .order("created_at", { ascending: false })
