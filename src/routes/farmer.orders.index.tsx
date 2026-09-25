@@ -35,6 +35,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import type { Offer, BuyerType, Order } from "@/lib/hasat/types";
+import type { OrderWithPayment } from "@/lib/hasat/queries";
 import { NegotiationThread } from "@/components/hasat/NegotiationThread";
 import { statusVisual, statusStyle, canAccept } from "@/lib/hasat/offer-status";
 import { whatsappUrl } from "@/lib/hasat/whatsapp";
