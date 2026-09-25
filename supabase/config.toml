@@ -47,3 +47,8 @@ verify_jwt = false
 
 [functions.sync-istanbul-hal-prices]
 verify_jwt = false
+
+# Admin panel only. Gated by the shared `x-admin-key` / ADMIN_DASHBOARD_KEY check in the handler
+# (same as every admin-recipe-* function), not by a platform JWT.
+[functions.admin-recipe-regenerate-cover]
+verify_jwt = false
