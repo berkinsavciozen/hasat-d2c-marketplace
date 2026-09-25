@@ -2,7 +2,7 @@ import { createFileRoute, useNavigate, useRouter, notFound, Link } from "@tansta
 import { slugifyFarmer } from "@/lib/hasat/vitrin";
 import { useState } from "react";
 import { ArrowLeft } from "lucide-react";
-import { useBuyerOffers, useUpdateOfferStatus, useCounterOffer } from "@/lib/hasat/queries";
+import { useBuyerOffers, useUpdateOfferStatus, useCounterOffer, offerItemCount, MULTI_ITEM_QTY_LOCK_MESSAGE } from "@/lib/hasat/queries";
 import { LoadingDots } from "@/components/hasat/LoadingDots";
 import { formatTRY, formatCrop, formatQuantity } from "@/lib/hasat/format";
 import { Stepper } from "@/components/hasat/Stepper";
@@ -313,6 +313,7 @@ function CounterSheet({
   }) => void;
   pending: boolean;
 }) {
+  const qtyLocked = offerItemCount(offer) >= 2;
   const [qty, setQty] = useState(offer.quantity);
   const [price, setPrice] = useState(offer.pricePerUnit);
   const [delivery, setDelivery] = useState(offer.delivery ?? DELIVERY_OPTS[1]);
@@ -328,12 +329,25 @@ function CounterSheet({
         <div className="mt-4 space-y-4">
           <div>
             <div className="mb-1.5 text-xs font-medium text-hmuted">Miktar ({offer.unit})</div>
-            <Stepper
-              value={qty}
-              onChange={setQty}
-              step={offer.unit === "g" ? 5 : 1}
-              unit={offer.unit}
-            />
+            {qtyLocked ? (
+              <>
+                <Input
+                  type="number"
+                  value={offer.quantity}
+                  disabled
+                  aria-label={`Miktar (${offer.unit})`}
+                  className="font-mono text-lg"
+                />
+                <p className="mt-1 text-xs text-hmuted">{MULTI_ITEM_QTY_LOCK_MESSAGE}</p>
+              </>
+            ) : (
+              <Stepper
+                value={qty}
+                onChange={setQty}
+                step={offer.unit === "g" ? 5 : 1}
+                unit={offer.unit}
+              />
+            )}
           </div>
           <div>
             <label htmlFor="counter-price" className="mb-1.5 block text-xs font-medium text-hmuted">
@@ -394,7 +408,7 @@ function CounterSheet({
           <Button
             onClick={() =>
               onSubmit({
-                quantity: qty,
+                quantity: qtyLocked ? offer.quantity : qty,
                 pricePerUnit: price,
                 delivery,
                 deliveryDate: date,

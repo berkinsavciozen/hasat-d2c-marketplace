@@ -556,7 +556,24 @@ export function dbToActiveListing(r: any): ActiveListing {
   };
 }
 
+export const MULTI_ITEM_QTY_LOCK_MESSAGE = "Çok partili tekliflerde yalnız fiyat pazarlığı yapılabilir.";
+
+/** Teklifteki parti (offer_items) sayısı; bilinmiyorsa 1. */
+export function offerItemCount(offer: Offer): number {
+  return Number((offer as Offer & { itemCount?: number }).itemCount ?? 1);
+}
+
+function readItemCount(r: any): number {
+  const v = r?.offer_items;
+  if (Array.isArray(v)) return Number(v[0]?.count ?? v.length ?? 0);
+  return 0;
+}
+
 function dbToOffer(r: any, side: "farmer" | "buyer"): Offer {
+  return Object.assign(dbToOfferBase(r, side), { itemCount: readItemCount(r) });
+}
+
+function dbToOfferBase(r: any, side: "farmer" | "buyer"): Offer {
   const counter = r.counter_offer && typeof r.counter_offer === "object" ? r.counter_offer : null;
   const rawHistory = Array.isArray(r.negotiation_history) ? r.negotiation_history : [];
   const history = rawHistory
@@ -934,27 +951,19 @@ export function useListingStock(listingId: string | undefined | null) {
     queryKey: ["listingStock", listingId],
     enabled: !!listingId,
     queryFn: async (): Promise<ListingStock> => {
-      const [links, listingRes, offersRes] = await Promise.all([
-        supabase
-          .from("listing_harvest_entries")
-          .select("harvest_entry_id, harvest_entries(quantity)")
-          .eq("listing_id", listingId!),
-        supabase.from("listings").select("quantity").eq("id", listingId!).maybeSingle(),
-        supabase.from("offers").select("quantity").eq("listing_id", listingId!).eq("status", "accepted"),
-      ]);
-      if (links.error) throw links.error;
-      if (listingRes.error) throw listingRes.error;
-      if (offersRes.error) throw offersRes.error;
-      const batchSum = (links.data ?? []).reduce((s: number, r: any) => s + Number(r.harvest_entries?.quantity ?? 0), 0);
-      const usingFallback = batchSum <= 0;
-      const base = usingFallback ? Number(listingRes.data?.quantity ?? 0) : batchSum;
-      const reserved = (offersRes.data ?? []).reduce((s: number, r: any) => s + Number(r.quantity ?? 0), 0);
+      const { data, error } = await (supabase.rpc as any)("listing_stock_summary", { p_listing_id: listingId! });
+      if (error) throw error;
+      const row = ((data ?? []) as Array<{ base: number; reserved: number; available: number; linked_count: number; using_fallback: boolean }>)[0];
+      if (!row) {
+        // Aktif olmayan / çağırana ait olmayan ilan: satır dönmez → sıfır stok, hata yok.
+        return { base: 0, reserved: 0, available: 0, linkedCount: 0, usingFallback: true };
+      }
       return {
-        base,
-        reserved,
-        available: Math.max(0, base - reserved),
-        linkedCount: links.data?.length ?? 0,
-        usingFallback,
+        base: Number(row.base ?? 0),
+        reserved: Number(row.reserved ?? 0),
+        available: Number(row.available ?? 0),
+        linkedCount: Number(row.linked_count ?? 0),
+        usingFallback: !!row.using_fallback,
       };
     },
   });
@@ -1093,7 +1102,7 @@ export function useFarmerOffers() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("offers")
-        .select("*, buyer:profiles!offers_buyer_id_fkey(id,name,city,buyer_type), listing:listings(crop,unit), subscription_id")
+        .select("*, buyer:profiles!offers_buyer_id_fkey(id,name,city,buyer_type), listing:listings(crop,unit), subscription_id, offer_items(count)")
         .eq("farmer_id", userId!)
         .order("created_at", { ascending: false });
       if (error) throw error;
@@ -1110,7 +1119,7 @@ export function useBuyerOffers() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("offers")
-        .select("*, farmer:profiles!offers_farmer_id_fkey(id,name,city,iban,bank_account_name), listing:listings(crop,unit), subscription_id")
+        .select("*, farmer:profiles!offers_farmer_id_fkey(id,name,city,iban,bank_account_name), listing:listings(crop,unit), subscription_id, offer_items(count)")
         .eq("buyer_id", userId!)
         .order("created_at", { ascending: false });
       if (error) throw error;
@@ -1321,10 +1330,14 @@ export function useCounterOffer() {
       if (!userId) throw new Error("Oturum bulunamadı");
       const { data: current, error: readErr } = await supabase
         .from("offers")
-        .select("quantity, price_per_unit, delivery, delivery_date, note, negotiation_history")
+        .select("quantity, current_quantity, price_per_unit, delivery, delivery_date, note, negotiation_history, offer_items(count)")
         .eq("id", id)
         .single();
       if (readErr) throw readErr;
+      // Çok partili tekliflerde miktar kilitli: mevcut miktarı aynen gönder.
+      if (readItemCount(current) >= 2) {
+        patch = { ...patch, quantity: Number((current as any).current_quantity ?? current.quantity) };
+      }
 
       const prevSnapshot = {
         by,
@@ -1355,7 +1368,12 @@ export function useCounterOffer() {
         counter_offer: original ?? null,
         negotiation_history: nextHistory,
       } as any).eq("id", id);
-      if (error) throw error;
+      if (error) {
+        if (String(error.message ?? "").includes("OFFER_MULTI_ITEM_QUANTITY_LOCKED")) {
+          throw new Error(MULTI_ITEM_QTY_LOCK_MESSAGE);
+        }
+        throw error;
+      }
 
       // Append to offer_messages thread (best effort)
       await supabase.from("offer_messages").insert({
@@ -1453,7 +1471,7 @@ export function useWithdrawCounter() {
       // Read offer (originals + history)
       const { data: offerRow, error: oErr } = await supabase
         .from("offers")
-        .select("price_per_unit, quantity, negotiation_history")
+        .select("price_per_unit, quantity, initial_price_per_unit, initial_quantity, negotiation_history")
         .eq("id", offerId)
         .single();
       if (oErr) throw oErr;
@@ -1485,8 +1503,9 @@ export function useWithdrawCounter() {
         .limit(1);
 
       const prev = remaining?.[0];
-      const origPrice = Number(offerRow.price_per_unit);
-      const origQty = Number(offerRow.quantity);
+      const o = offerRow as any;
+      const origPrice = Number(o.initial_price_per_unit ?? o.price_per_unit);
+      const origQty = Number(o.initial_quantity ?? o.quantity);
       const revertPrice = prev?.price != null ? Number(prev.price) : origPrice;
       const revertQty = prev?.quantity != null ? Number(prev.quantity) : origQty;
 
