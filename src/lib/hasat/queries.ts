@@ -1562,7 +1562,7 @@ export function useBuyerConversations() {
     queryFn: async (): Promise<BuyerConversationRow[]> => {
       const { data: offers, error } = await supabase
         .from("offers")
-        .select("id, farmer_id, status, ball_side, created_at, listing:listings(crop)")
+        .select("id, farmer_id, status, ball_side, created_at, snapshot_crop, listing:listings(crop)")
         .eq("buyer_id", userId!)
         .order("created_at", { ascending: false });
       if (error) throw error;
@@ -2325,6 +2325,10 @@ export interface BuyerAnalyticsRow {
     price_per_unit: number;
     current_price: number | null;
     current_quantity: number | null;
+    final_price_per_unit: number | null;
+    final_quantity: number | null;
+    snapshot_crop: string | null;
+    snapshot_unit: string | null;
     payment_status: string | null;
     listing: { crop: string; unit: string } | null;
   } | null;
@@ -2337,10 +2341,24 @@ export function isPaidOrder(r: Pick<BuyerAnalyticsRow, "status" | "offer">): boo
   return PAID_STATUSES.has(r.status) || r.offer?.payment_status === "paid";
 }
 
+export function orderRowQty(r: Pick<BuyerAnalyticsRow, "offer">): number {
+  return Number(r.offer?.final_quantity ?? r.offer?.current_quantity ?? r.offer?.quantity ?? 0);
+}
+
+export function orderRowPrice(r: Pick<BuyerAnalyticsRow, "offer">): number {
+  return Number(r.offer?.final_price_per_unit ?? r.offer?.current_price ?? r.offer?.price_per_unit ?? 0);
+}
+
+export function orderRowCrop(r: Pick<BuyerAnalyticsRow, "offer">): string | null {
+  return r.offer?.snapshot_crop ?? r.offer?.listing?.crop ?? null;
+}
+
+export function orderRowUnit(r: Pick<BuyerAnalyticsRow, "offer">): string | null {
+  return r.offer?.snapshot_unit ?? r.offer?.listing?.unit ?? null;
+}
+
 export function orderRowTotal(r: Pick<BuyerAnalyticsRow, "offer">): number {
-  const q = Number(r.offer?.current_quantity ?? r.offer?.quantity ?? 0);
-  const p = Number(r.offer?.current_price ?? r.offer?.price_per_unit ?? 0);
-  return q * p;
+  return orderRowQty(r) * orderRowPrice(r);
 }
 
 export function useBuyerAnalytics() {
@@ -2352,7 +2370,7 @@ export function useBuyerAnalytics() {
       const { data, error } = await supabase
         .from("orders")
         .select(
-          "id, status, created_at, order_ref, farmer_id, offer:offers(quantity, price_per_unit, current_price, current_quantity, payment_status, listing:listings(crop, unit))",
+          "id, status, created_at, order_ref, farmer_id, offer:offers(quantity, price_per_unit, current_price, current_quantity, final_price_per_unit, final_quantity, snapshot_crop, snapshot_unit, payment_status, listing:listings(crop, unit))",
         )
         .eq("buyer_id", userId!)
         .neq("status", "cancelled" as any)
