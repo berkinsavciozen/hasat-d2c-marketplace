@@ -30,7 +30,9 @@ export type RunnableJobStatus = (typeof RUNNABLE_JOB_STATUSES)[number];
 // claimable through this path once its lock has expired, never while it's genuinely still held.
 const CLAIMABLE_STATUSES = [...RUNNABLE_JOB_STATUSES, "running"] as const;
 
-const DEFAULT_LOCK_DURATION_MS = 5 * 60 * 1000; // 5 minutes — a single stage's Edge Function budget
+/** One stage invocation's lease/budget. Exported so recovery paths use the same definition of
+ * "old enough to be orphaned" instead of inventing a second timeout. */
+export const DEFAULT_LOCK_DURATION_MS = 5 * 60 * 1000; // 5 minutes
 
 export interface ClaimJobParams {
   jobId: string;
@@ -52,7 +54,11 @@ export interface ClaimedJob {
   lockExpiresAt: string;
 }
 
-export type ClaimFailureReason = "not_found" | "wrong_stage" | "not_runnable" | "locked";
+export type ClaimFailureReason =
+  | "not_found"
+  | "wrong_stage"
+  | "not_runnable"
+  | "locked";
 
 export type ClaimJobResult =
   | { claimed: true; job: ClaimedJob }
@@ -62,12 +68,19 @@ export async function claimJob(
   client: SupabaseClient,
   params: ClaimJobParams,
 ): Promise<ClaimJobResult> {
-  const { jobId, expectedStage, lockDurationMs = DEFAULT_LOCK_DURATION_MS, workerId } = params;
+  const {
+    jobId,
+    expectedStage,
+    lockDurationMs = DEFAULT_LOCK_DURATION_MS,
+    workerId,
+  } = params;
 
   const now = new Date();
   const nowIso = now.toISOString();
   const lockExpiresAt = new Date(now.getTime() + lockDurationMs).toISOString();
-  const lockToken = workerId ? `${workerId}:${crypto.randomUUID()}` : crypto.randomUUID();
+  const lockToken = workerId
+    ? `${workerId}:${crypto.randomUUID()}`
+    : crypto.randomUUID();
 
   const { data, error } = await client
     .from("recipe_generation_jobs")
@@ -99,7 +112,10 @@ export async function claimJob(
     return { claimed: true, job: { row: data, lockToken, lockExpiresAt } };
   }
 
-  return { claimed: false, reason: await diagnoseClaimFailure(client, jobId, expectedStage) };
+  return {
+    claimed: false,
+    reason: await diagnoseClaimFailure(client, jobId, expectedStage),
+  };
 }
 
 /**
@@ -138,7 +154,9 @@ async function diagnoseClaimFailure(
     row.lock_expires_at > new Date().toISOString();
   if (lockActive) return "locked";
 
-  if (!(CLAIMABLE_STATUSES as readonly string[]).includes(row.status)) return "not_runnable";
+  if (!(CLAIMABLE_STATUSES as readonly string[]).includes(row.status)) {
+    return "not_runnable";
+  }
   // Runnable status, stage matches, no active lock — the UPDATE must have lost a race to another
   // claimer between it running and this diagnostic SELECT. "locked" is the accurate label for that.
   return "locked";
