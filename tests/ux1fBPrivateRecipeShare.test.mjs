@@ -12,6 +12,7 @@ import {
   deliverPrivateRecipeShareUrl,
   runPrivateRecipeShareAction,
 } from "../src/lib/hasat/privateRecipeShareDelivery.ts";
+import { resolvePrivateRecipeShareEnabled } from "../src/lib/hasat/privateRecipeShareFlag.ts";
 
 const read = (path) => readFile(new URL(path, import.meta.url), "utf8");
 const TOKEN = "a".repeat(64);
@@ -79,10 +80,14 @@ test("web contract has no legacy RPC or token-bearing cache/redirect", async () 
   );
 });
 
-test("feature flag is default-off and gates every RPC surface", async () => {
+test("code-level kill switch stays off when env is true or missing", async () => {
   const flag = await read("../src/lib/hasat/privateRecipeShareFlag.ts");
   const api = await read("../src/lib/hasat/recipeShare.ts");
-  assert.match(flag, /=== "true"/);
+
+  assert.equal(resolvePrivateRecipeShareEnabled("true"), false);
+  assert.equal(resolvePrivateRecipeShareEnabled(undefined), false);
+  assert.doesNotMatch(flag, /import\.meta\.env|VITE_UX1F_PRIVATE_RECIPE_SHARE/);
+  assert.match(flag, /PRIVATE_RECIPE_SHARE_ENABLED = resolvePrivateRecipeShareEnabled\(\)/);
   assert.match(api, /enabled: PRIVATE_RECIPE_SHARE_ENABLED/);
   assert.match(api, /function requireEnabled/);
 });
