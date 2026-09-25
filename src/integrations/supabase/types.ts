@@ -4637,6 +4637,10 @@ export type Database = {
         }
         Returns: Json
       }
+      admin_set_recipe_cover: {
+        Args: { p_assets: Json; p_recipe_id: string }
+        Returns: Json
+      }
       admin_update_ingredient_nutrition: {
         Args: {
           p_crop: string
