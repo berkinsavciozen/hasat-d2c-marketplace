@@ -34,15 +34,24 @@ export default defineTool({
     if (oErr) return { content: [{ type: "text", text: oErr.message }], isError: true };
     if (!order) return { content: [{ type: "text", text: "Order not found or not yours." }], isError: true };
 
-    const { data, error } = await sb.from("offers")
-      .update({ payment_status: "pending_transfer" } as any)
-      .eq("id", order.offer_id)
-      .eq("buyer_id", userId)
-      .eq("status", "accepted")
-      .select().maybeSingle();
+    // payment_status yalnız FIN-2 RPC'si ile değişir (doğrudan update OFFERS_PAYMENT_STATUS_CLIENT_WRITE_BLOCKED).
+    const { data: res, error } = await (sb.rpc as any)("buyer_mark_transfer_sent", { p_offer_id: order.offer_id });
     if (error) return { content: [{ type: "text", text: error.message }], isError: true };
-    if (!data) return { content: [{ type: "text", text: "Offer is not in an accepted state." }], isError: true };
+    if (!res?.ok) {
+      const reason = String(res?.reason ?? "unknown");
+      const text: Record<string, string> = {
+        not_found: "Offer not found.",
+        wrong_offer_status: "Offer is not in an accepted state.",
+        wrong_payment_status: "Transfer was already reported or the payment is already confirmed.",
+      };
+      return { content: [{ type: "text", text: text[reason] ?? `Could not mark transfer sent (${reason}).` }], isError: true };
+    }
 
-    return { content: [{ type: "text", text: `Marked transfer sent for order ${order.id}` }], structuredContent: { offer: data } };
+    const { data: offer } = await sb.from("offers").select().eq("id", order.offer_id).maybeSingle();
+
+    return {
+      content: [{ type: "text", text: `Marked transfer sent for order ${order.id}` }],
+      structuredContent: { offer, orderId: order.id },
+    };
   },
 });
