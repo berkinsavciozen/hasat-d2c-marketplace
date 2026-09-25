@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Admin cover regeneration — SQL test runner for 20260925120000_admin_set_recipe_cover.sql.
+# Admin cover regeneration — SQL test runner for 20260925083635_admin_set_recipe_cover.sql.
 #
 # FRESH local PostgreSQL database every run: fixtures (live-shaped tables) -> the migration under
 # test (applied twice: must be re-runnable) -> assertions. Same drop/recreate convention as
@@ -20,11 +20,11 @@ createdb -E UTF8 -T template0 "$DB_NAME"
 echo "==> Applying fixtures"
 "${PSQL[@]}" -d "$DB_NAME" -f "$SCRIPT_DIR/00_fixtures.sql"
 
-echo "==> Applying 20260925120000_admin_set_recipe_cover.sql (migration under test)"
-"${PSQL[@]}" -d "$DB_NAME" -f "$MIGRATIONS_DIR/20260925120000_admin_set_recipe_cover.sql"
+echo "==> Applying 20260925083635_admin_set_recipe_cover.sql (migration under test)"
+"${PSQL[@]}" -d "$DB_NAME" -f "$MIGRATIONS_DIR/20260925083635_admin_set_recipe_cover.sql"
 
 echo "==> Re-applying the migration (must be re-runnable)"
-"${PSQL[@]}" -d "$DB_NAME" -f "$MIGRATIONS_DIR/20260925120000_admin_set_recipe_cover.sql"
+"${PSQL[@]}" -d "$DB_NAME" -f "$MIGRATIONS_DIR/20260925083635_admin_set_recipe_cover.sql"
 
 echo "==> Running assertions"
 "${PSQL[@]}" -d "$DB_NAME" -f "$SCRIPT_DIR/01_assertions.sql"

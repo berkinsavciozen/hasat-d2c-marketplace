@@ -1,4 +1,4 @@
--- Admin cover regeneration — assertion suite for 20260925120000_admin_set_recipe_cover.sql.
+-- Admin cover regeneration — assertion suite for 20260925083635_admin_set_recipe_cover.sql.
 
 \set ON_ERROR_STOP on
 \o /dev/null

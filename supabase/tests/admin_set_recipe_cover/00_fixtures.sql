@@ -1,4 +1,4 @@
--- Admin cover regeneration — SQL test fixtures for 20260925120000_admin_set_recipe_cover.sql.
+-- Admin cover regeneration — SQL test fixtures for 20260925083635_admin_set_recipe_cover.sql.
 --
 -- Reduced copies of the LIVE shapes in 20260917120000_baseline_consolidated_schema_2026-09-17.sql:
 -- recipes, recipe_generation_batches, recipe_generation_jobs, recipe_drafts, recipe_assets — with

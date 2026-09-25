@@ -112,7 +112,7 @@ when DQ-2 reports `COVER_NOT_HERO`, with an admin preview step before anything g
 module header for the routes. Reuses only the single-purpose image pieces (`../image/prompt.ts`,
 `gemini-client.ts`, `geometry.ts`, `webp-codec.ts`, `frame-suspicion.ts`, `storage.ts`) and
 `../finalize/asset-contract.ts`; never the job/draft state machine. The one database write is the
-`admin_set_recipe_cover` RPC (`20260925120000_admin_set_recipe_cover.sql`).
+`admin_set_recipe_cover` RPC (`20260925083635_admin_set_recipe_cover.sql`).
 
 Tests: `regenerate-cover.test.ts` (fake Gemini + fake storage, real crop/WebP path) and
 `supabase/tests/admin_set_recipe_cover/run.sh` (the RPC against a fresh local PostgreSQL).
