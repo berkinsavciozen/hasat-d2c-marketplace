@@ -267,8 +267,10 @@ function AdminRecipeJobDetailPage() {
       toast.success(actionLabel[variables.action] ?? "İşlem tamamlandı");
       setChecklist(EMPTY_CHECKLIST);
       setNotes("");
+      setAckCritical(false);
       queryClient.invalidateQueries({ queryKey: ["admin-recipe-job-detail", jobId] });
       queryClient.invalidateQueries({ queryKey: ["admin-recipe-jobs"] });
+      queryClient.invalidateQueries({ queryKey: ["admin-recipe-draft-issues", jobId] });
     },
     onError: async (error: unknown) => {
       const anyErr = error as { context?: Response; message?: string };
