@@ -203,10 +203,6 @@ begin
 end;
 $function$;
 
--- f2s17'nin kendi grant'i (authenticated + service_role) 20260917102138 migration'ında
--- authenticated'tan geri alınmıştı — CREATE OR REPLACE bu grant'leri değiştirmez, burada
--- tekrarlamaya gerek yok.
-
 -- ============================================================================================
 -- 2) calculate_recipe_nutrition — aynı crop_culinary_meta.culinary_aliases fallback'ı,
 --    üretim tarafında. Makro toplama matematiği DEĞİŞMEDİ; yalnızca resolved_crop'un nasıl

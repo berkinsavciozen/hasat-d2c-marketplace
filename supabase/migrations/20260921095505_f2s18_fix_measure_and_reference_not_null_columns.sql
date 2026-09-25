@@ -1,10 +1,3 @@
--- F2-S18 düzeltme (aynı gün, dosya 1'den birkaç dakika sonra) — canlı Supabase'de gerçek bir
--- unresolved malzemeyle test edilirken (kural #96 — bağımsız doğrulama) ortaya çıktı:
--- ingredient_measure_reference VE ingredient_nutrition_reference'ın reference_source_id ve
--- reference_url kolonları NOT NULL (default yok) — migration 1'deki admin_resolve_nutrition_unresolved
--- bu iki kolonu hiç vermiyordu, add_measure ve new_reference yolları 23502 (not_null_violation) ile
--- patlıyordu. Bu düzeltme yalnızca admin_resolve_nutrition_unresolved'ın gövdesini, iki INSERT'e
--- sabit placeholder değerler ekleyerek günceller — başka hiçbir şey değişmedi.
 create or replace function public.admin_resolve_nutrition_unresolved(
   p_job_id uuid,
   p_ingredient_label text,
