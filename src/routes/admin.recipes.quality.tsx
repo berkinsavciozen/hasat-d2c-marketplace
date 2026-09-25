@@ -744,10 +744,12 @@ function IssuesSection({
   issues,
   onApplySuggestion,
   onShowIngredient,
+  onRegenerateCover,
 }: {
   issues: QualityIssue[];
   onApplySuggestion: (issue: QualityIssue) => void;
   onShowIngredient: (ingredientId: string) => void;
+  onRegenerateCover: () => void;
 }) {
   const [showInfo, setShowInfo] = useState(false);
   const visible = issues.filter((i) => i.severity !== "bilgi");
@@ -761,6 +763,20 @@ function IssuesSection({
     >
       <span className={cn("inline-block h-2 w-2 rounded-full shrink-0", SEVERITY_DOT[issue.severity])} />
       <span className={SEVERITY_STYLES[issue.severity]}>{issue.message}</span>
+      {issue.code === "COVER_NOT_HERO" && (
+        <Button
+          type="button"
+          size="sm"
+          variant="outline"
+          className="h-6 px-2 text-[11px]"
+          onClick={(e) => {
+            e.stopPropagation();
+            onRegenerateCover();
+          }}
+        >
+          Kapağı yeniden üret
+        </Button>
+      )}
       {issue.suggestion && (
         <Button
           type="button"
