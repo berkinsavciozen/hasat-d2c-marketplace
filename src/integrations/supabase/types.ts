@@ -2147,7 +2147,7 @@ export type Database = {
           {
             foreignKeyName: "orders_offer_id_fkey"
             columns: ["offer_id"]
-            isOneToOne: false
+            isOneToOne: true
             referencedRelation: "offers"
             referencedColumns: ["id"]
           },
@@ -4475,7 +4475,7 @@ export type Database = {
           {
             foreignKeyName: "orders_offer_id_fkey"
             columns: ["offer_id"]
-            isOneToOne: false
+            isOneToOne: true
             referencedRelation: "offers"
             referencedColumns: ["id"]
           },
@@ -4938,6 +4938,11 @@ export type Database = {
         Args: { p_job_id: string }
         Returns: Json
       }
+      rpc_accept_offer: { Args: { p_offer_id: string }; Returns: Json }
+      rpc_cancel_order: {
+        Args: { p_order_id: string; p_reason: string }
+        Returns: Json
+      }
       rpc_clone_recipe:
         | { Args: { p_source_recipe_id: string }; Returns: string }
         | {
@@ -4946,6 +4951,10 @@ export type Database = {
           }
       rpc_clone_shared_recipe: {
         Args: { p_operation_key: string; p_token: string }
+        Returns: Json
+      }
+      rpc_confirm_order_delivered: {
+        Args: { p_order_id: string }
         Returns: Json
       }
       rpc_consume_mobile_handoff_nonce: {
@@ -5048,6 +5057,22 @@ export type Database = {
         Args: { p_recipe_id?: string }
         Returns: Json
       }
+      rpc_mark_order_shipped: {
+        Args: {
+          p_carrier: string
+          p_order_id: string
+          p_tracking_number: string
+        }
+        Returns: Json
+      }
+      rpc_open_dispute: {
+        Args: {
+          p_evidence_paths?: string[]
+          p_order_id: string
+          p_reason: string
+        }
+        Returns: Json
+      }
       rpc_recipe_availability: {
         Args: { p_recipe_id: string }
         Returns: {
@@ -5116,6 +5141,7 @@ export type Database = {
         }
         Returns: Json
       }
+      rpc_withdraw_counter: { Args: { p_offer_id: string }; Returns: Json }
       search_existing_recipes: {
         Args: {
           p_crop?: string
