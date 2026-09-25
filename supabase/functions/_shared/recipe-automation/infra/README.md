@@ -69,7 +69,7 @@ Same convention as `../schemas.test.ts` — Deno's built-in test runner, no `jsr
 deno test --allow-net --allow-env supabase/functions/_shared/recipe-automation/infra/
 ```
 
-`job-lock.test.ts`, `job-state.test.ts`, `stage-dispatch.test.ts`, and `teletry.test.ts` use
+`job-lock.test.ts`, `job-state.test.ts`, `stage-dispatch.test.ts`, and `telemetry.test.ts` use
 `testing/fake-supabase-client.ts` instead of a live Supabase/PostgREST connection — there is no
 Deno-reachable PostgREST stack in this project's local test route (see
 `supabase/tests/f2_recipe_automation/README.md`), so these tests exercise the actual CAS/atomic-
