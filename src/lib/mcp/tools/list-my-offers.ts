@@ -12,7 +12,8 @@ function supabaseForUser(ctx: ToolContext) {
 export default defineTool({
   name: "list_my_offers",
   title: "List my offers",
-  description: "List the signed-in buyer's offers, in any status.",
+  description:
+    "List the signed-in buyer's offers, in any status. Anlaşılan fiyat/miktar için final_* alanlarını, yoksa current_* alanlarını kullan.",
   inputSchema: {
     status: z
       .enum(["pending", "counter", "accepted", "rejected", "completed", "any"])
@@ -28,7 +29,7 @@ export default defineTool({
     let q = sb
       .from("offers")
       .select(
-        "id, listing_id, farmer_id, status, ball_side, quantity, price_per_unit, current_quantity, current_price, payment_status, created_at",
+        "id, listing_id, farmer_id, status, ball_side, quantity, price_per_unit, current_quantity, current_price, final_price_per_unit, final_quantity, snapshot_crop, snapshot_unit, payment_status, created_at",
       )
       .eq("buyer_id", ctx.getUserId()!)
       .order("created_at", { ascending: false })

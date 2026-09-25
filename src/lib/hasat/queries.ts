@@ -1594,7 +1594,7 @@ export function useBuyerConversations() {
           farmerId: o.farmer_id,
           farmerName: farmer?.name ?? "Üretici",
           farmerCity: farmer?.city ?? null,
-          crop: o.listing?.crop ?? "—",
+          crop: o.snapshot_crop ?? o.listing?.crop ?? "—",
           status: o.status,
           ballSide: o.ball_side === "buyer" ? "buyer" : "farmer",
           createdAt: o.created_at,
