@@ -1,11 +1,17 @@
--- ORD-1 A — assertion suite for 20260925172029_ord1a_order_rpcs_and_guard.sql.
+-- ORD-1 — assertion suite for 20260925172029_ord1a_order_rpcs_and_guard.sql (A) +
+-- 20260925180000_ord1b_lock_order_writes.sql (B), applied in that order by run.sh.
 --
 -- Negative matrix: claude/ORD-1-Spec-2026-09-25.md §5 (N1–N24) + the positive end-to-end flow.
 -- Every negative case runs as the real API role (set role authenticated / anon / service_role) with
 -- request.jwt.claims set the way PostgREST sets it, RLS on. Setup-only helpers (pg_temp.mk_order)
 -- run as the superuser with claims set, so the RPCs still see the right auth.uid().
 --
--- Aşama B'ye ait (bu suite'te SKIP, TODO olarak işaretli): N1, N6 (yetki kısmı), N18, N19.
+-- After B a client write to orders / order_timeline / disputes fails on the grant before RLS or the
+-- trigger run. Each layer is therefore also tested on its own:
+--   * RLS: inside a rolled-back transaction the write grant is restored to authenticated, and the write
+--     must still fail because no write policy is left (N1, N6, N18, N19).
+--   * guard trigger: :guard_buyer / :guard_farmer are the superuser (grants + RLS bypassed) with the
+--     party's claims, so only fn_guard_order_transitions stands between them and the row.
 
 \set ON_ERROR_STOP on
 \o /dev/null
@@ -17,6 +23,8 @@
 \set as_anon    'reset role; select set_config(''request.jwt.claims'', ''{"role":"anon"}'', false); set role anon;'
 \set as_service 'reset role; select set_config(''request.jwt.claims'', ''{"role":"service_role"}'', false); set role service_role;'
 \set as_super   'reset role; select set_config(''request.jwt.claims'', '''', false);'
+\set guard_buyer  'reset role; select set_config(''request.jwt.claims'', ''{"sub":"c0000000-0000-0000-0000-000000000001","role":"authenticated"}'', false);'
+\set guard_farmer 'reset role; select set_config(''request.jwt.claims'', ''{"sub":"f0000000-0000-0000-0000-000000000001","role":"authenticated"}'', false);'
 
 create or replace function pg_temp.assert(cond boolean, msg text)
 returns void
@@ -146,6 +154,44 @@ select pg_temp.assert(not has_function_privilege('authenticated', 'public.fn_gua
                       and has_function_privilege('service_role', 'public.fn_guard_order_transitions()', 'execute'),
   'fn_guard_order_transitions: service_role only');
 
+-- B: write policies gone, SELECT policies (and reviews policies) kept.
+select pg_temp.assert((select array_agg(tablename || ': ' || policyname order by tablename, policyname)
+                       from pg_policies where schemaname = 'public'
+                        and tablename in ('orders', 'order_timeline', 'disputes', 'reviews'))
+                      = array['disputes: Order parties can view own disputes',
+                              'order_timeline: Both parties read timeline',
+                              'orders: Both parties read their orders',
+                              'reviews: Order parties can insert their review',
+                              'reviews: Reviews are publicly readable'],
+  'B: only the SELECT policies (+ reviews policies) remain on orders / order_timeline / disputes / reviews');
+select pg_temp.assert(not exists (select 1 from pg_policies where schemaname = 'public'
+                                  and tablename in ('orders', 'order_timeline', 'disputes') and cmd <> 'SELECT'),
+  'B: no write policy on orders / order_timeline / disputes');
+
+-- B: table grants.
+select pg_temp.assert(not has_table_privilege(r, 'public.' || t, priv),
+  'B: ' || r || ' has no ' || priv || ' on ' || t)
+from unnest(array['anon', 'authenticated']) r,
+     unnest(array['orders', 'order_timeline', 'disputes']) t,
+     unnest(array['INSERT', 'UPDATE', 'DELETE', 'TRUNCATE']) priv;
+select pg_temp.assert(has_table_privilege(r, 'public.' || t, 'SELECT'), 'B: ' || r || ' keeps SELECT on ' || t)
+from unnest(array['anon', 'authenticated', 'service_role']) r,
+     unnest(array['orders', 'order_timeline', 'disputes', 'reviews']) t;
+select pg_temp.assert(has_table_privilege('service_role', 'public.' || t, priv), 'B: service_role keeps ' || priv || ' on ' || t)
+from unnest(array['orders', 'order_timeline', 'disputes', 'reviews']) t,
+     unnest(array['INSERT', 'UPDATE', 'DELETE', 'TRUNCATE']) priv;
+select pg_temp.assert(not has_table_privilege('anon', 'public.reviews', priv), 'B: anon has no ' || priv || ' on reviews')
+from unnest(array['INSERT', 'UPDATE', 'DELETE', 'TRUNCATE']) priv;
+select pg_temp.assert(not has_table_privilege('authenticated', 'public.reviews', priv), 'B: authenticated has no ' || priv || ' on reviews')
+from unnest(array['UPDATE', 'DELETE', 'TRUNCATE']) priv;
+select pg_temp.assert(has_table_privilege('authenticated', 'public.reviews', 'INSERT'), 'B: authenticated keeps INSERT on reviews');
+
+-- B: the guard blocks flagless client status writes; the rest of the body is unchanged.
+select pg_temp.assert(position('ORDER_STATUS_CLIENT_WRITE_BLOCKED' in prosrc) > 0
+                      and position('-- if not v_via_rpc' in prosrc) = 0,
+  'B: fn_guard_order_transitions has the ORDER_STATUS_CLIENT_WRITE_BLOCKED block enabled')
+from pg_proc where oid = 'public.fn_guard_order_transitions()'::regprocedure;
+
 -- =============================================================================================
 -- P. Positive end-to-end flow
 --    teklif -> karşı teklif -> kabul (sipariş+timeline) -> havale bildirimi -> ödeme onayı (ikinci
@@ -211,7 +257,12 @@ select pg_temp.assert((select array_agg(step order by created_at) = array['submi
                        from public.order_timeline where order_id = :'p_order'),
   'P: timeline submitted -> shipped -> delivered');
 select pg_temp.expect_error($$update public.orders set status = 'completed' where id = '$$ || :'p_order' || $$'$$,
-  'ORDER_INVALID_TRANSITION: delivered -> completed', 'P: a party cannot complete a delivered order');
+  'permission denied for table orders', 'B: authenticated buyer direct UPDATE status -> permission error (no grant, no policy)');
+:guard_buyer
+select pg_temp.expect_error($$update public.orders set status = 'completed' where id = '$$ || :'p_order' || $$'$$,
+  'ORDER_STATUS_CLIENT_WRITE_BLOCKED', 'B: past the grant, the guard still blocks a flagless client status write');
+:as_super
+select pg_temp.assert((select status = 'delivered' from public.orders where id = :'p_order'), 'P: order still delivered');
 
 -- N24: service role delivered -> completed (ORD-2 cron simulation).
 :as_service
@@ -222,6 +273,10 @@ select pg_temp.assert((select status = 'completed' from public.orders where id =
 insert into public.reviews (order_id, reviewer_id, reviewee_id, reviewer_role, rating, comment)
 values (:'p_order', 'c0000000-0000-0000-0000-000000000001', 'f0000000-0000-0000-0000-000000000001', 'buyer', 5, 'Harika');
 select pg_temp.assert((select count(*) = 1 from public.reviews where order_id = :'p_order'), 'P: buyer reviews the completed order');
+:as_farmer
+insert into public.reviews (order_id, reviewer_id, reviewee_id, reviewer_role, rating)
+values (:'p_order', 'f0000000-0000-0000-0000-000000000001', 'c0000000-0000-0000-0000-000000000001', 'farmer', 4);
+select pg_temp.assert((select count(*) = 2 from public.reviews where order_id = :'p_order'), 'P: farmer reviews the completed order');
 
 :as_super
 select pg_temp.assert((select count(*) >= 3 from public.notifications where related_id = :'p_order' and type = 'order_status'),
@@ -273,18 +328,77 @@ select pg_temp.expect_error($$insert into public.orders (offer_id, buyer_id, far
   'duplicate key value violates unique constraint "orders_offer_id_key"', 'N4: a second order for the same offer is impossible');
 
 -- =============================================================================================
--- Guard (direct client UPDATEs — still allowed by RLS in Aşama A; the trigger is the defence)
+-- Direct client writes to orders (B: grant + RLS closed; the guard trigger stays as the last line)
 -- =============================================================================================
 select pg_temp.mk_order('10000000-0000-0000-0000-000000000001', 1, 'unpaid') as g_order \gset
 
--- N1 (B'de): buyer direct INSERT into orders with status='completed' -> permission error after B.
---   TODO(ORD-1 B): expect 'new row violates row-level security policy' / 'permission denied for table orders'.
+-- N1: buyer / farmer direct INSERT into orders with status='completed' (n5_offer has no order).
+:as_buyer
+select pg_temp.expect_error($$insert into public.orders (offer_id, buyer_id, farmer_id, status, order_ref)
+  values ('$$ || :'n5_offer' || $$', 'c0000000-0000-0000-0000-000000000001', 'f0000000-0000-0000-0000-000000000001', 'completed', '')$$,
+  'permission denied for table orders', 'N1: buyer direct INSERT into orders -> permission error');
+:as_farmer
+select pg_temp.expect_error($$insert into public.orders (offer_id, buyer_id, farmer_id, status, order_ref)
+  values ('$$ || :'n5_offer' || $$', 'c0000000-0000-0000-0000-000000000001', 'f0000000-0000-0000-0000-000000000001', 'completed', '')$$,
+  'permission denied for table orders', 'N1: farmer direct INSERT into orders -> permission error');
+:as_anon
+select pg_temp.expect_error($$insert into public.orders (offer_id, buyer_id, farmer_id, status, order_ref)
+  values ('$$ || :'n5_offer' || $$', 'c0000000-0000-0000-0000-000000000001', 'f0000000-0000-0000-0000-000000000001', 'completed', '')$$,
+  'permission denied for table orders', 'N1: anon direct INSERT into orders -> permission error');
+-- N1, RLS layer: with the INSERT grant restored, no INSERT policy is left ("System inserts orders" and
+-- "Farmers insert orders on acceptance" dropped).
+:as_super
+begin;
+grant insert on public.orders to authenticated;
+:as_buyer
+select pg_temp.expect_error($$insert into public.orders (offer_id, buyer_id, farmer_id, status, order_ref)
+  values ('$$ || :'n5_offer' || $$', 'c0000000-0000-0000-0000-000000000001', 'f0000000-0000-0000-0000-000000000001', 'completed', '')$$,
+  'new row violates row-level security policy', 'N1 (RLS layer): buyer INSERT has no policy');
+:as_farmer
+select pg_temp.expect_error($$insert into public.orders (offer_id, buyer_id, farmer_id, status, order_ref)
+  values ('$$ || :'n5_offer' || $$', 'c0000000-0000-0000-0000-000000000001', 'f0000000-0000-0000-0000-000000000001', 'completed', '')$$,
+  'new row violates row-level security policy', 'N1 (RLS layer): farmer INSERT has no policy');
+:as_super
+rollback;
+select pg_temp.assert((select count(*) = 0 from public.orders where offer_id = :'n5_offer'), 'N1: no order created');
 
--- N6 (guard half; permission half is B): identity columns.
+-- N6, permission half: the same identity UPDATEs fail on the grant first.
 :as_buyer
 select pg_temp.expect_error($$update public.orders set farmer_id = 'c0000000-0000-0000-0000-000000000001' where id = '$$ || :'g_order' || $$'$$,
-  'ORDER_IDENTITY_IMMUTABLE', 'N6: buyer cannot change farmer_id');
+  'permission denied for table orders', 'N6: buyer UPDATE farmer_id -> permission error');
 :as_farmer
+select pg_temp.expect_error($$update public.orders set buyer_id = 'c0000000-0000-0000-0000-000000000002' where id = '$$ || :'g_order' || $$'$$,
+  'permission denied for table orders', 'N6: farmer UPDATE buyer_id -> permission error');
+select pg_temp.expect_error($$update public.orders set tracking_number = 'X' where id = '$$ || :'g_order' || $$'$$,
+  'permission denied for table orders', 'N6: farmer UPDATE of a plain column -> permission error');
+:as_anon
+select pg_temp.expect_error($$update public.orders set status = 'cancelled' where id = '$$ || :'g_order' || $$'$$,
+  'permission denied for table orders', 'N6: anon UPDATE -> permission error');
+select pg_temp.expect_error($$delete from public.orders where id = '$$ || :'g_order' || $$'$$,
+  'permission denied for table orders', 'anon DELETE -> permission error');
+:as_buyer
+select pg_temp.expect_error($$delete from public.orders where id = '$$ || :'g_order' || $$'$$,
+  'permission denied for table orders', 'buyer DELETE -> permission error');
+-- N6, RLS layer: with the UPDATE grant restored, no UPDATE policy is left -> zero rows touched.
+:as_super
+begin;
+grant update on public.orders to authenticated;
+:as_buyer
+with u as (update public.orders set tracking_number = 'X' where id = :'g_order' returning 1)
+select pg_temp.assert(count(*) = 0, 'N6 (RLS layer): buyer UPDATE matches no row ("Order parties can update their orders" dropped)') from u;
+:as_farmer
+with u as (update public.orders set tracking_number = 'X' where id = :'g_order' returning 1)
+select pg_temp.assert(count(*) = 0, 'N6 (RLS layer): farmer UPDATE matches no row') from u;
+:as_super
+rollback;
+select pg_temp.assert((select status = 'preparing' and tracking_number is null from public.orders where id = :'g_order'),
+  'N6: order untouched');
+
+-- N6, guard half (grants + RLS bypassed): identity columns.
+:guard_buyer
+select pg_temp.expect_error($$update public.orders set farmer_id = 'c0000000-0000-0000-0000-000000000001' where id = '$$ || :'g_order' || $$'$$,
+  'ORDER_IDENTITY_IMMUTABLE', 'N6: buyer cannot change farmer_id');
+:guard_farmer
 select pg_temp.expect_error($$update public.orders set buyer_id = 'c0000000-0000-0000-0000-000000000002' where id = '$$ || :'g_order' || $$'$$,
   'ORDER_IDENTITY_IMMUTABLE', 'N6: farmer cannot change buyer_id');
 select pg_temp.expect_error($$update public.orders set offer_id = '$$ || :'n5_offer' || $$' where id = '$$ || :'g_order' || $$'$$,
@@ -293,39 +407,64 @@ select pg_temp.expect_error($$update public.orders set order_ref = 'HT-FAKE' whe
   'ORDER_IDENTITY_IMMUTABLE', 'N6: order_ref immutable');
 select pg_temp.expect_error($$update public.orders set created_at = now() - interval '1 year' where id = '$$ || :'g_order' || $$'$$,
   'ORDER_IDENTITY_IMMUTABLE', 'N6: created_at immutable');
--- TODO(ORD-1 B): N6 permission half — after B the same UPDATEs fail with a permission error first.
 
--- N7 / N8: skipping states.
+-- N7 / N8: skipping states. Through the API: permission error. Past the grant: the guard blocks any
+-- flagless client status change before the matrix is even consulted.
+:as_farmer
 select pg_temp.expect_error($$update public.orders set status = 'delivered' where id = '$$ || :'g_order' || $$'$$,
-  'ORDER_INVALID_TRANSITION: preparing -> delivered', 'N7: farmer cannot jump preparing -> delivered');
+  'permission denied for table orders', 'N7: farmer direct preparing -> delivered -> permission error');
+:guard_farmer
+select pg_temp.expect_error($$update public.orders set status = 'delivered' where id = '$$ || :'g_order' || $$'$$,
+  'ORDER_STATUS_CLIENT_WRITE_BLOCKED', 'N7 (guard): farmer flagless preparing -> delivered');
 :as_buyer
 select pg_temp.expect_error($$update public.orders set status = 'completed' where id = '$$ || :'g_order' || $$'$$,
-  'ORDER_INVALID_TRANSITION: preparing -> completed', 'N8: buyer cannot jump preparing -> completed');
+  'permission denied for table orders', 'N8: buyer direct preparing -> completed -> permission error');
+:guard_buyer
+select pg_temp.expect_error($$update public.orders set status = 'completed' where id = '$$ || :'g_order' || $$'$$,
+  'ORDER_STATUS_CLIENT_WRITE_BLOCKED', 'N8 (guard): buyer flagless preparing -> completed');
+select pg_temp.expect_error($$update public.orders set status = 'shipped' where id = '$$ || :'g_order' || $$'$$,
+  'ORDER_STATUS_CLIENT_WRITE_BLOCKED', 'guard: even a matrix-legal flagless client transition is blocked');
+-- The matrix still applies to the service role.
+:as_service
+select pg_temp.expect_error($$update public.orders set status = 'delivered' where id = '$$ || :'g_order' || $$'$$,
+  'ORDER_INVALID_TRANSITION: preparing -> delivered', 'guard: service role preparing -> delivered rejected by the matrix');
 select pg_temp.expect_error($$update public.orders set status = 'disputed' where id = '$$ || :'g_order' || $$'$$,
-  'ORDER_INVALID_TRANSITION: preparing -> disputed', 'guard: preparing -> disputed rejected');
+  'ORDER_INVALID_TRANSITION: preparing -> disputed', 'guard: service role preparing -> disputed rejected by the matrix');
 
--- dispute_window_expires_at is server-only: the web's current direct write is rejected.
+-- dispute_window_expires_at is server-only.
+:as_buyer
+select pg_temp.expect_error($$update public.orders set dispute_window_expires_at = now() + interval '30 days' where id = '$$ || :'g_order' || $$'$$,
+  'permission denied for table orders', 'client dispute window write -> permission error');
+:guard_buyer
 select pg_temp.expect_error($$update public.orders set dispute_window_expires_at = now() + interval '30 days' where id = '$$ || :'g_order' || $$'$$,
   'ORDER_DISPUTE_WINDOW_SERVER_ONLY', 'guard: client cannot set the dispute window');
 :as_super
 select pg_temp.mk_order('10000000-0000-0000-0000-000000000001', 1, 'shipped') as w_order \gset
-:as_buyer
+:guard_buyer
+select pg_temp.expect_error($$update public.orders set status = 'delivered' where id = '$$ || :'w_order' || $$'$$,
+  'ORDER_STATUS_CLIENT_WRITE_BLOCKED', 'guard: client shipped -> delivered without the RPC is blocked');
 select pg_temp.expect_error($$update public.orders set status = 'delivered', dispute_window_expires_at = now() + interval '30 days' where id = '$$ || :'w_order' || $$'$$,
   'ORDER_DISPUTE_WINDOW_SERVER_ONLY', 'guard: client shipped -> delivered with its own window is rejected (web useConfirmDelivery path)');
 :as_super
 select pg_temp.assert((select status = 'shipped' and dispute_window_expires_at is null from public.orders where id = :'w_order'),
   'guard: rejected write left the order untouched');
 
--- Aşama A: flagless client status change along the matrix is still allowed (web writes directly today).
--- TODO(ORD-1 B): expect 'ORDER_STATUS_CLIENT_WRITE_BLOCKED' here.
+-- The pre-ORD-1 web cancel path (direct UPDATE) is closed; rpc_cancel_order is the way.
 :as_super
 select pg_temp.mk_order('10000000-0000-0000-0000-000000000001', 1, 'unpaid') as a_order \gset
 :as_buyer
-update public.orders set status = 'cancelled', cancelled_at = now() where id = :'a_order';
-select pg_temp.assert((select status = 'cancelled' from public.orders where id = :'a_order'),
-  'Aşama A: flagless preparing -> cancelled still passes the matrix');
+select pg_temp.expect_error($$update public.orders set status = 'cancelled', cancelled_at = now() where id = '$$ || :'a_order' || $$'$$,
+  'permission denied for table orders', 'B: direct preparing -> cancelled -> permission error');
+:guard_buyer
+select pg_temp.expect_error($$update public.orders set status = 'cancelled', cancelled_at = now() where id = '$$ || :'a_order' || $$'$$,
+  'ORDER_STATUS_CLIENT_WRITE_BLOCKED', 'B (guard): flagless preparing -> cancelled blocked');
+:as_super
+select pg_temp.assert((select status = 'preparing' from public.orders where id = :'a_order'), 'B: order untouched');
+:as_buyer
+select pg_temp.assert(public.rpc_cancel_order(:'a_order', 'Vazgeçtim') ->> 'ok' = 'true', 'B: rpc_cancel_order still cancels');
+:as_service
 select pg_temp.expect_error($$update public.orders set status = 'preparing' where id = '$$ || :'a_order' || $$'$$,
-  'ORDER_INVALID_TRANSITION: cancelled -> preparing', 'guard: cancelled is terminal');
+  'ORDER_INVALID_TRANSITION: cancelled -> preparing', 'guard: cancelled is terminal (even for the service role)');
 
 -- =============================================================================================
 -- Shipping / delivery
@@ -374,7 +513,10 @@ update public.orders set dispute_window_expires_at = now() - interval '1 minute'
 select pg_temp.assert(public.rpc_open_dispute(:'d_late', 'Ezik', '{}') = jsonb_build_object('ok', false, 'reason', 'window_closed'),
   'N12: window closed (server time) -> window_closed');
 select pg_temp.expect_error($$update public.orders set dispute_window_expires_at = now() + interval '1 day' where id = '$$ || :'d_late' || $$'$$,
-  'ORDER_DISPUTE_WINDOW_SERVER_ONLY', 'N12: the client cannot reopen the window itself');
+  'permission denied for table orders', 'N12: the client cannot reopen the window itself (permission)');
+:guard_buyer
+select pg_temp.expect_error($$update public.orders set dispute_window_expires_at = now() + interval '1 day' where id = '$$ || :'d_late' || $$'$$,
+  'ORDER_DISPUTE_WINDOW_SERVER_ONLY', 'N12: the client cannot reopen the window itself (guard)');
 :as_super
 select pg_temp.assert((select count(*) = 0 from public.disputes where order_id = :'d_late'), 'N12: no dispute row');
 
@@ -404,16 +546,60 @@ select pg_temp.assert(public.rpc_open_dispute(:'d_order', 'Ben de', '{}') = json
 
 -- N14: parties cannot resolve.
 select pg_temp.expect_error($$update public.orders set status = 'completed' where id = '$$ || :'d_order' || $$'$$,
-  'ORDER_INVALID_TRANSITION: disputed -> completed', 'N14: buyer disputed -> completed rejected');
+  'permission denied for table orders', 'N14: buyer disputed -> completed -> permission error');
 :as_farmer
 select pg_temp.expect_error($$update public.orders set status = 'cancelled' where id = '$$ || :'d_order' || $$'$$,
-  'ORDER_INVALID_TRANSITION: disputed -> cancelled', 'N14: farmer disputed -> cancelled rejected');
+  'permission denied for table orders', 'N14: farmer disputed -> cancelled -> permission error');
+:guard_buyer
+select pg_temp.expect_error($$update public.orders set status = 'completed' where id = '$$ || :'d_order' || $$'$$,
+  'ORDER_STATUS_CLIENT_WRITE_BLOCKED', 'N14 (guard): buyer disputed -> completed blocked');
+:guard_farmer
+select pg_temp.expect_error($$update public.orders set status = 'cancelled' where id = '$$ || :'d_order' || $$'$$,
+  'ORDER_STATUS_CLIENT_WRITE_BLOCKED', 'N14 (guard): farmer disputed -> cancelled blocked');
+
+-- N19: parties cannot resolve / edit / open a dispute directly.
+:as_buyer
+select pg_temp.expect_error($$update public.disputes set status = 'resolved', resolution = 'x', resolved_at = now() where order_id = '$$ || :'d_order' || $$'$$,
+  'permission denied for table disputes', 'N19: buyer UPDATE disputes -> permission error');
+:as_farmer
+select pg_temp.expect_error($$update public.disputes set status = 'resolved' where order_id = '$$ || :'d_order' || $$'$$,
+  'permission denied for table disputes', 'N19: farmer (opener) UPDATE disputes -> permission error');
+select pg_temp.expect_error($$delete from public.disputes where order_id = '$$ || :'d_order' || $$'$$,
+  'permission denied for table disputes', 'N19: DELETE disputes -> permission error');
+select pg_temp.expect_error($$insert into public.disputes (order_id, opened_by, reason) values ('$$ || :'d_order' || $$', 'f0000000-0000-0000-0000-000000000001', 'x')$$,
+  'permission denied for table disputes', 'N19: direct INSERT into disputes -> permission error (rpc_open_dispute only)');
+:as_anon
+select pg_temp.expect_error($$update public.disputes set status = 'resolved' where order_id = '$$ || :'d_order' || $$'$$,
+  'permission denied for table disputes', 'N19: anon UPDATE disputes -> permission error');
+-- N19, RLS layer: with the grants restored, no INSERT/UPDATE policy is left.
+:as_super
+begin;
+grant insert, update on public.disputes to authenticated;
+:as_buyer
+with u as (update public.disputes set status = 'resolved' where order_id = :'d_order' returning 1)
+select pg_temp.assert(count(*) = 0, 'N19 (RLS layer): UPDATE matches no row ("Order parties can update own disputes" dropped)') from u;
+select pg_temp.assert((select count(*) = 1 from public.disputes where order_id = :'d_order'), 'N19 (RLS layer): the SELECT policy still shows the row');
+select pg_temp.expect_error($$insert into public.disputes (order_id, opened_by, reason) values ('$$ || :'d_order' || $$', 'c0000000-0000-0000-0000-000000000001', 'x')$$,
+  'new row violates row-level security policy', 'N19 (RLS layer): INSERT has no policy ("Order parties can open disputes" dropped)');
+:as_super
+rollback;
+select pg_temp.assert((select count(*) = 1 and bool_and(status = 'open') from public.disputes where order_id = :'d_order'),
+  'N19: dispute still open, no second row');
+
 :as_service
 update public.orders set status = 'cancelled' where id = :'d_order';
 select pg_temp.assert((select status = 'cancelled' from public.orders where id = :'d_order'), 'service role resolves disputed -> cancelled');
+update public.disputes set status = 'resolved', resolution = 'iade', resolved_at = now() where order_id = :'d_order';
+select pg_temp.assert((select status = 'resolved' from public.disputes where order_id = :'d_order'), 'service role resolves the dispute row');
 
--- N19 (B'de): party UPDATE disputes set status='resolved' -> permission error after B.
---   TODO(ORD-1 B): expect 'permission denied for table disputes' / zero rows.
+-- Service role (auth.uid() null) disputed -> completed (ORD-2 / admin path).
+:as_super
+select pg_temp.mk_order('10000000-0000-0000-0000-000000000001', 1, 'delivered') as d2_order \gset
+:as_buyer
+select pg_temp.assert(public.rpc_open_dispute(:'d2_order', 'Eksik', '{}') ->> 'ok' = 'true', 'buyer opens a dispute via the RPC');
+:as_service
+update public.orders set status = 'completed' where id = :'d2_order';
+select pg_temp.assert((select status = 'completed' from public.orders where id = :'d2_order'), 'service role resolves disputed -> completed');
 
 -- =============================================================================================
 -- Cancellation (K3) + stock (N17)
@@ -463,8 +649,33 @@ select pg_temp.assert(public.rpc_accept_offer(:'c_next') ->> 'ok' = 'true', 'N17
 select pg_temp.assert((select reserved = 6 from public.listing_stock_summary('10000000-0000-0000-0000-000000000003')),
   'N17: only the live order is reserved');
 
--- N18 (B'de): direct INSERT into order_timeline -> permission error after B.
---   TODO(ORD-1 B): expect 'new row violates row-level security policy' / 'permission denied for table order_timeline'.
+-- N18: direct INSERT into order_timeline -> permission error.
+:as_buyer
+select pg_temp.expect_error($$insert into public.order_timeline (order_id, step, label, completed_at) values ('$$ || :'c_stock' || $$', 'delivered', 'Teslim Edildi', now())$$,
+  'permission denied for table order_timeline', 'N18: buyer direct INSERT into order_timeline -> permission error');
+:as_farmer
+select pg_temp.expect_error($$insert into public.order_timeline (order_id, step, label, completed_at) values ('$$ || :'c_stock' || $$', 'shipped', 'Kargoya Verildi', now())$$,
+  'permission denied for table order_timeline', 'N18: farmer direct INSERT into order_timeline -> permission error');
+select pg_temp.expect_error($$update public.order_timeline set label = 'x' where order_id = '$$ || :'c_stock' || $$'$$,
+  'permission denied for table order_timeline', 'N18: UPDATE order_timeline -> permission error');
+select pg_temp.expect_error($$delete from public.order_timeline where order_id = '$$ || :'c_stock' || $$'$$,
+  'permission denied for table order_timeline', 'N18: DELETE order_timeline -> permission error');
+:as_anon
+select pg_temp.expect_error($$insert into public.order_timeline (order_id, step, label) values ('$$ || :'c_stock' || $$', 'x', 'x')$$,
+  'permission denied for table order_timeline', 'N18: anon INSERT into order_timeline -> permission error');
+-- N18, RLS layer: with the INSERT grant restored, no INSERT policy is left.
+:as_super
+begin;
+grant insert on public.order_timeline to authenticated;
+:as_buyer
+select pg_temp.expect_error($$insert into public.order_timeline (order_id, step, label, completed_at) values ('$$ || :'c_stock' || $$', 'delivered', 'Teslim Edildi', now())$$,
+  'new row violates row-level security policy', 'N18 (RLS layer): buyer INSERT has no policy ("Buyers insert order timeline" dropped)');
+:as_farmer
+select pg_temp.expect_error($$insert into public.order_timeline (order_id, step, label, completed_at) values ('$$ || :'c_stock' || $$', 'shipped', 'Kargoya Verildi', now())$$,
+  'new row violates row-level security policy', 'N18 (RLS layer): farmer INSERT has no policy ("Farmers insert order timeline" dropped)');
+:as_super
+rollback;
+select pg_temp.assert((select count(*) = 2 from public.order_timeline where order_id = :'c_stock'), 'N18: timeline unchanged (submitted, cancelled)');
 
 -- =============================================================================================
 -- N20: reviews without a delivered/completed order (existing policy keeps rejecting)
@@ -477,6 +688,27 @@ select pg_temp.expect_error($$insert into public.reviews (order_id, reviewer_id,
 select pg_temp.expect_error($$insert into public.reviews (order_id, reviewer_id, reviewee_id, reviewer_role, rating)
   values ('$$ || :'p_order' || $$', 'd0000000-0000-0000-0000-000000000001', 'f0000000-0000-0000-0000-000000000001', 'buyer', 1)$$,
   'new row violates row-level security policy', 'N20: stranger cannot review someone else''s order');
+:as_buyer
+select pg_temp.expect_error($$insert into public.reviews (order_id, reviewer_id, reviewee_id, reviewer_role, rating)
+  values ('00000000-0000-0000-0000-00000000dead', 'c0000000-0000-0000-0000-000000000001', 'f0000000-0000-0000-0000-000000000001', 'buyer', 1)$$,
+  'new row violates row-level security policy', 'N20: no review without an order');
+
+-- reviews after B: INSERT on a delivered order still works; UPDATE/DELETE and anon writes are closed.
+:as_super
+select pg_temp.mk_order('10000000-0000-0000-0000-000000000001', 1, 'delivered') as r_order \gset
+:as_buyer
+insert into public.reviews (order_id, reviewer_id, reviewee_id, reviewer_role, rating, comment)
+values (:'r_order', 'c0000000-0000-0000-0000-000000000001', 'f0000000-0000-0000-0000-000000000001', 'buyer', 4, 'İyi');
+select pg_temp.assert((select count(*) = 1 from public.reviews where order_id = :'r_order'), 'reviews: buyer reviews a delivered order');
+select pg_temp.expect_error($$update public.reviews set rating = 1 where order_id = '$$ || :'r_order' || $$'$$,
+  'permission denied for table reviews', 'reviews: authenticated UPDATE -> permission error');
+select pg_temp.expect_error($$delete from public.reviews where order_id = '$$ || :'r_order' || $$'$$,
+  'permission denied for table reviews', 'reviews: authenticated DELETE -> permission error');
+:as_anon
+select pg_temp.expect_error($$insert into public.reviews (order_id, reviewer_id, reviewee_id, reviewer_role, rating)
+  values ('$$ || :'r_order' || $$', 'c0000000-0000-0000-0000-000000000001', 'f0000000-0000-0000-0000-000000000001', 'buyer', 1)$$,
+  'permission denied for table reviews', 'reviews: anon INSERT -> permission error');
+select pg_temp.assert((select count(*) = 1 from public.reviews where order_id = :'r_order'), 'reviews: anon still reads (public SELECT policy kept)');
 
 -- =============================================================================================
 -- K5: counter withdrawal (N21, N22)
@@ -579,4 +811,3 @@ select pg_temp.expect_error($$select public.rpc_cancel_order('$$ || :'s2_order' 
 :as_super
 \o
 \echo '    01_assertions.sql: all assertions passed'
-\echo '    Aşama B (skipped, TODO in this file): N1, N6 permission half, N18, N19'
