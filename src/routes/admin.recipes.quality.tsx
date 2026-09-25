@@ -385,6 +385,17 @@ function AdminRecipeQualityPage() {
                       <td className="py-2 pr-3">
                         <div className="font-medium">{r.title}</div>
                         <div className="text-xs text-hmuted font-mono">{r.slug}</div>
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setCoverDialogRecipe({ id: r.id, title: r.title, coverPhotoUrl: null });
+                          }}
+                          className="mt-1 inline-flex items-center gap-1 text-xs text-hmuted underline hover:text-foreground"
+                        >
+                          <ImagePlus className="h-3 w-3" />
+                          Kapağı yeniden üret
+                        </button>
                       </td>
                       <td className="py-2 px-3">
                         <QualityBadge ok={r.hasEquipment} okLabel="Var" badLabel="Eksik" />
@@ -424,6 +435,27 @@ function AdminRecipeQualityPage() {
             invoke={invoke}
             onSaved={refreshAfterSave}
             onClose={() => setSelectedRecipeId(null)}
+            coverVersion={coverVersion}
+            onRegenerateCover={() =>
+              setCoverDialogRecipe({
+                id: selectedRecipeId,
+                title: detailQuery.data?.recipe.title ?? "",
+                coverPhotoUrl: detailQuery.data?.recipe.coverPhotoUrl ?? null,
+              })
+            }
+          />
+        )}
+
+        {coverDialogRecipe && (
+          <CoverRegenDialog
+            recipe={coverDialogRecipe}
+            invokeCover={invokeCover}
+            onClose={() => setCoverDialogRecipe(null)}
+            onApplied={() => {
+              setCoverVersion(Date.now());
+              refreshAfterSave();
+              setCoverDialogRecipe(null);
+            }}
           />
         )}
       </div>
