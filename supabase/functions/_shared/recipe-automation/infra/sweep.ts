@@ -21,7 +21,11 @@
 //      production 2026-09-02 (job 451234c7-cdc0-4322-b201-9b4d62fe4cc9: approved, never
 //      published, no automated path back to `publish` at all before this).
 //
-// This module is the periodic nudge for all three: find every job currently eligible under any
+//   4. `status = 'queued'` with no lock/lease and an `updated_at` older than one complete stage
+//      lease — an advance committed the next stage, but its best-effort dispatch disappeared
+//      before the next worker could claim it. Fresh queued work is deliberately left alone.
+//
+// This module is the periodic nudge for all four: find every job currently eligible under any
 // condition and re-dispatch it via the exact same `redispatchStage` helper every stage-runner's
 // own successful-advance path already uses — its own doc comment anticipates exactly this
 // ("re-nudging an already-queued job... e.g. a reconciliation sweep"). This module never claims or
@@ -35,6 +39,7 @@
 // there is no earlier "advance to publish" step this sweep needs to perform itself.
 import type { SupabaseClient } from "./supabase-admin.ts";
 import { redispatchStage } from "./stage-dispatch.ts";
+import { DEFAULT_LOCK_DURATION_MS } from "./job-lock.ts";
 import { RecipeAutomationError } from "./errors.ts";
 import type { RecipeJobStage } from "../types.ts";
 
@@ -69,12 +74,27 @@ interface SweepCandidateRow {
   batch_id: string;
 }
 
+interface OrphanedQueuedCandidateRow extends SweepCandidateRow {
+  attempt: number;
+  max_attempts: number;
+  updated_at: string;
+}
+
+/** A newly queued stage gets one complete stage lease to be claimed before reconciliation may
+ * treat it as orphaned. This is intentionally derived from job-lock.ts's worker budget (5 min),
+ * not a separate guessed timeout. With the existing 5-minute cron cadence, recovery happens
+ * 5–10 minutes after the lost dispatch while active/recent work remains untouched. */
+export const ORPHANED_QUEUED_GRACE_MS = DEFAULT_LOCK_DURATION_MS;
+
 /** `status = 'retryable'` jobs whose scheduled retry time has arrived. `locked_by IS NULL` is
  * defensive rather than load-bearing — `failJob()` always clears the lock when it sets
  * status='retryable', so this should already be true of every retryable row; kept as an explicit
  * filter so this query's own intent ("only ever touch a genuinely unlocked job") doesn't silently
  * depend on that invariant holding elsewhere. */
-async function fetchDueRetryableJobs(client: SupabaseClient, nowIso: string): Promise<SweepCandidateRow[]> {
+async function fetchDueRetryableJobs(
+  client: SupabaseClient,
+  nowIso: string,
+): Promise<SweepCandidateRow[]> {
   const { data, error } = await client
     .from("recipe_generation_jobs")
     .select("id, stage, batch_id")
@@ -98,7 +118,10 @@ async function fetchDueRetryableJobs(client: SupabaseClient, nowIso: string): Pr
  * `claimJob()` itself uses (job-lock.ts's `.or(locked_by.is.null,lock_expires_at.lt.<now>)`): a
  * 'running' row is only ever a stale-lock candidate once its lock is absent or expired, never
  * while genuinely held by an in-flight invocation. */
-async function fetchStaleRunningJobs(client: SupabaseClient, nowIso: string): Promise<SweepCandidateRow[]> {
+async function fetchStaleRunningJobs(
+  client: SupabaseClient,
+  nowIso: string,
+): Promise<SweepCandidateRow[]> {
   const { data, error } = await client
     .from("recipe_generation_jobs")
     .select("id, stage, batch_id")
@@ -109,7 +132,8 @@ async function fetchStaleRunningJobs(client: SupabaseClient, nowIso: string): Pr
   if (error) {
     throw new RecipeAutomationError({
       code: "RETRY_SWEEP_QUERY_FAILED",
-      message: "failed to query recipe_generation_jobs for stale-lock running jobs",
+      message:
+        "failed to query recipe_generation_jobs for stale-lock running jobs",
       retryable: true,
       details: { pgCode: (error as { code?: string }).code },
     });
@@ -121,7 +145,9 @@ async function fetchStaleRunningJobs(client: SupabaseClient, nowIso: string): Pr
  * header. No time-based or lock-based filter (unlike the two queries above): there is no
  * `next_attempt_at`/`locked_by` concept for this category at all, an approved job is either still
  * unpublished or it isn't, so any row this finds is by definition due for a redispatch. */
-async function fetchApprovedAwaitingPublishJobs(client: SupabaseClient): Promise<SweepCandidateRow[]> {
+async function fetchApprovedAwaitingPublishJobs(
+  client: SupabaseClient,
+): Promise<SweepCandidateRow[]> {
   const { data, error } = await client
     .from("recipe_generation_jobs")
     .select("id, stage, batch_id")
@@ -132,12 +158,107 @@ async function fetchApprovedAwaitingPublishJobs(client: SupabaseClient): Promise
   if (error) {
     throw new RecipeAutomationError({
       code: "RETRY_SWEEP_QUERY_FAILED",
-      message: "failed to query recipe_generation_jobs for approved-awaiting-publish jobs",
+      message:
+        "failed to query recipe_generation_jobs for approved-awaiting-publish jobs",
       retryable: true,
       details: { pgCode: (error as { code?: string }).code },
     });
   }
   return (data as SweepCandidateRow[] | null) ?? [];
+}
+
+/** Category 4: queued work whose post-advance dispatch has had a full stage lease to arrive but
+ * still has no claim lock. `updated_at` is the durable hand-off timestamp because every advance
+ * updates this row and the table's trigger refreshes it on every later mutation. */
+async function fetchOrphanedQueuedJobs(
+  client: SupabaseClient,
+  staleBeforeIso: string,
+): Promise<OrphanedQueuedCandidateRow[]> {
+  const { data, error } = await client
+    .from("recipe_generation_jobs")
+    .select("id, stage, batch_id, attempt, max_attempts, updated_at")
+    .eq("status", "queued")
+    .is("locked_by", null)
+    .is("locked_at", null)
+    .is("lock_expires_at", null)
+    .lt("updated_at", staleBeforeIso)
+    .limit(SWEEP_BATCH_LIMIT);
+
+  if (error) {
+    throw new RecipeAutomationError({
+      code: "RETRY_SWEEP_QUERY_FAILED",
+      message:
+        "failed to query recipe_generation_jobs for orphaned queued jobs",
+      retryable: true,
+      details: { pgCode: (error as { code?: string }).code },
+    });
+  }
+  return ((data as OrphanedQueuedCandidateRow[] | null) ?? []).filter((row) =>
+    row.attempt <= row.max_attempts
+  );
+}
+
+/** Atomically consumes a category-4 candidate's stale `updated_at` before dispatch. Two sweep
+ * invocations may read the same candidate, but Postgres row locking lets only one UPDATE retain
+ * every predicate and return the row. Refreshing `updated_at` also gives a failed best-effort
+ * dispatch the same bounded grace before a later sweep retries it. */
+async function reserveOrphanedQueuedJob(
+  client: SupabaseClient,
+  row: OrphanedQueuedCandidateRow,
+  staleBeforeIso: string,
+  nowIso: string,
+): Promise<boolean> {
+  const { data, error } = await client
+    .from("recipe_generation_jobs")
+    .update({ updated_at: nowIso })
+    .eq("id", row.id)
+    .eq("stage", row.stage)
+    .eq("status", "queued")
+    .eq("attempt", row.attempt)
+    .eq("max_attempts", row.max_attempts)
+    .is("locked_by", null)
+    .is("locked_at", null)
+    .is("lock_expires_at", null)
+    .lt("updated_at", staleBeforeIso)
+    .select("id")
+    .maybeSingle();
+
+  if (error) {
+    throw new RecipeAutomationError({
+      code: "RETRY_SWEEP_QUERY_FAILED",
+      message: "failed to reserve an orphaned queued job for redispatch",
+      retryable: true,
+      details: { pgCode: (error as { code?: string }).code },
+    });
+  }
+  return Boolean(data);
+}
+
+async function redispatchOrphanedQueuedRows(
+  client: SupabaseClient,
+  rows: OrphanedQueuedCandidateRow[],
+  staleBeforeIso: string,
+  nowIso: string,
+): Promise<{ redispatched: number; skipped: string[] }> {
+  let redispatched = 0;
+  const skipped: string[] = [];
+  for (const row of rows) {
+    const functionName = STAGE_FUNCTION_NAMES[row.stage];
+    if (!functionName) {
+      skipped.push(row.id);
+      continue;
+    }
+    if (!await reserveOrphanedQueuedJob(client, row, staleBeforeIso, nowIso)) {
+      continue;
+    }
+    await redispatchStage(client, {
+      jobId: row.id,
+      functionName,
+      payload: { batchId: row.batch_id },
+    });
+    redispatched++;
+  }
+  return { redispatched, skipped };
 }
 
 async function redispatchRows(
@@ -152,7 +273,11 @@ async function redispatchRows(
       skipped.push(row.id);
       continue;
     }
-    await redispatchStage(client, { jobId: row.id, functionName, payload: { batchId: row.batch_id } });
+    await redispatchStage(client, {
+      jobId: row.id,
+      functionName,
+      payload: { batchId: row.batch_id },
+    });
     redispatched++;
   }
   return { redispatched, skipped };
@@ -166,7 +291,11 @@ async function redispatchApprovedAwaitingPublishRows(
   rows: SweepCandidateRow[],
 ): Promise<number> {
   for (const row of rows) {
-    await redispatchStage(client, { jobId: row.id, functionName: PUBLISH_FUNCTION_NAME, payload: { batchId: row.batch_id } });
+    await redispatchStage(client, {
+      jobId: row.id,
+      functionName: PUBLISH_FUNCTION_NAME,
+      payload: { batchId: row.batch_id },
+    });
   }
   return rows.length;
 }
@@ -179,6 +308,8 @@ export interface RetrySweepResult {
   /** Jobs found at stage='awaiting_approval', status='approved', redispatched to
    * recipe-stage-publish — category 3, see this module's header. */
   approvedAwaitingPublishRedispatched: number;
+  /** Old, unlocked queued jobs atomically reserved and redispatched — category 4. */
+  orphanedQueuedRedispatched: number;
   /** Candidate rows whose `stage` isn't in the allow-list above — skipped, never redispatched.
    * Should always be empty in practice (every non-terminal stage a job can sit at while
    * retryable/running is in the map); surfaced for observability rather than silently dropped. */
@@ -191,23 +322,46 @@ export interface RetrySweepResult {
  * an unexpected failure reading the candidate rows themselves throws, the same convention every
  * other infra module in this pipeline uses.
  */
-export async function runRetrySweep(client: SupabaseClient): Promise<RetrySweepResult> {
-  const nowIso = new Date().toISOString();
+export async function runRetrySweep(
+  client: SupabaseClient,
+): Promise<RetrySweepResult> {
+  const now = new Date();
+  const nowIso = now.toISOString();
+  const orphanedQueuedBeforeIso = new Date(
+    now.getTime() - ORPHANED_QUEUED_GRACE_MS,
+  ).toISOString();
 
-  const [dueRetryable, staleRunning, approvedAwaitingPublish] = await Promise.all([
-    fetchDueRetryableJobs(client, nowIso),
-    fetchStaleRunningJobs(client, nowIso),
-    fetchApprovedAwaitingPublishJobs(client),
-  ]);
+  const [dueRetryable, staleRunning, approvedAwaitingPublish, orphanedQueued] =
+    await Promise.all([
+      fetchDueRetryableJobs(client, nowIso),
+      fetchStaleRunningJobs(client, nowIso),
+      fetchApprovedAwaitingPublishJobs(client),
+      fetchOrphanedQueuedJobs(client, orphanedQueuedBeforeIso),
+    ]);
 
   const retryable = await redispatchRows(client, dueRetryable);
   const staleLocks = await redispatchRows(client, staleRunning);
-  const approvedAwaitingPublishRedispatched = await redispatchApprovedAwaitingPublishRows(client, approvedAwaitingPublish);
+  const approvedAwaitingPublishRedispatched =
+    await redispatchApprovedAwaitingPublishRows(
+      client,
+      approvedAwaitingPublish,
+    );
+  const orphanedQueuedResult = await redispatchOrphanedQueuedRows(
+    client,
+    orphanedQueued,
+    orphanedQueuedBeforeIso,
+    nowIso,
+  );
 
   return {
     retryableRedispatched: retryable.redispatched,
     staleLockRedispatched: staleLocks.redispatched,
     approvedAwaitingPublishRedispatched,
-    skippedUnknownStage: [...retryable.skipped, ...staleLocks.skipped],
+    orphanedQueuedRedispatched: orphanedQueuedResult.redispatched,
+    skippedUnknownStage: [
+      ...retryable.skipped,
+      ...staleLocks.skipped,
+      ...orphanedQueuedResult.skipped,
+    ],
   };
 }
