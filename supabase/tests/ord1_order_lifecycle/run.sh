@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# ORD-1 A — SQL test runner for 20260925160000_ord1a_order_rpcs_and_guard.sql.
+# ORD-1 A — SQL test runner for 20260925172029_ord1a_order_rpcs_and_guard.sql.
 #
 # FRESH local PostgreSQL database every run: fixtures (live-shaped tables + RLS + baseline function
 # bodies verbatim) -> FIN-2 (20260921113253 + 20260921113432) -> FIN-3 (20260921124738) -> FIN-3-S
@@ -19,7 +19,7 @@ PREREQS=(
   "20260921124738_fin3_immutable_monetary_snapshot.sql"
   "20260925143009_fin3s_stock_reservation_agreed_quantity.sql"
 )
-MIGRATION="20260925160000_ord1a_order_rpcs_and_guard.sql"
+MIGRATION="20260925172029_ord1a_order_rpcs_and_guard.sql"
 
 PSQL=(psql -v ON_ERROR_STOP=1 -X -q)
 
