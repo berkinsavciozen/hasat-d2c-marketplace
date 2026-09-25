@@ -11,6 +11,7 @@ import type { SupabaseClient } from "../infra/supabase-admin.ts";
 import { RecipeAutomationError } from "../infra/errors.ts";
 import { loadCurrentDraft } from "../qa/context.ts";
 import { validateDraft, type DraftValidationResult } from "../writer/validate-draft.ts";
+import { getDraftQualityIssues, type QualityIssue } from "./quality.ts";
 import type {
   RecipeDraftPayload,
   RecipeErrorPayload,
@@ -138,6 +139,11 @@ export interface JobDetail {
   stageRuns: StageRunSummary[];
   reviewHistory: AdminReviewHistoryEntry[];
   nutritionPreview: DraftNutritionPreview | null;
+  /** DQ-2 §4 — the admin_recipe_draft_quality_issues checker over the current draft, for the
+   * approval card's "Veri tutarlılığı" section. null = no draft, or the check itself failed
+   * (then `draftQualityCheckFailed` is true). Advisory only: nothing here gates approve/publish. */
+  draftQualityIssues: QualityIssue[] | null;
+  draftQualityCheckFailed: boolean;
 }
 
 /**
@@ -202,13 +208,14 @@ export async function loadJobDetail(
   const currentDraft = await loadCurrentDraft(client, jobId);
   const validation = currentDraft ? await validateDraft(client, currentDraft.payload) : null;
 
-  const [latestQaResult, images, revisionHistory, stageRuns, reviewHistory, nutritionPreview] = await Promise.all([
+  const [latestQaResult, images, revisionHistory, stageRuns, reviewHistory, nutritionPreview, draftQuality] = await Promise.all([
     loadLatestFullQaResult(client, jobId),
     currentDraft ? loadAssets(client, jobId, currentDraft.id, resolvePublicUrl) : Promise.resolve([]),
     loadRevisionHistory(client, jobId),
     loadStageRuns(client, jobId),
     loadReviewHistory(client, jobId),
     currentDraft ? loadNutritionPreview(client, jobId) : Promise.resolve(null),
+    currentDraft ? loadDraftQualityIssues(client, jobId) : Promise.resolve({ issues: null, failed: false }),
   ]);
 
   return {
@@ -221,7 +228,26 @@ export async function loadJobDetail(
     stageRuns,
     reviewHistory,
     nutritionPreview,
+    draftQualityIssues: draftQuality.issues,
+    draftQualityCheckFailed: draftQuality.failed,
   };
+}
+
+/**
+ * Unlike the other loaders this one never throws: the consistency check is advisory, so a failing
+ * RPC must not take the whole approval screen down with it. The failure is surfaced as `failed`
+ * for the UI to say so, instead of rendering an empty (and falsely reassuring) list.
+ */
+export async function loadDraftQualityIssues(
+  client: SupabaseClient,
+  jobId: string,
+): Promise<{ issues: QualityIssue[] | null; failed: boolean }> {
+  try {
+    return { issues: await getDraftQualityIssues(client, jobId), failed: false };
+  } catch (e) {
+    console.error("admin job detail: draft quality check failed", { jobId, error: e });
+    return { issues: null, failed: true };
+  }
 }
 
 async function loadLatestFullQaResult(client: SupabaseClient, jobId: string): Promise<FullQaResult | null> {

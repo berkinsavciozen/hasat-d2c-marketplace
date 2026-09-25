@@ -75,6 +75,17 @@ type JobDetail = {
     unresolved: Array<{ sortOrder: number; name: string; reason: string }>;
     computedAt: string;
   } | null;
+  // DQ-2 §4 — admin-recipe-job-detail'in eski sürümü bu alanları döndürmez; undefined = yok say.
+  draftQualityIssues?: DraftQualityIssue[] | null;
+  draftQualityCheckFailed?: boolean;
+};
+
+type DraftQualityIssue = { code: string; severity: "kritik" | "uyari" | "bilgi"; message: string };
+
+const DRAFT_ISSUE_STYLES: Record<DraftQualityIssue["severity"], { text: string; dot: string }> = {
+  kritik: { text: "text-[color:var(--hred)]", dot: "bg-[color:var(--hred)]" },
+  uyari: { text: "text-[color:var(--saffron)]", dot: "bg-[color:var(--saffron)]" },
+  bilgi: { text: "text-hmuted", dot: "bg-[color:var(--hmuted)]" },
 };
 
 // F2-S18 — Besin Değeri Eksikliği, Sınıf A/C çözümleme (bkz. admin-recipe-nutrition-resolve).
@@ -145,6 +156,7 @@ function AdminRecipeJobDetailPage() {
   const [checklist, setChecklist] = useState<Checklist>(EMPTY_CHECKLIST);
   const [notes, setNotes] = useState("");
   const [adminActor, setAdminActor] = useState("");
+  const [criticalAcknowledged, setCriticalAcknowledged] = useState(false);
   const [resolvingSortOrder, setResolvingSortOrder] = useState<number | null>(null);
   const [resolveForm, setResolveForm] = useState<NutritionResolveForm>(EMPTY_RESOLVE_FORM);
 
@@ -176,6 +188,12 @@ function AdminRecipeJobDetailPage() {
       return data as JobDetail;
     },
   });
+
+  // Kritik uyarı onayı taslağa özeldir; yeni bir taslak versiyonu gelince yeniden istenir.
+  const draftKey = query.data?.currentDraft ? `${query.data.currentDraft.id}:${query.data.currentDraft.version}` : null;
+  useEffect(() => {
+    setCriticalAcknowledged(false);
+  }, [draftKey]);
 
   const actionMutation = useMutation({
     mutationFn: async (params: { action: "approve" | "reject" | "request_revision" | "retry_stage" }) => {
@@ -376,7 +394,11 @@ function AdminRecipeJobDetailPage() {
   // (F2-S21): görsel/finalize yok, QA kararı 'approved' değil — yalnız ret anlamlı.
   const isQaHandoff = awaitingHuman && d.job.stage === "qa";
   const atPublishGate = awaitingHuman && d.job.stage === "awaiting_approval";
-  const canApprove = atPublishGate && !!d.currentDraft && checklistComplete;
+  const draftIssues = d.draftQualityIssues ?? [];
+  const criticalIssueCount = draftIssues.filter((i) => i.severity === "kritik").length;
+  // DQ-2 §4: yalnız UI kapısı — DB/publish tarafında kritik için gate yok.
+  const criticalGateOpen = criticalIssueCount === 0 || criticalAcknowledged;
+  const canApprove = atPublishGate && !!d.currentDraft && checklistComplete && criticalGateOpen;
   const canReject = atPublishGate || isQaHandoff;
   const canRequestRevision = atPublishGate && d.job.revisionCount < 2;
   const canRetry = d.job.status === "failed";
@@ -722,6 +744,37 @@ function AdminRecipeJobDetailPage() {
 
         <SectionCard title="Onay Kontrol Listesi">
           <div className="space-y-3">
+            {d.currentDraft && (d.draftQualityIssues !== undefined || d.draftQualityCheckFailed) && (
+              <div className="rounded-lg border p-3 space-y-2">
+                <div className="text-xs font-medium">Veri tutarlılığı</div>
+                {d.draftQualityCheckFailed ? (
+                  <p className="text-xs text-[color:var(--saffron)]">
+                    Tutarlılık kontrolü çalıştırılamadı — alerjen, diyet ve ekipman tutarlılığını elle kontrol edin.
+                  </p>
+                ) : draftIssues.length === 0 ? (
+                  <p className="text-xs text-hmuted">Tutarsızlık bulunmadı.</p>
+                ) : (
+                  <ul className="space-y-1.5">
+                    {draftIssues.map((issue, idx) => (
+                      <li key={`${issue.code}-${idx}`} className="flex items-start gap-2 text-xs">
+                        <span className={cn("mt-1 inline-block h-2 w-2 rounded-full shrink-0", DRAFT_ISSUE_STYLES[issue.severity].dot)} />
+                        <span className={DRAFT_ISSUE_STYLES[issue.severity].text}>{issue.message}</span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+                {criticalIssueCount > 0 && atPublishGate && (
+                  <label className="flex items-center gap-2 text-sm cursor-pointer pt-1 text-[color:var(--hred)]">
+                    <Checkbox
+                      checked={criticalAcknowledged}
+                      onCheckedChange={(v) => setCriticalAcknowledged(v === true)}
+                    />
+                    Kritik uyarıları gördüm, yine de onaylıyorum
+                  </label>
+                )}
+              </div>
+            )}
+
             {([
               ["temperatureReviewed", "Pişirme sıcaklıkları kontrol edildi"],
               ["timingReviewed", "Pişirme/bekleme süreleri kontrol edildi"],
@@ -790,6 +843,11 @@ function AdminRecipeJobDetailPage() {
             )}
             {atPublishGate && !checklistComplete && (
               <p className="text-xs text-hmuted">Onaylamak için kontrol listesindeki tüm maddeler işaretlenmelidir.</p>
+            )}
+            {atPublishGate && !criticalGateOpen && (
+              <p className="text-xs text-hmuted">
+                Taslakta {criticalIssueCount} kritik tutarlılık uyarısı var; onaylamak için uyarıları gördüğünüzü işaretleyin.
+              </p>
             )}
           </div>
         </SectionCard>
