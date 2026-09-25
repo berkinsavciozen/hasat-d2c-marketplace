@@ -30,6 +30,21 @@ type DraftIngredient = {
 type QAIssue = { code: string; field: string; severity: "info" | "warning" | "blocking"; message: string; requiredChange: string | null };
 type SafetyFinding = { flagged: boolean; notes: string | null };
 
+// DQ-2 §4 — admin.recipes.quality.tsx ile aynı sözleşme (quality.ts'deki QualityIssue).
+type QualityIssue = {
+  code: string;
+  severity: "kritik" | "uyari" | "bilgi";
+  message: string;
+  ingredientId?: string;
+  suggestion?: {
+    addAllergen?: string;
+    removeAllergen?: string;
+    addDietTag?: string;
+    removeDietTag?: string;
+    setCrop?: string;
+  };
+};
+
 type JobDetail = {
   job: {
     id: string; batchId: string; briefId: string; workingTitle: string; focusCrop: string | null;
