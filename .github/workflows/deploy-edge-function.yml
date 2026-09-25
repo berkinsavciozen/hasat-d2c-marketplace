@@ -1,0 +1,44 @@
+# Manual deploy of one Supabase Edge Function from main.
+#
+# Why: functions that import image/webp-codec.ts carry a large embedded WASM payload and cannot be
+# deployed by hand through the Supabase MCP tooling; the CLI deploy here handles them.
+#
+# ALLOWLIST RULE: every function in `options` is deployed with --no-verify-jwt, so it must already
+# be verify_jwt=false in production (and gate itself, e.g. x-admin-key / a shared secret). The five
+# below were confirmed verify_jwt=false live on 2026-09-25. Before adding a function, first verify
+# it is verify_jwt=false live (and in supabase/config.toml) — never add a verify_jwt=true function.
+#
+# deploy-recipe-stage-image.yml is kept as is.
+name: Deploy edge function (manual)
+on:
+  workflow_dispatch:
+    inputs:
+      function:
+        description: "Deploy edilecek edge function (yalnız main'den; listede yalnız verify_jwt=false fonksiyonlar)"
+        required: true
+        type: choice
+        options:
+          - admin-recipe-regenerate-cover
+          - admin-recipe-quality
+          - admin-recipe-review-action
+          - recipe-stage-sweep
+          - recipe-stage-image
+permissions:
+  contents: read
+concurrency:
+  group: deploy-edge-${{ inputs.function }}
+  cancel-in-progress: false
+jobs:
+  deploy:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+      - name: Deploy
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          FN: ${{ inputs.function }}
+        run: supabase functions deploy "$FN" --project-ref efuqpiaavrzimvstpdpm --no-verify-jwt
