@@ -1228,3 +1228,163 @@ function IngredientRow({
     </div>
   );
 }
+
+// -----------------------------------------------------------------------------------------------
+// Kapak yeniden üretme dialogu — admin-recipe-regenerate-cover edge function'ı
+// -----------------------------------------------------------------------------------------------
+
+function CoverRegenDialog({
+  recipe,
+  invokeCover,
+  onClose,
+  onApplied,
+}: {
+  recipe: { id: string; title: string; coverPhotoUrl: string | null };
+  invokeCover: (
+    path: string,
+    options: { method: "GET" | "POST" | "PATCH" | "PUT" | "DELETE"; body?: Record<string, unknown>; longTimeout?: boolean },
+  ) => Promise<unknown>;
+  onClose: () => void;
+  onApplied: () => void;
+}) {
+  const queryClient = useQueryClient();
+  const candidateKey = ["admin-recipe-cover-candidate", recipe.id];
+
+  const candidateQuery = useQuery({
+    queryKey: candidateKey,
+    retry: false,
+    queryFn: async (): Promise<CoverCandidate | null> => {
+      try {
+        const data = (await invokeCover(`/${recipe.id}/candidate`, { method: "GET" })) as { candidate: CoverCandidate };
+        return data.candidate;
+      } catch (error) {
+        const status = (error as { context?: Response }).context?.status;
+        if (status === 404) return null; // no_candidate — bekleyen aday yok
+        throw error;
+      }
+    },
+  });
+
+  const candidate = candidateQuery.data ?? null;
+
+  const generateMutation = useMutation({
+    mutationFn: () =>
+      invokeCover(`/${recipe.id}/generate`, { method: "POST", longTimeout: true }) as Promise<{ candidate: CoverCandidate }>,
+    onSuccess: (data) => {
+      queryClient.setQueryData(candidateKey, data.candidate);
+      toast.success("Aday kapak üretildi");
+    },
+    onError: async (error) => toast.error(await coverErrorMessage(error)),
+  });
+
+  const applyMutation = useMutation({
+    mutationFn: () => invokeCover(`/${recipe.id}/apply`, { method: "POST" }),
+    onSuccess: () => {
+      queryClient.removeQueries({ queryKey: candidateKey });
+      toast.success("Kapak güncellendi");
+      onApplied();
+    },
+    onError: async (error) => toast.error(await coverErrorMessage(error)),
+  });
+
+  const discardMutation = useMutation({
+    mutationFn: () => invokeCover(`/${recipe.id}/candidate`, { method: "DELETE" }),
+    onSuccess: () => {
+      queryClient.setQueryData(candidateKey, null);
+      toast.success("Aday silindi");
+    },
+    onError: async (error) => toast.error(await coverErrorMessage(error)),
+  });
+
+  const busy = generateMutation.isPending || applyMutation.isPending || discardMutation.isPending;
+  const frameSuspicious = candidate?.heroFrameSuspicious || candidate?.squareFrameSuspicious;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={onClose}>
+      <div
+        className="w-full max-w-3xl max-h-[90vh] overflow-y-auto rounded-2xl border bg-card p-6 space-y-4"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-center justify-between">
+          <h3 className="font-serif text-lg">Kapağı yeniden üret — {recipe.title}</h3>
+          <button onClick={onClose} className="text-xs text-hmuted underline">
+            Kapat
+          </button>
+        </div>
+
+        {candidateQuery.isLoading ? (
+          <div className="py-8 text-center text-sm text-hmuted">Aday kontrol ediliyor…</div>
+        ) : candidateQuery.isError ? (
+          <div className="py-8 text-center text-sm text-[color:var(--hred)]">Aday yüklenemedi</div>
+        ) : generateMutation.isPending ? (
+          <div className="py-8 flex flex-col items-center gap-3 text-sm text-hmuted">
+            <Loader2 className="h-6 w-6 animate-spin" />
+            Görsel üretiliyor, 1 dakikayı bulabilir
+          </div>
+        ) : candidate ? (
+          <div className="space-y-4">
+            {frameSuspicious && (
+              <div className="rounded-lg border border-[color:var(--saffron)] bg-[color-mix(in_oklab,var(--saffron)_15%,transparent)] px-3 py-2 text-xs text-[color:var(--saffron)]">
+                Görselde çerçeve/kenar şüphesi var, dikkatle kontrol edin
+              </div>
+            )}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <div className="text-xs text-hmuted mb-1">Hero (16:9)</div>
+                <div className="overflow-hidden rounded-lg border" style={{ aspectRatio: "16 / 9" }}>
+                  <img src={candidate.heroUrl} alt="Hero adayı" className="h-full w-full object-cover" />
+                </div>
+              </div>
+              <div>
+                <div className="text-xs text-hmuted mb-1">Kare (1:1)</div>
+                <div className="overflow-hidden rounded-lg border" style={{ aspectRatio: "1 / 1" }}>
+                  <img src={candidate.squareUrl} alt="Kare aday" className="h-full w-full object-cover" />
+                </div>
+              </div>
+            </div>
+            <div className="text-xs text-hmuted">
+              Model: {candidate.model} — {new Date(candidate.generatedAt).toLocaleString("tr-TR")}
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <Button
+                size="sm"
+                disabled={busy}
+                onClick={() => {
+                  if (window.confirm("Bu aday kapağı tarife uygulansın mı? Mevcut kapağın üzerine yazılır.")) {
+                    applyMutation.mutate();
+                  }
+                }}
+              >
+                {applyMutation.isPending && <Loader2 className="mr-1 h-3 w-3 animate-spin" />}
+                Uygula
+              </Button>
+              <Button size="sm" variant="secondary" disabled={busy} onClick={() => generateMutation.mutate()}>
+                Yeniden üret
+              </Button>
+              <Button size="sm" variant="outline" disabled={busy} onClick={() => discardMutation.mutate()}>
+                Vazgeç
+              </Button>
+            </div>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {recipe.coverPhotoUrl ? (
+              <div>
+                <div className="text-xs text-hmuted mb-1">Mevcut kapak</div>
+                <div className="w-full max-w-md overflow-hidden rounded-lg border" style={{ aspectRatio: "16 / 9" }}>
+                  <img src={recipe.coverPhotoUrl} alt={recipe.title} className="h-full w-full object-cover" />
+                </div>
+              </div>
+            ) : (
+              <div className="text-sm text-hmuted">Bu tarifin mevcut kapağı yok.</div>
+            )}
+            <Button size="sm" disabled={busy} onClick={() => generateMutation.mutate()}>
+              <ImagePlus className="mr-1 h-3 w-3" />
+              Aday üret
+            </Button>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
