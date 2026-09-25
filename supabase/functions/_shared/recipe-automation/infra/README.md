@@ -16,6 +16,7 @@ canonical Zod contracts) rather than redefining shapes locally.
 | `job-lock.ts` | Atomic job claim (`claimJob`) — expected job id, stage, runnable status, lock expiry, all in one UPDATE's WHERE clause. |
 | `job-state.ts` | Compare-and-set stage transitions (`advanceStage`, `failJob`) — requires the caller's lock token; a stale/duplicate call is refused, not silently reapplied. |
 | `stage-dispatch.ts` | Best-effort next-stage nudge (`dispatchNextStage`), calling the new `dispatch_recipe_stage` SQL RPC (mirrors `dispatch_sms`/`dispatch_push`). Never the source of truth for job state. Also exports `advanceStageAndDispatch()` — the one place `advanceStage()` (job-state.ts) is guaranteed, in code, to commit before `dispatchNextStage()` fires; see "Design notes" below. |
+| `sweep.ts` | Periodic recovery for due retries, expired running leases, approved publish hand-offs, and queued hand-offs whose dispatch vanished. The queued grace is the shared 5-minute stage lease; a conditional `updated_at` reservation makes overlapping sweeps emit one dispatch. |
 | `agent-runner.ts` | Typed `AgentRunner` interface + `createAgentRunner()` factory hiding SDK-vs-Deno-native selection. The SDK path (`SdkAgentRunner`) is a real, live-verified implementation as of Step 06 (see that step's P1 preflight) — it is the default (`RECIPE_AGENT_RUNTIME` unset resolves to `"sdk"`). `DenoNativeAgentRunner` remains a stub that throws `AGENT_RUNNER_NOT_IMPLEMENTED` — the untaken alternative, kept only so the seam still has two names. |
 | `errors.ts` | `RecipeAutomationError`, `toSafeErrorPayload()`, `redactUnsafeDetails()` — the one place error/detail redaction happens, shared by job-state/stage-dispatch/telemetry. |
 | `telemetry.ts` | `recordStageRun()` — writes one row per stage attempt to `recipe_generation_stage_runs` (safe IDs, stage/status/attempt, provider/model/usage, redacted output/error). Best-effort, never throws. |
@@ -48,6 +49,11 @@ code an LLM's output could influence.
   job can cause at most one extra no-op claim attempt on the other end — the next stage's own
   `claimJob()` atomic claim is what prevents double-processing, not dispatch refusing to fire
   twice.
+- **Queued hand-off recovery is conservative and race-safe.** A lock-free queued row must remain
+  unchanged for the full 5-minute stage lease before `sweep.ts` considers its dispatch lost. The
+  sweep then refreshes `updated_at` with every eligibility predicate in the same conditional
+  UPDATE; overlapping sweep invocations therefore cannot both dispatch that candidate. No schema
+  migration is needed: the existing `updated_at` trigger is the reservation clock.
 - **A retried caller call is a safe no-op, not a bug.** Both `claimJob` and `advanceStage`/
   `failJob` are compare-and-set: if a caller retries an identical request after it actually
   already succeeded server-side, the retry's WHERE clause simply matches zero rows and the
@@ -63,7 +69,7 @@ Same convention as `../schemas.test.ts` — Deno's built-in test runner, no `jsr
 deno test --allow-net --allow-env supabase/functions/_shared/recipe-automation/infra/
 ```
 
-`job-lock.test.ts`, `job-state.test.ts`, `stage-dispatch.test.ts`, and `telemetry.test.ts` use
+`job-lock.test.ts`, `job-state.test.ts`, `stage-dispatch.test.ts`, and `teletry.test.ts` use
 `testing/fake-supabase-client.ts` instead of a live Supabase/PostgREST connection — there is no
 Deno-reachable PostgREST stack in this project's local test route (see
 `supabase/tests/f2_recipe_automation/README.md`), so these tests exercise the actual CAS/atomic-
