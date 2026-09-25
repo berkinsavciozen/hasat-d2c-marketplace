@@ -1592,7 +1592,7 @@ export function useBuyerConversations() {
 // ORDERS
 // =====================================================================
 const ORDER_SELECT =
-  "*, offer:offers(quantity,price_per_unit,current_price,current_quantity,final_price_per_unit,final_quantity,delivery,delivery_date,listing_id,subscription_id,snapshot_crop,snapshot_unit, listing:listings(id,crop,unit,status))";
+  "*, offer:offers(quantity,price_per_unit,current_price,current_quantity,final_price_per_unit,final_quantity,delivery,delivery_date,listing_id,subscription_id,snapshot_crop,snapshot_unit,payment_status, listing:listings(id,crop,unit,status))";
 
 
 export function useFarmerOrders() {
