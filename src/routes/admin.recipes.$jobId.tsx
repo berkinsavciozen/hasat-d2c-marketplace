@@ -879,6 +879,11 @@ function AdminRecipeJobDetailPage() {
             {atPublishGate && !checklistComplete && (
               <p className="text-xs text-hmuted">Onaylamak için kontrol listesindeki tüm maddeler işaretlenmelidir.</p>
             )}
+            {atPublishGate && criticalCount > 0 && !ackCritical && (
+              <p className="text-xs text-[color:var(--hred)]">
+                Onaylamak için kritik veri tutarlılığı uyarılarını onaylamanız gerekir.
+              </p>
+            )}
           </div>
         </SectionCard>
 
