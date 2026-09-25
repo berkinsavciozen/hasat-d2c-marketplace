@@ -564,22 +564,38 @@ function OrderCard({ order, muted }: { order: Order; muted?: boolean }) {
 
       <OrderBatchBreakdown orderId={order.id} />
 
-      {order.status === "preparing" && (
+      {order.status === "preparing" && (() => {
+        const isPaid = (order as OrderWithPayment).paymentStatus === "paid";
+        return (
         <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-2">
-          <button
-            onClick={() => setShipOpen(true)}
-            className="rounded-lg min-h-[48px] px-4 py-2.5 text-sm font-medium text-white"
-            style={{ background: "var(--saffron)" }}
-          >
-            📦 Kargoya Ver
-          </button>
-          <button
-            onClick={() => setCancelOpen(true)}
-            className="rounded-lg min-h-[48px] px-4 py-2.5 text-sm font-medium border border-hred/40 text-hred hover:bg-hred/5"
-          >
-            İptal Et
-          </button>
+          <div>
+            <button
+              onClick={() => setShipOpen(true)}
+              disabled={!isPaid}
+              className="w-full rounded-lg min-h-[48px] px-4 py-2.5 text-sm font-medium text-white disabled:opacity-50 disabled:cursor-not-allowed"
+              style={{ background: "var(--saffron)" }}
+            >
+              📦 Kargoya Ver
+            </button>
+            {!isPaid && (
+              <div className="mt-1 text-xs text-hmuted">Ödeme onayı bekleniyor</div>
+            )}
+          </div>
+          {isPaid ? (
+            <div className="rounded-lg border border-dashed px-3 py-2.5 text-xs text-hmuted flex items-center">
+              İptal için Hasat destekle iletişime geçin
+            </div>
+          ) : (
+            <button
+              onClick={() => setCancelOpen(true)}
+              className="rounded-lg min-h-[48px] px-4 py-2.5 text-sm font-medium border border-hred/40 text-hred hover:bg-hred/5"
+            >
+              İptal Et
+            </button>
+          )}
         </div>
+        );
+      })()}
       )}
 
       {wa && (
