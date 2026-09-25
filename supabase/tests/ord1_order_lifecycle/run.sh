@@ -1,9 +1,10 @@
 #!/usr/bin/env bash
-# ORD-1 A — SQL test runner for 20260925172029_ord1a_order_rpcs_and_guard.sql.
+# ORD-1 — SQL test runner for 20260925172029_ord1a_order_rpcs_and_guard.sql (A) and
+# 20260925175120_ord1b_lock_order_writes.sql (B).
 #
 # FRESH local PostgreSQL database every run: fixtures (live-shaped tables + RLS + baseline function
 # bodies verbatim) -> FIN-2 (20260921113253 + 20260921113432) -> FIN-3 (20260921124738) -> FIN-3-S
-# (20260925143009) -> the migration under test (applied twice: must be re-runnable) -> assertions
+# (20260925143009) -> A, then B on top (each applied twice: must be re-runnable) -> assertions
 # (RLS on, real authenticated/anon/service_role roles + request.jwt.claims) -> a two-connection
 # concurrent-accept test (N4). Same drop/recreate convention as fin3s_stock_reservation/run.sh.
 # Never run against a real project.
@@ -19,7 +20,10 @@ PREREQS=(
   "20260921124738_fin3_immutable_monetary_snapshot.sql"
   "20260925143009_fin3s_stock_reservation_agreed_quantity.sql"
 )
-MIGRATION="20260925172029_ord1a_order_rpcs_and_guard.sql"
+MIGRATIONS=(
+  "20260925172029_ord1a_order_rpcs_and_guard.sql"
+  "20260925175120_ord1b_lock_order_writes.sql"
+)
 
 PSQL=(psql -v ON_ERROR_STOP=1 -X -q)
 
@@ -35,11 +39,12 @@ for f in "${PREREQS[@]}"; do
   "${PSQL[@]}" -d "$DB_NAME" -f "$MIGRATIONS_DIR/$f"
 done
 
-echo "==> Applying $MIGRATION (migration under test)"
-"${PSQL[@]}" -d "$DB_NAME" -f "$MIGRATIONS_DIR/$MIGRATION"
-
-echo "==> Re-applying the migration (must be re-runnable)"
-"${PSQL[@]}" -d "$DB_NAME" -f "$MIGRATIONS_DIR/$MIGRATION"
+for f in "${MIGRATIONS[@]}"; do
+  echo "==> Applying $f (migration under test)"
+  "${PSQL[@]}" -d "$DB_NAME" -f "$MIGRATIONS_DIR/$f"
+  echo "==> Re-applying $f (must be re-runnable)"
+  "${PSQL[@]}" -d "$DB_NAME" -f "$MIGRATIONS_DIR/$f"
+done
 
 echo "==> Running assertions"
 "${PSQL[@]}" -d "$DB_NAME" -f "$SCRIPT_DIR/01_assertions.sql"
