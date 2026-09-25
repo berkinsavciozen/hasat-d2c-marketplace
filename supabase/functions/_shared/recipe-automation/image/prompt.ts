@@ -16,6 +16,7 @@
 import type { ImageStageDraft } from "./context.ts";
 
 const MAX_INGREDIENT_LINES = 8;
+const MAX_DESCRIPTION_CHARS = 300;
 
 function ingredientLine(ingredient: ImageStageDraft["ingredients"][number]): string | null {
   const name = ingredient.freeTextName ?? ingredient.crop;
@@ -29,7 +30,10 @@ function ingredientLine(ingredient: ImageStageDraft["ingredients"][number]): str
  * are exactly the kind of artifact `frame-suspicion.ts`'s human-review flag exists to catch, not
  * something to request in the first place); only the subject description varies per recipe.
  */
-export function buildImagePrompt(draft: ImageStageDraft): string {
+export function buildImagePrompt(
+  draft: ImageStageDraft,
+  options: { includeDescription?: boolean } = {},
+): string {
   const ingredientNames = draft.ingredients
     .slice()
     .sort((a, b) => a.sortOrder - b.sortOrder)
@@ -38,9 +42,14 @@ export function buildImagePrompt(draft: ImageStageDraft): string {
     .slice(0, MAX_INGREDIENT_LINES);
 
   const cuisineNote = draft.cuisine ? ` (${draft.cuisine} mutfagi)` : "";
+  // Off for the F2 image stage (its prompt is unchanged); on for the admin cover regeneration
+  // (admin/regenerate-cover.ts), whose recipes are already published and whose description is the
+  // best available hint for how the dish should look (e.g. a Zerde's saffron-yellow pudding).
+  const description = options.includeDescription ? draft.description?.trim().slice(0, MAX_DESCRIPTION_CHARS) : "";
 
   return [
     `Professional food photography of "${draft.title}"${cuisineNote}, plated and ready to serve.`,
+    description ? `Dish description: ${description}${/[.!?]$/.test(description) ? "" : "."}` : null,
     ingredientNames.length > 0
       ? `Visible key ingredients: ${ingredientNames.join(", ")}.`
       : null,

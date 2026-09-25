@@ -104,3 +104,15 @@ was additionally verified with `bun build --external "npm:*" --external "https:/
 so a broken relative import or a syntax error would have surfaced. It does not type-check. Re-run
 the `deno test` suite in an environment with `deno`/`esm.sh` access before treating this step's
 Deno-level test evidence as verified.
+
+## Addendum: `regenerate-cover.ts` (admin cover regeneration)
+
+Backs the `admin-recipe-regenerate-cover` Edge Function — regenerate a published recipe's cover
+when DQ-2 reports `COVER_NOT_HERO`, with an admin preview step before anything goes live. See the
+module header for the routes. Reuses only the single-purpose image pieces (`../image/prompt.ts`,
+`gemini-client.ts`, `geometry.ts`, `webp-codec.ts`, `frame-suspicion.ts`, `storage.ts`) and
+`../finalize/asset-contract.ts`; never the job/draft state machine. The one database write is the
+`admin_set_recipe_cover` RPC (`20260925120000_admin_set_recipe_cover.sql`).
+
+Tests: `regenerate-cover.test.ts` (fake Gemini + fake storage, real crop/WebP path) and
+`supabase/tests/admin_set_recipe_cover/run.sh` (the RPC against a fresh local PostgreSQL).
