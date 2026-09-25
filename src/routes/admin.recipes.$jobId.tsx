@@ -162,10 +162,16 @@ function AdminRecipeJobDetailPage() {
   const [adminActor, setAdminActor] = useState("");
   const [resolvingSortOrder, setResolvingSortOrder] = useState<number | null>(null);
   const [resolveForm, setResolveForm] = useState<NutritionResolveForm>(EMPTY_RESOLVE_FORM);
+  // DQ-2 §4: kritik tutarlılık uyarısı için admin onay kutusu. İş (jobId) değişince sıfırlanır.
+  const [ackCritical, setAckCritical] = useState(false);
 
   useEffect(() => {
     setAdminKey(sessionStorage.getItem(ADMIN_RECIPE_KEY_STORAGE));
   }, []);
+
+  useEffect(() => {
+    setAckCritical(false);
+  }, [jobId]);
 
   const query = useQuery({
     queryKey: ["admin-recipe-job-detail", jobId, adminKey],
