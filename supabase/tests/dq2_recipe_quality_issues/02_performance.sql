@@ -1,5 +1,5 @@
 -- DQ-2 perf — assertions for 20260925080306_dq2_perf_fn_rq_matches_prefilter.sql and
--- 20260925081013_dq2_perf_overview_single_eval.sql. Runs after 01_assertions.sql on the same DB.
+-- 20260925083452_dq2_perf_overview_single_eval.sql. Runs after 01_assertions.sql on the same DB.
 --
 --   1. fn_rq_matches pre-check: the "root not in text -> false" short-circuit must not change a
 --      single answer (softening, excludes and prefix mode are the three ways a naive root check

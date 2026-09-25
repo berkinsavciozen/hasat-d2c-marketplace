@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # DQ-2 — SQL test runner for 20260924204804_dq2_recipe_quality_issues.sql and the DQ-2 perf
 # hotfixes 20260925080306_dq2_perf_fn_rq_matches_prefilter.sql +
-# 20260925081013_dq2_perf_overview_single_eval.sql.
+# 20260925083452_dq2_perf_overview_single_eval.sql.
 #
 # FRESH local PostgreSQL database every run: fixtures (live-shaped tables) -> the real T10 migration
 # (DQ-2 replaces its view and its admin_update_ingredient_nutrition signature) -> the real DQ-2
@@ -33,7 +33,7 @@ echo "==> Applying 20260924204804_dq2_recipe_quality_issues.sql (migration under
 echo "==> Re-applying the DQ-2 migration (must be re-runnable)"
 "${PSQL[@]}" -d "$DB_NAME" -f "$MIGRATIONS_DIR/20260924204804_dq2_recipe_quality_issues.sql"
 
-for PERF in 20260925080306_dq2_perf_fn_rq_matches_prefilter.sql 20260925081013_dq2_perf_overview_single_eval.sql; do
+for PERF in 20260925080306_dq2_perf_fn_rq_matches_prefilter.sql 20260925083452_dq2_perf_overview_single_eval.sql; do
   echo "==> Applying $PERF (perf hotfix, twice: must be re-runnable)"
   "${PSQL[@]}" -d "$DB_NAME" -f "$MIGRATIONS_DIR/$PERF"
   "${PSQL[@]}" -d "$DB_NAME" -f "$MIGRATIONS_DIR/$PERF"
