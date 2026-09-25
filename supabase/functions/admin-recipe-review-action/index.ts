@@ -7,8 +7,8 @@
 // `../_shared/recipe-automation/admin/review-actions.ts` so it stays unit-testable without an HTTP
 // layer; this file only does request auth, input parsing, and response-status shaping.
 //
-// Never invokes any `recipe-stage-*` Edge Function and never deploys/redeploys/calls a live
-// function — see review-actions.ts's own header for why a state-only transition is sufficient here.
+// Approve / retry_stage / request_revision fire a best-effort `dispatch_recipe_stage` nudge to the
+// next stage-runner after their transition commits — see review-actions.ts's own header (F2-S19).
 import { requireSharedSecret } from "../_shared/recipe-automation/infra/admin-auth.ts";
 import { getSupabaseAdminClient } from "../_shared/recipe-automation/infra/supabase-admin.ts";
 import {

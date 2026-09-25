@@ -1,7 +1,7 @@
 // Deno.test suite for sweep.ts. Run with:
 //   deno test --allow-net --allow-env supabase/functions/_shared/recipe-automation/infra/sweep.test.ts
 import assert from "node:assert/strict";
-import { runRetrySweep } from "./sweep.ts";
+import { runRetrySweep, STALE_QUEUED_GRACE_MS } from "./sweep.ts";
 import { FakeSupabaseClient } from "./testing/fake-supabase-client.ts";
 import type { SupabaseClient } from "./supabase-admin.ts";
 
@@ -168,4 +168,51 @@ Deno.test("runRetrySweep: redispatches both a due-retryable job and a stale-lock
   assert.equal(result.staleLockRedispatched, 1);
   const dispatchedIds = calls.map((c) => c.jobId).sort();
   assert.deepEqual(dispatchedIds, [retryableJobId, staleJobId].sort());
+});
+
+const STALE_QUEUED_AT = new Date(Date.now() - STALE_QUEUED_GRACE_MS - 60_000).toISOString();
+const FRESH_QUEUED_AT = new Date(Date.now() - 60_000).toISOString();
+
+Deno.test("runRetrySweep: redispatches a queued job left untouched past the grace window (F2-S19)", async () => {
+  const client = new FakeSupabaseClient();
+  // The admin panel's retry_stage shape: failed -> queued at the same stage, no dispatch landed.
+  const jobId = seedJob(client, { stage: "image", status: "queued", updated_at: STALE_QUEUED_AT });
+  const calls: Array<{ jobId: string; functionName: string }> = [];
+  registerDispatchRpc(client, calls);
+  Deno.env.set("RECIPE_STAGE_DISPATCH_SECRET", "test-secret");
+
+  const result = await runRetrySweep(asClient(client));
+
+  assert.equal(result.staleQueuedRedispatched, 1);
+  assert.deepEqual(result.skippedUnknownStage, []);
+  assert.equal(calls.length, 1);
+  assert.equal(calls[0].jobId, jobId);
+  assert.equal(calls[0].functionName, "recipe-stage-image");
+});
+
+Deno.test("runRetrySweep: leaves a freshly queued job to its own immediate dispatch", async () => {
+  const client = new FakeSupabaseClient();
+  seedJob(client, { stage: "write", status: "queued", updated_at: FRESH_QUEUED_AT });
+  const calls: Array<{ jobId: string; functionName: string }> = [];
+  registerDispatchRpc(client, calls);
+  Deno.env.set("RECIPE_STAGE_DISPATCH_SECRET", "test-secret");
+
+  const result = await runRetrySweep(asClient(client));
+
+  assert.equal(result.staleQueuedRedispatched, 0);
+  assert.equal(calls.length, 0);
+});
+
+Deno.test("runRetrySweep: never redispatches a stale queued job that is locked or at awaiting_approval", async () => {
+  const client = new FakeSupabaseClient();
+  seedJob(client, { stage: "qa", status: "queued", updated_at: STALE_QUEUED_AT, locked_by: "w:1", lock_expires_at: FUTURE });
+  seedJob(client, { stage: "awaiting_approval", status: "queued", updated_at: STALE_QUEUED_AT });
+  const calls: Array<{ jobId: string; functionName: string }> = [];
+  registerDispatchRpc(client, calls);
+  Deno.env.set("RECIPE_STAGE_DISPATCH_SECRET", "test-secret");
+
+  const result = await runRetrySweep(asClient(client));
+
+  assert.equal(result.staleQueuedRedispatched, 0);
+  assert.equal(calls.length, 0);
 });

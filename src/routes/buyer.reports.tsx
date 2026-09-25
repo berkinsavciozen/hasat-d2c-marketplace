@@ -3,7 +3,7 @@ import { useMemo } from "react";
 import { BuyerHeader } from "@/components/hasat/BuyerHeader";
 import { LoadingDots } from "@/components/hasat/LoadingDots";
 import { formatTRY, formatCrop } from "@/lib/hasat/format";
-import { useBuyerAnalytics, isPaidOrder, orderRowTotal, type BuyerAnalyticsRow } from "@/lib/hasat/queries";
+import { useBuyerAnalytics, isPaidOrder, orderRowTotal, orderRowQty, orderRowPrice, orderRowCrop, orderRowUnit, type BuyerAnalyticsRow } from "@/lib/hasat/queries";
 import { Download } from "lucide-react";
 
 export const Route = createFileRoute("/buyer/reports")({
@@ -28,15 +28,15 @@ function toCSV(rows: BuyerAnalyticsRow[]): string {
   const lines = [header.join(",")];
   for (const r of rows) {
     const total = orderRowTotal(r);
-    const q = Number(r.offer?.current_quantity ?? r.offer?.quantity ?? 0);
-    const p = Number(r.offer?.current_price ?? r.offer?.price_per_unit ?? 0);
+    const q = orderRowQty(r);
+    const p = orderRowPrice(r);
     const cells = [
       r.order_ref,
       new Date(r.created_at).toLocaleDateString("tr-TR"),
       r.farmer?.name ?? "",
-      r.offer?.listing?.crop ?? "",
+      orderRowCrop(r) ?? "",
       String(q),
-      r.offer?.listing?.unit ?? "",
+      orderRowUnit(r) ?? "",
       p.toFixed(2),
       total.toFixed(2),
       r.status,
@@ -57,7 +57,7 @@ function Reports() {
     const suppliers = new Set(paidRows.map((r) => r.farmer_id).filter(Boolean));
     const cropTotals = new Map<string, number>();
     for (const r of paidRows) {
-      const crop = r.offer?.listing?.crop ?? "—";
+      const crop = orderRowCrop(r) ?? "—";
       cropTotals.set(crop, (cropTotals.get(crop) ?? 0) + orderRowTotal(r));
     }
     return { total, count: paidRows.length, supplierCount: suppliers.size, cropTotals };
@@ -241,13 +241,13 @@ function Reports() {
                     <div className="flex items-start justify-between gap-2">
                       <div className="min-w-0">
                         <div className="font-mono text-[10px] text-hmuted">{r.order_ref}</div>
-                        <div className="font-medium mt-0.5 text-dark text-sm truncate">{formatCrop(r.offer?.listing?.crop) ?? "—"}</div>
+                        <div className="font-medium mt-0.5 text-dark text-sm truncate">{formatCrop(orderRowCrop(r)) ?? "—"}</div>
                         <div className="text-[11px] text-hmuted truncate">{r.farmer?.name ?? "Üretici"}</div>
                       </div>
                       <span className="font-mono text-sm shrink-0" style={{ color: "var(--gold)" }}>{formatTRY(orderRowTotal(r))}</span>
                     </div>
                     <div className="mt-2 flex items-center justify-between text-[11px] text-hmuted">
-                      <span>{r.offer?.current_quantity ?? r.offer?.quantity ?? 0} {r.offer?.listing?.unit ?? ""}</span>
+                      <span>{orderRowQty(r)} {orderRowUnit(r) ?? ""}</span>
                       <span>{new Date(r.created_at).toLocaleDateString("tr-TR")}</span>
                     </div>
                   </button>

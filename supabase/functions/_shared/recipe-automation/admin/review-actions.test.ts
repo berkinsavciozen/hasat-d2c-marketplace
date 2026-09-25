@@ -36,6 +36,12 @@ function seedAwaitingApprovalJob(client: FakeSupabaseClient, overrides: Record<s
   return { jobId, batchId };
 }
 
+/** approveJob() computes the draft nutrition preview before touching job state (2026-09-16 gate);
+ * every approve test that isn't about that gate needs a fully-covered preview stubbed. */
+function registerFullNutritionPreview(client: FakeSupabaseClient) {
+  client.onRpc("refresh_draft_nutrition_preview", () => ({ data: { coverage_pct: 100, unresolved: [] }, error: null }));
+}
+
 function registerDispatchRpc(client: FakeSupabaseClient, calls: Array<{ jobId: string; functionName: string; batchId: unknown }>) {
   client.onRpc("dispatch_recipe_stage", (args) => {
     calls.push({
@@ -49,6 +55,7 @@ function registerDispatchRpc(client: FakeSupabaseClient, calls: Array<{ jobId: s
 
 Deno.test("approveJob: succeeds with a complete checklist and records an audit row", async () => {
   const client = new FakeSupabaseClient();
+  registerFullNutritionPreview(client);
   const { jobId } = seedAwaitingApprovalJob(client);
   const draftId = crypto.randomUUID();
 
@@ -74,6 +81,7 @@ Deno.test("approveJob: succeeds with a complete checklist and records an audit r
 
 Deno.test("approveJob: dispatches recipe-stage-publish for the newly-approved job", async () => {
   const client = new FakeSupabaseClient();
+  registerFullNutritionPreview(client);
   const { jobId, batchId } = seedAwaitingApprovalJob(client);
   const calls: Array<{ jobId: string; functionName: string; batchId: unknown }> = [];
   registerDispatchRpc(client, calls);
@@ -95,6 +103,7 @@ Deno.test("approveJob: dispatches recipe-stage-publish for the newly-approved jo
 
 Deno.test("approveJob: still succeeds even when the publish dispatch itself fails (best-effort)", async () => {
   const client = new FakeSupabaseClient();
+  registerFullNutritionPreview(client);
   const { jobId } = seedAwaitingApprovalJob(client);
   // No RECIPE_STAGE_DISPATCH_SECRET set and no rpc handler registered — dispatchNextStage must
   // report a failure internally without ever throwing back into approveJob.
@@ -114,6 +123,7 @@ Deno.test("approveJob: still succeeds even when the publish dispatch itself fail
 
 Deno.test("approveJob: mechanically refuses an incomplete checklist BEFORE touching job state", async () => {
   const client = new FakeSupabaseClient();
+  registerFullNutritionPreview(client);
   const { jobId } = seedAwaitingApprovalJob(client);
 
   const result = await approveJob(asClient(client), {
@@ -135,6 +145,7 @@ Deno.test("approveJob: mechanically refuses an incomplete checklist BEFORE touch
 
 Deno.test("approveJob: refuses a job that is not at awaiting_approval", async () => {
   const client = new FakeSupabaseClient();
+  registerFullNutritionPreview(client);
   const { jobId } = seedAwaitingApprovalJob(client, { stage: "qa", status: "running" });
 
   const result = await approveJob(asClient(client), {
@@ -151,6 +162,7 @@ Deno.test("approveJob: refuses a job that is not at awaiting_approval", async ()
 
 Deno.test("approveJob: not_found for an unknown job id", async () => {
   const client = new FakeSupabaseClient();
+  registerFullNutritionPreview(client);
   const result = await approveJob(asClient(client), {
     jobId: crypto.randomUUID(),
     draftId: crypto.randomUUID(),
@@ -248,4 +260,119 @@ Deno.test("retryStage: refuses a job that is not currently failed", async () => 
   assert.equal(result.ok, false);
   if (result.ok) return;
   assert.equal(result.reason, "wrong_state");
+});
+
+Deno.test("approveJob: blocks approval when the draft nutrition preview is incomplete", async () => {
+  const client = new FakeSupabaseClient();
+  client.onRpc("refresh_draft_nutrition_preview", () => ({
+    data: { coverage_pct: 80, unresolved: [{ sortOrder: 2, name: "badem", reason: "nutrition_reference_missing" }] },
+    error: null,
+  }));
+  const { jobId } = seedAwaitingApprovalJob(client);
+
+  const result = await approveJob(asClient(client), {
+    jobId,
+    draftId: crypto.randomUUID(),
+    draftVersion: 1,
+    checklist: FULL_CHECKLIST,
+  });
+
+  assert.equal(result.ok, false);
+  if (result.ok) return;
+  assert.equal(result.reason, "nutrition_incomplete");
+  assert.equal(result.nutritionPreview?.coveragePct, 80);
+  const jobRow = client.getRow("recipe_generation_jobs", jobId) as Record<string, unknown>;
+  assert.equal(jobRow.status, "awaiting_approval");
+});
+
+Deno.test("retryStage: dispatches the failed stage's runner right after re-queueing (F2-S19)", async () => {
+  const client = new FakeSupabaseClient();
+  const { jobId, batchId } = seedAwaitingApprovalJob(client, { stage: "finalize", status: "failed", attempt: 3 });
+  const calls: Array<{ jobId: string; functionName: string; batchId: unknown }> = [];
+  registerDispatchRpc(client, calls);
+  Deno.env.set("RECIPE_STAGE_DISPATCH_SECRET", "test-secret");
+
+  const result = await retryStage(asClient(client), { jobId });
+
+  assert.equal(result.ok, true);
+  assert.equal(calls.length, 1);
+  assert.equal(calls[0].jobId, jobId);
+  assert.equal(calls[0].functionName, "recipe-stage-finalize");
+  assert.equal(calls[0].batchId, batchId);
+});
+
+Deno.test("retryStage: still succeeds when the dispatch itself fails (best-effort)", async () => {
+  const client = new FakeSupabaseClient();
+  const { jobId } = seedAwaitingApprovalJob(client, { stage: "write", status: "failed" });
+  Deno.env.delete("RECIPE_STAGE_DISPATCH_SECRET");
+
+  const result = await retryStage(asClient(client), { jobId });
+
+  assert.equal(result.ok, true);
+  if (!result.ok) return;
+  assert.equal(result.job.status, "queued");
+});
+
+Deno.test("requestRevisionJob: dispatches recipe-stage-revise right after re-queueing (F2-S19)", async () => {
+  const client = new FakeSupabaseClient();
+  const { jobId } = seedAwaitingApprovalJob(client);
+  const calls: Array<{ jobId: string; functionName: string; batchId: unknown }> = [];
+  registerDispatchRpc(client, calls);
+  Deno.env.set("RECIPE_STAGE_DISPATCH_SECRET", "test-secret");
+
+  const result = await requestRevisionJob(asClient(client), { jobId });
+
+  assert.equal(result.ok, true);
+  assert.equal(calls.length, 1);
+  assert.equal(calls[0].functionName, "recipe-stage-revise");
+});
+
+Deno.test("rejectJob: closes a QA manual-review hand-off parked at stage=qa (F2-S21)", async () => {
+  const client = new FakeSupabaseClient();
+  const { jobId } = seedAwaitingApprovalJob(client, { stage: "qa" });
+
+  const result = await rejectJob(asClient(client), { jobId, notes: "QA insana devretti, reddedildi" });
+
+  assert.equal(result.ok, true);
+  if (!result.ok) return;
+  assert.equal(result.job.stage, "qa");
+  assert.equal(result.job.status, "rejected");
+  const reviewRow = client.getRow("recipe_admin_reviews", result.reviewId) as Record<string, unknown>;
+  assert.equal(reviewRow.from_stage, "qa");
+  assert.equal(reviewRow.to_stage, "qa");
+  assert.equal(reviewRow.to_status, "rejected");
+});
+
+Deno.test("rejectJob: refuses a job that isn't waiting on a human", async () => {
+  const client = new FakeSupabaseClient();
+  const { jobId } = seedAwaitingApprovalJob(client, { stage: "qa", status: "running" });
+
+  const result = await rejectJob(asClient(client), { jobId });
+
+  assert.equal(result.ok, false);
+  if (result.ok) return;
+  assert.equal(result.reason, "wrong_state");
+});
+
+Deno.test("approveJob / requestRevisionJob: still refuse a QA-parked job (no images, QA verdict not approved)", async () => {
+  const client = new FakeSupabaseClient();
+  registerFullNutritionPreview(client);
+  const { jobId } = seedAwaitingApprovalJob(client, { stage: "qa" });
+
+  const approve = await approveJob(asClient(client), {
+    jobId,
+    draftId: crypto.randomUUID(),
+    draftVersion: 1,
+    checklist: FULL_CHECKLIST,
+  });
+  assert.equal(approve.ok, false);
+  if (!approve.ok) assert.equal(approve.reason, "wrong_state");
+
+  const revise = await requestRevisionJob(asClient(client), { jobId });
+  assert.equal(revise.ok, false);
+  if (!revise.ok) assert.equal(revise.reason, "wrong_state");
+
+  const jobRow = client.getRow("recipe_generation_jobs", jobId) as Record<string, unknown>;
+  assert.equal(jobRow.stage, "qa");
+  assert.equal(jobRow.status, "awaiting_approval");
 });

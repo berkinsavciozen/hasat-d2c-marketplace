@@ -371,9 +371,14 @@ function AdminRecipeJobDetailPage() {
   const d = query.data;
   const draft = d.currentDraft?.payload;
   const checklistComplete = Object.values(checklist).every(Boolean);
-  const canApprove = d.job.status === "awaiting_approval" && !!d.currentDraft && checklistComplete;
-  const canReject = d.job.status === "awaiting_approval";
-  const canRequestRevision = d.job.status === "awaiting_approval" && d.job.revisionCount < 2;
+  const awaitingHuman = d.job.status === "awaiting_approval";
+  // QA/revise manuel incelemeye devrettiğinde iş stage='qa' / status='awaiting_approval'da bekler
+  // (F2-S21): görsel/finalize yok, QA kararı 'approved' değil — yalnız ret anlamlı.
+  const isQaHandoff = awaitingHuman && d.job.stage === "qa";
+  const atPublishGate = awaitingHuman && d.job.stage === "awaiting_approval";
+  const canApprove = atPublishGate && !!d.currentDraft && checklistComplete;
+  const canReject = atPublishGate || isQaHandoff;
+  const canRequestRevision = atPublishGate && d.job.revisionCount < 2;
   const canRetry = d.job.status === "failed";
 
   return (
@@ -728,7 +733,7 @@ function AdminRecipeJobDetailPage() {
                 <Checkbox
                   checked={checklist[field]}
                   onCheckedChange={(v) => setChecklist((c) => ({ ...c, [field]: v === true }))}
-                  disabled={d.job.status !== "awaiting_approval"}
+                  disabled={!atPublishGate}
                 />
                 {label}
               </label>
@@ -777,7 +782,13 @@ function AdminRecipeJobDetailPage() {
                 Aşamayı Yeniden Dene
               </Button>
             </div>
-            {d.job.status === "awaiting_approval" && !checklistComplete && (
+            {isQaHandoff && (
+              <p className="text-xs text-hmuted">
+                QA bu tarifi manuel incelemeye devretti. Görseller ve son kontrol henüz üretilmedi;
+                bu aşamada yalnız reddedilebilir.
+              </p>
+            )}
+            {atPublishGate && !checklistComplete && (
               <p className="text-xs text-hmuted">Onaylamak için kontrol listesindeki tüm maddeler işaretlenmelidir.</p>
             )}
           </div>

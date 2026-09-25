@@ -59,3 +59,72 @@ export class SupabaseImageStorageUploader implements ImageStorageUploader {
     return new Uint8Array(await data.arrayBuffer());
   }
 }
+
+/**
+ * Admin cover regeneration (admin/regenerate-cover.ts) needs more than the image stage's
+ * write-once `upload` + `download`: it overwrites a recipe's live cover files, reads candidate
+ * files that may legitimately be absent (-> 409, not a 500), and deletes candidates. Kept as a
+ * separate interface/class so the image stage's own upsert:false contract above is untouched.
+ */
+export interface ImageStorageAdmin {
+  /** Uploads with upsert — replaces an existing object at `path`. */
+  overwrite(path: string, bytes: Uint8Array, contentType: string): Promise<{ publicUrl: string }>;
+  /** Downloads `path`, or returns null when no object exists there. Other failures throw. */
+  downloadIfExists(path: string): Promise<Uint8Array | null>;
+  /** Deletes `paths`; absent objects are not an error. */
+  remove(paths: string[]): Promise<void>;
+  publicUrl(path: string): string;
+}
+
+export class SupabaseImageStorageAdmin implements ImageStorageAdmin {
+  constructor(private readonly client: SupabaseClient) {}
+
+  async overwrite(path: string, bytes: Uint8Array, contentType: string): Promise<{ publicUrl: string }> {
+    const bucket = this.client.storage.from(IMAGE_STORAGE_BUCKET);
+    // Short CDN cache: these paths are rewritten in place (candidates on every regenerate, the live
+    // cover on apply), so the default 1h public cache would keep serving the previous image.
+    const { error } = await bucket.upload(path, bytes, { contentType, upsert: true, cacheControl: "60" });
+    if (error) {
+      throw new RecipeAutomationError({
+        code: "IMAGE_STORAGE_UPLOAD_FAILED",
+        message: "cover storage upload failed",
+        retryable: true,
+        details: { path },
+      });
+    }
+    return { publicUrl: this.publicUrl(path) };
+  }
+
+  async downloadIfExists(path: string): Promise<Uint8Array | null> {
+    const bucket = this.client.storage.from(IMAGE_STORAGE_BUCKET);
+    const { data, error } = await bucket.download(path);
+    if (error) {
+      // storage-js surfaces a missing object as a StorageApiError "Object not found" (HTTP 400/404).
+      const status = (error as { status?: number }).status;
+      if (/not.?found/i.test(error.message ?? "") || status === 400 || status === 404) return null;
+      throw new RecipeAutomationError({
+        code: "IMAGE_STORAGE_DOWNLOAD_FAILED",
+        message: "cover storage download failed",
+        retryable: true,
+        details: { path },
+      });
+    }
+    return data ? new Uint8Array(await data.arrayBuffer()) : null;
+  }
+
+  async remove(paths: string[]): Promise<void> {
+    const { error } = await this.client.storage.from(IMAGE_STORAGE_BUCKET).remove(paths);
+    if (error) {
+      throw new RecipeAutomationError({
+        code: "IMAGE_STORAGE_REMOVE_FAILED",
+        message: "cover storage remove failed",
+        retryable: true,
+        details: { paths },
+      });
+    }
+  }
+
+  publicUrl(path: string): string {
+    return this.client.storage.from(IMAGE_STORAGE_BUCKET).getPublicUrl(path).data.publicUrl;
+  }
+}

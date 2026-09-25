@@ -56,10 +56,15 @@ admin-identity model first, so that column can finally be set legitimately.
 
 ## What this module never does
 
-- **Never invokes a `recipe-stage-*` Edge Function.** `requestRevisionJob()`/`retryStage()` only
-  flip `recipe_generation_jobs.stage`/`status` back to a runnable state — making the job eligible
-  for the NEXT time something dispatches to that stage, not dispatching to it itself. See
-  `review-actions.ts`'s own header.
+- **Never waits on a `recipe-stage-*` Edge Function.** `approveJob()`, `requestRevisionJob()` and
+  `retryStage()` fire one best-effort `dispatch_recipe_stage` nudge after their transition commits
+  (never-throws; the action's outcome never depends on it), and `../infra/sweep.ts` re-nudges any
+  job still `queued` 10+ minutes later. Before F2-S19 (2026-09-24) retry/revision only flipped
+  the state and relied on a sweep that never looked at `queued`, so every panel retry was
+  orphaned. See `review-actions.ts`'s own header.
+- **Approve / request revision only at stage=`awaiting_approval`; reject at either resting
+  state.** QA/revise manual-review hand-offs park at stage=`qa`, status=`awaiting_approval` (no
+  images yet, QA verdict not `approved`), so the panel can only reject those (F2-S21).
 - **Never writes to `recipe_drafts` / `recipe_qa_results` / `recipe_assets`.** Only
   `recipe_generation_jobs` (the state machine) and this step's own `recipe_admin_reviews`.
 - **Never touches `recipe_qa_results.safety_approved`/`safety_reviewed_by`/`safety_reviewed_at`.**
@@ -104,3 +109,15 @@ was additionally verified with `bun build --external "npm:*" --external "https:/
 so a broken relative import or a syntax error would have surfaced. It does not type-check. Re-run
 the `deno test` suite in an environment with `deno`/`esm.sh` access before treating this step's
 Deno-level test evidence as verified.
+
+## Addendum: `regenerate-cover.ts` (admin cover regeneration)
+
+Backs the `admin-recipe-regenerate-cover` Edge Function — regenerate a published recipe's cover
+when DQ-2 reports `COVER_NOT_HERO`, with an admin preview step before anything goes live. See the
+module header for the routes. Reuses only the single-purpose image pieces (`../image/prompt.ts`,
+`gemini-client.ts`, `geometry.ts`, `webp-codec.ts`, `frame-suspicion.ts`, `storage.ts`) and
+`../finalize/asset-contract.ts`; never the job/draft state machine. The one database write is the
+`admin_set_recipe_cover` RPC (`20260925083635_admin_set_recipe_cover.sql`).
+
+Tests: `regenerate-cover.test.ts` (fake Gemini + fake storage, real crop/WebP path) and
+`supabase/tests/admin_set_recipe_cover/run.sh` (the RPC against a fresh local PostgreSQL).

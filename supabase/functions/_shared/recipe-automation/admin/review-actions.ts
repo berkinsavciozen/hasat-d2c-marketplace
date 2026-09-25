@@ -17,9 +17,18 @@
 // This module NEVER writes to `recipe_drafts` / `recipe_qa_results` / `recipe_assets` — only
 // `recipe_generation_jobs` (the state machine) and this pipeline's own `recipe_admin_reviews`
 // audit table. Requeuing a job into the AUTOMATED pipeline (request_revision -> revise/queued,
-// retry_stage -> <current stage>/queued) does NOT dispatch here — those stages are all covered by
-// `infra/sweep.ts`'s periodic reconciliation (every 5 minutes) even if this module never nudges
-// them, matching the F2-S11 task brief's original "do not invoke live Edge Functions" constraint.
+// retry_stage -> <current stage>/queued) fires the same best-effort `dispatchNextStage` nudge
+// `approveJob()` does (below) — the original F2-S11 premise that `infra/sweep.ts` would pick these
+// up anyway was wrong until F2-S19 (2026-09-24): the sweep never looked at 'queued' at all, so
+// every panel retry sat orphaned (job c9059cbc, queued since 2026-09-16). The sweep now also
+// collects stale 'queued' jobs, so the immediate nudge and the periodic net cover each other.
+//
+// QA/revise hand-off (F2-S21, 2026-09-24): qa-stage.ts's `manual_review_required` branch and
+// revise-stage.ts's revision-cap branch park a job at stage='qa', status='awaiting_approval' —
+// NOT stage='awaiting_approval'. Those jobs have no images/finalize output yet and their latest QA
+// verdict is not 'approved' (publish/image/revise all refuse it), so approve and request_revision
+// stay limited to the finalize-parked stage='awaiting_approval'. Reject is the one action that is
+// meaningful for both resting states, so `rejectJob()` accepts either (see `REJECTABLE_STAGES`).
 //
 // `approveJob()` is the one exception, added to close a real production gap (job
 // 451234c7-cdc0-4322-b201-9b4d62fe4cc9 approved 2026-09-02, never published): unlike every other
@@ -36,7 +45,7 @@
 // codebase already uses everywhere else.
 import type { SupabaseClient } from "../infra/supabase-admin.ts";
 import { RecipeAutomationError } from "../infra/errors.ts";
-import { dispatchNextStage } from "../infra/stage-dispatch.ts";
+import { dispatchNextStage, STAGE_FUNCTION_NAMES } from "../infra/stage-dispatch.ts";
 import type { RecipeJobStage, RecipeJobStatus } from "../types.ts";
 import { approvalChecklistSchema, checklistToRow, partialChecklistSchema, type PartialChecklist } from "./checklist.ts";
 
@@ -49,6 +58,10 @@ const PUBLISH_FUNCTION_NAME = "recipe-stage-publish";
  * revision counts against the identical budget: both paths produce one more `recipe_drafts`
  * version via the same `revise` stage. */
 const MAX_REVISIONS = 2;
+
+/** Stages at which a job can sit at status='awaiting_approval' waiting for a human: the
+ * finalize-parked publish gate, and the QA/revise manual-review hand-off (see module header). */
+const REJECTABLE_STAGES: readonly RecipeJobStage[] = ["awaiting_approval", "qa"];
 
 export interface JobRow {
   id: string;
@@ -176,6 +189,20 @@ async function recordReview(
   return String((data as { id: string }).id);
 }
 
+/** Best-effort dispatch to the stage-runner of a job an admin action just moved to 'queued' — same
+ * never-throws contract as `approveJob()`'s publish dispatch. `infra/sweep.ts`'s stale-queued
+ * category is the fallback if this is dropped (or the stage has no runner in the map). */
+async function nudgeRequeuedJob(client: SupabaseClient, job: JobRow): Promise<void> {
+  const functionName = STAGE_FUNCTION_NAMES[job.stage];
+  if (!functionName) return;
+  const dispatchResult = await dispatchNextStage(client, {
+    jobId: job.id,
+    functionName,
+    payload: { batchId: job.batch_id },
+  });
+  void dispatchResult;
+}
+
 export interface ApproveJobParams {
   jobId: string;
   draftId: string;
@@ -284,15 +311,22 @@ export interface RejectJobParams {
   adminActor?: string | null;
 }
 
-/** Rejects a job at `awaiting_approval` — `status='rejected'`, stage unchanged. Non-terminal by
- * design (`recipe_generation_jobs`'s own CHECK deliberately excludes 'rejected' from its terminal
- * `completed_at` set) — parks it for a human/ops decision on what happens next, distinct from
+/** Rejects a job waiting on a human at either resting state in `REJECTABLE_STAGES` —
+ * `status='rejected'`, stage unchanged. Non-terminal by design (`recipe_generation_jobs`'s own
+ * CHECK deliberately excludes 'rejected' from its terminal `completed_at` set) — parks it for a human/ops decision on what happens next, distinct from
  * `requestRevisionJob` below, which immediately re-queues the job into the automated revise loop. */
 export async function rejectJob(client: SupabaseClient, params: RejectJobParams): Promise<ReviewActionResult> {
   const checklist = partialChecklistSchema.parse(params.checklist ?? {});
-  const fromStage: RecipeJobStage = "awaiting_approval";
   const fromStatus: RecipeJobStatus = "awaiting_approval";
   const toStatus: RecipeJobStatus = "rejected";
+
+  const current = await loadJobState(client, params.jobId);
+  if (!current) return { ok: false, reason: "not_found" };
+  if (!REJECTABLE_STAGES.includes(current.stage) || current.status !== fromStatus) {
+    return { ok: false, reason: "wrong_state", job: current };
+  }
+  // The CAS below still pins the stage we just read, so a job that moved in between is refused.
+  const fromStage = current.stage;
 
   const updated = await transitionJob(client, {
     jobId: params.jobId,
@@ -390,6 +424,8 @@ export async function requestRevisionJob(
     adminActor: params.adminActor ?? null,
   });
 
+  await nudgeRequeuedJob(client, updated);
+
   return { ok: true, job: updated, reviewId };
 }
 
@@ -407,7 +443,7 @@ export interface RetryStageParams {
  * `last_error`/`next_attempt_at` cleared. Stage is read from the job's own current row rather than
  * asserted by the caller (unlike the other three actions, which all only apply at
  * `awaiting_approval`) — a failed job could be stuck at ANY of write/qa/revise/image/finalize.
- * Never invokes the corresponding `recipe-stage-*` function itself — see this module's header.
+ * Fires a best-effort dispatch to that stage's runner afterwards — see this module's header.
  */
 export async function retryStage(client: SupabaseClient, params: RetryStageParams): Promise<ReviewActionResult> {
   const current = await loadJobState(client, params.jobId);
@@ -448,6 +484,8 @@ export async function retryStage(client: SupabaseClient, params: RetryStageParam
     notes: params.notes ?? null,
     adminActor: params.adminActor ?? null,
   });
+
+  await nudgeRequeuedJob(client, updated);
 
   return { ok: true, job: updated, reviewId };
 }
