@@ -428,7 +428,18 @@ function AdminRecipeJobDetailPage() {
   // (F2-S21): görsel/finalize yok, QA kararı 'approved' değil — yalnız ret anlamlı.
   const isQaHandoff = awaitingHuman && d.job.stage === "qa";
   const atPublishGate = awaitingHuman && d.job.stage === "awaiting_approval";
-  const canApprove = atPublishGate && !!d.currentDraft && checklistComplete;
+
+  // DQ-2 §4: veri tutarlılığı bulguları (draft-issues). 404 = bölüm gösterilmez.
+  const draftIssuesResult = draftIssuesQuery.data;
+  const issuesNotFound = !!draftIssuesResult && "notFound" in draftIssuesResult;
+  const draftIssues: QualityIssue[] =
+    draftIssuesResult && "issues" in draftIssuesResult ? draftIssuesResult.issues : [];
+  const criticalCount = draftIssues.filter((i) => i.severity === "kritik").length;
+  const warningCount = draftIssues.filter((i) => i.severity === "uyari").length;
+  const infoIssues = draftIssues.filter((i) => i.severity === "bilgi");
+
+  const canApprove =
+    atPublishGate && !!d.currentDraft && checklistComplete && (criticalCount === 0 || ackCritical);
   const canReject = atPublishGate || isQaHandoff;
   const canRequestRevision = atPublishGate && d.job.revisionCount < 2;
   const canRetry = d.job.status === "failed";
