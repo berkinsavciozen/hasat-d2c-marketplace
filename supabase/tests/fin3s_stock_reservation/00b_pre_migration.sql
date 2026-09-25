@@ -1,5 +1,5 @@
 -- FIN-3-S — rows that exist BEFORE the migration under test, for the initial_* backfill.
--- Applied after FIN-3 (snapshot triggers live) and before 20260925120000.
+-- Applied after FIN-3 (snapshot triggers live) and before 20260925143009.
 
 insert into public.listings (id, farmer_id, crop, quantity, price_per_unit) values
   ('b0000000-0000-0000-0000-000000000001', 'f0000000-0000-0000-0000-000000000001', 'Domates', 100, 30);

@@ -1,4 +1,4 @@
--- FIN-3-S — assertion suite for 20260925120000_fin3s_stock_reservation_agreed_quantity.sql.
+-- FIN-3-S — assertion suite for 20260925143009_fin3s_stock_reservation_agreed_quantity.sql.
 
 \set ON_ERROR_STOP on
 \o /dev/null

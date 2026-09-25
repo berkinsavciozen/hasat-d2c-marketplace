@@ -1,4 +1,4 @@
--- FIN-3-S — SQL test fixtures for 20260925120000_fin3s_stock_reservation_agreed_quantity.sql.
+-- FIN-3-S — SQL test fixtures for 20260925143009_fin3s_stock_reservation_agreed_quantity.sql.
 --
 -- Reduced copies of the LIVE shapes in 20260917120000_baseline_consolidated_schema_2026-09-17.sql:
 -- listings, harvest_entries, listing_harvest_entries, offers, offer_items (columns, enums, keys, the

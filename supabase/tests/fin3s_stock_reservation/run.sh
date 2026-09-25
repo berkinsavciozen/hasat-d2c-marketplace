@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# FIN-3-S — SQL test runner for 20260925120000_fin3s_stock_reservation_agreed_quantity.sql.
+# FIN-3-S — SQL test runner for 20260925143009_fin3s_stock_reservation_agreed_quantity.sql.
 #
 # FRESH local PostgreSQL database every run: fixtures (live-shaped tables + baseline
 # enforce_offer_stock / rpc_create_offer verbatim) -> FIN-3 (20260921124738, real file) ->
@@ -13,7 +13,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/../../.." && pwd)"
 MIGRATIONS_DIR="$REPO_ROOT/supabase/migrations"
 FIN3="20260921124738_fin3_immutable_monetary_snapshot.sql"
-MIGRATION="20260925120000_fin3s_stock_reservation_agreed_quantity.sql"
+MIGRATION="20260925143009_fin3s_stock_reservation_agreed_quantity.sql"
 
 PSQL=(psql -v ON_ERROR_STOP=1 -X -q)
 
