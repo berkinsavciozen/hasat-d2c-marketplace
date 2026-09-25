@@ -30,6 +30,21 @@ type DraftIngredient = {
 type QAIssue = { code: string; field: string; severity: "info" | "warning" | "blocking"; message: string; requiredChange: string | null };
 type SafetyFinding = { flagged: boolean; notes: string | null };
 
+// DQ-2 §4 — admin.recipes.quality.tsx ile aynı sözleşme (quality.ts'deki QualityIssue).
+type QualityIssue = {
+  code: string;
+  severity: "kritik" | "uyari" | "bilgi";
+  message: string;
+  ingredientId?: string;
+  suggestion?: {
+    addAllergen?: string;
+    removeAllergen?: string;
+    addDietTag?: string;
+    removeDietTag?: string;
+    setCrop?: string;
+  };
+};
+
 type JobDetail = {
   job: {
     id: string; batchId: string; briefId: string; workingTitle: string; focusCrop: string | null;
@@ -137,6 +152,110 @@ const EMPTY_CHECKLIST: Checklist = {
   imagesReviewed: false,
 };
 
+// DQ-2 §4 — onay ekranındaki veri tutarlılığı bloğu, admin.recipes.quality.tsx'teki IssuesSection ile
+// aynı dili konuşur: kritik kırmızı, uyarı sarı, bilgi katlanır. Bu ekranda uygulama butonu YOK;
+// taslak düzeltmesi mevcut revizyon/ret akışıyla yapılır.
+function suggestionHint(s: QualityIssue["suggestion"]): string | null {
+  if (!s) return null;
+  const parts: string[] = [];
+  if (s.addAllergen) parts.push(`${s.addAllergen} alerjenini ekle`);
+  if (s.removeAllergen) parts.push(`${s.removeAllergen} alerjenini kaldır`);
+  if (s.addDietTag) parts.push(`${s.addDietTag} etiketini ekle`);
+  if (s.removeDietTag) parts.push(`${s.removeDietTag} etiketini kaldır`);
+  if (s.setCrop) parts.push(`malzemeyi ${s.setCrop} olarak işaretle`);
+  return parts.length ? `Öneri: ${parts.join("; ")}` : null;
+}
+
+function DraftConsistencyBlock({
+  loading,
+  isError,
+  notFound,
+  issues,
+  criticalCount,
+  warningCount,
+  infoIssues,
+}: {
+  loading: boolean;
+  isError: boolean;
+  notFound: boolean;
+  issues: QualityIssue[];
+  criticalCount: number;
+  warningCount: number;
+  infoIssues: QualityIssue[];
+}) {
+  const [showInfo, setShowInfo] = useState(false);
+
+  // 404 = işin taslağı yok → bölüm gösterilmez.
+  if (notFound) return null;
+
+  const actionable = issues.filter((i) => i.severity !== "bilgi");
+
+  return (
+    <div className="rounded-xl border bg-card/50 p-3 space-y-2">
+      <div className="flex items-center justify-between gap-2">
+        <h4 className="text-sm font-medium">Veri tutarlılığı</h4>
+        {!loading && !isError && (criticalCount > 0 || warningCount > 0) && (
+          <span className="text-xs">
+            <span className="text-[color:var(--hred)]">{criticalCount} kritik</span>
+            {" · "}
+            <span className="text-[color:var(--saffron)]">{warningCount} uyarı</span>
+          </span>
+        )}
+      </div>
+
+      {loading && <p className="text-xs text-hmuted">Veri tutarlılığı kontrol ediliyor…</p>}
+
+      {isError && (
+        <p className="text-xs text-hmuted">Veri tutarlılığı denetimi yüklenemedi — onay akışını engellemez.</p>
+      )}
+
+      {!loading && !isError && criticalCount === 0 && warningCount === 0 && (
+        <p className="text-xs text-[color:var(--sage)]">Veri tutarlılığı kontrolünden geçti.</p>
+      )}
+
+      {!loading &&
+        !isError &&
+        actionable.map((issue, idx) => (
+          <div key={`${issue.code}-${idx}`} className="space-y-0.5">
+            <div className="flex items-center gap-2 text-xs">
+              <span
+                className={cn(
+                  "inline-flex items-center rounded-full px-1.5 py-0.5 text-[11px] font-semibold",
+                  issue.severity === "kritik"
+                    ? "bg-[color-mix(in_oklab,var(--hred)_18%,transparent)] text-[color:var(--hred)]"
+                    : "bg-[color-mix(in_oklab,var(--saffron)_18%,transparent)] text-[color:var(--saffron)]",
+                )}
+              >
+                {issue.severity === "kritik" ? "Kritik" : "Uyarı"}
+              </span>
+              <span>{issue.message}</span>
+            </div>
+            {suggestionHint(issue.suggestion) && (
+              <p className="text-[11px] text-hmuted pl-1">{suggestionHint(issue.suggestion)}</p>
+            )}
+          </div>
+        ))}
+
+      {!loading && !isError && infoIssues.length > 0 && (
+        <div>
+          <button type="button" onClick={() => setShowInfo((v) => !v)} className="text-xs text-hmuted underline">
+            {showInfo ? "Diğer notları gizle" : `Bilgi (${infoIssues.length})`}
+          </button>
+          {showInfo && (
+            <div className="mt-1 space-y-0.5">
+              {infoIssues.map((issue, idx) => (
+                <div key={`info-${issue.code}-${idx}`} className="text-[11px] text-hmuted">
+                  {issue.message}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function AdminRecipeJobDetailPage() {
   const { jobId } = Route.useParams();
   const queryClient = useQueryClient();
@@ -147,10 +266,16 @@ function AdminRecipeJobDetailPage() {
   const [adminActor, setAdminActor] = useState("");
   const [resolvingSortOrder, setResolvingSortOrder] = useState<number | null>(null);
   const [resolveForm, setResolveForm] = useState<NutritionResolveForm>(EMPTY_RESOLVE_FORM);
+  // DQ-2 §4: kritik tutarlılık uyarısı için admin onay kutusu. İş (jobId) değişince sıfırlanır.
+  const [ackCritical, setAckCritical] = useState(false);
 
   useEffect(() => {
     setAdminKey(sessionStorage.getItem(ADMIN_RECIPE_KEY_STORAGE));
   }, []);
+
+  useEffect(() => {
+    setAckCritical(false);
+  }, [jobId]);
 
   const query = useQuery({
     queryKey: ["admin-recipe-job-detail", jobId, adminKey],
@@ -174,6 +299,34 @@ function AdminRecipeJobDetailPage() {
         throw error;
       }
       return data as JobDetail;
+    },
+  });
+
+  // DQ-2 §4: işin en son taslağı için veri tutarlılığı bulguları. Aynı x-admin-key auth'ı;
+  // job detay sorgusuyla aynı anahtara (adminKey) bağlı, taslak değişince (draftId/version) yeniden çekilir.
+  // 404 = işin taslağı yok → bölüm gösterilmez. Diğer hatalar bölümde küçük satır olarak gösterilir,
+  // onay akışını engellemez.
+  const draftId = query.data?.currentDraft?.id ?? null;
+  const draftVersion = query.data?.currentDraft?.version ?? null;
+
+  const draftIssuesQuery = useQuery({
+    queryKey: ["admin-recipe-draft-issues", jobId, adminKey, draftId, draftVersion],
+    enabled: !!adminKey && !!draftId,
+    retry: false,
+    staleTime: 0,
+    queryFn: async (): Promise<{ issues: QualityIssue[] } | { notFound: true }> => {
+      const { data, error } = await supabase.functions.invoke(
+        `admin-recipe-quality/draft-issues/${jobId}`,
+        { method: "GET", headers: { "x-admin-key": adminKey!, "content-type": "application/json" } },
+      );
+      if (error) {
+        const anyErr = error as { context?: { status?: number }; status?: number };
+        const status = anyErr.context?.status ?? anyErr.status;
+        if (status === 404) return { notFound: true };
+        throw error;
+      }
+      const issues = (data as { issues?: unknown } | null)?.issues;
+      return { issues: Array.isArray(issues) ? (issues as QualityIssue[]) : [] };
     },
   });
 
@@ -218,8 +371,10 @@ function AdminRecipeJobDetailPage() {
       toast.success(actionLabel[variables.action] ?? "İşlem tamamlandı");
       setChecklist(EMPTY_CHECKLIST);
       setNotes("");
+      setAckCritical(false);
       queryClient.invalidateQueries({ queryKey: ["admin-recipe-job-detail", jobId] });
       queryClient.invalidateQueries({ queryKey: ["admin-recipe-jobs"] });
+      queryClient.invalidateQueries({ queryKey: ["admin-recipe-draft-issues", jobId] });
     },
     onError: async (error: unknown) => {
       const anyErr = error as { context?: Response; message?: string };
@@ -274,6 +429,7 @@ function AdminRecipeJobDetailPage() {
       setResolvingSortOrder(null);
       setResolveForm(EMPTY_RESOLVE_FORM);
       queryClient.invalidateQueries({ queryKey: ["admin-recipe-job-detail", jobId] });
+      queryClient.invalidateQueries({ queryKey: ["admin-recipe-draft-issues", jobId] });
     },
     onError: async (error: unknown) => {
       const anyErr = error as { context?: Response; message?: string };
@@ -376,7 +532,18 @@ function AdminRecipeJobDetailPage() {
   // (F2-S21): görsel/finalize yok, QA kararı 'approved' değil — yalnız ret anlamlı.
   const isQaHandoff = awaitingHuman && d.job.stage === "qa";
   const atPublishGate = awaitingHuman && d.job.stage === "awaiting_approval";
-  const canApprove = atPublishGate && !!d.currentDraft && checklistComplete;
+
+  // DQ-2 §4: veri tutarlılığı bulguları (draft-issues). 404 = bölüm gösterilmez.
+  const draftIssuesResult = draftIssuesQuery.data;
+  const issuesNotFound = !!draftIssuesResult && "notFound" in draftIssuesResult;
+  const draftIssues: QualityIssue[] =
+    draftIssuesResult && "issues" in draftIssuesResult ? draftIssuesResult.issues : [];
+  const criticalCount = draftIssues.filter((i) => i.severity === "kritik").length;
+  const warningCount = draftIssues.filter((i) => i.severity === "uyari").length;
+  const infoIssues = draftIssues.filter((i) => i.severity === "bilgi");
+
+  const canApprove =
+    atPublishGate && !!d.currentDraft && checklistComplete && (criticalCount === 0 || ackCritical);
   const canReject = atPublishGate || isQaHandoff;
   const canRequestRevision = atPublishGate && d.job.revisionCount < 2;
   const canRetry = d.job.status === "failed";
@@ -722,6 +889,19 @@ function AdminRecipeJobDetailPage() {
 
         <SectionCard title="Onay Kontrol Listesi">
           <div className="space-y-3">
+            {/* DQ-2 §4: onaydan önce admin, kalite ekranındakiyle aynı tutarlılık kontrollerini görsün. */}
+            {d.currentDraft && (
+              <DraftConsistencyBlock
+                loading={draftIssuesQuery.isLoading}
+                isError={draftIssuesQuery.isError}
+                notFound={issuesNotFound}
+                issues={draftIssues}
+                criticalCount={criticalCount}
+                warningCount={warningCount}
+                infoIssues={infoIssues}
+              />
+            )}
+
             {([
               ["temperatureReviewed", "Pişirme sıcaklıkları kontrol edildi"],
               ["timingReviewed", "Pişirme/bekleme süreleri kontrol edildi"],
@@ -738,6 +918,18 @@ function AdminRecipeJobDetailPage() {
                 {label}
               </label>
             ))}
+
+            {/* Kritik tutarlılık uyarısı varsa ek onay kutusu — Onayla bunu ister (yalnız UI). */}
+            {criticalCount > 0 && (
+              <label className="flex items-start gap-2 text-sm cursor-pointer rounded-lg border border-[color:var(--hred)] bg-[color-mix(in_oklab,var(--hred)_8%,transparent)] p-3">
+                <Checkbox
+                  checked={ackCritical}
+                  onCheckedChange={(v) => setAckCritical(v === true)}
+                  disabled={!atPublishGate}
+                />
+                <span>Kritik veri tutarlılığı uyarılarını gördüm, yine de onaylıyorum.</span>
+              </label>
+            )}
 
             <Textarea
               value={notes}
@@ -790,6 +982,11 @@ function AdminRecipeJobDetailPage() {
             )}
             {atPublishGate && !checklistComplete && (
               <p className="text-xs text-hmuted">Onaylamak için kontrol listesindeki tüm maddeler işaretlenmelidir.</p>
+            )}
+            {atPublishGate && criticalCount > 0 && !ackCritical && (
+              <p className="text-xs text-[color:var(--hred)]">
+                Onaylamak için kritik veri tutarlılığı uyarılarını onaylamanız gerekir.
+              </p>
             )}
           </div>
         </SectionCard>
