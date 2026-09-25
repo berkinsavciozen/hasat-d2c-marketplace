@@ -2,7 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { Check, ChevronsUpDown } from "lucide-react";
+import { Check, ChevronsUpDown, ImagePlus, Loader2 } from "lucide-react";
 
 import { supabase } from "@/integrations/supabase/client";
 import { SectionCard } from "@/components/hasat/common/SectionCard";
@@ -137,6 +137,34 @@ function functionErrorMessage(error: unknown): string {
   if (status === 401 || status === 403) return "Hatalı anahtar";
   return `Hata: ${anyErr.message ?? "bilinmiyor"}`;
 }
+
+// Kapak yeniden üretme hataları: FunctionsHttpError.context gerçek Response nesnesi — gövdedeki
+// error kodunu okuyabiliriz (500'lerde gösterilir).
+async function coverErrorMessage(error: unknown): Promise<string> {
+  const res = (error as { context?: Response }).context;
+  const status = res?.status;
+  if (status === 401 || status === 403) return "Admin anahtarı geçersiz";
+  if (status === 409) return "Önce aday üretin";
+  let code: string | null = null;
+  try {
+    const body = (await res?.json()) as { error?: string } | undefined;
+    if (body?.error) code = body.error;
+  } catch {
+    // gövde okunamadı — genel mesaja düş
+  }
+  return code ? `Hata: ${code}` : `Hata: ${(error as { message?: string }).message ?? "bilinmiyor"}`;
+}
+
+type CoverCandidate = {
+  heroUrl: string;
+  squareUrl: string;
+  sourceUrl: string;
+  prompt: string;
+  model: string;
+  generatedAt: string;
+  heroFrameSuspicious: boolean;
+  squareFrameSuspicious: boolean;
+};
 
 // -----------------------------------------------------------------------------------------------
 
