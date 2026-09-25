@@ -28,6 +28,7 @@
 import type { SupabaseClient } from "./supabase-admin.ts";
 import { toSafeErrorPayload } from "./errors.ts";
 import { advanceStage, type AdvanceStageParams, type AdvanceStageResult } from "./job-state.ts";
+import type { RecipeJobStage } from "../types.ts";
 
 const DEFAULT_DISPATCH_KEY_ENV_VAR = "RECIPE_STAGE_DISPATCH_SECRET";
 
@@ -94,6 +95,21 @@ export async function dispatchNextStage(
     };
   }
 }
+
+/** Mirrors `dispatch_recipe_stage`'s own `_allowed_function_names` allow-list (f2s05 migration)
+ * exactly: the stage-runner that works a job sitting runnable (queued/retryable) at each stage.
+ * 'awaiting_approval' is deliberately absent — it is a human-review resting state with no
+ * stage-runner of its own. Shared by `sweep.ts` (periodic redispatch) and
+ * `admin/review-actions.ts` (immediate redispatch after an admin re-queues a job). */
+export const STAGE_FUNCTION_NAMES: Partial<Record<RecipeJobStage, string>> = {
+  plan: "recipe-stage-plan",
+  write: "recipe-stage-write",
+  qa: "recipe-stage-qa",
+  revise: "recipe-stage-revise",
+  image: "recipe-stage-image",
+  finalize: "recipe-stage-finalize",
+  publish: "recipe-stage-publish",
+};
 
 /** Alias documenting intent at call sites that are explicitly re-nudging an already-queued job
  * (e.g. a reconciliation sweep) rather than dispatching right after an advance. Same function —
