@@ -596,7 +596,6 @@ function OrderCard({ order, muted }: { order: Order; muted?: boolean }) {
         </div>
         );
       })()}
-      )}
 
       {wa && (
         <a
