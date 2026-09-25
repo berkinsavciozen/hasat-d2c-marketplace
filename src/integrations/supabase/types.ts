@@ -1874,6 +1874,8 @@ export type Database = {
           final_price_per_unit: number | null
           final_quantity: number | null
           id: string
+          initial_price_per_unit: number | null
+          initial_quantity: number | null
           listing_id: string
           negotiation_history: Json
           note: string | null
@@ -1903,6 +1905,8 @@ export type Database = {
           final_price_per_unit?: number | null
           final_quantity?: number | null
           id?: string
+          initial_price_per_unit?: number | null
+          initial_quantity?: number | null
           listing_id: string
           negotiation_history?: Json
           note?: string | null
@@ -1932,6 +1936,8 @@ export type Database = {
           final_price_per_unit?: number | null
           final_quantity?: number | null
           id?: string
+          initial_price_per_unit?: number | null
+          initial_quantity?: number | null
           listing_id?: string
           negotiation_history?: Json
           note?: string | null
@@ -4747,12 +4753,23 @@ export type Database = {
         Args: { p_crop: string; p_quantity: number; p_unit: string }
         Returns: number
       }
+      fn_listing_reserved_qty: {
+        Args: { p_exclude_offer_id?: string; p_listing_id: string }
+        Returns: number
+      }
       fn_match_culinary_crop: { Args: { p_text: string }; Returns: string }
       fn_nutrition_normalize_text: {
         Args: { p_value: string }
         Returns: string
       }
       fn_nutrition_normalize_unit: { Args: { p_unit: string }; Returns: string }
+      fn_offer_effective_item_qty: {
+        Args: {
+          p_listing_id: string
+          p_offer: Database["public"]["Tables"]["offers"]["Row"]
+        }
+        Returns: number
+      }
       fn_recalc_recipe_nutrition_ids: {
         Args: { p_recipe_ids: string[] }
         Returns: undefined
@@ -4902,6 +4919,16 @@ export type Database = {
         Args: { equipment: string[] }
         Returns: boolean
       }
+      listing_stock_summary: {
+        Args: { p_listing_id: string }
+        Returns: {
+          available: number
+          base: number
+          linked_count: number
+          reserved: number
+          using_fallback: boolean
+        }[]
+      }
       normalize_recipe_units: { Args: { p_ingredients: Json }; Returns: Json }
       publish_recipe_draft: {
         Args: { _job_id: string; _lock_token: string; _slug: string }
@@ -4969,6 +4996,8 @@ export type Database = {
           final_price_per_unit: number | null
           final_quantity: number | null
           id: string
+          initial_price_per_unit: number | null
+          initial_quantity: number | null
           listing_id: string
           negotiation_history: Json
           note: string | null
