@@ -16,7 +16,7 @@ done
 docker exec "$CONTAINER" psql -U postgres -d ux1b -Atc 'show server_version;'
 docker exec -i "$CONTAINER" psql -v ON_ERROR_STOP=1 -X -U postgres -d ux1b < "$SCRIPT_DIR/00_fixtures.sql"
 docker exec -i "$CONTAINER" psql -v ON_ERROR_STOP=1 -X -U postgres -d ux1b < "$REPO_ROOT/supabase/migrations/20260917081905_ux1b_atomic_private_recipe_writes.sql"
-docker exec -i "$CONTAINER" psql -v ON_ERROR_STOP=1 -X -U postgres -d ux1b < "$REPO_ROOT/supabase/migrations/20260918090000_ux1b_private_step_photo_preservation.sql"
+docker exec -i "$CONTAINER" psql -v ON_ERROR_STOP=1 -X -U postgres -d ux1b < "$REPO_ROOT/supabase/migrations/20260918091532_ux1b_private_step_photo_preservation.sql"
 docker exec -i "$CONTAINER" psql -v ON_ERROR_STOP=1 -X -U postgres -d ux1b < "$SCRIPT_DIR/02_f0_live_acl_regression.sql"
 docker exec -i "$CONTAINER" psql -v ON_ERROR_STOP=1 -X -U postgres -d ux1b < "$REPO_ROOT/supabase/migrations/20260922124009_f0_testflight_recipe_write_grants.sql"
 docker exec -i "$CONTAINER" psql -v ON_ERROR_STOP=1 -X -U postgres -d ux1b < "$SCRIPT_DIR/03_f0_write_contract_assertions.sql"

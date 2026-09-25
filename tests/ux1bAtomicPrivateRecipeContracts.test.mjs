@@ -121,7 +121,7 @@ test("F0 reconciles broad legacy ACLs to exact authenticated RPC grants", async 
 
 test("UX-1B-M correction binds step photos to the authenticated recipe and canonical update hash", async () => {
   const migration = await read(
-    "../supabase/migrations/20260918090000_ux1b_private_step_photo_preservation.sql",
+    "../supabase/migrations/20260918091532_ux1b_private_step_photo_preservation.sql",
   );
   assert.match(migration, /v_owner uuid := auth\.uid\(\)/);
   assert.match(migration, /app\.supabase_url/);
