@@ -7,6 +7,8 @@ import {
   useUpdateOfferStatus,
   useFarmerOrders,
   useCounterOffer,
+  offerItemCount,
+  MULTI_ITEM_QTY_LOCK_MESSAGE,
   useConfirmTransferReceived,
   useMarkShipped,
   useCancelOrder,
@@ -410,6 +412,7 @@ function CounterModal({
   pending: boolean;
   onSubmit: (patch: { quantity: number; pricePerUnit: number; note?: string }) => void;
 }) {
+  const qtyLocked = offerItemCount(offer) >= 2;
   const [qty, setQty] = useState(offer.quantity);
   const [price, setPrice] = useState(offer.pricePerUnit);
   const [note, setNote] = useState("");
@@ -427,7 +430,11 @@ function CounterModal({
               value={qty}
               onChange={(e) => setQty(Number(e.target.value) || 0)}
               className="font-mono"
+              disabled={qtyLocked}
             />
+            {qtyLocked && (
+              <p className="mt-1 text-xs text-hmuted">{MULTI_ITEM_QTY_LOCK_MESSAGE}</p>
+            )}
           </div>
           <div>
             <label className="text-xs text-hmuted">Birim fiyat (₺/{offer.unit})</label>
@@ -458,7 +465,7 @@ function CounterModal({
           </Button>
           <Button
             onClick={() =>
-              onSubmit({ quantity: qty, pricePerUnit: price, note: note || undefined })
+              onSubmit({ quantity: qtyLocked ? offer.quantity : qty, pricePerUnit: price, note: note || undefined })
             }
             disabled={pending}
             style={{ background: "var(--saffron)", color: "var(--hwhite)" }}

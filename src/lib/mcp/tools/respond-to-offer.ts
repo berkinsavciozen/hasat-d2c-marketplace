@@ -34,7 +34,7 @@ export default defineTool({
   name: "respond_to_offer",
   title: "Respond to buyer's offer",
   description:
-    "SENSITIVE — respond to a buyer's offer on your listing. action='accept' LOCKS the listing's stock via a DB trigger and creates an order; this cannot be reversed via this tool. action='decline' rejects it. action='counter' sends a counter-offer. Requires confirm=true.",
+    "SENSITIVE — respond to a buyer's offer on your listing. action='accept' LOCKS the listing's stock via a DB trigger and creates an order; this cannot be reversed via this tool. action='decline' rejects it. action='counter' sends a counter-offer (çok partili tekliflerde counter_quantity kullanılamaz — yalnız fiyat karşı teklifi). Requires confirm=true.",
   inputSchema: {
     offer_id: z.string().uuid(),
     action: z.enum(["accept", "decline", "counter"]),
@@ -92,6 +92,19 @@ export default defineTool({
       .eq("farmer_id", userId)
       .single();
     if (rErr) return { content: [{ type: "text", text: rErr.message }], isError: true };
+
+    if (input.counter_quantity != null && input.counter_quantity !== Number(current.quantity)) {
+      const { count } = await sb
+        .from("offer_items")
+        .select("id", { count: "exact", head: true })
+        .eq("offer_id", input.offer_id);
+      if ((count ?? 0) >= 2) {
+        return {
+          content: [{ type: "text", text: "Çok partili tekliflerde yalnız fiyat karşı teklifi yapılabilir." }],
+          isError: true,
+        };
+      }
+    }
 
     const snapshot = {
       by: "farmer",
