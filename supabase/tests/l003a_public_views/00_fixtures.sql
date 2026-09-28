@@ -1,4 +1,4 @@
--- L0-03 (a) — SQL test fixtures for 20260928120000_l003a_public_views_hide_deleted_farmers.sql.
+-- L0-03 (a) — SQL test fixtures for 20260928095806_l003a_public_views_hide_deleted_farmers.sql.
 --
 -- Live shapes from 20260917120000_baseline_consolidated_schema_2026-09-17.sql: profiles, parcels and
 -- certifications (columns verbatim, RLS enabled with the owner policies), plus the minimal tables

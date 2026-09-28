@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# L0-03 (a) — SQL test runner for 20260928120000_l003a_public_views_hide_deleted_farmers.sql.
+# L0-03 (a) — SQL test runner for 20260928095806_l003a_public_views_hide_deleted_farmers.sql.
 #
 # FRESH local PostgreSQL database every run (same drop/recreate convention as
 # ord1_order_lifecycle/run.sh): fixtures -> baseline objects extracted VERBATIM from
@@ -18,7 +18,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/../../.." && pwd)"
 MIGRATIONS_DIR="$REPO_ROOT/supabase/migrations"
 BASELINE="$MIGRATIONS_DIR/20260917120000_baseline_consolidated_schema_2026-09-17.sql"
-MIGRATION="$MIGRATIONS_DIR/20260928120000_l003a_public_views_hide_deleted_farmers.sql"
+MIGRATION="$MIGRATIONS_DIR/20260928095806_l003a_public_views_hide_deleted_farmers.sql"
 
 PSQL=(psql -v ON_ERROR_STOP=1 -X -q -o /dev/null)
 
