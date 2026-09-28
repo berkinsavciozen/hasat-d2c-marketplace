@@ -1,5 +1,5 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useOrderGate, OrdersSoonBox } from "@/lib/hasat/order-gate";
+import { useOrderGate, useLogOrderIntentOnce, OrdersSoonBox } from "@/lib/hasat/order-gate";
 import { CheckCircle2, Info } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
@@ -17,6 +17,7 @@ export const Route = createFileRoute("/buyer/payment")({
 
 function Payment() {
   const gate = useOrderGate();
+  useLogOrderIntentOnce(!gate.callerAllowed && !gate.isLoading, { surface: "offer_route" });
   const navigate = useNavigate();
   const pending = useHasat((s) => s.pendingOffer);
   const setPendingOffer = useHasat((s) => s.setPendingOffer);

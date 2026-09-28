@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useOrderGate, OrdersSoonBox } from "@/lib/hasat/order-gate";
+import { useOrderGate, useLogOrderIntentOnce, OrdersSoonBox } from "@/lib/hasat/order-gate";
 import { useState } from "react";
 
 import { FarmerHeader } from "./farmer";
@@ -161,6 +161,10 @@ function OfferCard({ offer }: { offer: Offer }) {
   const isTransferPending =
     offer.status === "accepted" && offer.paymentStatus === "pending_transfer";
   const isTerminal = offer.status === "rejected" || offer.status === "completed";
+  useLogOrderIntentOnce(
+    !gate.isLoading && !gate.callerAllowed && myTurn && !isTerminal && !isPendingPayment,
+    { surface: "offer_route" },
+  );
 
   const onAccept = async () => {
     try {
