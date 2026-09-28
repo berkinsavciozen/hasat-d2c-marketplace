@@ -71,6 +71,7 @@ function monthLabel(m: number | null | undefined): string | null {
 
 function ProducerProfile() {
   const gate = useOrderGate();
+  useLogOrderIntentOnce(!gate.callerAllowed && !gate.isLoading, { surface: "producer" });
   const { id } = Route.useParams();
   const navigate = useNavigate();
   const { data: profile, isLoading: profileLoading } = useFarmerPublicProfile(id);
