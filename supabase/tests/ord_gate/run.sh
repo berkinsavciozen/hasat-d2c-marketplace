@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# ORD-GATE — SQL test runner for 20260928140000_ord_gate_storefront_mode.sql.
+# ORD-GATE — SQL test runner for 20260928170656_ord_gate_storefront_mode.sql.
 #
 # FRESH local PostgreSQL database every build: ORD-1 fixtures (supabase/tests/ord1_order_lifecycle/
 # 00_fixtures.sql, live-shaped + baseline function bodies verbatim) + gate fixtures (00_fixtures.sql) ->
@@ -28,7 +28,7 @@ PREREQS=(
   "20260925172029_ord1a_order_rpcs_and_guard.sql"
   "20260925175120_ord1b_lock_order_writes.sql"
 )
-MIGRATION="20260928140000_ord_gate_storefront_mode.sql"
+MIGRATION="20260928170656_ord_gate_storefront_mode.sql"
 
 PSQL=(psql -v ON_ERROR_STOP=1 -X -q)
 WORK_DIR="$(mktemp -d)"

@@ -1,4 +1,4 @@
--- ORD-GATE — assertion suite for 20260928140000_ord_gate_storefront_mode.sql (G1–G17).
+-- ORD-GATE — assertion suite for 20260928170656_ord_gate_storefront_mode.sql (G1–G17).
 --
 -- Every case runs as the real API role (set role authenticated / anon / service_role) with
 -- request.jwt.claims set the way PostgREST sets it, RLS on. Setup rows are written by the superuser with

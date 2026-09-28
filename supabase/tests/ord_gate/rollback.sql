@@ -1,4 +1,4 @@
--- ORD-GATE — geri alma betiği: 20260928140000_ord_gate_storefront_mode.sql'in eklediği her şeyi kaldırır.
+-- ORD-GATE — geri alma betiği: 20260928170656_ord_gate_storefront_mode.sql'in eklediği her şeyi kaldırır.
 -- CANLIDA ÇALIŞTIRILMAZ. run.sh bunu test veritabanında uygular ve migration'ın ardından yeniden
 -- uygulanabildiğini gösterir. orders_allowlist ve order_intent_events satırları da silinir.
 
