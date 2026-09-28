@@ -1,6 +1,7 @@
 import { createClient } from "@supabase/supabase-js";
 import { defineTool, type ToolContext } from "@lovable.dev/mcp-js";
 import { enforceMcpRateLimit } from "./_rate-limit";
+import { isOrdersDisabled, ordersDisabledResult } from "./_orders-gate";
 import { z } from "zod";
 
 function supabaseForUser(ctx: ToolContext) {
@@ -52,6 +53,7 @@ export default defineTool({
 
     // Kabul + sipariş + timeline tek transaction'da (ORD-1 K1). Sıra/stok/snapshot DB trigger'larında.
     const { data: res, error: aErr } = await (sb.rpc as any)("rpc_accept_offer", { p_offer_id: input.offer_id });
+    if (isOrdersDisabled(aErr)) return ordersDisabledResult();
     if (aErr) return { content: [{ type: "text", text: aErr.message }], isError: true };
     if (!res?.ok) {
       const reason = String(res?.reason ?? "unknown");

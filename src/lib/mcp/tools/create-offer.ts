@@ -1,6 +1,7 @@
 import { createClient } from "@supabase/supabase-js";
 import { defineTool, type ToolContext } from "@lovable.dev/mcp-js";
 import { enforceMcpRateLimit } from "./_rate-limit";
+import { isOrdersDisabled, logOrderIntentBlocked, ordersDisabledResult } from "./_orders-gate";
 import { z } from "zod";
 
 function supabaseForUser(ctx: ToolContext) {
@@ -13,7 +14,8 @@ function supabaseForUser(ctx: ToolContext) {
 export default defineTool({
   name: "create_offer",
   title: "Create offer",
-  description: "Submit a new offer on an active listing as the signed-in buyer.",
+  description:
+    "Submit a new offer on an active listing as the signed-in buyer. While Hasat is in storefront (pilot) mode offers are closed and the tool returns a 'coming soon' message.",
   inputSchema: {
     listing_id: z.string().uuid(),
     quantity: z.number().positive(),
@@ -50,6 +52,10 @@ export default defineTool({
       payment_status: "unpaid",
       status: "pending",
     } as any).select().single();
+    if (isOrdersDisabled(error)) {
+      await logOrderIntentBlocked(sb, listing.id);
+      return ordersDisabledResult();
+    }
     if (error) return { content: [{ type: "text", text: error.message }], isError: true };
 
     // Mirror single-batch offers into offer_items so no offer is ever left
