@@ -4187,7 +4187,7 @@ export type Database = {
           id?: string | null
           name?: string | null
           premium?: boolean | null
-          referral_code?: string | null
+          referral_code?: never
           role?: Database["public"]["Enums"]["user_role"] | null
           tier?: Database["public"]["Enums"]["user_tier"] | null
         }
@@ -4197,7 +4197,7 @@ export type Database = {
           id?: string | null
           name?: string | null
           premium?: boolean | null
-          referral_code?: string | null
+          referral_code?: never
           role?: Database["public"]["Enums"]["user_role"] | null
           tier?: Database["public"]["Enums"]["user_tier"] | null
         }
