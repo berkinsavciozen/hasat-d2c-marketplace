@@ -1,4 +1,5 @@
 import { createFileRoute, Link, notFound, useNavigate } from "@tanstack/react-router";
+import { useOrderGate, useLogOrderIntentOnce, OrdersSoonBox } from "@/lib/hasat/order-gate";
 import { useQuery } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import {
@@ -136,7 +137,10 @@ function PublicStorefront() {
   const { profile, listings, parcels, certs } = data;
   const isBuyer = loggedIn && myProfile?.role === "buyer";
   const isOwnStorefront = myProfile?.id === profile.id;
-  const showSubscribeCTA = isBuyer && !isOwnStorefront;
+  const gate = useOrderGate();
+  const ordersBlocked = isBuyer && !isOwnStorefront && !gate.callerAllowed;
+  useLogOrderIntentOnce(ordersBlocked && !gate.isLoading, { surface: "storefront" });
+  const showSubscribeCTA = isBuyer && !isOwnStorefront && gate.callerAllowed;
   const parcelsWithPhotos = parcels.filter((p: Parcel) => (p.photos ?? []).length > 0);
   const realHeroPhoto =
     parcelsWithPhotos[0]?.photos?.[0] ??
@@ -260,13 +264,14 @@ function PublicStorefront() {
           <h2 className="text-xs font-medium uppercase tracking-wider text-hmuted">
             Aktif Ürünler
           </h2>
+          {ordersBlocked && <OrdersSoonBox />}
           {listings.length === 0 ? (
             <div className="rounded-2xl border border-dashed p-10 text-center text-hmuted">
               Bu üreticinin şu anda aktif ürünü yok.
             </div>
           ) : (
             listings.map((l: Listing) => {
-              const canOffer = isBuyer && !isOwnStorefront;
+              const canOffer = isBuyer && !isOwnStorefront && gate.callerAllowed;
               const handleClick = () => {
                 if (canOffer) {
                   navigate({ to: "/buyer/offer/$listingId", params: { listingId: l.id } });

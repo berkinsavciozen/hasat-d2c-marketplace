@@ -1,4 +1,5 @@
 import { createFileRoute, useNavigate, useRouter } from "@tanstack/react-router";
+import { useOrderGate, OrdersSoonBox } from "@/lib/hasat/order-gate";
 import { ArrowLeft, Copy, Check, Info } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useBuyerOffers, useMarkTransferSent } from "@/lib/hasat/queries";
@@ -21,6 +22,7 @@ function formatIbanDisplay(iban: string): string {
 }
 
 function PayPage() {
+  const gate = useOrderGate();
   const { offerId } = Route.useParams();
   const navigate = useNavigate();
   const router = useRouter();
@@ -235,6 +237,9 @@ function PayPage() {
                 siparişiniz aktif olur.
               </div>
 
+              {!gate.callerAllowed && !isTransferPending ? (
+                <OrdersSoonBox className="mt-3" />
+              ) : (
               <button
                 onClick={markSent}
                 disabled={markTransfer.isPending || isTransferPending}
@@ -247,6 +252,7 @@ function PayPage() {
                     ? "Bildiriliyor…"
                     : "Ödemeyi Havale Ettim"}
               </button>
+              )}
             </>
           )}
         </div>

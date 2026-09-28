@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { useOrderGate, OrdersSoonBox } from "@/lib/hasat/order-gate";
 import { useState } from "react";
 
 import { FarmerHeader } from "./farmer";
@@ -143,6 +144,7 @@ function Empty({ msg }: { msg: string }) {
 }
 
 function OfferCard({ offer }: { offer: Offer }) {
+  const gate = useOrderGate();
   const updateStatus = useUpdateOfferStatus();
   const counterMut = useCounterOffer();
   const confirmTransfer = useConfirmTransferReceived();
@@ -265,7 +267,17 @@ function OfferCard({ offer }: { offer: Offer }) {
         <div className="mt-3 rounded-lg bg-muted/40 p-3 text-xs text-hmuted">
           Alıcı ödemeyi henüz tamamlamadı.
         </div>
-      ) : isTerminal ? null : myTurn ? (
+      ) : isTerminal ? null : myTurn && !gate.callerAllowed ? (
+        <div className="mt-3 space-y-2">
+          <OrdersSoonBox compact />
+          <button
+            onClick={() => setRejectOpen(true)}
+            className="w-full rounded-xl border border-hred/40 py-2.5 text-sm font-medium text-hred hover:bg-hred/5"
+          >
+            Reddet
+          </button>
+        </div>
+      ) : myTurn ? (
         <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-3">
           <button
             onClick={() => setAcceptOpen(true)}

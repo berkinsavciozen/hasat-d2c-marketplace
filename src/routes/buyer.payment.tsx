@@ -1,4 +1,5 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { useOrderGate, OrdersSoonBox } from "@/lib/hasat/order-gate";
 import { CheckCircle2, Info } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
@@ -15,6 +16,7 @@ export const Route = createFileRoute("/buyer/payment")({
 });
 
 function Payment() {
+  const gate = useOrderGate();
   const navigate = useNavigate();
   const pending = useHasat((s) => s.pendingOffer);
   const setPendingOffer = useHasat((s) => s.setPendingOffer);
@@ -248,6 +250,9 @@ function Payment() {
             </TabsContent>
           </Tabs>
         </div>
+        {!gate.callerAllowed ? (
+          <OrdersSoonBox />
+        ) : (
         <Button
           onClick={complete}
           loading={isPending}
@@ -256,6 +261,7 @@ function Payment() {
         >
           Teklifi Gönder
         </Button>
+        )}
         <p className="text-center text-xs text-hmuted">
           Gönderimden sonra üretici onayı beklenecek. Şimdi tahsilat yapılmaz.
         </p>

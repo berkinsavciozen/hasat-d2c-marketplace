@@ -1,4 +1,5 @@
 import { createFileRoute, useNavigate, useRouter, notFound, Link } from "@tanstack/react-router";
+import { useOrderGate, useLogOrderIntentOnce, OrdersSoonBox } from "@/lib/hasat/order-gate";
 import { slugifyFarmer } from "@/lib/hasat/vitrin";
 import { useState } from "react";
 import { ArrowLeft } from "lucide-react";
@@ -26,6 +27,7 @@ export const Route = createFileRoute("/buyer/negotiation/$offerId")({
 const DELIVERY_OPTS = ["Üreticiden Teslim", "Kargo", "Kargo (Alıcı Öder)"] as const;
 
 function Negotiation() {
+  const gate = useOrderGate();
   const { offerId } = Route.useParams();
   const navigate = useNavigate();
   const router = useRouter();
@@ -156,7 +158,9 @@ function Negotiation() {
 
         <OfferBatchBreakdown offerId={offer.id} />
 
-        <div className="fixed inset-x-0 bottom-[calc(56px+max(env(safe-area-inset-bottom),0.5rem))] z-30 grid grid-cols-3 gap-1.5 border-t bg-background p-3 md:static md:border-0 md:bg-transparent md:p-0 md:gap-2">
+        {!gate.callerAllowed && <OrdersSoonBox compact />}
+
+        <div className={`fixed inset-x-0 bottom-[calc(56px+max(env(safe-area-inset-bottom),0.5rem))] z-30 grid ${gate.callerAllowed ? "grid-cols-3" : "grid-cols-1"} gap-1.5 border-t bg-background p-3 md:static md:border-0 md:bg-transparent md:p-0 md:gap-2`}>
           <Button
             variant="outline"
             onClick={reject}
@@ -164,6 +168,7 @@ function Negotiation() {
           >
             Reddet
           </Button>
+          {gate.callerAllowed && (<>
           <Button
             variant="outline"
             onClick={() => setSheetOpen(true)}
@@ -179,6 +184,7 @@ function Negotiation() {
           >
             Kabul Et
           </Button>
+          </>)}
         </div>
       </div>
 

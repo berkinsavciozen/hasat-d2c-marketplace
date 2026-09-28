@@ -1,4 +1,5 @@
 import { createFileRoute, Link, useNavigate, notFound } from "@tanstack/react-router";
+import { useOrderGate, useLogOrderIntentOnce, OrdersSoonBox } from "@/lib/hasat/order-gate";
 import {
   ArrowLeft,
   ChevronDown,
@@ -144,6 +145,8 @@ function BuyerProduct() {
   const [note, setNote] = useState("");
   const [delivery, setDelivery] = useState(DELIVERY_OPTIONS[0].id);
   const [deliveryDate, setDeliveryDate] = useState("");
+  const gate = useOrderGate();
+  useLogOrderIntentOnce(!gate.callerAllowed && !gate.isLoading, { surface: "recipe_product", crop });
 
   if (isLoading)
     return (
@@ -316,6 +319,9 @@ function BuyerProduct() {
               </span>
             </div>
           </div>
+          {!gate.callerAllowed ? (
+            <OrdersSoonBox className="w-full sm:w-auto" />
+          ) : (
           <button
             onClick={submit}
             disabled={items.length === 0 || !deliveryDate}
@@ -323,6 +329,7 @@ function BuyerProduct() {
           >
             Teklif Gönder &amp; Öde →
           </button>
+          )}
         </div>
       </div>
     </div>
