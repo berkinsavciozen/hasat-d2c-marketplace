@@ -1,4 +1,5 @@
 import { createFileRoute, Link, useNavigate, notFound } from "@tanstack/react-router";
+import { useOrderGate, useLogOrderIntentOnce, OrdersSoonBox } from "@/lib/hasat/order-gate";
 import { ArrowLeft } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
@@ -31,6 +32,8 @@ function monthLabel(m: number | null | undefined): string | null {
 }
 
 function SubscriptionPage() {
+  const gate = useOrderGate();
+  useLogOrderIntentOnce(!gate.callerAllowed && !gate.isLoading, { surface: "subscription" });
   const { producerId } = Route.useParams();
   const navigate = useNavigate();
   const { data: profile, isLoading: profileLoading } = useFarmerPublicProfile(producerId);
@@ -201,6 +204,9 @@ function SubscriptionPage() {
           </div>
         )}
 
+        {!gate.callerAllowed ? (
+          <OrdersSoonBox />
+        ) : (
         <button
           onClick={create}
           disabled={createSub.isPending}
@@ -208,6 +214,7 @@ function SubscriptionPage() {
           style={{ background: "var(--gold)", color: "var(--dark)" }}>
           {createSub.isPending ? "Gönderiliyor…" : "Abonelik Talebi Gönder →"}
         </button>
+        )}
       </div>
 
       <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) navigate({ to: "/buyer/subscriptions" }); }}>

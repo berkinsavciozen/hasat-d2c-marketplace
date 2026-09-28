@@ -1,4 +1,5 @@
 import { createFileRoute, Link, useNavigate, notFound } from "@tanstack/react-router";
+import { useOrderGate, useLogOrderIntentOnce, OrdersSoonBox } from "@/lib/hasat/order-gate";
 import { ArrowLeft, CalendarPlus, Image as ImageIcon, MapPin, Star } from "lucide-react";
 import { useEffect, useState } from "react";
 import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Tooltip } from "recharts";
@@ -69,6 +70,8 @@ function monthLabel(m: number | null | undefined): string | null {
 }
 
 function ProducerProfile() {
+  const gate = useOrderGate();
+  useLogOrderIntentOnce(!gate.callerAllowed && !gate.isLoading, { surface: "producer" });
   const { id } = Route.useParams();
   const navigate = useNavigate();
   const { data: profile, isLoading: profileLoading } = useFarmerPublicProfile(id);
@@ -203,6 +206,8 @@ function ProducerProfile() {
             >
               Abonelik ve Teklif için Hasat'a Üye Ol →
             </Link>
+          ) : !gate.callerAllowed ? (
+            <OrdersSoonBox className="mt-4" />
           ) : (
             <button
               onClick={() =>
@@ -306,6 +311,8 @@ function ProducerProfile() {
                         >
                           Üye Ol & Teklif Ver →
                         </Link>
+                      ) : !gate.callerAllowed ? (
+                        <OrdersSoonBox compact className="mt-3" />
                       ) : (
                         <button
                           onClick={() =>

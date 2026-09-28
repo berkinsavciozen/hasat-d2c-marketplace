@@ -1,4 +1,5 @@
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
+import { useOrderGate, useLogOrderIntentOnce, OrdersSoonBox } from "@/lib/hasat/order-gate";
 import { Search, X, MessageSquare, CalendarClock, Bell, FileText, ChefHat } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
@@ -34,6 +35,8 @@ const SORTS = ["Puan", "Fiyat", "Yakınlık", "En Yeni"];
 
 function Discover() {
   const navigate = useNavigate();
+  const gate = useOrderGate();
+  useLogOrderIntentOnce(!gate.callerAllowed && !gate.isLoading, { surface: "discover" });
   const { data: listings = [], isLoading } = useActiveListings();
   const { map: cropMap } = useCropConfigMap();
   const [sort, setSort] = useState("Puan");
@@ -290,6 +293,7 @@ function Discover() {
                       items={g.items}
                       canonicalUnit={canonicalUnit}
                       cropConfig={cfg}
+                      ordersAllowed={gate.callerAllowed}
                       onOpen={() =>
                         g.items.length === 1
                           ? navigate({ to: "/buyer/offer/$listingId", params: { listingId: g.items[0].id } })
@@ -318,7 +322,7 @@ function Discover() {
 
 type ListingRow = ReturnType<typeof useActiveListings>["data"] extends (infer U)[] | undefined ? U : never;
 
-function ListingGroupCard({ items, canonicalUnit, cropConfig, onOpen }: { items: ListingRow[]; canonicalUnit: string; cropConfig: CropConfig | null; onOpen: () => void }) {
+function ListingGroupCard({ items, canonicalUnit, cropConfig, onOpen, ordersAllowed }: { items: ListingRow[]; canonicalUnit: string; cropConfig: CropConfig | null; onOpen: () => void; ordersAllowed: boolean }) {
   // Kanonik birime çevirerek topla (g↔kg). Diğer birimler tek preset olduğu için değişmez.
   const totalAvail = items.reduce(
     (s, l) => s + convertQuantity(Number(l.quantity ?? 0), l.unit, canonicalUnit),
@@ -386,6 +390,9 @@ function ListingGroupCard({ items, canonicalUnit, cropConfig, onOpen }: { items:
         </div>
         <div className="flex items-center justify-between gap-2">
           <CoverageBadge listingId={first.id} crop={first.crop} compact />
+          {!ordersAllowed && items.length === 1 && !soldOut ? (
+            <OrdersSoonBox compact className="shrink-0" />
+          ) : (
           <button
             type="button"
             onClick={onOpen}
@@ -400,6 +407,7 @@ function ListingGroupCard({ items, canonicalUnit, cropConfig, onOpen }: { items:
           >
             {soldOut ? "Tükendi" : (items.length > 1 ? "Partileri Gör →" : "Teklif Ver →")}
           </button>
+          )}
         </div>
       </div>
     </article>

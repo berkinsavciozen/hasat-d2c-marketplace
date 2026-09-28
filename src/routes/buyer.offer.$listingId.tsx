@@ -1,4 +1,5 @@
 import { createFileRoute, Link, useNavigate, notFound } from "@tanstack/react-router";
+import { useOrderGate, useLogOrderIntentOnce, OrdersSoonBox } from "@/lib/hasat/order-gate";
 import { ArrowLeft, Calendar as CalendarIcon, Check } from "lucide-react";
 import { useEffect, useState } from "react";
 import { format } from "date-fns";
@@ -79,6 +80,8 @@ function MakeOffer() {
   const [delivery, setDelivery] = useState(DELIVERY[0].id);
   const [date, setDate] = useState("");
   const [notes, setNotes] = useState("");
+  const gate = useOrderGate();
+  useLogOrderIntentOnce(!gate.callerAllowed && !gate.isLoading, { surface: "offer_route", listingId });
 
   useEffect(() => {
     if (listing) {
@@ -98,6 +101,18 @@ function MakeOffer() {
       </div>
     );
   if (!listing) throw notFound();
+  if (!gate.callerAllowed)
+    return (
+      <div className="mx-auto max-w-xl space-y-4 p-6 md:p-10">
+        <Link
+          to="/buyer/discover"
+          className="inline-flex items-center gap-1.5 text-xs text-hmuted hover:underline"
+        >
+          <ArrowLeft className="h-3.5 w-3.5" /> Keşfet'e dön
+        </Link>
+        <OrdersSoonBox />
+      </div>
+    );
 
   const cfg = findCropConfig(cropMap, listing.crop);
   const { photoUrl, isRepresentative } = resolveListingPhoto(listing.photos, cfg);
