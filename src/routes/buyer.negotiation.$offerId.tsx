@@ -28,6 +28,7 @@ const DELIVERY_OPTS = ["Üreticiden Teslim", "Kargo", "Kargo (Alıcı Öder)"] a
 
 function Negotiation() {
   const gate = useOrderGate();
+  useLogOrderIntentOnce(!gate.callerAllowed && !gate.isLoading, { surface: "offer_route" });
   const { offerId } = Route.useParams();
   const navigate = useNavigate();
   const router = useRouter();

@@ -4,25 +4,16 @@ import { Clock } from "lucide-react";
 import { createElement } from "react";
 import { supabase } from "@/integrations/supabase/client";
 
-/** ORD-GATE (vitrin modu) — sipariş başlatan işlemler sunucuda kapalı olabilir. */
-export const ORDERS_SOON_TEXT = "Siparişler çok yakında";
-export const ORDERS_SOON_SUBTEXT =
-  "Hasat şu an kontrollü pilot aşamasında. Ürünleri inceleyebilir ve 'Talep Et' ile ilgini bildirebilirsin.";
+import {
+  ORDERS_SOON_TEXT,
+  ORDERS_SOON_SUBTEXT,
+  isOrdersDisabledError,
+  resolveOrderGate,
+  type OrderIntentSurface,
+} from "./order-gate-core";
 
-export type OrderIntentSurface =
-  | "storefront"
-  | "discover"
-  | "producer"
-  | "recipe_product"
-  | "offer_route"
-  | "subscription"
-  | "negotiation"
-  | "farmer_offers"
-  | "payment";
-
-export function isOrdersDisabledError(err: unknown): boolean {
-  return (err as { message?: string } | null)?.message === "ORDERS_DISABLED";
-}
+export { ORDERS_SOON_TEXT, ORDERS_SOON_SUBTEXT, isOrdersDisabledError, ORDER_INTENT_SURFACES } from "./order-gate-core";
+export type { OrderIntentSurface } from "./order-gate-core";
 
 function useSessionUserId(): string | null {
   const [uid, setUid] = useState<string | null>(null);
@@ -47,15 +38,10 @@ export function useOrderGate(): { ordersEnabled: boolean; callerAllowed: boolean
     queryFn: async () => {
       const { data, error } = await (supabase.rpc as any)("rpc_get_order_gate");
       if (error) throw error;
-      const d = (data ?? {}) as { ordersEnabled?: boolean; callerAllowed?: boolean };
-      return { ordersEnabled: d.ordersEnabled === true, callerAllowed: d.callerAllowed === true };
+      return data;
     },
   });
-  return {
-    ordersEnabled: q.data?.ordersEnabled ?? false,
-    callerAllowed: q.isSuccess ? q.data.callerAllowed : false,
-    isLoading: q.isLoading,
-  };
+  return { ...resolveOrderGate({ isSuccess: q.isSuccess, data: q.data }), isLoading: q.isLoading };
 }
 
 /** Best-effort olay kaydı; hata yutulur. */

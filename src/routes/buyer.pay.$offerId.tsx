@@ -1,5 +1,5 @@
 import { createFileRoute, useNavigate, useRouter } from "@tanstack/react-router";
-import { useOrderGate, OrdersSoonBox } from "@/lib/hasat/order-gate";
+import { useOrderGate, useLogOrderIntentOnce, OrdersSoonBox } from "@/lib/hasat/order-gate";
 import { ArrowLeft, Copy, Check, Info } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useBuyerOffers, useMarkTransferSent } from "@/lib/hasat/queries";
@@ -23,6 +23,7 @@ function formatIbanDisplay(iban: string): string {
 
 function PayPage() {
   const gate = useOrderGate();
+  useLogOrderIntentOnce(!gate.callerAllowed && !gate.isLoading, { surface: "offer_route" });
   const { offerId } = Route.useParams();
   const navigate = useNavigate();
   const router = useRouter();
