@@ -418,7 +418,7 @@
       {
         "name": "create_offer",
         "title": "Create offer",
-        "description": "Submit a new offer on an active listing as the signed-in buyer.",
+        "description": "Submit a new offer on an active listing as the signed-in buyer. While Hasat is in storefront (pilot) mode offers are closed and the tool returns a 'coming soon' message.",
         "annotations": {
           "readOnlyHint": false,
           "destructiveHint": false,
