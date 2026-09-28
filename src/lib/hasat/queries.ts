@@ -1,4 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { ORDERS_SOON_TEXT, isOrdersDisabledError } from "./order-gate";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import type { Parcel, HarvestEntry, Listing, Offer, Order, OrderStatus, BuyerType } from "./types";
@@ -1185,7 +1186,7 @@ async function insertOfferWithItems(
     p_note: input.note || undefined,
     p_subscription_id: input.subscriptionId ?? undefined,
   });
-  if (error) throw error;
+  if (error) throw orderGateError(error);
   return data;
 }
 
@@ -1282,7 +1283,13 @@ export const ORDER_RPC_MESSAGES: Record<string, string> = {
   not_last_sender: "Yalnız son teklifi gönderen geri çekebilir.",
   no_counter: "Geri çekilecek karşı teklif yok.",
   invalid_evidence_path: "Fotoğraf yüklenemedi, tekrar deneyin.",
+  ORDERS_DISABLED: ORDERS_SOON_TEXT,
 };
+
+/** ORD-GATE: sunucu vitrin modunda ORDERS_DISABLED döner; kullanıcıya "Siparişler çok yakında". */
+function orderGateError<E>(error: E): E | Error {
+  return isOrdersDisabledError(error) ? new Error(ORDERS_SOON_TEXT) : error;
+}
 const ORDER_FORBIDDEN_MESSAGE =
   "Bu işlem için yetkiniz yok ya da sipariş durumu değişti. Sayfayı yenileyin.";
 
@@ -1390,7 +1397,7 @@ export function useCounterOffer() {
         if (String(error.message ?? "").includes("OFFER_MULTI_ITEM_QUANTITY_LOCKED")) {
           throw new Error(MULTI_ITEM_QTY_LOCK_MESSAGE);
         }
-        throw error;
+        throw orderGateError(error);
       }
 
       // Append to offer_messages thread (best effort)
@@ -1432,7 +1439,7 @@ function paymentRpcError(result: PaymentRpcResult | null): Error {
 
 async function callPaymentRpc(fn: "buyer_mark_transfer_sent" | "farmer_confirm_payment_received", offerId: string) {
   const { data, error } = await (supabase.rpc as any)(fn, { p_offer_id: offerId });
-  if (error) throw error;
+  if (error) throw orderGateError(error);
   const result = data as PaymentRpcResult | null;
   if (!result || result.ok === false) throw paymentRpcError(result);
   return result;
@@ -1857,7 +1864,7 @@ export function useCreateSubscription() {
         estimated_qty: input.estimatedQty ?? null,
         // status defaults to 'pending' at DB level
       } as any).select("*").single();
-      if (error) throw error;
+      if (error) throw orderGateError(error);
       return data;
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["mySubscriptions"] }),
