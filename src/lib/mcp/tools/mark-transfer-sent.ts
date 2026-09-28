@@ -1,6 +1,7 @@
 import { createClient } from "@supabase/supabase-js";
 import { defineTool, type ToolContext } from "@lovable.dev/mcp-js";
 import { enforceMcpRateLimit } from "./_rate-limit";
+import { isOrdersDisabled, ordersDisabledResult } from "./_orders-gate";
 import { z } from "zod";
 
 function supabaseForUser(ctx: ToolContext) {
@@ -36,6 +37,7 @@ export default defineTool({
 
     // payment_status yalnız FIN-2 RPC'si ile değişir (doğrudan update OFFERS_PAYMENT_STATUS_CLIENT_WRITE_BLOCKED).
     const { data: res, error } = await (sb.rpc as any)("buyer_mark_transfer_sent", { p_offer_id: order.offer_id });
+    if (isOrdersDisabled(error)) return ordersDisabledResult();
     if (error) return { content: [{ type: "text", text: error.message }], isError: true };
     if (!res?.ok) {
       const reason = String(res?.reason ?? "unknown");

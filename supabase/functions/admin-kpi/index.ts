@@ -51,7 +51,7 @@ Deno.serve(async (req) => {
       farmerActivation, listingOfferRate, farmerSellthrough, farmerVerifiedPct,
       buyerActivation, horecaOrderFrequency, supplyDensity, offerConversion,
       farmerGmv, farmerRetention, buyerAovSegment, buyerGmvRetention,
-      buyerSellerRatio, priceVsMarket, cropDemandHeatmap,
+      buyerSellerRatio, priceVsMarket, cropDemandHeatmap, orderIntentBlocked,
     ] = await Promise.all([
       safe(supabase.from("v_kpi_north_star").select("*").order("month", { ascending: true })),
       safe(supabase.from("v_kpi_dispute_rate").select("*").order("month", { ascending: true })),
@@ -79,6 +79,10 @@ Deno.serve(async (req) => {
       safe(supabase.from("v_kpi_crop_demand_heatmap").select("*")
         .order("requester_count", { ascending: false })
         .order("key_ingredient_recipe_count", { ascending: false })),
+      // ORD-GATE: vitrin modunda engellenen sipariş niyetleri (son 90 gün, günlük).
+      safe(supabase.from("v_kpi_order_intent_blocked").select("*")
+        .gte("day", new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString())
+        .order("day", { ascending: true })),
     ]);
 
     const rows = (orderBase as Array<{ amount: number | string | null }> | null) ?? [];
@@ -111,6 +115,7 @@ Deno.serve(async (req) => {
       buyer_seller_ratio: buyerSellerRatio,
       price_vs_market: priceVsMarket,
       crop_demand_heatmap: cropDemandHeatmap,
+      orderIntentBlocked,
     }), { status: 200, headers: { ...CORS, "content-type": "application/json" } });
   } catch (e) {
     console.error(e);

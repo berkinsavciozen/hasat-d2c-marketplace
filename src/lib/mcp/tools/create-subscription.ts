@@ -2,6 +2,7 @@ import { createClient } from "@supabase/supabase-js";
 import { defineTool, type ToolContext } from "@lovable.dev/mcp-js";
 import { z } from "zod";
 import { enforceMcpRateLimit } from "./_rate-limit";
+import { isOrdersDisabled, logOrderIntentBlocked, ordersDisabledResult } from "./_orders-gate";
 
 function supabaseForUser(ctx: ToolContext) {
   return createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_PUBLISHABLE_KEY!, {
@@ -60,6 +61,10 @@ export default defineTool({
       note: input.note ?? null,
       // status omitted — DB default 'pending' requires farmer approval.
     } as any).select("*").single();
+    if (isOrdersDisabled(error)) {
+      await logOrderIntentBlocked(sb);
+      return ordersDisabledResult();
+    }
     if (error) return { content: [{ type: "text", text: error.message }], isError: true };
     return {
       content: [{ type: "text", text: `Created subscription ${data.id}` }],

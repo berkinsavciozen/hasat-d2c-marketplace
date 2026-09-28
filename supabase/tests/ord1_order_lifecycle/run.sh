@@ -46,6 +46,16 @@ for f in "${MIGRATIONS[@]}"; do
   "${PSQL[@]}" -d "$DB_NAME" -f "$MIGRATIONS_DIR/$f"
 done
 
+# ORD-GATE regression mode (supabase/tests/ord_gate/run.sh sets it): the same assertions with the
+# storefront-mode gate installed and opened. The gate fixtures add the profiles / recipes /
+# harvest_subscriptions tables the gate migration references.
+if [[ "${ORD1_WITH_ORD_GATE:-0}" == "1" ]]; then
+  echo "==> ORD1_WITH_ORD_GATE=1: applying ORD-GATE (20260928140000) with orders_enabled = true"
+  "${PSQL[@]}" -d "$DB_NAME" -f "$REPO_ROOT/supabase/tests/ord_gate/00_fixtures.sql"
+  "${PSQL[@]}" -d "$DB_NAME" -f "$MIGRATIONS_DIR/20260928140000_ord_gate_storefront_mode.sql"
+  "${PSQL[@]}" -d "$DB_NAME" -c "update public.platform_settings set orders_enabled = true where id = 1;"
+fi
+
 echo "==> Running assertions"
 "${PSQL[@]}" -d "$DB_NAME" -f "$SCRIPT_DIR/01_assertions.sql"
 
