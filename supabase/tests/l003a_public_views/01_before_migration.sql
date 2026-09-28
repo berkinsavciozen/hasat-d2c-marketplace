@@ -1,7 +1,8 @@
 -- L0-03 (a) — pre-migration state: farmer B deletes their own account through the real
 -- rpc_delete_own_account (as B, role authenticated, no active listing / open order); the baseline
--- views still leak B's parcel, certification and referral_code. Then the view column lists and
--- anon/authenticated grants are snapshotted for the post-migration comparison.
+-- views still leak B's parcel, certification and referral_code, and anon can WRITE through them
+-- (default-privilege grants + auto-updatable view + BYPASSRLS owner). Then the view column lists and
+-- grants are snapshotted for the post-migration comparison.
 
 begin;
 select set_config('request.jwt.claim.sub', 'b0000000-0000-0000-0000-00000000000b', true);
@@ -33,6 +34,28 @@ select public.l003a_assert(
   (select referral_code = 'HASAT-BBBB' from public.public_farmer_profiles where id = 'b0000000-0000-0000-0000-00000000000b'),
   'pre: baseline public_farmer_profiles leaks deleted farmer B referral_code');
 reset role;
+
+-- The write hole this migration closes: anon renames A's parcel through public_parcel_cards; RLS on
+-- parcels does not apply because the view writes as its BYPASSRLS owner. Rolled back afterwards.
+begin;
+set local role anon;
+do $$
+declare n int;
+begin
+  perform public.l003a_assert(has_table_privilege('anon', 'public.public_parcel_cards', 'UPDATE'),
+    'pre: anon holds UPDATE on public_parcel_cards (default privileges)');
+  update public.public_parcel_cards set name = 'anon yazdı' where id = 'a1000000-0000-0000-0000-00000000000a';
+  get diagnostics n = row_count;
+  perform public.l003a_assert(n = 1, 'pre: anon UPDATE through public_parcel_cards succeeds (the hole)');
+end $$;
+reset role;
+select public.l003a_assert(
+  (select name = 'anon yazdı' from public.parcels where id = 'a1000000-0000-0000-0000-00000000000a'),
+  'pre: anon write reached the parcels table');
+rollback;
+select public.l003a_assert(
+  (select name = 'A Parseli' from public.parcels where id = 'a1000000-0000-0000-0000-00000000000a'),
+  'pre: anon write rolled back');
 
 create table public.l003a_cols_before as
 select table_name::text, column_name::text, ordinal_position::int, data_type::text, udt_name::text

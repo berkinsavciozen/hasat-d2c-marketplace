@@ -7,8 +7,9 @@
 # protect_profile_deleted_at + trigger, rpc_delete_own_account) -> farmer B deletes own account and the
 # pre-fix leak is asserted + view columns/grants snapshotted -> migration applied TWICE (must be
 # re-runnable) -> assertions.
-# Then a mutation check: a fresh database gets a copy of the migration with the public_parcel_cards
-# filter removed, and the "yalnız A'nın parseli" assertion must fail.
+# Then two mutation checks, each on a fresh database with a mutated copy of the migration:
+#   - public_parcel_cards filter removed  -> the "yalnız A'nın parseli" assertion must fail;
+#   - section 5 revoke removed            -> the "anon UPDATE public_parcel_cards -> 42501" assertion must fail.
 # Never run against a real project.
 set -euo pipefail
 
@@ -22,10 +23,12 @@ MIGRATION="$MIGRATIONS_DIR/20260928120000_l003a_public_views_hide_deleted_farmer
 PSQL=(psql -v ON_ERROR_STOP=1 -X -q -o /dev/null)
 
 baseline_objects() {
-  # Pre-fix views, created as the non-superuser table owner (live: the views read as their owner).
+  # Pre-fix views, created as the BYPASSRLS non-superuser owner (live: postgres); they read/write as it.
   echo "set role hasat_owner;"
   sed -n '/^CREATE OR REPLACE VIEW public.public_certifications AS$/,/^   FROM parcels;$/p' "$BASELINE"
   grep -E '^GRANT .* ON TABLE public\.public_(certifications|farmer_profiles|parcel_cards) TO ' "$BASELINE"
+  # Live Supabase default privileges: anon/authenticated hold every table privilege on the views.
+  echo "grant all on public.public_farmer_profiles, public.public_parcel_cards, public.public_certifications to anon, authenticated;"
   echo "reset role;"
   sed -n '/^CREATE OR REPLACE FUNCTION public.protect_profile_deleted_at()$/,/^\$function\$;$/p' "$BASELINE"
   grep -E '^CREATE TRIGGER protect_profile_deleted_at ' "$BASELINE"
@@ -53,20 +56,32 @@ echo "==> Re-applying $(basename "$MIGRATION") (must be re-runnable)"
 echo "==> Running assertions"
 "${PSQL[@]}" -d "$DB_NAME" -f "$SCRIPT_DIR/02_assertions.sql"
 
-echo "==> Mutation check: public_parcel_cards filter removed -> assertions must fail"
 MUTANT="$(mktemp)"
 trap 'rm -f "$MUTANT"' EXIT
+
+# mutation_check <label> <expected assertion message> <sed script> <grep pattern that must vanish>
+mutation_check() {
+  local label="$1" expected="$2" script="$3" target="$4" out
+  echo "==> Mutation check: $label -> assertions must fail"
+  [ "$(grep -c "$target" "$MIGRATION")" -ge 1 ] || { echo "mutation target not found"; exit 1; }
+  sed "$script" "$MIGRATION" > "$MUTANT"
+  if grep -q "$target" "$MUTANT"; then echo "mutation not applied"; exit 1; fi
+  prepare_db
+  "${PSQL[@]}" -d "$DB_NAME" -f "$MUTANT"
+  if out="$("${PSQL[@]}" -d "$DB_NAME" -f "$SCRIPT_DIR/02_assertions.sql" 2>&1)"; then
+    echo "mutation survived: assertions passed ($label)"; exit 1
+  fi
+  echo "$out" | grep -q "L003A: $expected" || { echo "$out"; echo "mutant failed for the wrong reason"; exit 1; }
+  echo "    mutant killed: $(echo "$out" | grep -o "L003A: .*")"
+}
+
 FILTER='^where exists (select 1 from public.profiles pr where pr.id = pc.farmer_id and pr.deleted_at is null);$'
-[ "$(grep -c "$FILTER" "$MIGRATION")" -eq 1 ] || { echo "mutation target not found"; exit 1; }
-sed "s/$FILTER/;/" "$MIGRATION" > "$MUTANT"
-! grep -q "$FILTER" "$MUTANT"
-prepare_db
-"${PSQL[@]}" -d "$DB_NAME" -f "$MUTANT"
-if OUT="$("${PSQL[@]}" -d "$DB_NAME" -f "$SCRIPT_DIR/02_assertions.sql" 2>&1)"; then
-  echo "mutation survived: assertions passed without the parcel filter"; exit 1
-fi
-echo "$OUT" | grep -q "L003A: public_parcel_cards: yalnız A'nın parseli" || { echo "$OUT"; echo "mutant failed for the wrong reason"; exit 1; }
-echo "    mutant killed: $(echo "$OUT" | grep -o "L003A: .*")"
+mutation_check "public_parcel_cards filter removed" \
+  "public_parcel_cards: yalnız A'nın parseli" "s/$FILTER/;/" "$FILTER"
+
+REVOKE='^revoke insert, update, delete, truncate$'
+mutation_check "write revoke removed" \
+  "anon UPDATE public_parcel_cards -> 42501" "/$REVOKE/,/^  from public, anon, authenticated;\$/d" "$REVOKE"
 
 dropdb --if-exists "$DB_NAME"
 echo "==> l003a_public_views SQL test suite: PASSED"

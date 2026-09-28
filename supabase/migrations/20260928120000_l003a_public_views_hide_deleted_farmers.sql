@@ -5,15 +5,16 @@
 -- anon'a açık ve deleted_at filtresi yoktu; silinmiş çiftçinin parselleri (ad, location_label,
 -- parcel_photo_urls), sertifikaları ve referral_code'u vitrinde kalıyordu.
 --
--- Kapsam: yalnız satır filtresi (public_farmer_profiles'ta referral_code maskesi). Kolon adları,
--- sırası ve tipleri baseline (20260917120000) ile birebir aynı; grant'lere dokunulmaz, istemci
--- tipleri değişmez.
+-- Kapsam: satır filtresi (public_farmer_profiles'ta referral_code maskesi) ve view'lar üzerinden
+-- yazmanın kapatılması. Kolon adları, sırası ve tipleri baseline (20260917120000) ile birebir aynı;
+-- istemci tipleri değişmez. SELECT grant'leri korunur; anon/authenticated yazma grant'leri geri
+-- alınır (bkz. bölüm 5). service_role'e dokunulmaz.
 --
 -- Bilinçli SECURITY DEFINER: profiles, parcels ve certifications RLS'li; security_invoker anon
 -- vitrinini (/s/:slug, ürün sayfası, sitemap) boşaltır. Advisor'ın SECURITY DEFINER view uyarısı
 -- bu yüzden kalıyor. security_invoker EKLENMEZ.
 --
--- Tekrar çalıştırılabilir: create or replace view + comment on view.
+-- Tekrar çalıştırılabilir: create or replace view + comment on view + revoke (idempotent).
 
 -- ---------------------------------------------------------------------------------------------
 -- 1. public_farmer_profiles — satırlar kalır (alıcının sipariş geçmişi silinmiş çiftçinin anonim
@@ -71,3 +72,14 @@ comment on view public.public_parcel_cards is
   'Anon vitrin projeksiyonu. Bilinçli SECURITY DEFINER (alttaki tablolar RLS''li); silinmiş çiftçi (profiles.deleted_at) filtrelenir. L0-03 (a), 2026-09-28.';
 comment on view public.public_certifications is
   'Anon vitrin projeksiyonu. Bilinçli SECURITY DEFINER (alttaki tablolar RLS''li); silinmiş çiftçi (profiles.deleted_at) filtrelenir. L0-03 (a), 2026-09-28.';
+
+-- ---------------------------------------------------------------------------------------------
+-- 5. Yazma yetkisinin kapatılması. Supabase default privileges anon/authenticated'a bu view'larda
+--    INSERT/UPDATE/DELETE/TRUNCATE vermiş. View'lar otomatik güncellenebilir ve owner RLS'i
+--    atladığı için view üzerinden yazma alttaki tablonun RLS'ine takılmıyordu (anon parsel
+--    silebiliyor, profil tier/ad değiştirebiliyor, doğrulanmış sertifika ekleyebiliyordu).
+--    SELECT grant'leri ve service_role aynen kalır.
+-- ---------------------------------------------------------------------------------------------
+revoke insert, update, delete, truncate
+  on public.public_farmer_profiles, public.public_parcel_cards, public.public_certifications
+  from public, anon, authenticated;

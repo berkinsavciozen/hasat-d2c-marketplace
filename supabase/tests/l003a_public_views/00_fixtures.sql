@@ -2,11 +2,12 @@
 --
 -- Live shapes from 20260917120000_baseline_consolidated_schema_2026-09-17.sql: profiles, parcels and
 -- certifications (columns verbatim, RLS enabled with the owner policies), plus the minimal tables
--- rpc_delete_own_account touches. Tables are owned by a NON-superuser role (hasat_owner) so the
--- SECURITY DEFINER views behave as live: they read as the table owner and bypass RLS, while anon
--- reading the tables directly sees nothing. run.sh then installs, extracted VERBATIM from the
--- baseline file, the three pre-fix views (as hasat_owner), their grants, protect_profile_deleted_at
--- with its trigger, and rpc_delete_own_account.
+-- rpc_delete_own_account touches. Tables and views are owned by a NON-superuser BYPASSRLS role
+-- (hasat_owner, like live `postgres`) so the SECURITY DEFINER views behave as live: they read and
+-- write as the owner and bypass RLS, while anon reading the tables directly sees nothing. run.sh
+-- then installs, extracted VERBATIM from the baseline file, the three pre-fix views (as hasat_owner),
+-- their grants, protect_profile_deleted_at with its trigger, and rpc_delete_own_account, then
+-- `grant all` on the three views to anon/authenticated (live Supabase default privileges).
 --
 -- Run via supabase/tests/l003a_public_views/run.sh — never against a real project.
 
@@ -22,7 +23,7 @@ begin
     create role service_role nologin noinherit bypassrls;
   end if;
   if not exists (select 1 from pg_roles where rolname = 'hasat_owner') then
-    create role hasat_owner nologin noinherit nobypassrls;
+    create role hasat_owner nologin noinherit bypassrls;
   end if;
 end;
 $$;
