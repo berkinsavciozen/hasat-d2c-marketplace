@@ -138,7 +138,7 @@ function PublicStorefront() {
   const isBuyer = loggedIn && myProfile?.role === "buyer";
   const isOwnStorefront = myProfile?.id === profile.id;
   const gate = useOrderGate();
-  const ordersBlocked = isBuyer && !isOwnStorefront && !gate.callerAllowed;
+  const ordersBlocked = !!isBuyer && !isOwnStorefront && !gate.callerAllowed;
   useLogOrderIntentOnce(ordersBlocked && !gate.isLoading, { surface: "storefront" });
   const showSubscribeCTA = isBuyer && !isOwnStorefront && gate.callerAllowed;
   const parcelsWithPhotos = parcels.filter((p: Parcel) => (p.photos ?? []).length > 0);
