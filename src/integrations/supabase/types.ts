@@ -2027,6 +2027,89 @@ export type Database = {
           },
         ]
       }
+      order_intent_events: {
+        Row: {
+          created_at: string
+          crop: string | null
+          id: number
+          listing_id: string | null
+          platform: string
+          recipe_id: string | null
+          surface: string
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          crop?: string | null
+          id?: never
+          listing_id?: string | null
+          platform: string
+          recipe_id?: string | null
+          surface: string
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          crop?: string | null
+          id?: never
+          listing_id?: string | null
+          platform?: string
+          recipe_id?: string | null
+          surface?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "order_intent_events_listing_id_fkey"
+            columns: ["listing_id"]
+            isOneToOne: false
+            referencedRelation: "listings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "order_intent_events_recipe_id_fkey"
+            columns: ["recipe_id"]
+            isOneToOne: false
+            referencedRelation: "admin_recipe_quality_overview"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "order_intent_events_recipe_id_fkey"
+            columns: ["recipe_id"]
+            isOneToOne: false
+            referencedRelation: "recipes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "order_intent_events_recipe_id_fkey"
+            columns: ["recipe_id"]
+            isOneToOne: false
+            referencedRelation: "v_kpi_recipe_funnel_by_recipe"
+            referencedColumns: ["recipe_id"]
+          },
+          {
+            foreignKeyName: "order_intent_events_recipe_id_fkey"
+            columns: ["recipe_id"]
+            isOneToOne: false
+            referencedRelation: "v_recipe_coverage"
+            referencedColumns: ["recipe_id"]
+          },
+          {
+            foreignKeyName: "order_intent_events_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "order_intent_events_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "public_farmer_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       order_timeline: {
         Row: {
           completed_at: string | null
@@ -2153,6 +2236,39 @@ export type Database = {
           },
         ]
       }
+      orders_allowlist: {
+        Row: {
+          added_at: string
+          note: string | null
+          user_id: string
+        }
+        Insert: {
+          added_at?: string
+          note?: string | null
+          user_id: string
+        }
+        Update: {
+          added_at?: string
+          note?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "orders_allowlist_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "orders_allowlist_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "public_farmer_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       parcels: {
         Row: {
           area: number
@@ -2266,6 +2382,7 @@ export type Database = {
           commercial_terms_version: string
           commission_rate_bps: number
           id: number
+          orders_enabled: boolean
           payment_mode: string
           platform_collects_payment: boolean
           seller_payout_mode: string
@@ -2275,6 +2392,7 @@ export type Database = {
           commercial_terms_version?: string
           commission_rate_bps?: number
           id?: number
+          orders_enabled?: boolean
           payment_mode?: string
           platform_collects_payment?: boolean
           seller_payout_mode?: string
@@ -2284,6 +2402,7 @@ export type Database = {
           commercial_terms_version?: string
           commission_rate_bps?: number
           id?: number
+          orders_enabled?: boolean
           payment_mode?: string
           platform_collects_payment?: boolean
           seller_payout_mode?: string
@@ -4481,6 +4600,17 @@ export type Database = {
           },
         ]
       }
+      v_kpi_order_intent_blocked: {
+        Row: {
+          crop: string | null
+          day: string | null
+          events: number | null
+          platform: string | null
+          surface: string | null
+          users: number | null
+        }
+        Relationships: []
+      }
       v_kpi_price_vs_market: {
         Row: {
           crop: string | null
@@ -4749,6 +4879,10 @@ export type Database = {
           visibility: string
         }[]
       }
+      fn_assert_orders_open: {
+        Args: { p_actor: string; p_counterparty: string }
+        Returns: undefined
+      }
       fn_culinary_to_canonical: {
         Args: { p_crop: string; p_quantity: number; p_unit: string }
         Returns: number
@@ -4769,6 +4903,11 @@ export type Database = {
           p_offer: Database["public"]["Tables"]["offers"]["Row"]
         }
         Returns: number
+      }
+      fn_orders_is_service: { Args: never; Returns: boolean }
+      fn_orders_open_for: {
+        Args: { p_actor: string; p_counterparty: string }
+        Returns: boolean
       }
       fn_recalc_recipe_nutrition_ids: {
         Args: { p_recipe_ids: string[] }
@@ -5045,6 +5184,7 @@ export type Database = {
         Returns: Json
       }
       rpc_delete_own_account: { Args: never; Returns: undefined }
+      rpc_get_order_gate: { Args: never; Returns: Json }
       rpc_get_private_recipe_operation: {
         Args: {
           p_input_hash: string
@@ -5055,6 +5195,16 @@ export type Database = {
       }
       rpc_list_recipe_share_grants: {
         Args: { p_recipe_id?: string }
+        Returns: Json
+      }
+      rpc_log_order_intent_blocked: {
+        Args: {
+          p_crop?: string
+          p_listing_id?: string
+          p_platform: string
+          p_recipe_id?: string
+          p_surface: string
+        }
         Returns: Json
       }
       rpc_mark_order_shipped: {
