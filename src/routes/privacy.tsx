@@ -28,7 +28,7 @@ function PrivacyPage() {
       <article className="mx-auto max-w-3xl px-4 py-12 space-y-8">
         <div>
           <h1 className="font-serif text-4xl mb-2 text-foreground">Gizlilik Politikası</h1>
-          <p className="text-xs text-foreground/60">Son güncelleme: 8 Temmuz 2026</p>
+          <p className="text-xs text-foreground/60">Son güncelleme: 28 Eylül 2026</p>
         </div>
 
         <p className="text-sm text-foreground/80 leading-relaxed">
@@ -44,7 +44,7 @@ function PrivacyPage() {
             <li><strong className="text-foreground">Ad, şehir</strong> — profil oluşturmak için.</li>
             <li><strong className="text-foreground">Parsel ve ürün bilgileri</strong> — çiftçilerin ilan ve günlük kayıtları.</li>
             <li><strong className="text-foreground">Mesaj ve teklif geçmişi</strong> — pazarlık ve ihtilaf çözümü için.</li>
-            <li><strong className="text-foreground">Ödeme bilgileri</strong> — IBAN yalnızca çiftçi ödemeleri için saklanır.</li>
+            <li><strong className="text-foreground">Ödeme bilgileri</strong> — Çiftçinin IBAN'ı, onaylanan sipariş için yalnız ilgili alıcıya gösterilir. Hasat ödemeyi tahsil etmez; ödeme alıcıdan çiftçiye doğrudan banka havalesiyle yapılır.</li>
             <li><strong className="text-foreground">Fotoğraflar</strong> — tarla günlüğü ve ürün ilan görselleri.</li>
           </ul>
         </section>
@@ -74,7 +74,7 @@ function PrivacyPage() {
             <strong className="text-foreground">Supabase</strong> altyapısında saklanır.
             Supabase, PostgreSQL tabanlı ve endüstri standardı güvenlik önlemlerine
             (şifreleme, erişim kontrolü, RLS politikaları) sahip bir platformdur.
-            Veriler AB veri merkezlerinde barındırılır.
+            Veriler Supabase'in Japonya (Tokyo) bölgesindeki veri merkezlerinde barındırılır.
           </p>
         </section>
 
@@ -92,8 +92,9 @@ function PrivacyPage() {
         <section>
           <h2 className="font-serif text-2xl mb-3 text-foreground">5. Diğer Üçüncü Taraflar</h2>
           <ul className="space-y-2 text-sm text-foreground/80 leading-relaxed list-disc pl-5">
-            <li><strong className="text-foreground">Lovable AI Gateway</strong> — WhatsApp asistanı ve içerik üretimi için AI çağrıları.</li>
-            <li><strong className="text-foreground">Ödeme sağlayıcı</strong> — tahsilat ve IBAN aktarımı için.</li>
+            <li><strong className="text-foreground">Lovable AI Gateway ve Google (Gemini)</strong> — tarif çıkarma, WhatsApp asistanı ve görsel üretimi için yapay zekâ çağrıları.</li>
+            <li><strong className="text-foreground">Sentry</strong> — uygulama hatalarının izlenmesi için teknik hata kayıtları.</li>
+            <li><strong className="text-foreground">Expo</strong> — mobil uygulama bildirimlerinin iletilmesi için cihaz bildirim anahtarı.</li>
           </ul>
         </section>
 
