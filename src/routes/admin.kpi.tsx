@@ -80,6 +80,17 @@ type KpiResponse = {
   buyer_seller_ratio: BuyerSellerRatioRow[] | null;
   price_vs_market: PriceVsMarketRow[] | null;
   crop_demand_heatmap: CropDemandHeatmapRow[] | null;
+  orderIntentBlocked?: OrderIntentBlockedRow[] | null;
+};
+
+// ORD-GATE — v_kpi_order_intent_blocked (gün × surface × platform × crop).
+type OrderIntentBlockedRow = {
+  day: string;
+  surface: string;
+  platform: string;
+  crop: string | null;
+  events: number;
+  users: number;
 };
 
 const SEGMENT_LABELS: Record<string, string> = {
@@ -215,6 +226,7 @@ function AdminKpiPage() {
         </nav>
 
         {tab === "genel" && <GenelTab d={d} />}
+        {tab === "genel" && <OrderIntentBlockedSection rows={d.orderIntentBlocked} />}
         {tab === "ciftci" && <CiftciTab d={d} />}
         {tab === "alici" && <AliciTab d={d} />}
         {tab === "platform" && <PlatformTab d={d} />}
@@ -677,4 +689,66 @@ function mergeByMonth(a: DisputeRow[], b: FullAccRow[]) {
     map.set(r.month, existing);
   }
   return Array.from(map.values()).sort((x, y) => x.month.localeCompare(y.month));
+}
+
+const SURFACE_LABELS: Record<string, string> = {
+  storefront: "Vitrin",
+  discover: "Keşfet",
+  producer: "Üretici profili",
+  recipe_product: "Tariften ürün",
+  offer_route: "Teklif / ödeme ekranı",
+  subscription: "Abonelik",
+  mcp: "MCP",
+};
+
+function OrderIntentBlockedSection({ rows }: { rows: OrderIntentBlockedRow[] | null | undefined }) {
+  const list = Array.isArray(rows) ? rows : [];
+  const totalEvents = list.reduce((s, r) => s + (Number(r.events) || 0), 0);
+  const bySurface = new Map<string, number>();
+  for (const r of list) bySurface.set(r.surface, (bySurface.get(r.surface) ?? 0) + (Number(r.events) || 0));
+  const surfaces = [...bySurface.entries()].sort((a, b) => b[1] - a[1]);
+  const recent = [...list].sort((a, b) => String(b.day).localeCompare(String(a.day))).slice(0, 20);
+
+  return (
+    <SectionCard title="Vitrin modu — engellenen sipariş niyeti">
+      {list.length === 0 ? (
+        <div className="py-6 text-center text-sm text-hmuted">Henüz engellenen sipariş niyeti kaydı yok.</div>
+      ) : (
+        <div className="space-y-4">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+            <StatCard label="Toplam engellenen niyet" value={totalEvents} accent="saffron" />
+            {surfaces.slice(0, 2).map(([s, n]) => (
+              <StatCard key={s} label={SURFACE_LABELS[s] ?? s} value={n} accent="gold" />
+            ))}
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead className="text-xs text-hmuted">
+                <tr className="border-b">
+                  <th className="text-left py-2 pr-3">Gün</th>
+                  <th className="text-left py-2 px-3">Ekran</th>
+                  <th className="text-left py-2 px-3">Platform</th>
+                  <th className="text-left py-2 px-3">Ürün</th>
+                  <th className="text-right py-2 px-3">Olay</th>
+                  <th className="text-right py-2 pl-3">Kullanıcı</th>
+                </tr>
+              </thead>
+              <tbody>
+                {recent.map((r, i) => (
+                  <tr key={`${r.day}-${r.surface}-${r.platform}-${r.crop}-${i}`} className="border-b last:border-0">
+                    <td className="py-2 pr-3 tabular-nums">{String(r.day).slice(0, 10)}</td>
+                    <td className="py-2 px-3">{SURFACE_LABELS[r.surface] ?? r.surface}</td>
+                    <td className="py-2 px-3">{r.platform}</td>
+                    <td className="py-2 px-3">{r.crop ?? "—"}</td>
+                    <td className="py-2 px-3 text-right tabular-nums">{r.events}</td>
+                    <td className="py-2 pl-3 text-right tabular-nums">{r.users}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+    </SectionCard>
+  );
 }
