@@ -225,6 +225,7 @@ export function useAIChat(opts: { userId: string | null; pathname: string; profi
 
       if (!res.ok || !res.body) {
         const j = await res.json().catch(() => ({} as any));
+        if (j.error === "limit") { setLimitReached(true); throw new Error("Bu ayki mesaj limitine ulaştın."); }
         if (j.error === "credits_exhausted") throw new Error("Krediler tükendi. Lütfen daha sonra tekrar deneyin.");
         if (j.error === "rate_limited") throw new Error("Çok fazla istek. Bir dakika sonra tekrar deneyin.");
         throw new Error("Bir sorun oluştu, tekrar deneyin.");
@@ -265,8 +266,8 @@ export function useAIChat(opts: { userId: string | null; pathname: string; profi
       const parsed = parseAssistantContent(assistantText);
       setMessages((m) => m.map((x) => x.id === asstId ? { ...x, content: parsed.visibleText, journal: parsed.journal, streaming: false } : x));
 
-      const { data: newCount } = await supabase.rpc("increment_ai_usage", { _user_id: userId });
-      if (typeof newCount === "number") setUsageCount(newCount);
+      // Usage is incremented server-side by ai-chat-stream (SEC-EDGE); only refresh the counter here.
+      await loadUsage();
     } catch (e: any) {
       setError(e?.message ?? "Bir sorun oluştu, tekrar deneyin.");
       // Remove streaming placeholder
@@ -275,7 +276,7 @@ export function useAIChat(opts: { userId: string | null; pathname: string; profi
       setSending(false);
       abortRef.current = null;
     }
-  }, [userId, sessionId, profile, pathname, sending, messages]);
+  }, [userId, sessionId, profile, pathname, sending, messages, loadUsage]);
 
   useEffect(() => () => { abortRef.current?.abort(); }, []);
 
