@@ -10,7 +10,7 @@ set -euo pipefail
 DB_NAME="${SEC_EDGE_DISPATCH_SMS_TEST_DB:-hasat_sec_edge_dispatch_sms_test}"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/../../.." && pwd)"
-MIGRATION="$REPO_ROOT/supabase/migrations/20260929120000_sec_edge_dispatch_sms_hmac.sql"
+MIGRATION="$REPO_ROOT/supabase/migrations/20260929085543_sec_edge_dispatch_sms_hmac.sql"
 SECRET="local-sec-edge-test-secret-$(date +%s)-0123456789abcdef"
 CAPTURE="$(mktemp)"
 trap 'rm -f "$CAPTURE"' EXIT
