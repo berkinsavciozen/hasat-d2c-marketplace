@@ -55,7 +55,7 @@ function TermsPage() {
 
         <section>
           <h2 className="font-serif text-2xl mb-3 text-foreground">2. Komisyon</h2>
-          <p className="text-sm text-foreground/80 leading-relaxed">
+          <p className="mb-3 text-sm text-foreground/80 leading-relaxed">
             <strong className="text-foreground">Bu bölüm, siparişler açıldığında geçerli olacaktır.</strong>
           </p>
           <p className="text-sm text-foreground/80 leading-relaxed">
@@ -92,7 +92,7 @@ function TermsPage() {
 
         <section>
           <h2 className="font-serif text-2xl mb-3 text-foreground">5. Ödeme ve İade</h2>
-          <p className="text-sm text-foreground/80 leading-relaxed">
+          <p className="mb-3 text-sm text-foreground/80 leading-relaxed">
             <strong className="text-foreground">Bu bölüm, siparişler açıldığında geçerli olacaktır.</strong>
           </p>
           <p className="text-sm text-foreground/80 leading-relaxed">
