@@ -1,11 +1,12 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { BrandLogo } from "@/components/hasat/BrandLogo";
+import { HASAT_SUPPORT_EMAIL } from "@/lib/hasat/constants";
 
 export const Route = createFileRoute("/terms")({
   head: () => ({
     meta: [
       { title: "Kullanım Koşulları — Hasat" },
-      { name: "description", content: "Hasat platformu kullanım koşulları: komisyon, çiftçi ve alıcı sorumlulukları, ihtilaf çözümü." },
+      { name: "description", content: "Hasat platformu kullanım koşulları: kontrollü pilot, çiftçi ve alıcı sorumlulukları, ihtilaf çözümü." },
       { property: "og:title", content: "Kullanım Koşulları — Hasat" },
       { property: "og:description", content: "Hasat platformu kullanım koşulları." },
     ],
@@ -28,7 +29,7 @@ function TermsPage() {
       <article className="mx-auto max-w-3xl px-4 py-12 space-y-8">
         <div>
           <h1 className="font-serif text-4xl mb-2 text-foreground">Kullanım Koşulları</h1>
-          <p className="text-xs text-foreground/60">Son güncelleme: 8 Temmuz 2026</p>
+          <p className="text-xs text-foreground/60">Son güncelleme: 29 Eylül 2026</p>
         </div>
 
         <p className="text-sm text-foreground/80 leading-relaxed">
@@ -44,10 +45,19 @@ function TermsPage() {
             bir tarım pazar yeridir. Hasat, satıcı veya alıcı değildir; taraflar
             arasındaki ticareti kolaylaştıran bir aracı platformdur.
           </p>
+          <p className="mt-3 text-sm text-foreground/80 leading-relaxed">
+            Kontrollü pilot (vitrin) dönemi: Bu dönemde Hasat vitrin modunda çalışır. Ürünler ve
+            üreticiler incelenebilir, 'Talep Et' ile ürün talebi iletilebilir; teklif, sipariş ve
+            ödeme işlemleri henüz açık değildir. Siparişler açıldığında bu koşullar güncellenir ve
+            kullanıcılara bildirilir.
+          </p>
         </section>
 
         <section>
           <h2 className="font-serif text-2xl mb-3 text-foreground">2. Komisyon</h2>
+          <p className="text-sm text-foreground/80 leading-relaxed">
+            <strong className="text-foreground">Bu bölüm, siparişler açıldığında geçerli olacaktır.</strong>
+          </p>
           <p className="text-sm text-foreground/80 leading-relaxed">
             Kontrollü pilot süresince Hasat, platform üzerinden gerçekleştirilen
             satışlardan herhangi bir komisyon almaz. Alıcı, anlaşılan sipariş
@@ -82,6 +92,9 @@ function TermsPage() {
 
         <section>
           <h2 className="font-serif text-2xl mb-3 text-foreground">5. Ödeme ve İade</h2>
+          <p className="text-sm text-foreground/80 leading-relaxed">
+            <strong className="text-foreground">Bu bölüm, siparişler açıldığında geçerli olacaktır.</strong>
+          </p>
           <p className="text-sm text-foreground/80 leading-relaxed">
             Kontrollü pilot süresince ödemeler, alıcı tarafından doğrudan çiftçinin
             IBAN'ına banka havalesiyle yapılır; Hasat ödemeyi tahsil etmez, elinde
@@ -143,7 +156,7 @@ function TermsPage() {
           <h2 className="font-serif text-2xl mb-3 text-foreground">9. Değişiklikler</h2>
           <p className="text-sm text-foreground/80 leading-relaxed">
             Bu koşullar zaman zaman güncellenebilir. Önemli değişiklikler kullanıcılara
-            SMS veya WhatsApp ile bildirilir. Güncellemeden sonra platformu kullanmaya
+            SMS ile bildirilir. Güncellemeden sonra platformu kullanmaya
             devam etmek, yeni koşulların kabulü anlamına gelir.
           </p>
         </section>
@@ -151,7 +164,9 @@ function TermsPage() {
         <section>
           <h2 className="font-serif text-2xl mb-3 text-foreground">10. İletişim</h2>
           <p className="text-sm text-foreground/80 leading-relaxed">
-            Sorularınız için WhatsApp destek hattımızdan bize ulaşabilirsiniz.
+            Sorularınız için{" "}
+            <a href={`mailto:${HASAT_SUPPORT_EMAIL}`} className="underline">{HASAT_SUPPORT_EMAIL}</a>{" "}
+            adresinden bize ulaşabilirsiniz.
           </p>
         </section>
 
