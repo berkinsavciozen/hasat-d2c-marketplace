@@ -2585,6 +2585,7 @@ export type Database = {
           deleted_at: string | null
           iban: string | null
           id: string
+          is_test_account: boolean
           name: string | null
           phone: string | null
           premium: boolean
@@ -2603,6 +2604,7 @@ export type Database = {
           deleted_at?: string | null
           iban?: string | null
           id: string
+          is_test_account?: boolean
           name?: string | null
           phone?: string | null
           premium?: boolean
@@ -2621,6 +2623,7 @@ export type Database = {
           deleted_at?: string | null
           iban?: string | null
           id?: string
+          is_test_account?: boolean
           name?: string | null
           phone?: string | null
           premium?: boolean
