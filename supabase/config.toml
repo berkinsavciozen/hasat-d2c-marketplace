@@ -1,7 +1,11 @@
 project_id = "efuqpiaavrzimvstpdpm"
 
+# Server-to-server only (SEC-EDGE). public.dispatch_sms signs the raw body with the L0-02B Vault
+# secret (notify_admin_ingress_hmac = NOTIFY_ADMIN_INGRESS_SECRET, "send-sms." domain prefix); the
+# handler verifies that HMAC and a five-minute timestamp before any lookup or Twilio call. The anon
+# JWT no longer grants access, so the platform JWT gate is disabled like notify-admin.
 [functions.send-sms]
-verify_jwt = true
+verify_jwt = false
 
 # Server-to-server only. The platform JWT gate is intentionally disabled because the database
 # signs the raw body with NOTIFY_ADMIN_INGRESS_SECRET; notify-admin verifies that HMAC and a
@@ -10,6 +14,7 @@ verify_jwt = true
 [functions.notify-admin]
 verify_jwt = false
 
+# Decommissioned 2026-09-29: the function is a 410 stub (no DB/AI/Twilio, no secrets).
 [functions.whatsapp-ai-webhook]
 verify_jwt = false
 
@@ -24,9 +29,6 @@ verify_jwt = false
 
 [functions.recipe-stage-image]
 static_files = [ "./functions/_shared/recipe-automation/image/vendor/*" ]
-
-[functions.legacy-recipe-image-backfill]
-verify_jwt = false
 
 [functions.extract-recipe]
 verify_jwt = true
