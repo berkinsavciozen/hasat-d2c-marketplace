@@ -30,7 +30,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { BrandLogo } from "@/components/hasat/BrandLogo";
 import { submitContactInquiry } from "@/lib/api/indoor-interest.functions";
-import { HASAT_WHATSAPP_NUMBER, PUBLIC_BASE_URL } from "@/lib/hasat/constants";
+import { PUBLIC_BASE_URL } from "@/lib/hasat/constants";
 import {
   CONTACT_OPTIONS,
   FARMER_BENEFITS,
@@ -47,7 +47,7 @@ import { supabase } from "@/integrations/supabase/client";
 
 const TITLE = "Hasat | Üreticinin Ticaret Platformu";
 const DESCRIPTION =
-  "Mevcut talepleri, gerçek teklifleri ve kaynağı belli fiyatları gör; üretimini ve satışını Hasat AI ile tek yerden yönet.";
+  "Mevcut talepleri ve kaynağı belli fiyatları gör; üretimini Hasat AI ile tek yerden yönet.";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -90,8 +90,6 @@ export const Route = createFileRoute("/")({
   component: LandingPage,
 });
 
-const whatsappHref = (message: string) =>
-  `https://wa.me/${HASAT_WHATSAPP_NUMBER}?text=${encodeURIComponent(message)}`;
 
 function LandingPage() {
   const router = useRouter();
@@ -240,10 +238,10 @@ function Hero({ onRole }: { onRole: (role: "farmer" | "buyer") => void }) {
             Hasat · Üreticinin ticaret platformu
           </p>
           <h1 className="mt-5 max-w-xl font-serif text-4xl font-extrabold leading-[1.06] sm:text-5xl md:text-7xl">
-            Ürün yetişmeden,<br />talep ve teklif hazır.
+            Ürün yetişmeden,<br />talebi gör.
           </h1>
           <p className="mt-6 max-w-xl text-base leading-relaxed text-hwhite/85 md:text-lg">
-            Ne ekeceğini yalnızca bir kişinin sözüne göre değil, platformdaki gerçek talepleri görerek planla. Hal fiyatlarını, tekliflerini, üretim kayıtlarını ve müşterilerini tek yerden yönet.
+            Ne ekeceğini yalnızca bir kişinin sözüne göre değil, platformdaki gerçek talepleri görerek planla. Hal fiyatlarını, üretim kayıtlarını ve ürünlerini tek yerden yönet.
           </p>
           <div className="mt-8 flex flex-col gap-3 sm:flex-row">
             <Button size="lg" className="bg-hwhite text-primary hover:bg-hwhite/90" onClick={() => onRole("farmer")}>
@@ -268,10 +266,10 @@ function Hero({ onRole }: { onRole: (role: "farmer" | "buyer") => void }) {
 const FLOW_STEPS = [
   [Sprout, "Üretim planı", "Karpuz üretimi kayda hazırlanır"],
   [Users, "Mevcut talep", "Platformdaki açık talepler görünür"],
-  [Handshake, "Gerçek teklifler", "Teklifler tek panelde toplanır"],
+  [Handshake, "Gerçek talepler", "Alıcı talepleri tek panelde toplanır"],
   [BarChart3, "Fiyat kaynakları", "Hal ve tamamlanmış satış ayrılır"],
   [BookOpenCheck, "Tarla günlüğü", "Üretim adımları kayıt altına alınır"],
-  [PackageCheck, "Teslimat ve ödeme", "Kesinleşen sipariş takip edilir"],
+  [PackageCheck, "Siparişler yakında", "Kontrollü pilotun sonraki aşamasında açılacak"],
 ] as const;
 
 function ProductFlow() {
@@ -311,18 +309,18 @@ function SectionHeading({ eyebrow, title, body, align = "left" }: { eyebrow?: st
 
 function ProblemSection() {
   const traditional = ["Tek bir tüccarın sözü", "Hasatta değişen karar", "Görünmeyen piyasa fiyatı", "Ürünün elde kalma riski", "Dağınık konuşmalar ve notlar"];
-  const hasat = ["Birden fazla alıcı ve görünür talep", "Kayıtlı teklifler", "Kaynağı belli hal fiyatları", "Tamamlanmış satışların şeffaf özeti", "Müşteriler ve siparişler tek yerde"];
+  const hasat = ["Birden fazla alıcı ve görünür talep", "Görünür alıcı talepleri", "Kaynağı belli hal fiyatları", "Kaynağı belli fiyat karşılaştırması", "Üretim kayıtları tek yerde"];
   return (
     <section className="border-b bg-card px-4 py-20 md:px-8 md:py-28">
       <div className="mx-auto max-w-7xl">
-        <SectionHeading eyebrow="Belirsizlikten görünürlüğe" title="Bir kişinin sözüne güvenerek değil, talebi görerek üret." body="Hasat, üretim başlamadan önce platformdaki farklı alıcı taleplerini ve kayıtlı teklifleri görmeni sağlar." />
+        <SectionHeading eyebrow="Belirsizlikten görünürlüğe" title="Bir kişinin sözüne güvenerek değil, talebi görerek üret." body="Hasat, üretim başlamadan önce platformdaki farklı alıcı taleplerini görmeni sağlar." />
         <div className="mt-12 grid gap-5 md:grid-cols-2">
           <Comparison title="Geleneksel" items={traditional} muted />
           <Comparison title="Hasat ile" items={hasat} />
         </div>
         <div className="mt-8 overflow-hidden rounded-xl border bg-background p-4">
           <div className="grid grid-cols-4 items-center gap-2 text-center text-xs font-medium text-muted-foreground">
-            {["Ekim planı", "Mevcut talep", "Kayıtlı teklif", "Hasat ve teslimat"].map((item, index) => (
+            {["Ekim planı", "Mevcut talep", "Hasat kaydı", "Vitrin"].map((item, index) => (
               <div key={item} className="relative">
                 <span className="mx-auto mb-2 grid h-8 w-8 place-items-center rounded-full bg-primary text-primary-foreground">{index + 1}</span>
                 <span>{item}</span>
@@ -352,7 +350,7 @@ function HowItWorks() {
   return (
     <section id="nasil-calisir" className="scroll-mt-20 px-4 py-20 md:px-8 md:py-28">
       <div className="mx-auto max-w-7xl">
-        <SectionHeading eyebrow="Üç adımda Hasat" title="Ekimden ödemeye, tek kanalda." align="center" />
+        <SectionHeading eyebrow="Üç adımda Hasat" title="Ekimden vitrine, tek kanalda." align="center" />
         <div className="mt-12 grid gap-5 lg:grid-cols-3">
           {HOW_IT_WORKS.map((item, index) => {
             const Icon = icons[index];
@@ -475,7 +473,7 @@ function AISection() {
             </div>
           </div>
         </div>
-        <div className="order-1 lg:order-2"><SectionHeading eyebrow="Kolay yönetim" title="Tarlada çalış. Takibi Hasat AI kolaylaştırsın." body="Uzun formlar doldurmak zorunda değilsin. Türkçe yaz veya WhatsApp'tan mesaj gönder; Hasat AI verdiğin bilgileri düzenlemene ve kayıtlarını takip etmene yardım etsin." /><p className="mt-5 text-sm text-muted-foreground">AI, vermediğin miktarı, maliyeti veya fiyatı üretmez. Hazırlanan kayıt sen onaylamadan kesinleşmez.</p><Button className="mt-7 bg-whatsapp text-dark hover:bg-whatsapp/90" asChild><a href={whatsappHref("Hasat hakkında bilgi almak istiyorum")} target="_blank" rel="noreferrer"><MessageCircle /> WhatsApp'tan yaz</a></Button></div>
+        <div className="order-1 lg:order-2"><SectionHeading eyebrow="Kolay yönetim" title="Tarlada çalış. Takibi Hasat AI kolaylaştırsın." body="Uzun formlar doldurmak zorunda değilsin. Türkçe yaz; Hasat AI verdiğin bilgileri düzenlemene ve kayıtlarını takip etmene yardım etsin." /><p className="mt-5 text-sm text-muted-foreground">AI, vermediğin miktarı, maliyeti veya fiyatı üretmez. Hazırlanan kayıt sen onaylamadan kesinleşmez.</p><Button className="mt-7" asChild><a href="#iletisim"><Send /> Bize ulaşın</a></Button></div>
       </div>
     </section>
   );
@@ -494,9 +492,9 @@ function TraceabilitySection() {
 }
 
 function OperationsSection() {
-  const groups = [["Yeni teklifler", Handshake], ["Kabul edilmiş teklifler", BadgeCheck], ["Düzenli alımlar", Clock3], ["Kesinleşmiş siparişler", PackageCheck], ["Yaklaşan teslimatlar", Store], ["Bekleyen ödemeler", WalletCards]] as const;
+  const groups = [["Alıcı talepleri", Handshake], ["Ürünlerin", BadgeCheck], ["Düzenli alım ilgisi", Clock3], ["Tarla günlüğü", PackageCheck], ["Hasat takvimi", Store], ["Siparişler (yakında)", WalletCards]] as const;
   return (
-    <section className="px-4 py-20 md:px-8 md:py-28"><div className="mx-auto max-w-7xl"><SectionHeading eyebrow="Tek merkez" title="Farklı tüccarlar, dağınık konuşmalar ve defterler yerine tek ekran." body="Teklif, sipariş, teslimat ve ödeme durumlarını yalnızca sisteme kaydedilmiş gerçek durumlarıyla takip et." /><div className="mt-12 grid gap-4 rounded-xl border bg-card p-4 sm:grid-cols-2 lg:grid-cols-3 sm:p-6">{groups.map(([label, Icon]) => <div key={label} className="flex min-h-24 items-center gap-3 rounded-lg border bg-background p-4"><span className="grid h-10 w-10 place-items-center rounded-lg bg-accent text-primary"><Icon /></span><div><p className="text-sm font-semibold">{label}</p></div></div>)}<div className="col-span-full rounded-lg border border-dashed bg-background/50 p-4 text-center text-sm text-muted-foreground">Kayıtlı teklifleriniz, siparişleriniz, teslimatlarınız ve ödemeleriniz burada tek ekranda görünür.</div></div></div></section>
+    <section className="px-4 py-20 md:px-8 md:py-28"><div className="mx-auto max-w-7xl"><SectionHeading eyebrow="Tek merkez" title="Farklı tüccarlar, dağınık konuşmalar ve defterler yerine tek ekran." body="Talepleri, ürünlerini ve üretim kayıtlarını yalnızca sisteme kaydedilmiş gerçek durumlarıyla takip et." /><div className="mt-12 grid gap-4 rounded-xl border bg-card p-4 sm:grid-cols-2 lg:grid-cols-3 sm:p-6">{groups.map(([label, Icon]) => <div key={label} className="flex min-h-24 items-center gap-3 rounded-lg border bg-background p-4"><span className="grid h-10 w-10 place-items-center rounded-lg bg-accent text-primary"><Icon /></span><div><p className="text-sm font-semibold">{label}</p></div></div>)}<div className="col-span-full rounded-lg border border-dashed bg-background/50 p-4 text-center text-sm text-muted-foreground">Talepleriniz, ürünleriniz ve üretim kayıtlarınız burada tek ekranda görünür. Teklif ve siparişler, açıldığında aynı yerde yer alacak.</div></div></div></section>
   );
 }
 
@@ -527,7 +525,7 @@ function ContactForm() {
       <p className="text-xs font-bold uppercase tracking-[0.15em] text-saffron">İletişim</p><h2 className="mt-3 font-serif text-2xl">Hasat'la ne yapmak istediğinizi konuşalım.</h2><p className="mt-2 text-sm text-muted-foreground">Ürününüzü satmak, düzenli ürün almak, iş birliği yapmak veya bilgi edinmek için bize ulaşın.</p>
       <div className="mt-6 grid gap-4 sm:grid-cols-2"><Field label="Ad Soyad"><input required maxLength={100} value={name} onChange={(event) => setName(event.target.value)} className="w-full rounded-md border bg-input px-3" /></Field><Field label="Telefon"><input required inputMode="tel" maxLength={20} value={phone} onChange={(event) => setPhone(event.target.value)} className="w-full rounded-md border bg-input px-3" /></Field><Field label="Şehir"><input maxLength={80} value={city} onChange={(event) => setCity(event.target.value)} className="w-full rounded-md border bg-input px-3" /></Field><Field label="Size en uygun seçenek"><select value={topic} onChange={(event) => setTopic(event.target.value as ContactTopic)} className="w-full rounded-md border bg-input px-3">{CONTACT_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}</select></Field></div>
       <Field label="Mesaj"><textarea maxLength={500} rows={4} value={note} onChange={(event) => setNote(event.target.value)} className="w-full rounded-md border bg-input px-3 py-3" /></Field>
-      <div className="mt-5 grid gap-3 sm:grid-cols-2"><Button type="submit" loading={mutation.isPending} disabled={!valid} loadingLabel="Gönderiliyor"><Send /> Bize ulaşın</Button><Button variant="outline" asChild><a href={whatsappHref("Hasat platformu hakkında bilgi almak istiyorum")} target="_blank" rel="noreferrer"><MessageCircle /> WhatsApp'tan yazın</a></Button></div>
+      <div className="mt-5 grid gap-3"><Button type="submit" loading={mutation.isPending} disabled={!valid} loadingLabel="Gönderiliyor"><Send /> Bize ulaşın</Button></div>
     </form>
   );
 }
@@ -538,12 +536,12 @@ function Field({ label, children }: { label: string; children: ReactNode }) {
 
 function FinalCTAAndFAQ({ onRole }: { onRole: (role: "farmer" | "buyer") => void }) {
   return (
-    <section className="px-4 py-20 md:px-8 md:py-28"><div className="mx-auto max-w-5xl"><div className="rounded-xl bg-primary p-7 text-primary-foreground md:p-12"><h2 className="max-w-3xl font-serif text-3xl md:text-5xl">Bu sezonu talebi ve gerçek fiyatları görerek planla.</h2><div className="mt-7 flex flex-col gap-3 sm:flex-row"><Button size="lg" className="bg-primary-foreground text-primary hover:bg-primary-foreground/90" onClick={() => onRole("farmer")}>Ürünüm için talep bul <ArrowRight /></Button><Button size="lg" variant="outline" className="border-primary-foreground/35 bg-primary text-primary-foreground hover:bg-primary-foreground/10 hover:text-primary-foreground" asChild><a href={whatsappHref("Hasat'a nasıl başlayabileceğim hakkında bilgi almak istiyorum")} target="_blank" rel="noreferrer"><MessageCircle /> WhatsApp'tan bilgi al</a></Button></div></div><div className="mt-20"><SectionHeading eyebrow="SSS" title="Çiftçilerin en çok sordukları" /><div className="mt-8 divide-y border-y">{FARMER_FAQ.map((item) => <details key={item.q} className="group py-5"><summary className="flex cursor-pointer list-none items-center justify-between gap-5 font-semibold"><span>{item.q}</span><ChevronDown className="h-4 w-4 shrink-0 transition-transform group-open:rotate-180" /></summary><p className="mt-3 max-w-3xl text-sm leading-relaxed text-muted-foreground">{item.a}</p></details>)}</div></div></div></section>
+    <section className="px-4 py-20 md:px-8 md:py-28"><div className="mx-auto max-w-5xl"><div className="rounded-xl bg-primary p-7 text-primary-foreground md:p-12"><h2 className="max-w-3xl font-serif text-3xl md:text-5xl">Bu sezonu talebi ve gerçek fiyatları görerek planla.</h2><div className="mt-7 flex flex-col gap-3 sm:flex-row"><Button size="lg" className="bg-primary-foreground text-primary hover:bg-primary-foreground/90" onClick={() => onRole("farmer")}>Ürünüm için talep bul <ArrowRight /></Button><Button size="lg" variant="outline" className="border-primary-foreground/35 bg-primary text-primary-foreground hover:bg-primary-foreground/10 hover:text-primary-foreground" asChild><a href="#iletisim"><Send /> Bize ulaşın</a></Button></div></div><div className="mt-20"><SectionHeading eyebrow="SSS" title="Çiftçilerin en çok sordukları" /><div className="mt-8 divide-y border-y">{FARMER_FAQ.map((item) => <details key={item.q} className="group py-5"><summary className="flex cursor-pointer list-none items-center justify-between gap-5 font-semibold"><span>{item.q}</span><ChevronDown className="h-4 w-4 shrink-0 transition-transform group-open:rotate-180" /></summary><p className="mt-3 max-w-3xl text-sm leading-relaxed text-muted-foreground">{item.a}</p></details>)}</div></div></div></section>
   );
 }
 
 function Footer() {
-  return <footer className="border-t bg-card px-4 pb-28 pt-12 text-sm text-muted-foreground md:pb-12"><div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-6 text-center md:flex-row md:text-left"><div><BrandLogo variant="wordmark" height={22} /><p className="mt-2 text-xs">Üreticinin ticaret platformu.</p></div><nav className="flex flex-wrap items-center justify-center gap-5"><Link to="/tarifler" className="hover:text-foreground">Tarifler</Link><a href={whatsappHref("Hasat hakkında bilgi almak istiyorum")} target="_blank" rel="noreferrer" className="hover:text-foreground">WhatsApp</a><Link to="/terms" className="hover:text-foreground">Kullanım Koşulları</Link><Link to="/privacy" className="hover:text-foreground">Gizlilik</Link></nav><p className="text-xs">© {new Date().getFullYear()} Hasat</p></div></footer>;
+  return <footer className="border-t bg-card px-4 pb-28 pt-12 text-sm text-muted-foreground md:pb-12"><div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-6 text-center md:flex-row md:text-left"><div><BrandLogo variant="wordmark" height={22} /><p className="mt-2 text-xs">Üreticinin ticaret platformu.</p></div><nav className="flex flex-wrap items-center justify-center gap-5"><Link to="/tarifler" className="hover:text-foreground">Tarifler</Link><Link to="/terms" className="hover:text-foreground">Kullanım Koşulları</Link><Link to="/privacy" className="hover:text-foreground">Gizlilik</Link></nav><p className="text-xs">© {new Date().getFullYear()} Hasat</p></div></footer>;
 }
 
 function MobileCTA({ onRole }: { onRole: (role: "farmer" | "buyer") => void }) {

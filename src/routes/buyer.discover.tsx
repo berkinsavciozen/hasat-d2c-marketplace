@@ -24,8 +24,15 @@ import { RepresentativePhoto, RepresentativeBadge } from "@/components/hasat/Rep
 
 
 
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 export const Route = createFileRoute("/buyer/discover")({
   head: () => ({ meta: [{ title: "Keşfet — Hasat" }] }),
+  // Optional recipe context for order-intent logging; ignored unless it is a UUID.
+  validateSearch: (search: Record<string, unknown>): { fromRecipe?: string } => {
+    const v = search.fromRecipe;
+    return typeof v === "string" && UUID_RE.test(v) ? { fromRecipe: v } : {};
+  },
   component: Discover,
 });
 
@@ -36,7 +43,11 @@ const SORTS = ["Puan", "Fiyat", "Yakınlık", "En Yeni"];
 function Discover() {
   const navigate = useNavigate();
   const gate = useOrderGate();
-  useLogOrderIntentOnce(!gate.callerAllowed && !gate.isLoading, { surface: "discover" });
+  const { fromRecipe } = Route.useSearch();
+  useLogOrderIntentOnce(!gate.callerAllowed && !gate.isLoading, {
+    surface: "discover",
+    recipeId: fromRecipe,
+  });
   const { data: listings = [], isLoading } = useActiveListings();
   const { map: cropMap } = useCropConfigMap();
   const [sort, setSort] = useState("Puan");

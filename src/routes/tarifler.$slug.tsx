@@ -198,7 +198,7 @@ function RecipeDetailPage() {
   const liveDataReady = !availLoading && !shopLoading && shoppingList.length > 0;
 
   const goToProduct = () => {
-    if (isBuyer) navigate({ to: "/buyer/discover" });
+    if (isBuyer) navigate({ to: "/buyer/discover", search: { fromRecipe: recipe.id } });
     else navigate({ to: "/login", search: { role: "buyer" } as any });
   };
 

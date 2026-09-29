@@ -77,15 +77,15 @@ export const FARMER_VALUES: LandingValue[] = [
   },
   {
     icon: "MessageCircle",
-    title: "WhatsApp ile günlük",
+    title: "Hasat AI ile günlük",
     body:
-      "Tarladayken uygulamayı açmana gerek yok — hasadını yazarsın, Hasat AI kaydı senin yerine düzenler.",
+      "Hasadını yazarsın, Hasat AI kaydı senin yerine düzenler; sen onaylamadan kesinleşmez.",
   },
   {
     icon: "Bell",
     title: "Anlık bildirim",
     body:
-      "Yeni teklif, karşı teklif ve ödeme onayı geldiği anda bildirim alırsın; hiçbir alıcı yanıtsız kalmaz.",
+      "Alıcı talepleri ve hasat hatırlatmaları geldiği anda bildirim alırsın.",
   },
   {
     icon: "ChefHat",

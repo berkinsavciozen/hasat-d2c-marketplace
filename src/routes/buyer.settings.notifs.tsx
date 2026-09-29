@@ -14,6 +14,8 @@ export const Route = createFileRoute("/buyer/settings/notifs")({
   component: BuyerNotifs,
 });
 
+// Hasat WhatsApp channel is closed in the pilot; *_whatsapp prefs stay in data but are hidden.
+const CHANNELS = NOTIF_CHANNELS.filter((c) => c.key !== "whatsapp");
 const EVENTS = notifEventsForRole("buyer");
 
 function BuyerNotifs() {
@@ -40,14 +42,14 @@ function BuyerNotifs() {
         ) : (
           <>
             <div className="hidden sm:block rounded-xl border border-border bg-card overflow-hidden">
-              <div className="grid grid-cols-[1fr_repeat(3,auto)] gap-x-4 px-4 py-3 border-b border-border bg-muted text-xs font-medium">
+              <div className="grid grid-cols-[1fr_repeat(2,auto)] gap-x-4 px-4 py-3 border-b border-border bg-muted text-xs font-medium">
                 <div>Olay</div>
-                {NOTIF_CHANNELS.map((c) => <div key={c.key} className="text-center w-20">{c.label}</div>)}
+                {CHANNELS.map((c) => <div key={c.key} className="text-center w-20">{c.label}</div>)}
               </div>
               {EVENTS.map((e) => (
-                <div key={e.key} className="grid grid-cols-[1fr_repeat(3,auto)] gap-x-4 px-4 py-3 border-b last:border-b-0 border-border items-center text-sm min-h-[48px]">
+                <div key={e.key} className="grid grid-cols-[1fr_repeat(2,auto)] gap-x-4 px-4 py-3 border-b last:border-b-0 border-border items-center text-sm min-h-[48px]">
                   <div>{e.label}</div>
-                  {NOTIF_CHANNELS.map((c) => {
+                  {CHANNELS.map((c) => {
                     const col = e.cols[c.key];
                     const comingSoon = c.key === "whatsapp" && e.whatsappComingSoon;
                     return (
@@ -82,7 +84,7 @@ function BuyerNotifs() {
                 <div key={e.key} className="rounded-xl border border-border bg-card overflow-hidden">
                   <div className="px-4 py-3 border-b border-border bg-muted text-sm font-medium">{e.label}</div>
                   <div className="divide-y divide-border">
-                    {NOTIF_CHANNELS.map((c) => {
+                    {CHANNELS.map((c) => {
                       const col = e.cols[c.key];
                       if (!col) return null;
                       const comingSoon = c.key === "whatsapp" && e.whatsappComingSoon;

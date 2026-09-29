@@ -14,7 +14,7 @@ import {
 } from "./useAIChat";
 import { JournalEntryCard } from "./JournalEntryCard";
 import { UpgradeModal } from "@/components/hasat/UpgradeModal";
-import { HASAT_WHATSAPP_NUMBER } from "@/lib/hasat/constants";
+import { HASAT_SUPPORT_EMAIL } from "@/lib/hasat/constants";
 
 const COACH_KEY = "hasat_ai_chat_coach_dismissed";
 const FREE_LIMIT = 50;
@@ -320,17 +320,6 @@ export function FarmerAIChat() {
             </Button>
           </div>
 
-          {/* WhatsApp secondary entry */}
-          <a
-            href={`https://wa.me/${HASAT_WHATSAPP_NUMBER}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex items-center gap-1.5 px-4 py-1.5 text-[11px] text-muted-foreground hover:bg-muted/40 border-b"
-          >
-            <MessageCircle className="h-3.5 w-3.5" style={{ color: "var(--whatsapp)" }} />
-            <span>WhatsApp'tan da yazabilirsin →</span>
-          </a>
-
           {/* Message list */}
           <div
             className="flex-1 overflow-y-auto px-4 py-3 space-y-3"
@@ -433,14 +422,11 @@ export function FarmerAIChat() {
                     </Button>
                     <div className="text-xs text-muted-foreground text-center">
                       Acil bir konu mu var?{" "}
-                      <a
-                        href={`https://wa.me/${HASAT_WHATSAPP_NUMBER}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="underline"
-                      >
-                        İnsan desteğine WhatsApp'tan yazabilirsin
-                      </a>
+                      İnsan desteğine{" "}
+                      <a href={`mailto:${HASAT_SUPPORT_EMAIL}`} className="underline">
+                        {HASAT_SUPPORT_EMAIL}
+                      </a>{" "}
+                      adresinden ulaşabilirsin
                     </div>
                   </>
                 ) : premiumLimited ? (
@@ -454,14 +440,11 @@ export function FarmerAIChat() {
                     </div>
                     <div className="text-xs text-muted-foreground text-center">
                       Acil bir konu mu var?{" "}
-                      <a
-                        href={`https://wa.me/${HASAT_WHATSAPP_NUMBER}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="underline"
-                      >
-                        İnsan desteğine WhatsApp'tan yazabilirsin
-                      </a>
+                      İnsan desteğine{" "}
+                      <a href={`mailto:${HASAT_SUPPORT_EMAIL}`} className="underline">
+                        {HASAT_SUPPORT_EMAIL}
+                      </a>{" "}
+                      adresinden ulaşabilirsin
                     </div>
                   </>
                 ) : (

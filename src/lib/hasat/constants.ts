@@ -1,5 +1,5 @@
-// Business WhatsApp number (international format, digits only, no +)
-export const HASAT_WHATSAPP_NUMBER = "905421241011";
+// Public support/contact e-mail (privacy, terms, AI chat human support).
+export const HASAT_SUPPORT_EMAIL = "destek@hasat-ai.com";
 
 // Single source for the public site's base URL — canonical links, share
 // links, sitemap, and og:url all read from here so the domain can change
