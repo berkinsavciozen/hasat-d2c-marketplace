@@ -21,12 +21,6 @@ export const FARMER_TOUR_STEPS: TourStep[] = [
     placement: "bottom",
   },
   {
-    selector: '[data-tour="whatsapp"]',
-    title: "WhatsApp'tan Gönder",
-    body: "Tarladan çıkmadan sesli ya da yazılı olarak WhatsApp üzerinden de gönderebilirsiniz.",
-    placement: "bottom",
-  },
-  {
     selector: '[data-tour="tab-storefront"]',
     title: "Vitrin",
     body: "Ürünlerinizi burada yayınlayın; alıcılar doğrudan teklif verebilsin.",
