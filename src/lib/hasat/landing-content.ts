@@ -10,15 +10,15 @@ export const LANDING_MEDIA = {
 export const FARMER_BENEFITS = [
   {
     title: "Talebi daha erken gör",
-    body: "Ürün yetişmeden önce platformdaki mevcut talepleri, teklifleri ve düzenli alım fırsatlarını gör.",
+    body: "Ürün yetişmeden önce platformdaki alıcı taleplerini ve düzenli alım ilgisini gör.",
   },
   {
     title: "Fiyatını veriye bakarak belirle",
     body: "Kaynağı belli hal fiyatlarıyla Hasat'ta tamamlanan satışları ayrı ayrı karşılaştır.",
   },
   {
-    title: "Bütün müşterilerin tek yerde",
-    body: "Teklifleri, kesinleşmiş siparişleri, düzenli alımları ve teslimatları tek kanaldan yönet.",
+    title: "Üretimin ve ürünlerin tek yerde",
+    body: "Ürünlerini, alıcı taleplerini ve tarla günlüğünü tek yerden yönet. Teklif ve sipariş yönetimi, siparişler açıldığında aynı yerden çalışacak.",
   },
 ] as const;
 
@@ -29,25 +29,29 @@ export const HOW_IT_WORKS = [
     state: "Üretim planı kayda hazır",
   },
   {
-    title: "Gerçek talep, teklif ve fiyatları gör",
-    body: "Mevcut alıcı taleplerini, kayıtlı teklifleri ve kaynağı belli fiyatları karşılaştır.",
+    title: "Gerçek talep ve fiyatları gör",
+    body: "Mevcut alıcı taleplerini ve kaynağı belli hal fiyatlarını karşılaştır.",
     state: "Kaynaklar ayrı gösterilir",
   },
   {
-    title: "Üretimi ve satışı yönet",
-    body: "Tarla günlüğünü, siparişlerini, teslimatlarını ve ödemelerini tek yerden takip et.",
-    state: "Her adım kayıt altında",
+    title: "Üretimini yönet",
+    body: "Tarla günlüğünü ve ürünlerini tek yerden takip et. Siparişler açıldığında satışlarını da buradan yöneteceksin.",
+    state: "Kontrollü pilot",
   },
 ] as const;
 
 export const FARMER_FAQ = [
+  {
+    q: "Siparişler ne zaman açılacak?",
+    a: "Hasat şu an kontrollü pilotta vitrin modunda: ürünleri ve üreticileri inceleyebilir, 'Talep Et' ile talep iletebilirsin. Teklif ve sipariş, pilotun sonraki aşamasında açılacak; açıldığında bildirim göndereceğiz.",
+  },
   {
     q: "Ürünüm henüz yetişmediyse mevcut talepleri görebilir miyim?",
     a: "Evet. Platformdaki açık ürün taleplerini inceleyebilir, üretim planını mevcut talebi görerek oluşturabilirsin. Talep, satın alma garantisi değildir.",
   },
   {
     q: "Birden fazla alıcıdan teklif alabilir miyim?",
-    a: "Evet. Yayındaki ürününe gelen teklifleri aynı yerde görebilir ve her biri için kayıtlı biçimde yanıt verebilirsin.",
+    a: "Kontrollü pilotta teklif ve sipariş henüz açık değil. Alıcılar ürünlerini inceleyip 'Talep Et' ile ilgilerini bildirebilir. Siparişler açıldığında birden fazla alıcıdan gelen teklifleri aynı yerde görüp yanıtlayabileceksin.",
   },
   {
     q: "Diğer hallerdeki fiyatlar hangi kaynaklardan geliyor?",
@@ -79,7 +83,7 @@ export const FARMER_FAQ = [
   },
   {
     q: "Ödeme ve komisyon nasıl çalışır?",
-    a: "Ödeme, anlaşılan sipariş tutarı üzerinden doğrudan çiftçinin IBAN'ına yapılır. Kontrollü pilot süresince Hasat herhangi bir komisyon almaz.",
+    a: "Kontrollü pilotta sipariş ve ödeme henüz açık değil. Siparişler açıldığında ödeme, anlaşılan tutar üzerinden doğrudan çiftçinin IBAN'ına yapılacak; kontrollü pilot süresince Hasat komisyon almaz.",
   },
   {
     q: "Alıcının teklif vermesi satın alma garantisi midir?",
