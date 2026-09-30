@@ -12,10 +12,10 @@ const tour = readFileSync(
   "utf8",
 );
 
-test("farmer chat content can shrink without shrinking the 48px WhatsApp action", () => {
+test("farmer chat content can shrink; no WhatsApp action is rendered", () => {
   assert.match(farmerHome, /min-h-\[48px\] min-w-0 flex-1/);
   assert.match(farmerHome, /<span className="min-w-0 flex-1 truncate">/);
-  assert.match(farmerHome, /className="grid h-12 w-12 shrink-0/);
+  assert.doesNotMatch(farmerHome, /wa\.me|whatsapp/i);
 });
 
 test("farmer quick actions own their horizontal overflow", () => {
