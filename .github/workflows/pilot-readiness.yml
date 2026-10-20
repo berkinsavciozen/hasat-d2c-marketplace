@@ -1,0 +1,29 @@
+name: Pilot readiness
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pilot-readiness-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.3.2
+      - name: Install locked dependencies
+        run: bun install --frozen-lockfile
+      - name: Run launch contracts
+        run: bun run test:launch
+      - name: Build production bundle
+        run: bun run build

@@ -1,6 +1,7 @@
 {
   "name": "tanstack_start_ts",
   "private": true,
+  "packageManager": "bun@1.3.2",
   "sideEffects": [
     "src/instrument.client.ts"
   ],
