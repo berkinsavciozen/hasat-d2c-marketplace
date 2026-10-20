@@ -355,7 +355,7 @@ function BatchRow({
   const { data: entries = [] } = useListingBatchEntries(expanded ? l.id : null);
   const available = stock?.available ?? l.quantity;
   const soldOut = available <= 0;
-  const label = l.batchName || `Batch #${index + 1}`;
+  const label = l.batchName || `Hasat partisi #${index + 1}`;
 
   const clampAndSet = (raw: number) => {
     if (!Number.isFinite(raw) || raw < 0) raw = 0;

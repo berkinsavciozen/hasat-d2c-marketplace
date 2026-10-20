@@ -12,6 +12,7 @@
     "preview": "vite preview",
     "allergen:manifest": "node scripts/allergen-review/generate-allergen-manifest.mjs",
     "lint": "eslint .",
+    "test:launch": "node --test tests/*.test.mjs",
     "format": "prettier --write ."
   },
   "dependencies": {

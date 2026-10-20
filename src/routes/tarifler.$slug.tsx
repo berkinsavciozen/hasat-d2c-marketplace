@@ -165,7 +165,9 @@ function useIsLoggedIn() {
 }
 
 function RecipeDetailPage() {
-  const { recipe, steps, ingredients, relatedRecipes } = Route.useLoaderData();
+  const { recipe, steps, ingredients, relatedRecipes } = Route.useLoaderData() as NonNullable<
+    Awaited<ReturnType<typeof fetchRecipeBySlug>>
+  >;
   const navigate = useNavigate();
   const loggedIn = useIsLoggedIn();
   const { data: myProfile } = useProfile();
@@ -199,7 +201,7 @@ function RecipeDetailPage() {
 
   const goToProduct = () => {
     if (isBuyer) navigate({ to: "/buyer/discover", search: { fromRecipe: recipe.id } });
-    else navigate({ to: "/login", search: { role: "buyer" } as any });
+    else navigate({ to: "/login", search: { role: "buyer" } });
   };
 
   // P23-M4-b — Gap #9 "parselden tabağa": for matched ingredients only (the
@@ -242,7 +244,7 @@ function RecipeDetailPage() {
       });
       navigate({
         to: "/login",
-        search: { role: "buyer", next: `/tarifler/${recipe.slug}` } as any,
+        search: { role: "buyer", next: `/tarifler/${recipe.slug}` },
       });
       return;
     }
@@ -648,7 +650,7 @@ function RecipeDetailPage() {
         <div className="fixed inset-x-0 bottom-0 z-40 border-t bg-card/95 backdrop-blur px-4 py-3 md:px-8">
           <Link
             to="/login"
-            search={{ role: "buyer" } as any}
+            search={{ role: "buyer" }}
             className="block w-full rounded-full py-3 text-center text-sm font-semibold"
             style={{ background: "var(--saffron)", color: "var(--hwhite)" }}
           >

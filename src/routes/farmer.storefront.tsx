@@ -52,6 +52,12 @@ import {
 import { computeCoverage } from "@/lib/hasat/coverage";
 import { useListingBatchEntries } from "@/lib/hasat/queries";
 import { Eye } from "lucide-react";
+import {
+  convertListingUnitValues,
+  listingSaveErrorMessage,
+  type ListingUnit,
+  validateActiveListing,
+} from "@/lib/hasat/listing-form";
 
 export const Route = createFileRoute("/farmer/storefront")({
   head: () => ({ meta: [{ title: "Vitrin — Hasat" }] }),
@@ -449,10 +455,10 @@ function ListingSheet({
   const { options: cropOptions, isLoading: cropsLoading } = useCropOptions();
   const { map: cropMap } = useCropConfigMap();
   const [parcelId, setParcelId] = useState<string>(editing?.parcelId ?? "");
-  const [quantity, setQuantity] = useState(editing?.quantity ?? 100);
-  const [unit, setUnit] = useState<"g" | "kg" | "L">(editing?.unit ?? "g");
-  const [price, setPrice] = useState(editing?.pricePerUnit ?? 350);
-  const [minOrder, setMinOrder] = useState(editing?.minOrder ?? 10);
+  const [quantity, setQuantity] = useState(editing?.quantity ?? 0);
+  const [unit, setUnit] = useState<ListingUnit>(editing?.unit ?? "g");
+  const [price, setPrice] = useState(editing?.pricePerUnit ?? 0);
+  const [minOrder, setMinOrder] = useState(editing?.minOrder ?? 0);
   const [quality, setQuality] = useState<"A" | "B" | "C">(editing?.quality ?? "A");
   const [desc, setDesc] = useState(editing?.description ?? "");
   const [batchName, setBatchName] = useState<string>(editing?.batchName ?? "");
@@ -475,10 +481,10 @@ function ListingSheet({
       setExistingPhotos(editing.photos ?? []);
     } else {
       setCrop("");
-      setQuantity(100);
+      setQuantity(0);
       setUnit("g");
-      setPrice(350);
-      setMinOrder(10);
+      setPrice(0);
+      setMinOrder(0);
       setQuality("A");
       setDesc("");
       setBatchName("");
@@ -501,42 +507,52 @@ function ListingSheet({
   );
   const showBatchDecision = !editing && !batchDecisionOverride && existingBatches.length > 0;
 
+  const changeUnit = (nextUnit: ListingUnit) => {
+    const next = convertListingUnitValues(
+      { quantity, minOrder, pricePerUnit: price },
+      unit,
+      nextUnit,
+    );
+    setUnit(nextUnit);
+    setQuantity(next.quantity);
+    setMinOrder(next.minOrder);
+    setPrice(next.pricePerUnit);
+    if (!next.converted) {
+      toast.info(
+        "Litre ile gram/kilogram arasında otomatik dönüşüm yapılamaz. Değerleri kontrol edin.",
+      );
+    }
+  };
+
   const save = async () => {
     if (!crop) {
-      toast.error("Ürün seçin");
+      toast.error("İlan için bir ürün seçin.");
       return;
     }
-    if (!editing && !parcelId) {
-      toast.error("Parsel seçin");
+    if (!parcelId) {
+      toast.error("Ürünün yetiştiği parseli seçin.");
       return;
     }
-    if (isDraft) {
-      if (quantity <= 0) {
-        toast.error("Miktar 0'dan büyük olmalı");
-        return;
-      }
-      if (price <= 0) {
-        toast.error("Fiyat 0'dan büyük olmalı");
+    const hasPhoto = existingPhotos.length > 0 || photoFiles.length > 0;
+    const becomingActive = editing ? true : !batchDecisionOverride;
+    if (becomingActive) {
+      const validationError = validateActiveListing({
+        crop,
+        parcelId,
+        quantity,
+        unit,
+        pricePerUnit: price,
+        minOrder,
+        photoCount: hasPhoto ? existingPhotos.length + photoFiles.length : 0,
+      });
+      if (validationError) {
+        toast.error(validationError);
         return;
       }
     }
     if (unit === "g" && price > 500) {
       const ok = window.confirm(
         `₺${price}/g olarak kaydedilecek. Kilogram fiyatını yanlışlıkla girmiş olabilirsiniz. Devam etmek istiyor musunuz?`,
-      );
-      if (!ok) return;
-    }
-    // P23-M8-c (E4): fotoğraf zorunlu değil (Berkin kararı) — ama ilan
-    // alıcılara görünür hale gelmeden (yeni aktif ilan ya da taslağın
-    // yayınlanması) hemen önce yumuşak bir uyarı gösteriliyor. Zaten aktif
-    // bir ilanın diğer alanlarını düzenlerken (fotoğraf durumu değişmediği
-    // sürece) tekrar sormuyoruz — her düzenlemede aynı uyarıyı görmek
-    // rahatsız edici olurdu.
-    const hasPhoto = existingPhotos.length > 0 || photoFiles.length > 0;
-    const becomingActive = editing ? isDraft : !batchDecisionOverride;
-    if (becomingActive && !hasPhoto) {
-      const ok = window.confirm(
-        "Fotoğraflı ilanlar daha çok teklif alıyor. Fotoğrafsız devam etmek istiyor musunuz?",
       );
       if (!ok) return;
     }
@@ -551,13 +567,14 @@ function ListingSheet({
           quality,
           description: desc || undefined,
           batchName: batchName.trim() || null,
+          parcelId,
         };
         if (isDraft) patch.status = "active";
         await updateListing.mutateAsync({ id: editing.id, patch, photoFiles, existingPhotos });
         toast.success(isDraft ? "Ürün yayınlandı" : "Ürün güncellendi");
       } else {
-        // Yeni batch açılıyorsa (mevcut batch varken) → draft olarak oluştur (kullanıcı sonra yayınlar).
-        // Hiç batch yoksa → mevcut davranış (active).
+        // Yeni hasat partisi açılıyorsa (mevcut parti varken) → draft olarak oluştur (kullanıcı sonra yayınlar).
+        // Hiç hasat partisi yoksa → mevcut davranış (active).
         const status: "draft" | "active" = batchDecisionOverride ? "draft" : "active";
         await createListing.mutateAsync({
           crop,
@@ -573,12 +590,12 @@ function ListingSheet({
           photoFiles,
         });
         toast.success(
-          status === "draft" ? "Yeni batch taslak olarak kaydedildi" : "Ürün yayınlandı",
+          status === "draft" ? "Yeni hasat partisi taslak olarak kaydedildi" : "Ürün yayınlandı",
         );
       }
       onClose();
-    } catch (e: any) {
-      toast.error(e.message ?? "Kaydedilemedi");
+    } catch (error: unknown) {
+      toast.error(listingSaveErrorMessage(error));
     }
   };
 
@@ -592,7 +609,7 @@ function ListingSheet({
               : editing
                 ? "Ürünü Düzenle"
                 : batchDecisionOverride
-                  ? "🌾 Yeni Batch"
+                  ? "🌾 Yeni Hasat Partisi"
                   : "🏪 Yeni Ürün"}
           </SheetTitle>
         </SheetHeader>
@@ -601,7 +618,7 @@ function ListingSheet({
           {!editing && (
             <>
               <div>
-                <div className="mb-1.5 text-xs font-medium text-hmuted">Parsel</div>
+                <div className="mb-1.5 text-xs font-medium text-hmuted">Parsel *</div>
                 <Select
                   value={parcelId}
                   onValueChange={(v) => {
@@ -626,7 +643,7 @@ function ListingSheet({
                 </Select>
               </div>
               <div>
-                <div className="mb-1.5 text-xs font-medium text-hmuted">Ürün</div>
+                <div className="mb-1.5 text-xs font-medium text-hmuted">Ürün *</div>
                 <Select
                   value={crop}
                   onValueChange={(v) => {
@@ -635,7 +652,7 @@ function ListingSheet({
                     if (!editing) {
                       const cfg = findCropConfig(cropMap, v);
                       const du = cfg?.default_unit;
-                      if (du === "g" || du === "kg" || du === "L") setUnit(du);
+                      if (du === "g" || du === "kg" || du === "L") changeUnit(du);
                     }
                   }}
                 >
@@ -657,7 +674,7 @@ function ListingSheet({
           {showBatchDecision ? (
             <div className="rounded-xl border border-saffron/40 bg-saffron/5 p-3 space-y-3">
               <div className="text-sm font-medium">
-                Bu parselde {formatCrop(crop)} için zaten {existingBatches.length} batch var
+                Bu parselde {formatCrop(crop)} için zaten {existingBatches.length} hasat partisi var
               </div>
               <div className="space-y-2">
                 {existingBatches.map((b, i) => (
@@ -667,7 +684,7 @@ function ListingSheet({
                   >
                     <div className="min-w-0">
                       <div className="text-sm font-medium truncate">
-                        {b.batchName?.trim() || `Batch #${i + 1}`}
+                        {b.batchName?.trim() || `Hasat partisi #${i + 1}`}
                         <span className="ml-2 text-[10px] text-hmuted uppercase">{b.status}</span>
                       </div>
                       <div className="text-[11px] text-hmuted">
@@ -679,49 +696,74 @@ function ListingSheet({
                       className="rounded-full border px-3 py-1.5 text-[11px] font-medium hover:bg-cream"
                       onClick={onClose}
                     >
-                      Bu batch'e hasat ekle
+                      Bu hasat partisine kayıt ekle
                     </Link>
                   </div>
                 ))}
               </div>
               <div className="text-[11px] text-hmuted">
-                Yeni bir batch açmak istersen (örn. ikinci hasat), aşağıdaki butona bas.
+                Yeni bir hasat partisi açmak istersen (örn. ikinci hasat), aşağıdaki butona bas.
               </div>
               <button
                 type="button"
                 onClick={() => setBatchDecisionOverride(true)}
                 className="w-full rounded-lg border border-saffron px-3 py-2 text-sm font-medium text-saffron hover:bg-saffron/10"
               >
-                Yeni Batch Aç (Taslak)
+                Yeni Hasat Partisi Aç (Taslak)
               </button>
             </div>
           ) : (
             <>
               {batchDecisionOverride && (
                 <div className="rounded-lg bg-cream/70 px-3 py-2 text-[11px] text-hmuted">
-                  Bu, aynı parsel+ürün için yeni bir batch. Taslak olarak kaydedilecek; hazır
-                  olduğunda “Yayınla” ile aktif hale getirebilirsin.
+                  Bu, aynı parsel ve ürün için yeni bir hasat partisi. Taslak olarak kaydedilecek;
+                  hazır olduğunda “Yayınla” ile aktif hale getirebilirsin.
                 </div>
               )}
               {editing && (
-                <div>
-                  <div className="mb-1.5 text-xs font-medium text-hmuted">Ürün</div>
-                  <Select value={crop} onValueChange={setCrop}>
-                    <SelectTrigger>
-                      <SelectValue placeholder={cropsLoading ? "Yükleniyor…" : "Ürün seçin"} />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {cropOptions.map((o) => (
-                        <SelectItem key={o.value} value={o.value}>
-                          {o.emoji} {o.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
+                <>
+                  <div>
+                    <div className="mb-1.5 text-xs font-medium text-hmuted">Parsel *</div>
+                    <Select value={parcelId} onValueChange={setParcelId}>
+                      <SelectTrigger>
+                        <SelectValue
+                          placeholder={
+                            parcels.length === 0
+                              ? "Önce Ayarlar'dan parsel ekleyin"
+                              : "Parsel seçin"
+                          }
+                        />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {parcels.map((p) => (
+                          <SelectItem key={p.id} value={p.id}>
+                            {p.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <div className="mb-1.5 text-xs font-medium text-hmuted">Ürün *</div>
+                    <Select value={crop} onValueChange={setCrop}>
+                      <SelectTrigger>
+                        <SelectValue placeholder={cropsLoading ? "Yükleniyor…" : "Ürün seçin"} />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {cropOptions.map((o) => (
+                          <SelectItem key={o.value} value={o.value}>
+                            {o.emoji} {o.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </>
               )}
               <div>
-                <div className="mb-1.5 text-xs font-medium text-hmuted">Batch adı (opsiyonel)</div>
+                <div className="mb-1.5 text-xs font-medium text-hmuted">
+                  Hasat partisi adı (opsiyonel)
+                </div>
                 <Input
                   value={batchName}
                   onChange={(e) => setBatchName(e.target.value)}
@@ -729,18 +771,20 @@ function ListingSheet({
                 />
               </div>
               <div>
-                <div className="mb-1.5 text-xs font-medium text-hmuted">Miktar</div>
+                <div className="mb-1.5 text-xs font-medium text-hmuted">Miktar *</div>
                 <Stepper
                   value={quantity}
                   onChange={setQuantity}
                   step={unit === "g" ? 10 : 1}
                   unit={unit}
                   units={["g", "kg", "L"]}
-                  onUnitChange={(u) => setUnit(u as "g" | "kg" | "L")}
+                  onUnitChange={(u) => changeUnit(u as ListingUnit)}
                 />
               </div>
               <div>
-                <div className="mb-1.5 text-xs font-medium text-hmuted">Birim fiyat (₺/{unit})</div>
+                <div className="mb-1.5 text-xs font-medium text-hmuted">
+                  Birim fiyat * (₺/{unit})
+                </div>
                 <Input
                   type="number"
                   value={price}
@@ -750,7 +794,7 @@ function ListingSheet({
               </div>
               <div>
                 <div className="mb-1.5 text-xs font-medium text-hmuted">
-                  Minimum sipariş ({unit})
+                  Minimum sipariş * ({unit})
                 </div>
                 <Stepper value={minOrder} onChange={setMinOrder} step={1} unit={unit} />
               </div>
@@ -780,7 +824,7 @@ function ListingSheet({
               </div>
               <div>
                 <div className="mb-1.5 text-xs font-medium text-hmuted">
-                  Fotoğraflar (en fazla 3)
+                  Gerçek ürün fotoğrafları * (en fazla 3)
                 </div>
                 <PhotoUploader
                   value={existingPhotos}
@@ -791,6 +835,9 @@ function ListingSheet({
                   }}
                   max={3}
                 />
+                <div className="mt-1 text-[11px] text-hmuted">
+                  Yayındaki ilanlarda ürüne ait en az bir gerçek fotoğraf zorunludur.
+                </div>
               </div>
               <BuyerPreview listingId={editing?.id} crop={crop} />
               <button

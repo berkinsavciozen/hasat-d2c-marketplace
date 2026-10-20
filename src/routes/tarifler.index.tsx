@@ -53,6 +53,7 @@ const DURATION_BUCKETS = [
   { key: "60", label: "1 saate kadar", max: 60 },
   { key: "999", label: "1 saatten uzun", max: Infinity },
 ] as const;
+type DurationKey = (typeof DURATION_BUCKETS)[number]["key"];
 
 function totalMinutes(r: RecipeListItem): number {
   return totalRecipeMinutes(r);
@@ -66,9 +67,9 @@ function filterMinutes(r: RecipeListItem): number {
 }
 
 function RecipeListPage() {
-  const { recipes } = Route.useLoaderData();
+  const { recipes } = Route.useLoaderData() as { recipes: RecipeListItem[] };
   const [difficulty, setDifficulty] = useState<string | null>(null);
-  const [duration, setDuration] = useState<(typeof DURATION_BUCKETS)[number]["key"] | null>(null);
+  const [duration, setDuration] = useState<DurationKey | null>(null);
   const [diet, setDiet] = useState<string | null>(null);
   const [cuisine, setCuisine] = useState<string | null>(null);
   const [equipment, setEquipment] = useState<string[]>([]);
@@ -170,7 +171,7 @@ function RecipeListPage() {
           </select>
           <select
             value={duration ?? ""}
-            onChange={(e) => setDuration((e.target.value || null) as any)}
+            onChange={(e) => setDuration((e.target.value || null) as DurationKey | null)}
             className="rounded-full border px-3 py-1.5 bg-card min-h-[44px]"
           >
             <option value="">Süre (hepsi)</option>
