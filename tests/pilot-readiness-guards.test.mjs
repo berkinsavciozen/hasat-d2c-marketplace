@@ -26,7 +26,7 @@ test("new farmer signup is server-gated by an active farmer invite", async () =>
   assert.match(login, /lookupReferralOwner\(normalizedInviteCode\)/);
   assert.match(login, /invite_code: normalizedInviteCode/);
   assert.match(login, /Mevcut üretici hesabınız varsa boş bırakabilirsiniz/);
-  assert.match(join, /Yeni üretici kaydı için geçerli bir davet bağlantısı gerekiyor/);
+  assert.match(join, /Yeni üretici kaydı için geçerli bir davet bağlantısı\s+gerekiyor/);
   assert.doesNotMatch(join, /yine de kayıt olabilirsin/);
 });
 
