@@ -6,6 +6,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { useCreateCropRequest } from "@/lib/hasat/queries";
 import { TR_PROVINCES } from "@/lib/hasat/cities";
 import { Button } from "@/components/ui/button";
+import { validateCropRequest } from "@/lib/hasat/crop-request-form";
+import { convertListingUnitValues, type ListingUnit } from "@/lib/hasat/listing-form";
 
 /**
  * Shared "Talep Et" (request) form — used by both `/buyer/discover` (generic
@@ -57,10 +59,38 @@ export function CropRequestModal({
   const returnFocusRef = useRef<HTMLElement | null>(null);
   const fieldId = (name: string) => `${idPrefix}-${name}`;
 
+  const changeUnit = (nextUnit: ListingUnit) => {
+    const values = convertListingUnitValues(
+      {
+        quantity: quantity.trim() ? Number(quantity) : 0,
+        minOrder: 0,
+        pricePerUnit: targetPrice.trim() ? Number(targetPrice) : 0,
+      },
+      unit,
+      nextUnit,
+    );
+    setUnit(nextUnit);
+    if (values.converted) {
+      if (quantity.trim()) setQuantity(String(values.quantity));
+      if (targetPrice.trim()) setTargetPrice(String(values.pricePerUnit));
+    } else {
+      toast.info(
+        "Litre ile gram/kilogram arasında otomatik dönüşüm yapılamaz. Değerleri kontrol edin.",
+      );
+    }
+  };
+
   const submit = async () => {
     if (create.isPending) return;
-    if (!cropName.trim()) {
-      toast.error("Ürün adı gerekli");
+    const validationError = validateCropRequest({
+      cropName,
+      quantity,
+      targetPrice,
+      startDate,
+      endDate,
+    });
+    if (validationError) {
+      toast.error(validationError);
       return;
     }
     try {
@@ -78,7 +108,7 @@ export function CropRequestModal({
 
       if (recipeId && result?.id) {
         const { error: linkError } = await supabase
-          .from("recipe_rfq_links" as any)
+          .from("recipe_rfq_links")
           .insert({ recipe_id: recipeId, crop_request_id: result.id });
         if (linkError) console.error("[recipe_rfq_links] insert failed", linkError);
       }
@@ -163,7 +193,8 @@ export function CropRequestModal({
                   value={quantity}
                   onChange={(e) => setQuantity(e.target.value)}
                   type="number"
-                  min="0"
+                  min="0.00000001"
+                  step="any"
                   placeholder="Opsiyonel"
                   className="mt-1 w-full rounded-lg border px-3 py-2 text-sm min-h-[44px]"
                 />
@@ -175,7 +206,7 @@ export function CropRequestModal({
                 <select
                   id={fieldId("unit")}
                   value={unit}
-                  onChange={(e) => setUnit(e.target.value as "kg" | "g" | "L")}
+                  onChange={(e) => changeUnit(e.target.value as ListingUnit)}
                   className="mt-1 w-full rounded-lg border px-2 py-2 text-sm min-h-[44px] bg-card"
                 >
                   <option value="kg">kg</option>
@@ -240,7 +271,8 @@ export function CropRequestModal({
                 value={targetPrice}
                 onChange={(e) => setTargetPrice(e.target.value)}
                 type="number"
-                min="0"
+                min="0.00000001"
+                step="any"
                 placeholder="Opsiyonel"
                 className="mt-1 w-full rounded-lg border px-3 py-2 text-sm min-h-[44px]"
               />
@@ -255,6 +287,7 @@ export function CropRequestModal({
                 value={note}
                 onChange={(e) => setNote(e.target.value)}
                 rows={2}
+                maxLength={500}
                 placeholder="Kalite, teslim koşulu vb."
                 className="mt-1 w-full rounded-lg border px-3 py-2 text-sm resize-none"
               />

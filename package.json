@@ -1,6 +1,7 @@
 {
   "name": "tanstack_start_ts",
   "private": true,
+  "packageManager": "bun@1.3.2",
   "sideEffects": [
     "src/instrument.client.ts"
   ],
@@ -12,6 +13,7 @@
     "preview": "vite preview",
     "allergen:manifest": "node scripts/allergen-review/generate-allergen-manifest.mjs",
     "lint": "eslint .",
+    "test:launch": "node --test tests/*.test.mjs",
     "format": "prettier --write ."
   },
   "dependencies": {

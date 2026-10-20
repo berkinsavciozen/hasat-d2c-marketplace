@@ -18,7 +18,14 @@ export function OfferBatchBreakdown({ offerId }: { offerId: string }) {
       <div className="font-medium text-sm mb-3">Parti dağılımı ({items.length} parti)</div>
       <div className="space-y-2">
         {items.map((it) => (
-          <BatchLine key={it.id} listingId={it.listingId} label={it.batchName ?? "Batch"} qty={it.quantity} unit={it.unit} price={it.pricePerUnit} />
+          <BatchLine
+            key={it.id}
+            listingId={it.listingId}
+            label={it.batchName ?? "Hasat partisi"}
+            qty={it.quantity}
+            unit={it.unit}
+            price={it.pricePerUnit}
+          />
         ))}
       </div>
     </div>
@@ -26,8 +33,18 @@ export function OfferBatchBreakdown({ offerId }: { offerId: string }) {
 }
 
 function BatchLine({
-  listingId, label, qty, unit, price,
-}: { listingId: string; label: string; qty: number; unit: string; price: number }) {
+  listingId,
+  label,
+  qty,
+  unit,
+  price,
+}: {
+  listingId: string;
+  label: string;
+  qty: number;
+  unit: string;
+  price: number;
+}) {
   const [open, setOpen] = useState(false);
   const { data: entries = [] } = useListingBatchEntries(open ? listingId : null);
   const subtotal = qty * price;
@@ -40,11 +57,14 @@ function BatchLine({
         <div className="min-w-0">
           <div className="text-sm font-medium truncate">{label}</div>
           <div className="text-xs text-hmuted">
-            {formatQuantity(qty, unit)} {unit} × <span className="font-mono">{formatTRY(price)}</span>
+            {formatQuantity(qty, unit)} {unit} ×{" "}
+            <span className="font-mono">{formatTRY(price)}</span>
           </div>
         </div>
         <div className="flex items-center gap-2 shrink-0">
-          <span className="font-mono text-sm" style={{ color: "var(--saffron)" }}>{formatTRY(subtotal)}</span>
+          <span className="font-mono text-sm" style={{ color: "var(--saffron)" }}>
+            {formatTRY(subtotal)}
+          </span>
           {open ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
         </div>
       </button>
@@ -57,8 +77,13 @@ function BatchLine({
             <ul className="space-y-1">
               {entries.map((e) => (
                 <li key={e.id} className="flex items-baseline justify-between gap-3 text-xs">
-                  <span className="text-hmuted shrink-0">{new Date(e.date).toLocaleDateString("tr-TR")}</span>
-                  <span className="flex-1 truncate">{formatQuantity(e.quantity, e.unit)} {e.unit} · {e.quality}{e.notes ? ` — ${e.notes}` : ""}</span>
+                  <span className="text-hmuted shrink-0">
+                    {new Date(e.date).toLocaleDateString("tr-TR")}
+                  </span>
+                  <span className="flex-1 truncate">
+                    {formatQuantity(e.quantity, e.unit)} {e.unit} · {e.quality}
+                    {e.notes ? ` — ${e.notes}` : ""}
+                  </span>
                 </li>
               ))}
             </ul>

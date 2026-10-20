@@ -301,11 +301,11 @@ export function JournalEntryCard({ initial }: Props) {
           </select>
         </Field>
         {batches.length > 1 && (
-          <Field label="Batch (parti)" className="col-span-2">
+          <Field label="Hasat partisi" className="col-span-2">
             <div className="flex flex-wrap gap-1.5">
               {batches.map((b, i) => {
                 const active = b.id === listingId;
-                const label = b.batchName?.trim() || `Batch #${i + 1}`;
+                const label = b.batchName?.trim() || `Hasat partisi #${i + 1}`;
                 return (
                   <button
                     key={b.id}

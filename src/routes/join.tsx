@@ -4,12 +4,16 @@ import { z } from "zod";
 import { NotebookPen, LineChart, Store } from "lucide-react";
 import { lookupReferralOwner } from "@/lib/hasat/queries";
 import { BrandLogo } from "@/components/hasat/BrandLogo";
+import { clearStoredFarmerInvite, storeFarmerInvite } from "@/lib/hasat/farmerInvite";
 
 export const Route = createFileRoute("/join")({
   head: () => ({
     meta: [
       { title: "Hasat'a Katıl — Çiftçi Daveti" },
-      { name: "description", content: "Bir çiftçi seni Hasat'a davet etti. Ürünlerini doğrudan alıcılara sat." },
+      {
+        name: "description",
+        content: "Bir çiftçi seni Hasat'a davet etti. Ürünlerini doğrudan alıcılara sat.",
+      },
       { name: "robots", content: "noindex" },
     ],
   }),
@@ -25,16 +29,23 @@ function JoinPage() {
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      if (!ref) { setChecking(false); return; }
+      if (!ref) {
+        setChecking(false);
+        return;
+      }
       const owner = await lookupReferralOwner(ref);
       if (cancelled) return;
       if (owner) {
-        window.localStorage.setItem("hasat_ref", ref.trim().toUpperCase());
+        storeFarmerInvite(ref);
         setInviter(owner);
+      } else {
+        clearStoredFarmerInvite();
       }
       setChecking(false);
     })();
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, [ref]);
 
   return (
@@ -47,10 +58,14 @@ function JoinPage() {
             <p className="mt-3 text-sm text-hwhite/60">Davet doğrulanıyor…</p>
           ) : inviter ? (
             <p className="mt-3 text-sm text-hwhite/70">
-              <span className="font-medium text-hwhite">{inviter.name ?? "Bir çiftçi"}</span> seni Hasat'a davet etti.
+              <span className="font-medium text-hwhite">{inviter.name ?? "Bir çiftçi"}</span> seni
+              Hasat'a davet etti.
             </p>
           ) : ref ? (
-            <p className="mt-3 text-sm text-hred/80">Davet kodu bulunamadı, yine de kayıt olabilirsin.</p>
+            <p className="mt-3 text-sm text-hred/80">
+              Davet kodu geçerli değil. Yeni üretici kaydı için geçerli bir davet bağlantısı
+              gerekiyor.
+            </p>
           ) : (
             <p className="mt-3 text-sm text-hwhite/60">Tarlandan doğrudan sofraya.</p>
           )}
@@ -58,12 +73,33 @@ function JoinPage() {
 
         <div className="mt-8 space-y-3">
           {[
-            { icon: NotebookPen, title: "Dijital Tarla Günlüğü", desc: "Hasatlarını kaydet, kâr/zararını gör" },
-            { icon: LineChart, title: "Fiyat Zekâsı", desc: "Hal, D2C ve ihracat fiyatlarını karşılaştır" },
-            { icon: Store, title: "Vitrin ve Doğrudan Satış", desc: "Ürünlerini doğrudan premium alıcılara sat" },
+            {
+              icon: NotebookPen,
+              title: "Dijital Tarla Günlüğü",
+              desc: "Hasatlarını kaydet, kâr/zararını gör",
+            },
+            {
+              icon: LineChart,
+              title: "Fiyat Zekâsı",
+              desc: "Hal, D2C ve ihracat fiyatlarını karşılaştır",
+            },
+            {
+              icon: Store,
+              title: "Vitrin ve Doğrudan Satış",
+              desc: "Ürünlerini doğrudan premium alıcılara sat",
+            },
           ].map((c) => (
-            <div key={c.title} className="rounded-xl border border-white/10 bg-white/5 p-4 flex items-start gap-3">
-              <div className="grid place-items-center w-9 h-9 shrink-0 rounded-lg" style={{ background: "color-mix(in oklab, var(--primary) 20%, transparent)", color: "var(--primary)" }}>
+            <div
+              key={c.title}
+              className="rounded-xl border border-white/10 bg-white/5 p-4 flex items-start gap-3"
+            >
+              <div
+                className="grid place-items-center w-9 h-9 shrink-0 rounded-lg"
+                style={{
+                  background: "color-mix(in oklab, var(--primary) 20%, transparent)",
+                  color: "var(--primary)",
+                }}
+              >
                 <c.icon className="w-4 h-4" />
               </div>
               <div>
@@ -80,7 +116,7 @@ function JoinPage() {
           className="mt-8 block w-full rounded-xl py-3 text-center text-sm font-medium"
           style={{ background: "var(--primary)", color: "var(--hwhite)" }}
         >
-          Kayıt Ol / Giriş Yap →
+          {ref && !checking && !inviter ? "Mevcut Hesabımla Giriş Yap →" : "Kayıt Ol / Giriş Yap →"}
         </Link>
         <div className="mt-4 text-center text-xs text-hwhite/50">
           Devam ederek Hasat Kullanım Şartları'nı kabul edersin.

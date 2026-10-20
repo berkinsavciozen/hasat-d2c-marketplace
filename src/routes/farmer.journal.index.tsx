@@ -770,10 +770,10 @@ function LogRoutineEntrySheet({
             />
           </div>
           {batchesLoading ? (
-            <div className="text-sm text-hmuted">Batch bilgisi yükleniyor…</div>
+            <div className="text-sm text-hmuted">Hasat partisi bilgisi yükleniyor…</div>
           ) : batches.length > 1 ? (
             <div>
-              <label className="text-xs text-hmuted">Hangi batch (parti)?</label>
+              <label className="text-xs text-hmuted">Hangi hasat partisi?</label>
               <div className="mt-1.5 flex flex-wrap gap-2">
                 {batches.map((b) => {
                   const active = b.id === listingId;

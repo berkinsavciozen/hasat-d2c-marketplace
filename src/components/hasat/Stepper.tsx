@@ -44,18 +44,18 @@ export function Stepper({ value, onChange, step = 1, min = 0, unit, units, onUni
         <Plus className="h-4 w-4" />
       </button>
       {units && unit && onUnitChange ? (
-        <div className="flex gap-0.5 rounded-lg bg-cream p-0.5">
+        <select
+          aria-label="Birim"
+          value={unit}
+          onChange={(event) => onUnitChange(event.target.value)}
+          className="min-h-10 rounded-lg border border-input bg-cream px-2 text-sm font-medium outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        >
           {units.map((u) => (
-            <button
-              key={u}
-              type="button"
-              onClick={() => onUnitChange(u)}
-              className={`rounded-md px-3 py-2 text-sm font-medium ${unit === u ? "bg-saffron text-white" : "text-hmuted"}`}
-            >
+            <option key={u} value={u}>
               {u}
-            </button>
+            </option>
           ))}
-        </div>
+        </select>
       ) : unit ? (
         <span className="px-2 text-sm text-hmuted">{unit}</span>
       ) : null}
