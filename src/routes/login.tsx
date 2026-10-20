@@ -8,6 +8,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { BrandLogo } from "@/components/hasat/BrandLogo";
 import { Button } from "@/components/ui/button";
 import { navigateToLoginNext, safeLoginNext } from "@/lib/hasat/loginNext";
+import { lookupReferralOwner } from "@/lib/hasat/queries";
+import { loadStoredFarmerInvite } from "@/lib/hasat/farmerInvite";
 
 export const Route = createFileRoute("/login")({
   head: () => ({ meta: [{ title: "Giriş — Hasat" }] }),
@@ -29,8 +31,14 @@ export const Route = createFileRoute("/login")({
 // (and restore the channel toggle below + the ternary in sendOtp) once it is.
 const WHATSAPP_OTP_ENABLED = false;
 
-function translateAuthError(e: Error): string {
+function translateAuthError(e: Error, role?: "farmer" | "buyer"): string {
   const m = (e?.message || "").toLowerCase();
+  if (
+    m.includes("farmer_invite") ||
+    (role === "farmer" && m.includes("database error saving new user"))
+  ) {
+    return "Yeni üretici kaydı için geçerli bir davet kodu gerekiyor.";
+  }
   if (
     m.includes("expired") ||
     (m.includes("invalid") && m.includes("token")) ||
@@ -57,6 +65,7 @@ function LoginPage() {
   const updateUser = useHasat((s) => s.updateUser);
   const [step, setStep] = useState<"phone" | "otp">("phone");
   const [phone, setPhone] = useState("");
+  const [inviteCode, setInviteCode] = useState("");
   const [channel, setChannel] = useState<"wa" | "sms">("sms");
   const [otp, setOtp] = useState<string[]>(["", "", "", "", "", ""]);
   const [otpError, setOtpError] = useState<string | null>(null);
@@ -72,6 +81,11 @@ function LoginPage() {
     const t = setInterval(() => setCountdown((c) => (c > 0 ? c - 1 : 0)), 1000);
     return () => clearInterval(t);
   }, [step]);
+
+  useEffect(() => {
+    if (role !== "farmer") return;
+    setInviteCode(loadStoredFarmerInvite());
+  }, [role]);
 
   // Redirect already-authenticated users away from /login
   useEffect(() => {
@@ -134,12 +148,22 @@ function LoginPage() {
     if (phoneDigits.length !== 10 || sending) return;
     setSending(true);
     try {
+      const normalizedInviteCode = inviteCode.trim().toUpperCase();
+      if (role === "farmer" && normalizedInviteCode) {
+        const inviter = await lookupReferralOwner(normalizedInviteCode);
+        if (!inviter) {
+          throw new Error("farmer_invite_invalid");
+        }
+      }
       const { error } = await supabase.auth.signInWithOtp({
         phone: "+90" + phoneDigits,
         options: {
           // WhatsApp OTP disabled (see WHATSAPP_OTP_ENABLED above) — always sms for now.
           channel: "sms",
-          data: { role },
+          data: {
+            role,
+            ...(role === "farmer" ? { invite_code: normalizedInviteCode } : {}),
+          },
         },
       });
       if (error) throw error;
@@ -148,7 +172,7 @@ function LoginPage() {
       setStep("otp");
       setOtp(["", "", "", "", "", ""]);
     } catch (e) {
-      const message = translateAuthError(e as Error);
+      const message = translateAuthError(e as Error, role);
       setPhoneError(message);
       toast.error(message);
     } finally {
@@ -209,7 +233,7 @@ function LoginPage() {
         }
       }
     } catch (e) {
-      const msg = translateAuthError(e as Error);
+      const msg = translateAuthError(e as Error, role);
       toast.error(msg);
       setOtpError(msg);
     } finally {
@@ -264,6 +288,28 @@ function LoginPage() {
             <p id="login-phone-help" className="mt-2 text-[11px] text-hwhite/50">
               Başındaki 0 olmadan 10 haneli cep telefonu numaranız.
             </p>
+            {role === "farmer" && (
+              <div className="mt-4">
+                <label htmlFor="farmer-invite-code" className="text-xs text-hwhite/60 mb-2 block">
+                  Davet kodu
+                </label>
+                <input
+                  id="farmer-invite-code"
+                  value={inviteCode}
+                  onChange={(event) => {
+                    setInviteCode(event.target.value.toUpperCase());
+                    setPhoneError(null);
+                  }}
+                  autoComplete="off"
+                  inputMode="text"
+                  placeholder="Yeni üretici kaydı için"
+                  className="w-full rounded-xl border border-white/15 bg-white/5 px-3 py-3 text-sm uppercase outline-none placeholder:normal-case placeholder:text-hwhite/30 focus:border-primary"
+                />
+                <p className="mt-2 text-[11px] text-hwhite/50">
+                  Yeni üreticiler için zorunlu. Mevcut üretici hesabınız varsa boş bırakabilirsiniz.
+                </p>
+              </div>
+            )}
             {phoneError && (
               <p id="login-phone-error" role="alert" className="mt-2 text-xs text-red-300">
                 {phoneError}
